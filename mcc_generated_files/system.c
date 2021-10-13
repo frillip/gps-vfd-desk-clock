@@ -61,7 +61,7 @@
 #pragma config FWDTEN = OFF    //Watchdog Timer Enable bit->Watchdog timer enabled/disabled by user software
 
 // FOSC
-#pragma config POSCMD = NONE    //Primary Oscillator Mode Select bits->Primary Oscillator disabled
+#pragma config POSCMD = EC    //Primary Oscillator Mode Select bits->EC (External Clock) Mode
 #pragma config OSCIOFNC = OFF    //OSC2 Pin Function bit->OSC2 is clock output
 #pragma config IOL1WAY = ON    //Peripheral pin select configuration->Allow only one reconfiguration
 #pragma config FCKSM = CSECME    //Clock Switching Mode bits->Both Clock switching and Fail-safe Clock Monitor are enabled
@@ -78,37 +78,37 @@
 #include "clock.h"
 #include "system.h"
 #include "system_types.h"
-#include "adc1.h"
-#include "delay.h"
-#include "ic4.h"
-#include "ic2.h"
-#include "ic3.h"
-#include "ic1.h"
-#include "uart2.h"
-#include "uart1.h"
-#include "oc1.h"
-#include "oc2.h"
-#include "i2c1.h"
 #include "interrupt_manager.h"
 #include "traps.h"
+#include "adc1.h"
+#include "i2c1.h"
+#include "ic4.h"
+#include "ic3.h"
+#include "ic2.h"
+#include "ic1.h"
+#include "delay.h"
+#include "uart1.h"
+#include "uart2.h"
+#include "oc2.h"
 #include "spi2.h"
+#include "oc1.h"
 
 void SYSTEM_Initialize(void)
 {
     PIN_MANAGER_Initialize();
     CLOCK_Initialize();
     INTERRUPT_Initialize();
-    IC2_Initialize();
     UART1_Initialize();
-    OC1_Initialize();
     IC4_Initialize();
     IC3_Initialize();
+    OC2_Initialize();
+    OC1_Initialize();
+    IC2_Initialize();
+    IC1_Initialize();
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();
     ADC1_Initialize();
-    OC2_Initialize();
-    IC1_Initialize();
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
 }

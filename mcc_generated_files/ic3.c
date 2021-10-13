@@ -67,10 +67,10 @@ static uint16_t         gIC3Mode;
 
 void IC3_Initialize (void)
 {
-    // ICSIDL disabled; ICM Simple Capture mode: Rising; ICTSEL FOSC/2; ICI Every; 
-    IC3CON1 = 0x1C03;
-    // SYNCSEL IC1; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
-    IC3CON2 = 0x110;
+    // ICSIDL disabled; ICM Simple Capture mode: Falling; ICTSEL FOSC/2; ICI Every; 
+    IC3CON1 = 0x1C02;
+    // SYNCSEL PTGO10; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
+    IC3CON2 = 0x10A;
     
     gIC3Mode = IC3CON1bits.ICM;
     

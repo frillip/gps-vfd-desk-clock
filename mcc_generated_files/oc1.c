@@ -68,14 +68,14 @@ static uint16_t         gOC1Mode;
 
 void OC1_Initialize (void)
 {
-    // ENFLT0 disabled; ENFLT1 disabled; OCSIDL disabled; OCM Double Compare Continuous Pulse mode; OCFLT1 disabled; OCFLT0 disabled; OCTSEL FOSC/2; TRIGMODE Only Software; 
-    OC1CON1 = 0x1C05;
-    // SYNCSEL IC1; TRIGSTAT disabled; OCINV disabled; OCTRIG Sync; OC32 enabled; FLTOUT disabled; OCTRIS enabled; FLTMD Cycle; FLTTRIEN disabled; 
-    OC1CON2 = 0x130;
+    // ENFLT0 disabled; ENFLT1 disabled; OCSIDL disabled; OCM Double Compare Continuous Pulse mode; OCFLT1 disabled; OCFLT0 disabled; OCTSEL FOSC/2; TRIGMODE Hardware or Software; 
+    OC1CON1 = 0x1C0D;
+    // SYNCSEL Self; TRIGSTAT disabled; OCINV disabled; OCTRIG Sync; OC32 enabled; FLTOUT disabled; OCTRIS enabled; FLTMD Cycle; FLTTRIEN disabled; 
+    OC1CON2 = 0x13F;
     // OC1RS 23039; 
     OC1RS = 0x59FF;
-    // OC1R 23024; 
-    OC1R = 0x59F0;
+    // OC1R 23036; 
+    OC1R = 0x59FC;
 	
     gOC1Mode = OC1CON1bits.OCM;
 }

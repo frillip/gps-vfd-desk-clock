@@ -68,10 +68,10 @@ static uint16_t         gOC2Mode;
 
 void OC2_Initialize (void)
 {
-    // ENFLT0 disabled; ENFLT1 disabled; OCSIDL disabled; OCM Double Compare Continuous Pulse mode; OCFLT1 disabled; OCFLT0 disabled; OCTSEL FOSC/2; TRIGMODE Only Software; 
-    OC2CON1 = 0x1C05;
-    // SYNCSEL IC1; TRIGSTAT disabled; OCINV enabled; OCTRIG Sync; OC32 enabled; FLTOUT disabled; OCTRIS disabled; FLTMD Cycle; FLTTRIEN disabled; 
-    OC2CON2 = 0x1110;
+    // ENFLT0 disabled; ENFLT1 disabled; OCSIDL disabled; OCM Double Compare Continuous Pulse mode; OCFLT1 disabled; OCFLT0 disabled; OCTSEL FOSC/2; TRIGMODE Hardware or Software; 
+    OC2CON1 = 0x1C0D;
+    // SYNCSEL Self; TRIGSTAT disabled; OCINV disabled; OCTRIG Sync; OC32 enabled; FLTOUT disabled; OCTRIS disabled; FLTMD Cycle; FLTTRIEN disabled; 
+    OC2CON2 = 0x11F;
     // OC2RS 610; 
     OC2RS = 0x262;
     // OC2R 610; 

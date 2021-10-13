@@ -10,7 +10,7 @@ void display_init(void)
     BLANK_SetHigh();
     POL_SetHigh();
     display_buffer(driver_buffer);
-    display_latch();
+    //display_latch();
 }
 
 void display_count(uint16_t count)
@@ -49,6 +49,35 @@ void display_time(const time_t *tod)
     digits[2] = disp_time->tm_hour % 10;
     digits[1] = disp_time->tm_min / 10;
     digits[0] = disp_time->tm_min % 10;
+    segments[3] = characters[digits[3]];
+    segments[2] = characters[digits[2]];
+    segments[1] = characters[digits[1]];
+    segments[0] = characters[digits[0]];
+    driver_buffer = (segments[0]<<21) | (segments[1]<<14) | (segments[2]<<7) | (segments[3]);
+    if(disp_time->tm_sec%2)
+    {
+        driver_buffer |= 0x10000000;
+        driver_buffer |= 0x40000000;
+    }
+    else
+    {
+        driver_buffer |= 0x20000000;
+        driver_buffer |= 0x80000000;
+    }
+    display_buffer(driver_buffer);
+}
+
+void display_mmss(const time_t *tod)
+{
+    uint32_t driver_buffer = 0x00000000;
+    struct tm *disp_time;
+    
+    disp_time = gmtime(tod);
+    
+    digits[3] = disp_time->tm_min / 10;
+    digits[2] = disp_time->tm_min % 10;
+    digits[1] = disp_time->tm_sec / 10;
+    digits[0] = disp_time->tm_sec % 10;
     segments[3] = characters[digits[3]];
     segments[2] = characters[digits[2]];
     segments[1] = characters[digits[1]];

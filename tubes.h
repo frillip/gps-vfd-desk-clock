@@ -51,6 +51,7 @@ void display_init(void);
 void display_count(uint16_t count);
 void display_buffer(uint32_t buffer);
 void display_time(const time_t *tod);
+void display_mmss(const time_t *tod);
 void display_latch(void);
 
 #ifdef	__cplusplus

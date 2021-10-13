@@ -69,8 +69,8 @@ void IC2_Initialize (void)
 {
     // ICSIDL disabled; ICM Simple Capture mode: Rising; ICTSEL FOSC/2; ICI Every; 
     IC2CON1 = 0x1C03;
-    // SYNCSEL None; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
-    IC2CON2 = 0x100;
+    // SYNCSEL PTGO9; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
+    IC2CON2 = 0x10A;
     
     gIC2Mode = IC2CON1bits.ICM;
     

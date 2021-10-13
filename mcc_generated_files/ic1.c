@@ -69,8 +69,8 @@ void IC1_Initialize (void)
 {
     // ICSIDL disabled; ICM Simple Capture mode: Rising; ICTSEL FOSC/2; ICI Every; 
     IC1CON1 = 0x1C03;
-    // SYNCSEL None; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
-    IC1CON2 = 0x100;
+    // SYNCSEL PTGO8; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
+    IC1CON2 = 0x10A;
     
     gIC1Mode = IC1CON1bits.ICM;
     

@@ -67,10 +67,10 @@ static uint16_t         gIC4Mode;
 
 void IC4_Initialize (void)
 {
-    // ICSIDL disabled; ICM Simple Capture mode: Rising; ICTSEL FOSC/2; ICI Every; 
-    IC4CON1 = 0x1C03;
-    // SYNCSEL IC1; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
-    IC4CON2 = 0x110;
+    // ICSIDL disabled; ICM Simple Capture mode: Falling; ICTSEL FOSC/2; ICI Every; 
+    IC4CON1 = 0x1C02;
+    // SYNCSEL PTGO11; TRIGSTAT disabled; IC32 enabled; ICTRIG Sync; 
+    IC4CON2 = 0x10A;
     
     gIC4Mode = IC4CON1bits.ICM;
     
