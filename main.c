@@ -8,7 +8,6 @@
 #include "gps.h"
 
 extern bool rmc_waiting;
-extern char rmc_buffer[80];
 uint8_t timezone = 1;
 
 uint16_t ic1_val = 0;
@@ -49,14 +48,7 @@ int main(void)
     ADC1_SoftwareTriggerDisable();
     OC1_Start();
     display_init();
-    
-    struct tm gps_time;
-    gps_time.tm_sec = 0;
-    gps_time.tm_min = 0;
-    gps_time.tm_hour = 0;
-    gps_time.tm_mday = 1;
-    gps_time.tm_mon = 9; // tm_mon is zero indexed for no reason
-    gps_time.tm_year = 121;
+
     time_t utc;
     
     while (1)
@@ -64,46 +56,25 @@ int main(void)
         if(rmc_waiting)
         {
             rmc_waiting=0;
-            gps_time.tm_sec = (rmc_buffer[12]-0x30);
-            gps_time.tm_sec += (rmc_buffer[11]-0x30)*10;
-            gps_time.tm_min = (rmc_buffer[10]-0x30);
-            gps_time.tm_min += (rmc_buffer[9]-0x30)*10;
-            gps_time.tm_hour = (rmc_buffer[8]-0x30);
-            gps_time.tm_hour += (rmc_buffer[7]-0x30)*10;
-            if(rmc_buffer[17] == 'A')
-            {
-                gps_time.tm_mday = (rmc_buffer[54]-0x30);
-                gps_time.tm_mday += (rmc_buffer[53]-0x30)*10;
-                gps_time.tm_mon = (rmc_buffer[56]-0x30);
-                gps_time.tm_mon += (rmc_buffer[55]-0x30)*10;
-                gps_time.tm_mon -= 1; // tm_mon is zero indexed for no reason
-                gps_time.tm_year = (rmc_buffer[58]-0x30+100);
-                gps_time.tm_year += (rmc_buffer[57]-0x30)*10;
-            }
-            else
-            {
-                gps_time.tm_mday = (rmc_buffer[26]-0x30);
-                gps_time.tm_mday += (rmc_buffer[25]-0x30)*10;
-                gps_time.tm_mon = (rmc_buffer[28]-0x30);
-                gps_time.tm_mon += (rmc_buffer[27]-0x30)*10;
-                gps_time.tm_mon -= 1; // tm_mon is zero indexed for no reason
-                gps_time.tm_year = (rmc_buffer[30]-0x30+100);
-                gps_time.tm_year += (rmc_buffer[29]-0x30)*10;
-            }
-            gps_time.tm_isdst = 0;
-            memset(rmc_buffer, 0, sizeof rmc_buffer);
+            // Process our waiting GNRMC message into UTC
+            utc = process_rmc();
+            
+            // Print it to serial
             char buf[32] = {0};
-            strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", &gps_time);
+            struct tm *utc_time;
+            utc_time = gmtime(&utc);
+            strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
             printf(buf);
             printf("\r\n");
-            utc = mktime(&gps_time);
+            
+            // Increment for next PPS and load into display
             utc++;
-            display_mmss(&utc);
-            //display_time(&utc);
+            display_time(&utc);
             print_data = 1;
         }
         if(print_data)
         {
+            // Calculate our PPS and OC stats, needs to be moved to a timer loop?
             pps_count = (((uint32_t)ic2_val)<<16) + ic1_val;
             pps_count_diff = pps_count-pps_count_old;
             pps_count_old = pps_count;
@@ -119,9 +90,8 @@ int main(void)
             if(!pps_sync && pps_count_diff == 40000000)
             {
                 set_latch_cycles(40000000 + oc_offset+107);
-                pps_sync = 1;
                 adjust_in_progress = 1;
-            }            
+            }
             printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
             printf("PPS C:%lu OC C:%li\r\n", pps_count, oc_count);
             printf("PPS S: %i ADJ: %i\r\n", pps_sync, adjust_in_progress);
@@ -165,6 +135,7 @@ void IC3_CallBack(void)
     {
         set_latch_cycles(40000000);
         adjust_in_progress = 0;
+        pps_sync = 1;
     }
     ic3_val = IC3_CaptureDataRead();
 }

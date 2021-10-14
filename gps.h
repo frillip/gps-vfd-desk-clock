@@ -14,8 +14,10 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <time.h>
     
 void rx_gps(void);
+time_t process_rmc(void);
 
 #ifdef	__cplusplus
 }
