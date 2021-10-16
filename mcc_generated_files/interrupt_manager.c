@@ -82,4 +82,7 @@ void INTERRUPT_Initialize (void)
     //    ICI_INT: Input Capture 4
     //    Priority: 1
         IPC9bits.IC4IP = 1;
+    //    TI: Timer 2
+    //    Priority: 1
+        IPC1bits.T2IP = 1;
 }
