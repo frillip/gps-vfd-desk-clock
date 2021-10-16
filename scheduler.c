@@ -13,7 +13,7 @@ uint8_t t1s0=0;
 uint8_t t1s1=0;
 
 bool scheduler_sync = 0;
-bool scheduler_adjust_in_progress = 0;
+extern bool print_data;
 
 void scheduler_run(void)
 {
@@ -42,11 +42,12 @@ void scheduler_run(void)
     }
 }
 
+
+// Sync the scheduler when called
 void scheduler_align()
 {
-    TMR2_Counter16BitSet(0x9C4);
-    STATUS_LED_SetHigh();
-    scheduler_adjust_in_progress = 1;
+    TMR2_Counter16BitSet(0x9C4); // Set the timer counter to expire in 500us
+    STATUS_LED_SetHigh(); // Drive the LED high for no reason
     t1ms=0;
     t1ms0=0;
     t1ms1=0;
@@ -57,7 +58,7 @@ void scheduler_align()
     t100ms0=0;
     t100ms1=0;
     t1s0=0;
-    t1s1=0;
-    scheduler_adjust_in_progress = 0;
-    scheduler_sync = 1;
+    t1s1=0; // Reset the scheduler variables
+    scheduler_sync = 1; // Say that we're done
+    print_data = 1;
 }

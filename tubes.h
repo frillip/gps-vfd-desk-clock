@@ -18,6 +18,7 @@ extern "C" {
 #include "mcc_generated_files/delay.h"
 #include <time.h>
 
+// Segment mapping on the driver
 #define SEG_G       0x00000004
 #define SEG_F       0x00000002
 #define SEG_E       0x00000001
@@ -27,6 +28,7 @@ extern "C" {
 #define SEG_A       0x00000008
 #define SEG_NONE    0x00000000
 
+// Define the segments required for each digit
 #define DIGIT_0    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
 #define DIGIT_1    SEG_B | SEG_C
 #define DIGIT_2    SEG_A | SEG_B | SEG_D | SEG_E | SEG_G
