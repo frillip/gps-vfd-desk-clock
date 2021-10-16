@@ -72,6 +72,7 @@ void display_mmss(const time_t *tod)
 {
     uint32_t driver_buffer = 0x00000000;
     struct tm *disp_time;
+    extern bool pps_sync;
     
     disp_time = gmtime(tod);
     
@@ -87,13 +88,12 @@ void display_mmss(const time_t *tod)
     if(disp_time->tm_sec%2)
     {
         driver_buffer |= 0x10000000;
-        driver_buffer |= 0x40000000;
     }
     else
     {
         driver_buffer |= 0x20000000;
-        driver_buffer |= 0x80000000;
     }
+    if(pps_sync) driver_buffer |= 0x80000000;
     display_buffer(driver_buffer);
 }
 
