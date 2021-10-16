@@ -11,8 +11,6 @@
 extern bool rmc_waiting;
 uint8_t timezone = 1;
 
-extern uint8_t t100ms0;
-
 uint16_t ic1_val = 0;
 uint16_t ic1_val_old = 0;
 uint16_t ic2_val = 0;
@@ -36,12 +34,19 @@ float pps_offset_ns = 0;
 
 bool oc_adjust_in_progress = 0;
 bool pps_sync = 0;
-bool print_data = 0;
+bool pps_done = 0;
+bool oc_done = 0;
 
 bool gps_calendar_sync = 0;
 
+bool print_data = 0;
+
 extern bool scheduler_sync;
 extern bool scheduler_adjust_in_progress;
+extern uint8_t t1ms0;
+extern uint8_t t10ms0;
+extern uint8_t t100ms0;
+extern uint8_t t100ms1;
 
 void incr_clock(void);
 void set_latch_cycles(uint32_t);
@@ -60,67 +65,100 @@ int main(void)
     display_init();
 
     time_t utc;
+    time_t gps;
     
     while (1)
     {
-        if(rmc_waiting)
+        if(t1ms0)
         {
-            rmc_waiting=0;
-            // Process our waiting GNRMC message into UTC
-            //if(!gps_calendar_sync)
-            //{
-                utc = process_rmc();
+            if(oc_done)
+            {
+                // Calculate our PPS and OC stats
+                pps_count = (((uint32_t)ic2_val)<<16) + ic1_val;
+                pps_count_diff = pps_count-pps_count_old;
+                pps_count_old = pps_count;
+
+                oc_count = (((uint32_t)ic4_val)<<16) + ic3_val;
+                oc_count_diff = oc_count - oc_count_old;
+                oc_offset = pps_count-oc_count;
+                oc_count_old = oc_count;
+                if((pps_seq_count>10)&&((oc_offset<-132)||(oc_offset>-92)))
+                {
+                    pps_sync = 0;
+                    scheduler_sync = 0;
+                    gps_calendar_sync = 0;
+                }
+                if(!pps_sync && pps_count_diff == 40000000)
+                {
+                    set_latch_cycles(40000000 + oc_offset+107);
+                    oc_adjust_in_progress = 1;
+                }
 
                 // Print it to serial
-                char buf[32] = {0};
-                struct tm *utc_time;
-                utc_time = gmtime(&utc);
-                strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
-                printf("GPS calendar sync\r\nTime is now: ");
-                printf(buf);
+                char buf2[32] = {0};
+                struct tm *utc_oc;
+                utc_oc = gmtime(&utc);
+                strftime(buf2, 32, "%Y-%m-%dT%H:%M:%SZ", utc_oc);
+                printf("OC: ");
+                printf(buf2);
                 printf("\r\n");
                 
-                gps_calendar_sync = 1;
-
-                // Increment for next PPS and load into display
-                utc++;
-                //display_time(&utc);
-                display_mmss(&utc);
-                print_data = 1;
-            //}
+                oc_done = 0;
+            }
         }
-        if(print_data)
+        if(t10ms0)
         {
-            // Calculate our PPS and OC stats, needs to be moved to a timer loop?
-            pps_count = (((uint32_t)ic2_val)<<16) + ic1_val;
-            pps_count_diff = pps_count-pps_count_old;
-            pps_count_old = pps_count;
-            
-            oc_count = (((uint32_t)ic4_val)<<16) + ic3_val;
-            oc_count_diff = oc_count - oc_count_old;
-            oc_offset = pps_count-oc_count;
-            oc_count_old = oc_count;
-            if((pps_seq_count>10)&&((oc_offset<-132)||(oc_offset>-92)))
+            t10ms0=0;
+            if(print_data)
             {
-                pps_sync = 0;
-                scheduler_sync = 0;
+                printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
+                printf("PPS C:%lu OC C:%li\r\n", pps_count, oc_count);
+                printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
+                printf("SCH S: %i ADJ: %i\r\n", scheduler_sync, scheduler_adjust_in_progress);
+                printf("mV: %.0fns: %.0f\r\n",pdo_mv, pps_offset_ns);
+                print_data = 0;
             }
-            if(!pps_sync && pps_count_diff == 40000000)
-            {
-                set_latch_cycles(40000000 + oc_offset+107);
-                oc_adjust_in_progress = 1;
-            }
-            printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
-            printf("PPS C:%lu OC C:%li\r\n", pps_count, oc_count);
-            printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
-            printf("SCH S: %i ADJ: %i\r\n", scheduler_sync, scheduler_adjust_in_progress);
-            printf("mV: %.0fns: %.0f\r\n",pdo_mv, pps_offset_ns);
-            print_data = 0;
         }
-        if(t100ms0==5)
+        if(t100ms0==1)
         {
             t100ms0 = 0;
             STATUS_LED_Toggle();
+            if(rmc_waiting)
+            {
+                rmc_waiting=0;
+
+                // Process our waiting GNRMC message into UTC
+                gps = process_rmc();
+
+                if(utc!=gps)
+                {
+                    gps_calendar_sync = 0;
+                }
+
+                if(!gps_calendar_sync)
+                {
+                    utc = gps;
+                    // Print it to serial
+                    char buf[32] = {0};
+                    struct tm *utc_time;
+                    utc_time = gmtime(&utc);
+                    strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
+                    //printf("GPS calendar sync\r\nTime is now: ");
+                    printf("GPS: ");
+                    printf(buf);
+                    printf("\r\n");
+
+                    gps_calendar_sync = 1;
+                }
+            }
+        }
+        if(t100ms1==9)
+        {
+            t100ms1 = -1; // Reset to -1 to trigger this every 1s
+            // Increment for next PPS and load into display
+            utc++;
+            //display_time(&utc);
+            display_mmss(&utc);
         }
     }
     return 1; 
@@ -164,7 +202,10 @@ void IC3_CallBack(void)
         set_latch_cycles(40000000);
         oc_adjust_in_progress = 0;
         pps_sync = 1;
+        print_data = 1;
     }
+    oc_done = 1;
+    rmc_waiting = 0;
     ic3_val = IC3_CaptureDataRead();
 }
 void IC4_CallBack(void)
