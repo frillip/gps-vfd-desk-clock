@@ -1097,7 +1097,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="I2C1" name="BaudRate"/>
-         <value>100000</value>
+         <value>600000</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="I2C1" name="I2C1_MICIISRFunction"/>
@@ -1365,7 +1365,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="I2C1" registerAlias="I2CBRG"/>
-         <value>395</value>
+         <value>62</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="I2C1" registerAlias="I2CCON"/>
@@ -1389,7 +1389,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="I2C1" registerAlias="I2CBRG" settingAlias="I2CBRG"/>
-         <value>395</value>
+         <value>62</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="I2C1" registerAlias="I2CCON" settingAlias="A10M"/>
@@ -9375,7 +9375,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\i2c1.c</file>
-         <hash>33570ca6a39e37d7fad5d18ff7397bb178332c44766835072137e8750914012a</hash>
+         <hash>c2c147b6ec2fe01f8734c288fa38e5a676158099a0572270d0ecf93964b6b08c</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\spi2.h</file>
@@ -9519,7 +9519,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.c</file>
-         <hash>587b424d82f150b79824c9eb04bc094a9cbc7bceaf312a29e5edba2701402c1c</hash>
+         <hash>fbd7dc185c6b74a026be2418a01d43ad9967efe1623b25ae9943b9b4617923fe</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\oc2.c</file>
@@ -9539,7 +9539,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\adc1.h</file>
-         <hash>14d96e65b3e0492e12020034394b2795b548ff5e095002a9cf8a5806abd09ce0</hash>
+         <hash>9bbe367203314609111ad38bf5534cf61fda38f3bac9bdd4f6eb0cd6a1e08c21</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\interrupt_manager.c</file>

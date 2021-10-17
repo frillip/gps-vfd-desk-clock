@@ -7,6 +7,7 @@
 #include "tubes.h"
 #include "gps.h"
 #include "scheduler.h"
+#include "ds1307.h"
 
 extern bool rmc_waiting;
 uint8_t timezone = 1;
@@ -43,6 +44,8 @@ int old_minute = 0;
 
 bool print_data = 0;
 
+bool rtc_sync = 0;
+
 extern bool scheduler_sync;
 extern bool scheduler_adjust_in_progress;
 extern uint8_t t1ms0;
@@ -50,6 +53,8 @@ extern uint8_t t10ms0;
 extern uint8_t t100ms0;
 extern uint8_t t100ms1;
 
+uint8_t bcd2bin(uint8_t val);
+uint8_t bin2bcd(uint8_t val);
 void incr_clock(void);
 void set_latch_cycles(uint32_t);
 
@@ -65,10 +70,20 @@ int main(void)
     ADC1_SoftwareTriggerDisable();
     OC1_Start();
     display_init();
+    
+    printf("\033[2J\033[1;1H"); // Clear the terminal window
+    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
 
-    // time_t to store UTC and GPS time
+    // time_t to store UTC, GPS and RTC time
     time_t utc;
     time_t gps;
+    time_t rtc;
+    
+    // Read RTC for an estimate of current time and display it
+    rtc = DS1307_read();
+    utc = rtc;
+    //display_time(&utc);
+    display_mmss(&utc);
     
     // ISO8601 string buffer
     char buf[32] = {0};
@@ -98,6 +113,7 @@ int main(void)
                     pps_sync = 0;
                     scheduler_sync = 0;
                     gps_calendar_sync = 0;
+                    rtc_sync = 0;
                 }
                 // Only sync if required and if we get 40000000 cycles
                 if(!pps_sync && pps_count_diff == 40000000)
@@ -109,7 +125,7 @@ int main(void)
                 // Print resulting time to serial
                 struct tm *utc_oc;
                 utc_oc = gmtime(&utc);
-                strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_oc);
+                strftime(buf, 32, "UTC: %Y-%m-%dT%H:%M:%SZ", utc_oc);
                 printf(buf);
                 printf("\r\n");
                 
@@ -118,6 +134,7 @@ int main(void)
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
+                //rtc = DS1307_read();
                 oc_event = 0;
             }
         }
@@ -173,7 +190,13 @@ int main(void)
                     printf("GPS calendar sync\r\nTime is now: ");
                     printf(buf);
                     printf("\r\n");
-                    
+
+                    // Update our RTC now we have a GPS time
+                    if(!rtc_sync)
+                    {
+                        printf("Writing RTC\r\n");
+                        rtc_sync = DS1307_write(utc);
+                    }
                     // Our internal calendar is now sync'd with GPS
                     gps_calendar_sync = 1;
                 }
