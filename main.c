@@ -62,6 +62,14 @@ int main(void)
 {
     // initialize the device
     SYSTEM_Initialize();
+    
+    printf("\033[2J\033[1;1H"); // Clear the terminal window
+    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
+    printf("Waiting for Rb lock...");
+    while(!OSC_READY_GetValue());
+    DELAY_milliseconds(100); // Wait for things to wake up
+    printf(" locked!\r\n");
+    
     CN_SetInterruptHandler(incr_clock);
     UART2_SetRxInterruptHandler(rx_gps);
     TMR2_SetInterruptHandler(scheduler_run);
@@ -70,11 +78,6 @@ int main(void)
     ADC1_SoftwareTriggerDisable();
     OC1_Start();
     display_init();
-    
-    printf("\033[2J\033[1;1H"); // Clear the terminal window
-    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
-    
-    DELAY_milliseconds(10); // Wait for things to wake up
 
     // time_t to store UTC, GPS and RTC time
     time_t utc;
