@@ -73,6 +73,8 @@ int main(void)
     
     printf("\033[2J\033[1;1H"); // Clear the terminal window
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
+    
+    DELAY_milliseconds(10); // Wait for things to wake up
 
     // time_t to store UTC, GPS and RTC time
     time_t utc;
@@ -167,38 +169,42 @@ int main(void)
             if(rmc_waiting)
             {
                 rmc_waiting=0;
-                // Process our waiting GNRMC message into UTC
+                // Process our waiting GNRMC message into our time_t
                 gps = process_rmc();
 
-                // Check if we've still got the correct time
-                if(utc!=gps)
+                // Do we have a valid time from GPS
+                if(gps)
                 {
-                    // Trigger a re-sync if not
-                    gps_calendar_sync = 0;
-                }
-
-                   //If we're not sync'd
-                if(!gps_calendar_sync)
-                {
-                    // Copy GPS time into our UTC calendar
-                    utc = gps;
-                    // Print resulting time to serial
-                    char buf[32] = {0};
-                    struct tm *utc_time;
-                    utc_time = gmtime(&utc);
-                    strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
-                    printf("GPS calendar sync\r\nTime is now: ");
-                    printf(buf);
-                    printf("\r\n");
-
-                    // Update our RTC now we have a GPS time
-                    if(!rtc_sync)
+                    // Check if we've still got the correct time
+                    if(utc!=gps)
                     {
-                        printf("Writing RTC\r\n");
-                        rtc_sync = DS1307_write(utc);
+                        // Trigger a re-sync if not
+                        gps_calendar_sync = 0;
                     }
-                    // Our internal calendar is now sync'd with GPS
-                    gps_calendar_sync = 1;
+
+                    //If we're not sync'd
+                    if(!gps_calendar_sync)
+                    {
+                        // Copy GPS time into our UTC calendar
+                        utc = gps;
+                        // Print resulting time to serial
+                        char buf[32] = {0};
+                        struct tm *utc_time;
+                        utc_time = gmtime(&utc);
+                        strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
+                        printf("GPS calendar sync\r\nTime is now: ");
+                        printf(buf);
+                        printf("\r\n");
+
+                        // Update our RTC now we have a GPS time
+                        if(!rtc_sync)
+                        {
+                            printf("Writing RTC\r\n");
+                            rtc_sync = DS1307_write(utc);
+                        }
+                        // Our internal calendar is now sync'd with GPS
+                        gps_calendar_sync = 1;
+                    }
                 }
             }
         }

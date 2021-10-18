@@ -67,7 +67,7 @@ void PIN_MANAGER_Initialize (void)
      * Setting the Output Latch SFR(s)
      ***************************************************************************/
     LATA = 0x0000;
-    LATB = 0x6000;
+    LATB = 0x6880;
 
     /****************************************************************************
      * Setting the GPIO Direction SFR(s)
@@ -100,18 +100,18 @@ void PIN_MANAGER_Initialize (void)
      ***************************************************************************/
     __builtin_write_OSCCONL(OSCCON & 0xbf); // unlock PPS
 
-    RPINR7bits.IC1R = 0x002C;    //RB12->IC1:IC1
-    RPINR8bits.IC3R = 0x002A;    //RB10->IC3:IC3
-    RPINR19bits.U2RXR = 0x0026;    //RB6->UART2:U2RX
-    RPINR18bits.U1RXR = 0x002F;    //RB15->UART1:U1RX
-    RPINR22bits.SCK2R = 0x0014;    //RA4->SPI2:SCK2OUT
-    RPOR2bits.RP39R = 0x0003;    //RB7->UART2:U2TX
-    RPINR7bits.IC2R = 0x002C;    //RB12->IC2:IC2
     RPOR0bits.RP20R = 0x0009;    //RA4->SPI2:SCK2OUT
     RPOR4bits.RP43R = 0x0001;    //RB11->UART1:U1TX
+    RPINR22bits.SCK2R = 0x0014;    //RA4->SPI2:SCK2OUT
+    RPINR19bits.U2RXR = 0x0026;    //RB6->UART2:U2RX
+    RPOR2bits.RP39R = 0x0003;    //RB7->UART2:U2TX
+    RPINR18bits.U1RXR = 0x002F;    //RB15->UART1:U1RX
+    RPINR8bits.IC3R = 0x002A;    //RB10->IC3:IC3
+    RPINR7bits.IC2R = 0x002C;    //RB12->IC2:IC2
     RPINR8bits.IC4R = 0x002A;    //RB10->IC4:IC4
-    RPOR4bits.RP42R = 0x0011;    //RB10->OC2:OC2
+    RPINR7bits.IC1R = 0x002C;    //RB12->IC1:IC1
     RPOR1bits.RP36R = 0x0008;    //RB4->SPI2:SDO2
+    RPOR4bits.RP42R = 0x0011;    //RB10->OC2:OC2
 
     __builtin_write_OSCCONL(OSCCON | 0x40); // lock PPS
     

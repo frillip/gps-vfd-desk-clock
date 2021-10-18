@@ -65,6 +65,7 @@ time_t process_rmc(void)
     {
         if(field==1 && field_waiting)
         {
+            if(rmc_buffer[i] == ',') return 0; // We don't have a time yet, so return 0
             gps_time.tm_sec = (rmc_buffer[i+5]-0x30);
             gps_time.tm_sec += (rmc_buffer[i+4]-0x30)*10;
             gps_time.tm_min = (rmc_buffer[i+3]-0x30);
