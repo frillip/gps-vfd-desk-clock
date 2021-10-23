@@ -92,7 +92,6 @@
 #include "oc2.h"
 #include "spi2.h"
 #include "oc1.h"
-#include "tmr2.h"
 
 void SYSTEM_Initialize(void)
 {
@@ -100,7 +99,6 @@ void SYSTEM_Initialize(void)
     CLOCK_Initialize();
     INTERRUPT_Initialize();
     UART1_Initialize();
-    TMR2_Initialize();
     IC4_Initialize();
     IC3_Initialize();
     OC2_Initialize();

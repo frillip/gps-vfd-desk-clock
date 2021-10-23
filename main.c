@@ -72,8 +72,7 @@ int main(void)
     
     CN_SetInterruptHandler(incr_clock);
     UART2_SetRxInterruptHandler(rx_gps);
-    TMR2_SetInterruptHandler(scheduler_run);
-    TMR2_Start();
+    scheduler_init();
     ADC1_ChannelSelect(PDO);
     ADC1_SoftwareTriggerDisable();
     OC1_Start();
