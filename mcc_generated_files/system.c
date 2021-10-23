@@ -78,11 +78,7 @@
 #include "clock.h"
 #include "system.h"
 #include "system_types.h"
-#include "ic4.h"
-#include "ic3.h"
 #include "i2c1.h"
-#include "oc2.h"
-#include "oc1.h"
 #include "spi2.h"
 #include "adc1.h"
 #include "uart1.h"
@@ -96,14 +92,10 @@ void SYSTEM_Initialize(void)
     PIN_MANAGER_Initialize();
     CLOCK_Initialize();
     INTERRUPT_Initialize();
-    UART1_Initialize();
-    IC4_Initialize();
-    IC3_Initialize();
-    OC2_Initialize();
-    OC1_Initialize();
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();
+    UART1_Initialize();
     ADC1_Initialize();
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);

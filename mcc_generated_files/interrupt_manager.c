@@ -70,10 +70,4 @@ void INTERRUPT_Initialize (void)
     //    SICI: I2C1 Slave Events
     //    Priority: 1
         IPC4bits.SI2C1IP = 1;
-    //    ICI_INT: Input Capture 3
-    //    Priority: 1
-        IPC9bits.IC3IP = 1;
-    //    ICI_INT: Input Capture 4
-    //    Priority: 1
-        IPC9bits.IC4IP = 1;
 }

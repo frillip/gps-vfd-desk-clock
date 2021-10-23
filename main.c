@@ -7,6 +7,7 @@
 #include "tubes.h"
 #include "gps.h"
 #include "gps_pps.h"
+#include "pic_pps.h"
 #include "scheduler.h"
 #include "ds1307.h"
 
@@ -22,22 +23,22 @@ extern uint32_t pps_count_diff;
 extern uint32_t pps_count_old;
 extern uint16_t pps_seq_count;
 
-uint16_t ic3_val = 0;
-uint16_t ic3_val_old = 0;
-uint16_t ic4_val = 0;
-uint16_t ic4_val_old = 0;
-uint32_t oc_count = 0;
-int32_t oc_offset = 0;
-uint32_t oc_count_diff = 0;
-uint32_t oc_count_old = 0;
+extern uint16_t ic3_val;
+extern uint16_t ic3_val_old;
+extern uint16_t ic4_val;
+extern uint16_t ic4_val_old;
+extern uint32_t oc_count;
+extern int32_t oc_offset;
+extern uint32_t oc_count_diff;
+extern uint32_t oc_count_old;
 
 float pdo_mv = 0;
 float pps_offset_ns = 0;
 
-bool oc_adjust_in_progress = 0;
-bool pps_sync = 0;
-bool pps_done = 0;
-bool oc_event = 0;
+extern bool oc_adjust_in_progress;
+extern bool pps_sync;
+extern bool pps_done;
+extern bool oc_event;
 
 bool gps_calendar_sync = 0;
 int minute = 0;
@@ -66,10 +67,7 @@ int main(void)
     CLOCK_Initialize();
     INTERRUPT_Initialize();
     UART1_Initialize();
-    IC4_Initialize();
-    IC3_Initialize();
-    OC2_Initialize();
-    OC1_Initialize();
+    pic_pps_init();
     gps_pps_init();
     UART2_Initialize();
     I2C1_Initialize();
@@ -90,7 +88,6 @@ int main(void)
     scheduler_init();
     ADC1_ChannelSelect(PDO);
     ADC1_SoftwareTriggerDisable();
-    OC1_Start();
     display_init();
 
     // time_t to store UTC, GPS and RTC time
@@ -253,41 +250,6 @@ void incr_clock(void)
         // Convert from mV to nanoseconds
         pps_offset_ns = (pdo_mv * pdo_mv * 0.000051) + (0.28 * pdo_mv);
     }
-}
-
-void IC3_CallBack(void)
-{
-    // Only sync the scheduler after OC
-    if(pps_sync && !scheduler_sync)
-    {
-        scheduler_align(); // Align the scheduler with our OC
-    }
-    if(oc_adjust_in_progress)
-    {
-        set_latch_cycles(40000000); // Reset our OC to 1Hz
-        oc_adjust_in_progress = 0; // Clear the adjustment flag
-        pps_sync = 1; // Indicate we are now sync'd with PPS
-        print_data = 1; // Print stats after resync
-    }
-    oc_event = 1; // Flag we've just had an OC event
-    rmc_waiting = 0; // Invalidate any GPS data that's waiting
-    ic3_val = IC3_CaptureDataRead(); // Read the IC3 timer
-}
-void IC4_CallBack(void)
-{
-    ic4_val = IC4_CaptureDataRead(); // Read the IC4 timer
-}
-
-// Adjusts the trigger registers for OC1 and OC2
-void set_latch_cycles(uint32_t cycles)
-{
-    // Split into two 16 bit values for OC1 and OC2
-    uint16_t msb = ((cycles - 1) >> 16) & 0xFFFF;
-    uint16_t lsb = (cycles - 1) & 0xFFFF;
-    OC1R = lsb - 3; // Latch pulse width is 3 cycles
-    OC1RS = lsb;
-    OC2R = msb;
-    OC2RS = msb;
 }
 
 /**
