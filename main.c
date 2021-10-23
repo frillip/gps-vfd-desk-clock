@@ -6,20 +6,21 @@
 #include "mcc_generated_files/mcc.h"
 #include "tubes.h"
 #include "gps.h"
+#include "gps_pps.h"
 #include "scheduler.h"
 #include "ds1307.h"
 
 extern bool rmc_waiting;
 uint8_t timezone = 1;
 
-uint16_t ic1_val = 0;
-uint16_t ic1_val_old = 0;
-uint16_t ic2_val = 0;
-uint16_t ic2_val_old = 0;
-uint32_t pps_count = 0;
-uint32_t pps_count_diff = 0;
-uint32_t pps_count_old = 0;
-uint16_t pps_seq_count = 0;
+extern uint16_t ic1_val;
+extern uint16_t ic1_val_old;
+extern uint16_t ic2_val;
+extern uint16_t ic2_val_old;
+extern uint32_t pps_count;
+extern uint32_t pps_count_diff;
+extern uint32_t pps_count_old;
+extern uint16_t pps_seq_count;
 
 uint16_t ic3_val = 0;
 uint16_t ic3_val_old = 0;
@@ -61,7 +62,21 @@ void set_latch_cycles(uint32_t);
 int main(void)
 {
     // initialize the device
-    SYSTEM_Initialize();
+    PIN_MANAGER_Initialize();
+    CLOCK_Initialize();
+    INTERRUPT_Initialize();
+    UART1_Initialize();
+    IC4_Initialize();
+    IC3_Initialize();
+    OC2_Initialize();
+    OC1_Initialize();
+    gps_pps_init();
+    UART2_Initialize();
+    I2C1_Initialize();
+    SPI2_Initialize();
+    ADC1_Initialize();
+    INTERRUPT_GlobalEnable();
+    SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
     
     printf("\033[2J\033[1;1H"); // Clear the terminal window
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
@@ -238,16 +253,6 @@ void incr_clock(void)
         // Convert from mV to nanoseconds
         pps_offset_ns = (pdo_mv * pdo_mv * 0.000051) + (0.28 * pdo_mv);
     }
-}
-
-void IC1_CallBack(void)
-{
-    pps_seq_count++; // Increment our PPS counter
-    ic1_val = IC1_CaptureDataRead(); // Read the IC1 timer
-}
-void IC2_CallBack(void)
-{
-    ic2_val = IC2_CaptureDataRead(); // Read the IC2 timer
 }
 
 void IC3_CallBack(void)

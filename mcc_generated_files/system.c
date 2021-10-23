@@ -78,20 +78,18 @@
 #include "clock.h"
 #include "system.h"
 #include "system_types.h"
-#include "interrupt_manager.h"
-#include "traps.h"
-#include "adc1.h"
-#include "i2c1.h"
 #include "ic4.h"
 #include "ic3.h"
-#include "ic2.h"
-#include "ic1.h"
-#include "delay.h"
+#include "i2c1.h"
+#include "oc2.h"
+#include "oc1.h"
+#include "spi2.h"
+#include "adc1.h"
 #include "uart1.h"
 #include "uart2.h"
-#include "oc2.h"
-#include "spi2.h"
-#include "oc1.h"
+#include "interrupt_manager.h"
+#include "traps.h"
+#include "delay.h"
 
 void SYSTEM_Initialize(void)
 {
@@ -103,8 +101,6 @@ void SYSTEM_Initialize(void)
     IC3_Initialize();
     OC2_Initialize();
     OC1_Initialize();
-    IC2_Initialize();
-    IC1_Initialize();
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();

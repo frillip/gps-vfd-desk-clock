@@ -56,8 +56,6 @@
 #include "watchdog.h"
 #include "ic4.h"
 #include "ic3.h"
-#include "ic2.h"
-#include "ic1.h"
 #include "i2c1.h"
 #include "oc2.h"
 #include "oc1.h"

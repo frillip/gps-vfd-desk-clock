@@ -64,9 +64,6 @@ void INTERRUPT_Initialize (void)
     //    CNI: Change Notification Interrupt
     //    Priority: 1
         IPC4bits.CNIP = 1;
-    //    ICI_INT: Input Compare 1
-    //    Priority: 1
-        IPC0bits.IC1IP = 1;
     //    MICI: I2C1 Master Events
     //    Priority: 1
         IPC4bits.MI2C1IP = 1;
@@ -76,9 +73,6 @@ void INTERRUPT_Initialize (void)
     //    ICI_INT: Input Capture 3
     //    Priority: 1
         IPC9bits.IC3IP = 1;
-    //    ICI_INT: Input Capture 2
-    //    Priority: 1
-        IPC1bits.IC2IP = 1;
     //    ICI_INT: Input Capture 4
     //    Priority: 1
         IPC9bits.IC4IP = 1;

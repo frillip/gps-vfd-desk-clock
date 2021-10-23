@@ -14,14 +14,6 @@
          <string>class com.microchip.mcc.mcu16.modules.i2c.I2C</string>
       </entry>
       <entry>
-         <string>IC1</string>
-         <string>class com.microchip.mcc.mcu16.modules.ic.IC</string>
-      </entry>
-      <entry>
-         <string>IC2</string>
-         <string>class com.microchip.mcc.mcu16.modules.ic.IC</string>
-      </entry>
-      <entry>
          <string>IC3</string>
          <string>class com.microchip.mcc.mcu16.modules.ic.IC</string>
       </entry>
@@ -1537,542 +1529,6 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="I2C1" registerAlias="SICI" settingAlias="priority"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="IC1" name="IC1_ICI_INTISRFunction"/>
-         <value>ISR_IC1_ICI_INT</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="IC1" name="Trigger Source Mode"/>
-         <value/>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICBNE" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICBNE" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICI" alias="Every"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICI" alias="Every 2nd event"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICI" alias="Every 3rd event"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICI" alias="Every 4th event"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Edge Detect Capture"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Interrupt mode"/>
-         <value>7</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Off"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Prescaler Capture mode: Every 16th rising"/>
-         <value>5</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Prescaler Capture mode: Every 4th rising"/>
-         <value>4</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Simple Capture mode: Falling"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM" alias="Simple Capture mode: Rising"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICOV" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICOV" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICSIDL" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICSIDL" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL" alias="FOSC/2"/>
-         <value>7</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR1"/>
-         <value>4</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR2"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR3"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR4"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR5"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="IC32" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="IC32" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="ICTRIG" alias="Sync"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="ICTRIG" alias="Trigger"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="ADC1"/>
-         <value>27</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CMP1"/>
-         <value>24</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CMP2"/>
-         <value>25</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CMP3"/>
-         <value>26</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CTMU"/>
-         <value>28</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC1"/>
-         <value>16</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC2"/>
-         <value>17</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC3"/>
-         <value>18</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC4"/>
-         <value>19</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="None"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC1"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC2"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC3"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC4"/>
-         <value>4</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="PTGO8"/>
-         <value>10</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR1"/>
-         <value>11</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR2"/>
-         <value>12</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR3"/>
-         <value>13</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR4"/>
-         <value>14</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR5"/>
-         <value>15</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="TRIGSTAT" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="TRIGSTAT" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="IC1" registerAlias="ICCON1"/>
-         <value>7171</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="IC1" registerAlias="ICCON2"/>
-         <value>266</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICBNE"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICI"/>
-         <value>Every</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICM"/>
-         <value>Simple Capture mode: Rising</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICOV"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICSIDL"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON1" settingAlias="ICTSEL"/>
-         <value>FOSC/2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="IC32"/>
-         <value>enabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="ICTRIG"/>
-         <value>Sync</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="SYNCSEL"/>
-         <value>PTGO8</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICCON2" settingAlias="TRIGSTAT"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICI_INT" settingAlias="context"/>
-         <value>OFF</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICI_INT" settingAlias="enable"/>
-         <value>enabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICI_INT" settingAlias="flag"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC1" registerAlias="ICI_INT" settingAlias="priority"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="IC2" name="IC2_ICI_INTISRFunction"/>
-         <value>ISR_IC2_ICI_INT</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="IC2" name="Trigger Source Mode"/>
-         <value/>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICBNE" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICBNE" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICI" alias="Every"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICI" alias="Every 2nd event"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICI" alias="Every 3rd event"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICI" alias="Every 4th event"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Edge Detect Capture"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Interrupt mode"/>
-         <value>7</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Off"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Prescaler Capture mode: Every 16th rising"/>
-         <value>5</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Prescaler Capture mode: Every 4th rising"/>
-         <value>4</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Simple Capture mode: Falling"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM" alias="Simple Capture mode: Rising"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICOV" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICOV" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICSIDL" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICSIDL" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL" alias="FOSC/2"/>
-         <value>7</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR1"/>
-         <value>4</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR2"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR3"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR4"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL" alias="TMR5"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="IC32" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="IC32" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="ICTRIG" alias="Sync"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="ICTRIG" alias="Trigger"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="ADC1"/>
-         <value>27</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CMP1"/>
-         <value>24</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CMP2"/>
-         <value>25</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CMP3"/>
-         <value>26</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="CTMU"/>
-         <value>28</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC1"/>
-         <value>16</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC2"/>
-         <value>17</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC3"/>
-         <value>18</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="IC4"/>
-         <value>19</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="None"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC1"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC2"/>
-         <value>2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC3"/>
-         <value>3</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="OC4"/>
-         <value>4</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="PTGO9"/>
-         <value>10</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR1"/>
-         <value>11</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR2"/>
-         <value>12</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR3"/>
-         <value>13</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR4"/>
-         <value>14</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL" alias="TMR5"/>
-         <value>15</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="TRIGSTAT" alias="disabled"/>
-         <value>0</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.OptionKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="TRIGSTAT" alias="enabled"/>
-         <value>1</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="IC2" registerAlias="ICCON1"/>
-         <value>7171</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="IC2" registerAlias="ICCON2"/>
-         <value>266</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICBNE"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICI"/>
-         <value>Every</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICM"/>
-         <value>Simple Capture mode: Rising</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICOV"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICSIDL"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON1" settingAlias="ICTSEL"/>
-         <value>FOSC/2</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="IC32"/>
-         <value>enabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="ICTRIG"/>
-         <value>Sync</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="SYNCSEL"/>
-         <value>PTGO9</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICCON2" settingAlias="TRIGSTAT"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICI_INT" settingAlias="context"/>
-         <value>OFF</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICI_INT" settingAlias="enable"/>
-         <value>enabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICI_INT" settingAlias="flag"/>
-         <value>disabled</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="IC2" registerAlias="ICI_INT" settingAlias="priority"/>
          <value>1</value>
       </entry>
       <entry>
@@ -6673,7 +6129,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="RPINR7"/>
-         <value>11308</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="RPINR8"/>
@@ -7213,11 +6669,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="RPINR7" settingAlias="IC1R"/>
-         <value>44</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="RPINR7" settingAlias="IC2R"/>
-         <value>44</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="RPINR8" settingAlias="IC3R"/>
@@ -9175,7 +8631,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\system.c</file>
-         <hash>e2a6c95e5f140631af0d1d0cdf0b266890f4be1606ce0a436ce0039eb4512fd3</hash>
+         <hash>203759d59e51c91755e08598fce153bf791a94b6dbd95b9294d71c5ed40b0aa6</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\delay.h</file>
@@ -9203,15 +8659,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\mcc.h</file>
-         <hash>bc6a268b5fddf8c8199e391f61bd498e0037fb4720daa0715f4779c9a5e435a7</hash>
-      </entry>
-      <entry>
-         <file>mcc_generated_files\ic2.c</file>
-         <hash>75b9dc698454d375b2858ed0ddd5bf37e47ff9260451820a75b7b7b0c519909f</hash>
-      </entry>
-      <entry>
-         <file>mcc_generated_files\ic1.c</file>
-         <hash>c3bf16b40e2951d8ab8a11415ccff54a893af6cb22dd079fead48911d11d0fd4</hash>
+         <hash>9dc1da79ce6bef91d0136d90a4bcaeef2fb96cc14f9bc19cf87f48844030c5ad</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\uart2.h</file>
@@ -9258,16 +8706,8 @@
          <hash>f6387572cc98a36dc6073f0f8740c3d7a21cd2fa6529500387de3fe7de0aeebe</hash>
       </entry>
       <entry>
-         <file>mcc_generated_files\ic2.h</file>
-         <hash>94bcfb995ec432016e9912ccb6cdb24c9ed4e022cf942881ce0b7a8b9b789b62</hash>
-      </entry>
-      <entry>
          <file>mcc_generated_files\oc1.h</file>
          <hash>a684394d650a13b5e6755d210a89c72ff67d78982a81fc82096c997e72e18dbc</hash>
-      </entry>
-      <entry>
-         <file>mcc_generated_files\ic1.h</file>
-         <hash>7925c2a27066f7e2d1dbf4280c75028ca306c590a7d14e98d3707d029eca7d1e</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\oc2.h</file>
@@ -9279,7 +8719,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.c</file>
-         <hash>489851e2a29512b520d8ee302340430803c1e628ea47b377a9466b1c412efa22</hash>
+         <hash>6fc83c444a7375d50fa5509ab72b4a593ca66cd14235ef1ab5518384ca2b7bcd</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\oc2.c</file>
@@ -9299,11 +8739,11 @@
       </entry>
       <entry>
          <file>mcc_generated_files\adc1.h</file>
-         <hash>39a9e952a65d6130c1713f058fe790a2cd54027d461e6f05c9248e0973430b96</hash>
+         <hash>13b3ae96b1064c5d5b20b71a813c7ab35eb182ce44f3b26ebce024a39ef69918</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\interrupt_manager.c</file>
-         <hash>0728b2e4c7c30a33f0590103f359b9600d756ea92fd38b744e97da0c935a6527</hash>
+         <hash>5577ad616c896a9ee871fb9ea2fb030dc4fd3f8c1ee5ddd6dbbde70dac8ff76e</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\watchdog.h</file>
