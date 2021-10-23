@@ -6,6 +6,7 @@ time_t DS1307_read(void)
     struct tm rtc_time;
     rtc_time.tm_isdst = 0;
     I2C1_MESSAGE_STATUS status;
+    uint16_t i2c_timeout = 0;
     uint8_t pdata_write = DS1307_TIME; // 0 to 'seconds' register
     uint8_t pdata_read[7]; // will hold 'seconds'
 
@@ -14,7 +15,15 @@ time_t DS1307_read(void)
     while (status == I2C1_MESSAGE_PENDING); // wait for status to to change
     if (status == I2C1_MESSAGE_COMPLETE) {
         I2C1_MasterRead(&pdata_read, 7, DS1307_ADDRESS, &status);
-        while (status == I2C1_MESSAGE_PENDING); // again, wait for status to to change
+        while (status == I2C1_MESSAGE_PENDING)
+        {
+            i2c_timeout++;
+            if(i2c_timeout>40000)
+            {
+                status = I2C1_MESSAGE_FAIL;
+                break;
+            }
+        }
         if (status == I2C1_MESSAGE_COMPLETE) {
             // pdata_read should now be the number of seconds (in binary-coded decimal)
         }
@@ -40,6 +49,7 @@ bool DS1307_write(time_t rtc)
     struct tm *rtc_time;
     rtc_time = gmtime(&rtc);
     I2C1_MESSAGE_STATUS status;
+    uint16_t i2c_timeout = 0;
     uint8_t pdata_write[8];
     pdata_write[0] = DS1307_TIME;
     pdata_write[1] = bin2bcd(rtc_time->tm_sec);
@@ -52,7 +62,15 @@ bool DS1307_write(time_t rtc)
 
     I2C1_MasterWrite(&pdata_write, 8, 0x68, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
-    while (status == I2C1_MESSAGE_PENDING); // wait for status to to change
+    while (status == I2C1_MESSAGE_PENDING)
+    {
+        i2c_timeout++;
+        if(i2c_timeout>40000)
+        {
+            status = I2C1_MESSAGE_FAIL;
+            break;
+        }
+    }// wait for status to to change
     if (status == I2C1_MESSAGE_COMPLETE)
     {
         return 1;
