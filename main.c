@@ -64,6 +64,22 @@ int main(void)
 {
     // initialize the device
     PIN_MANAGER_Initialize();
+    // STSEL 1; IREN disabled; PDSEL 8N; UARTEN enabled; RTSMD disabled; USIDL disabled; WAKE disabled; ABAUD disabled; LPBACK disabled; BRGH enabled; URXINV disabled; UEN TX_RX; 
+    // Data Bits = 8; Parity = None; Stop Bits = 1;
+    U1MODE = (0x8008 & ~(1<<15));  // disabling UARTEN bit
+    // UTXISEL0 TX_ONE_CHAR; UTXINV disabled; OERR NO_ERROR_cleared; URXISEL RX_ONE_CHAR; UTXBRK COMPLETED; UTXEN disabled; ADDEN disabled; 
+    U1STA = 0x00;
+    // BaudRate = 115200; Frequency = 3685000 Hz; BRG 7; 
+    U1BRG = 0x07;
+    
+    U1MODEbits.UARTEN = 1;   // enabling UART ON bit
+    U1STAbits.UTXEN = 1;
+    printf("\033[2J\033[1;1H"); // Clear the terminal window
+    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
+    printf("Running on FRC, switching to Rb... ");
+    printf("Waiting for Rb lock...");
+    while(!OSC_READY_GetValue());
+    DELAY_milliseconds(20);
     CLOCK_Initialize();
     INTERRUPT_Initialize();
     UART1_Initialize();
@@ -75,13 +91,8 @@ int main(void)
     ADC1_Initialize();
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
-    
-    printf("\033[2J\033[1;1H"); // Clear the terminal window
-    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
-    printf("Waiting for Rb lock...");
-    while(!OSC_READY_GetValue());
     DELAY_milliseconds(100); // Wait for things to wake up
-    printf(" locked!\r\n");
+    printf(" locked!\r\n\r\n");
     
     CN_SetInterruptHandler(incr_clock);
     UART2_SetRxInterruptHandler(rx_gps);
