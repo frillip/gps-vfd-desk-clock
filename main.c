@@ -45,6 +45,7 @@ extern bool oc_event;
 bool gps_calendar_sync = 0;
 int minute = 0;
 int old_minute = 0;
+extern bool gps_fix;
 
 bool print_data = 0;
 
@@ -181,7 +182,7 @@ int main(void)
                 // PPS sync status
                 printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
                 // Scheduler sync status
-                printf("SCH S: %i\r\n", scheduler_sync);
+                printf("SCH S: %i GPS FIX: %i\r\n", scheduler_sync, gps_fix);
                 // PD output information
                 printf("mV: %.0f ns: %.0f\r\n",pdo_mv, pps_offset_ns);
                 print_data = 0;
