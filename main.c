@@ -8,6 +8,7 @@
 #include "gps.h"
 #include "gps_pps.h"
 #include "pic_pps.h"
+#include "pdo.h"
 #include "scheduler.h"
 #include "ds1307.h"
 
@@ -32,6 +33,7 @@ extern int32_t oc_offset;
 extern uint32_t oc_count_diff;
 extern uint32_t oc_count_old;
 
+uint16_t pdo_adc = 0;
 float pdo_mv = 0;
 float pps_offset_ns = 0;
 
@@ -88,7 +90,7 @@ int main(void)
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();
-    ADC1_Initialize();
+    pdo_init();
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
     DELAY_milliseconds(100); // Wait for things to wake up
@@ -98,7 +100,7 @@ int main(void)
     UART2_SetRxInterruptHandler(rx_gps);
     scheduler_init();
     ADC1_ChannelSelect(PDO);
-    ADC1_SoftwareTriggerDisable();
+    
     display_init();
 
     // time_t to store UTC, GPS and RTC time
@@ -236,7 +238,7 @@ int main(void)
         // Every 1000ms, but at a 900ms offset
         if(t100ms1==9)
         {
-            t100ms1 = -1; // Reset to -1 to trigger this every 1s
+            t100ms1 = -1; // Reset to -1 to trigger every 1s at 900ms offset
             // Increment for next PPS and load into display
             utc++;
             //display_time(&utc);
@@ -253,13 +255,19 @@ void incr_clock(void)
         // Wait for at least 2us for the capacitor to stop charging
         DELAY_microseconds(2);
         // Trigger a conversion
-        ADC1_SoftwareTriggerDisable();
+        AD1CON1bits.SAMP=1;
         // Wait a bit more...
         DELAY_microseconds(2);
-        // Read ADC and convert reading to mV
-        pdo_mv = (ADC1_ConversionResultGet(PDO) * 16) / 19.859;
+        // Stop sampling and convert
+        AD1CON1bits.SAMP=0;
+        // Wait for conversion to finish
+        while(!AD1CON1bits.DONE);
+        // Read ADC
+        pdo_adc = ADC1BUF0;
+        // Convert reading to mV
+        pdo_mv = pdo_calculate_mv(pdo_adc);
         // Convert from mV to nanoseconds
-        pps_offset_ns = (pdo_mv * pdo_mv * 0.000051) + (0.28 * pdo_mv);
+        pps_offset_ns =  pdo_calculate_ns(pdo_mv);
     }
 }
 

@@ -78,25 +78,23 @@
 #include "clock.h"
 #include "system.h"
 #include "system_types.h"
-#include "i2c1.h"
 #include "spi2.h"
-#include "adc1.h"
 #include "uart1.h"
 #include "uart2.h"
+#include "i2c1.h"
+#include "delay.h"
 #include "interrupt_manager.h"
 #include "traps.h"
-#include "delay.h"
 
 void SYSTEM_Initialize(void)
 {
     PIN_MANAGER_Initialize();
-    CLOCK_Initialize();
     INTERRUPT_Initialize();
+    CLOCK_Initialize();
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();
     UART1_Initialize();
-    ADC1_Initialize();
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
 }
