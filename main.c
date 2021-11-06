@@ -208,6 +208,7 @@ int main(void)
                     {
                         // Trigger a re-sync if not
                         gps_calendar_sync = 0;
+                        rtc_sync = 0;
                     }
 
                     //If we're not sync'd
