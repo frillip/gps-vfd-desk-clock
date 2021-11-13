@@ -12,6 +12,8 @@
 #include "scheduler.h"
 #include "ds1307.h"
 
+#define DEBUG 1
+
 extern bool rmc_waiting;
 uint8_t timezone = 1;
 
@@ -23,6 +25,10 @@ extern uint32_t pps_count;
 extern uint32_t pps_count_diff;
 extern uint32_t pps_count_old;
 extern uint16_t pps_seq_count;
+
+int32_t accumulated_clocks = 0;
+time_t accumulation_start = 0;
+time_t accumulation_delta = 0;
 
 extern uint16_t ic3_val;
 extern uint16_t ic3_val_old;
@@ -131,6 +137,9 @@ int main(void)
                 pps_count = (((uint32_t)ic2_val)<<16) + ic1_val; // Raw timer
                 pps_count_diff = pps_count-pps_count_old; // Difference from last
                 pps_count_old = pps_count; // Store the new value as old
+                accumulated_clocks += pps_count_diff;
+                while(accumulated_clocks>30000000) accumulated_clocks -= 40000000;
+                accumulation_delta = utc - accumulation_start;
 
                 oc_count = (((uint32_t)ic4_val)<<16) + ic3_val; // Raw timer
                 oc_count_diff = oc_count - oc_count_old; // Difference from last
@@ -150,6 +159,11 @@ int main(void)
                 {
                     set_latch_cycles(40000000 + oc_offset+107);
                     oc_adjust_in_progress = 1;
+                    if(!accumulation_start)
+                    {
+                        accumulation_start = utc;
+                        accumulated_clocks = 0;
+                    }
                 }
 
                 // Print resulting time to serial
@@ -164,6 +178,8 @@ int main(void)
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
+                if(DEBUG) print_data = 1;
+                
                 //rtc = DS1307_read();
                 oc_event = 0;
             }
@@ -175,6 +191,10 @@ int main(void)
             // Print some statistics if required
             if(print_data)
             {
+                if(DEBUG)
+                {
+                    printf("\033[2J\033[1;1H"); // Clear the terminal window
+                }
                 // Cycles between current and last PPS, and the OC offset from this
                 printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
                 // Raw timer values for both PPS and OC
@@ -185,6 +205,7 @@ int main(void)
                 printf("SCH S: %i GPS FIX: %i\r\n", scheduler_sync, gps_fix);
                 // PD output information
                 printf("mV: %.0f ns: %.0f\r\n",pdo_mv, pps_offset_ns);
+                printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
                 print_data = 0;
             }
         }
