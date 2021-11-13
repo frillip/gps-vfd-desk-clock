@@ -85,9 +85,14 @@ int main(void)
     U1STAbits.UTXEN = 1;
     printf("\033[2J\033[1;1H"); // Clear the terminal window
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
-    printf("Running on FRC, switching to Rb... ");
-    printf("Waiting for Rb lock...");
+    printf("Running on FRC, switching to Rb\r\n");
+    printf("Waiting for Rb lock");
+    
+    SPI2_Initialize();
+    display_blink_start(3685000UL);
     while(!OSC_READY_GetValue());
+    display_blink_stop();
+    
     DELAY_milliseconds(20);
     CLOCK_Initialize();
     INTERRUPT_Initialize();

@@ -1,8 +1,10 @@
 #include "tubes.h"
+#include <stdio.h>
 
 uint32_t characters[] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, DIGIT_A, DIGIT_B, DIGIT_C, DIGIT_D, DIGIT_E, DIGIT_F};
 uint32_t digits[] = {0,0,0,0};
 uint32_t segments[] = {0,0,0,0};
+bool dash_display = 0;
 
 void display_init(void)
 {
@@ -110,6 +112,18 @@ void display_mmss(const time_t *tod)
     display_buffer(driver_buffer); // Load buffer into the driver
 }
 
+void display_dashes(void)
+{
+    uint32_t driver_buffer = 0x50810204; // Buffer containing only dashes
+    display_buffer(driver_buffer);
+}
+
+void display_blank(void)
+{
+    uint32_t driver_buffer = 0x00000000; // Start with an empty buffer
+    display_buffer(driver_buffer); // Load buffer into the driver
+}
+
 // Send our 32bit buffer over SPI as 2x 16bits
 void display_buffer(uint32_t buffer)
 {
@@ -123,4 +137,46 @@ void display_latch(void)
     LATCH_SetHigh();
     DELAY_microseconds(5);
     LATCH_SetLow();
+}
+
+// Set up timer 3 to blink the display every 0.5s
+void display_blink_start(uint32_t fcy)
+{
+    // TMR3 starts at 0
+    TMR3 = 0x00;
+    // Period ~0.5 s, calculated from fcy
+    PR3 = (uint16_t)(fcy >> 9)-1;
+    // TCKPS 1:256; T32 16 Bit; TON enabled; TSIDL disabled; TCS FOSC/2; TGATE disabled
+    T3CON = 0x8030;
+    // Clear T3 interrupt flag
+    IFS0bits.T3IF = false;
+    // Enable T3 interrupts
+    IEC0bits.T3IE = true;
+    // Set interrupt priority
+    IPC2bits.T3IP = 1;
+}
+
+void display_blink_stop(void)
+{
+    // Turn the timer off
+    T3CONbits.TON = 0;
+}
+
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
+{
+    printf(".");
+    if(dash_display)
+    {
+        display_dashes();
+        display_latch();
+        dash_display = 0;
+    }
+    else
+    {
+        display_blank();
+        display_latch();
+        dash_display = 1;
+    }
+    // Clear the interrupt flag
+    IFS0bits.T3IF = false;
 }

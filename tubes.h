@@ -54,7 +54,11 @@ void display_count(uint16_t count);
 void display_buffer(uint32_t buffer);
 void display_time(const time_t *tod);
 void display_mmss(const time_t *tod);
+void display_dashes(void);
+void display_blank(void);
 void display_latch(void);
+void display_blink_start(uint32_t fcy);
+void display_blink_stop(void);
 
 #ifdef	__cplusplus
 }
