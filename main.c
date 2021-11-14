@@ -12,7 +12,7 @@
 #include "scheduler.h"
 #include "ds1307.h"
 
-#define DEBUG 1
+#define DEBUG_ENABLED
 
 extern bool rmc_waiting;
 uint8_t timezone = 1;
@@ -183,7 +183,9 @@ int main(void)
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
-                if(DEBUG) print_data = 1;
+#ifdef DEBUG_ENABLED
+                print_data = 1;
+#endif
                 
                 //rtc = DS1307_read();
                 oc_event = 0;
@@ -196,10 +198,9 @@ int main(void)
             // Print some statistics if required
             if(print_data)
             {
-                if(DEBUG)
-                {
+#ifdef DEBUG_ENABLED
                     printf("\033[2J\033[1;1H"); // Clear the terminal window
-                }
+#endif
                 // Cycles between current and last PPS, and the OC offset from this
                 printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
                 // Raw timer values for both PPS and OC
@@ -269,8 +270,11 @@ int main(void)
             t100ms1 = -1; // Reset to -1 to trigger every 1s at 900ms offset
             // Increment for next PPS and load into display
             utc++;
-            //display_time(&utc);
+#ifdef DEBUG_ENABLED
+            display_time(&utc);
+#else
             display_mmss(&utc);
+#endif
         }
     }
     return 1; 
