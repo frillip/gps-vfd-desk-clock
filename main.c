@@ -271,9 +271,9 @@ int main(void)
             // Increment for next PPS and load into display
             utc++;
 #ifdef DEBUG_ENABLED
-            display_time(&utc);
-#else
             display_mmss(&utc);
+#else
+            display_time(&utc);
 #endif
         }
     }
