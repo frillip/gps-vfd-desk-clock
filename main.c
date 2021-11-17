@@ -123,8 +123,11 @@ int main(void)
     // Read RTC for an estimate of current time and display it
     rtc = DS1307_read();
     utc = rtc;
-    //display_time(&utc);
+#ifdef DEBUG_ENABLED
     display_mmss(&utc);
+#else
+    display_time(&utc);
+#endif
     
     // ISO8601 string buffer
     char buf[32] = {0};
