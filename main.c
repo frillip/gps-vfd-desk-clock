@@ -73,6 +73,7 @@ int main(void)
 {
     // initialize the device
     PIN_MANAGER_Initialize();
+    DELAY_milliseconds(50);
     // STSEL 1; IREN disabled; PDSEL 8N; UARTEN enabled; RTSMD disabled; USIDL disabled; WAKE disabled; ABAUD disabled; LPBACK disabled; BRGH enabled; URXINV disabled; UEN TX_RX; 
     // Data Bits = 8; Parity = None; Stop Bits = 1;
     U1MODE = (0x8008 & ~(1<<15));  // disabling UARTEN bit
@@ -91,9 +92,9 @@ int main(void)
     SPI2_Initialize();
     display_blink_start(3685000UL);
     while(!OSC_READY_GetValue());
+    DELAY_milliseconds(20);
     display_blink_stop();
     
-    DELAY_milliseconds(20);
     CLOCK_Initialize();
     INTERRUPT_Initialize();
     UART1_Initialize();
@@ -123,8 +124,11 @@ int main(void)
     // Read RTC for an estimate of current time and display it
     rtc = DS1307_read();
     utc = rtc;
-    //display_time(&utc);
+#ifdef DEBUG_ENABLED
     display_mmss(&utc);
+#else
+    display_time(&utc);
+#endif
     
     // ISO8601 string buffer
     char buf[32] = {0};
