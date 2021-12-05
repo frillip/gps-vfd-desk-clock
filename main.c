@@ -228,7 +228,7 @@ int main(void)
                 gps = process_rmc();
 
                 // Do we have a valid time from GPS
-                if(gps)
+                if(gps_fix)
                 {
                     // Check if we've still got the correct time
                     if(utc!=gps)
