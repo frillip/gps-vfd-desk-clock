@@ -17,6 +17,7 @@ extern "C" {
 #include <time.h>
     
 void rx_gps(void);
+void process_ubx(void);
 time_t process_rmc(void);
 
 #ifdef	__cplusplus

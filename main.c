@@ -14,6 +14,25 @@
 
 #define DEBUG_ENABLED
 
+extern bool ubx_waiting;
+extern bool ubx_valid;
+extern uint16_t ubx_edge_count;
+extern uint32_t ubx_rising_ms;
+extern uint32_t ubx_rising_ms_old;
+extern int32_t ubx_rising_ms_diff;
+extern uint32_t ubx_rising_ns;
+extern uint32_t ubx_rising_ns_old;
+extern int32_t ubx_rising_ns_diff;
+extern uint32_t ubx_falling_ms;
+extern uint32_t ubx_falling_ms_old;
+extern int32_t ubx_falling_ms_diff;
+extern uint32_t ubx_falling_ns;
+extern uint32_t ubx_falling_ns_old;
+extern int32_t ubx_falling_ns_diff;
+extern int32_t ubx_ms_diff;
+extern int32_t ubx_ns_diff;
+extern uint32_t ubx_accuracy_ns;
+
 extern bool rmc_waiting;
 uint8_t timezone = 1;
 
@@ -54,6 +73,7 @@ int old_minute = 0;
 extern bool gps_fix;
 
 bool print_data = 0;
+bool print_ubx = 0;
 
 bool rtc_sync = 0;
 
@@ -199,6 +219,13 @@ int main(void)
         if(t10ms0)
         {
             t10ms0=0;
+            
+            if(ubx_waiting)
+            {
+                ubx_waiting = 0;
+                process_ubx();
+                print_ubx = 1;
+            }
             // Print some statistics if required
             if(print_data)
             {
@@ -215,7 +242,21 @@ int main(void)
                 printf("SCH S: %i GPS FIX: %i\r\n", scheduler_sync, gps_fix);
                 // PD output information
                 printf("mV: %.0f ns: %.0f\r\n",pdo_mv, pps_offset_ns);
-                printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+                printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+                if(print_ubx)
+                {
+                    printf("UBX Rm: %lu Fm: %lu Dm: %li\r\n",ubx_rising_ms, ubx_falling_ms, ubx_ms_diff);
+                    printf("UBX Rmd: %li Fmd: %li\r\n",ubx_rising_ms_diff, ubx_falling_ms_diff);
+                    printf("UBX Rn: %lu Fn: %lu Dn: %li\r\n",ubx_rising_ns, ubx_falling_ns, ubx_ns_diff);
+                    printf("UBX Rnd: %li Fnd: %li\r\n",ubx_rising_ns_diff, ubx_falling_ns_diff);
+                    printf("UBX C: %u A: %luns V: %i\r\n",ubx_edge_count, ubx_accuracy_ns, ubx_valid);
+                    print_ubx = 0;
+                }
+                else
+                {
+                    printf("No new UBX time mark data\r\n");
+                }
+                printf("\r\n");
                 print_data = 0;
             }
         }
