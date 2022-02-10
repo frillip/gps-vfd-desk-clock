@@ -12,7 +12,7 @@
 #include "scheduler.h"
 #include "ds1307.h"
 
-#define DEBUG_ENABLED
+//#define DEBUG_ENABLED
 
 extern bool ubx_waiting;
 extern bool ubx_valid;
@@ -74,6 +74,7 @@ extern bool gps_fix;
 
 bool print_data = 0;
 bool print_ubx = 0;
+bool disable_manual_print = 0;
 
 bool rtc_sync = 0;
 
@@ -226,6 +227,19 @@ int main(void)
                 process_ubx();
                 print_ubx = 1;
             }
+            
+            // Check for any bytes on UART1
+            while(U1STAbits.URXDA)
+            {
+                char c = UART1_Read();
+                // print some data if enter has been pressed
+                if(c==0x0d && !disable_manual_print)
+                {
+                    print_data = 1;
+                    // Disable spamming in case of cats on keyboards
+                    disable_manual_print = 1;
+                }
+            }
             // Print some statistics if required
             if(print_data)
             {
@@ -320,6 +334,8 @@ int main(void)
 #else
             display_time(&utc);
 #endif
+            // Re-enable manual printing
+            disable_manual_print = 0;
         }
     }
     return 1; 
