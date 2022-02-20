@@ -11,6 +11,7 @@
 #include "pdo.h"
 #include "scheduler.h"
 #include "ds1307.h"
+#include "fe5680a_58.h"
 
 //#define DEBUG_ENABLED
 
@@ -270,6 +271,38 @@ int main(void)
                 {
                     printf("No new UBX time mark data\r\n");
                 }
+                
+                if(pps_sync && accumulation_delta > 300)
+                {
+                    long double r_val = 50255055;
+                    r_val += 0.433269;
+                    uint32_t f_val = 0x32F0AD97;
+                    long double acc;
+                    acc = calc_rb_acc(accumulated_clocks, accumulation_delta);
+                    long double freq;
+                    freq = calc_rb_freq(acc);
+                    long double new_r_val;
+                    new_r_val = calc_rb_r_val(freq, f_val);
+                    uint32_t new_f_val;
+                    new_f_val = calc_rb_f_val(freq, f_val);
+
+                    // Stupid double decimal hacks incoming:
+                    uint32_t freq_i = freq;
+                    float freq_f = freq - freq_i;
+                    uint32_t r_val_i = r_val;
+                    float r_val_f = r_val - r_val_i;
+                    uint32_t new_r_val_i = new_r_val;
+                    float new_r_val_f = new_r_val - new_r_val_i;
+
+                    printf("Rb freq: %lu.%03.0fHz Rb acc: %.3lfppt\r\n",freq_i, freq_f*1000, acc*TRILLION);
+                    printf("Rb old R: %lu.%03.0fHz Rb old F: %0lx \r\n",r_val_i, r_val_f*1000, f_val);
+                    printf("Rb new R: %lu.%03.0fHz Rb new F: %0lx \r\n",new_r_val_i, new_r_val_f*1000, new_f_val);
+                }
+                else
+                {
+                    printf("More time required for Rb tuning\r\n");
+                }
+                
                 printf("\r\n");
                 print_data = 0;
             }
