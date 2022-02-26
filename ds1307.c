@@ -60,7 +60,7 @@ bool DS1307_write(time_t rtc)
     pdata_write[6] = bin2bcd(rtc_time->tm_mon + 1);
     pdata_write[7] = bin2bcd(rtc_time->tm_year - 100);
 
-    I2C1_MasterWrite(&pdata_write, 8, 0x68, &status);
+    I2C1_MasterWrite(&pdata_write, 8, DS1307_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING)
     {
