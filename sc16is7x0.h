@@ -45,6 +45,8 @@ extern "C" {
 
 void sc16is7x0_init(uint32_t freq, uint32_t baud);
 bool sc16is7x0_available(void);
+uint8_t sc16is7x0_rx_lvl(void);
+uint8_t sc16is7x0_tx_lvl(void);
 char sc16is7x0_read(void);
 bool sc16is7x0_nread(char *buf, uint8_t n);
 void sc16is7x0_write(char c);
