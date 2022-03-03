@@ -50,7 +50,7 @@ uint8_t sc16is7x0_read_reg(uint8_t reg)
     I2C1_MESSAGE_STATUS status;
     uint16_t i2c_timeout = 0;
     uint8_t pdata_write = reg << 3;
-    uint8_t pdata_read[1];
+    uint8_t pdata_read;
 
     I2C1_MasterWrite(&pdata_write, 1, SC16IS7X0_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
@@ -67,7 +67,7 @@ uint8_t sc16is7x0_read_reg(uint8_t reg)
             }
         }
         if (status == I2C1_MESSAGE_COMPLETE) {
-            return pdata_read[0];
+            return pdata_read;
         }
     }
     return 0xFF;
