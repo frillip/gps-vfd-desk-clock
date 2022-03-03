@@ -118,5 +118,5 @@ bool fe5680_set_f_val(uint32_t f_val)
 
 bool fe5680_get_response(void)
 {
-    
+    return 1;
 }
