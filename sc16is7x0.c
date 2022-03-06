@@ -134,7 +134,6 @@ bool sc16is7x0_nwrite(char *buf, uint8_t n)
     uint8_t pdata_write[65];
     pdata_write[0] = SC16IS7X0_REG_THR << 3;
     memcpy(pdata_write+1, buf, n);
-    printf("%u",n);
 
     I2C1_MasterWrite(&pdata_write, n+1, SC16IS7X0_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
