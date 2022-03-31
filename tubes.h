@@ -59,6 +59,7 @@ void display_blank(void);
 void display_latch(void);
 void display_blink_start(uint32_t fcy);
 void display_blink_stop(void);
+bool isDST(const time_t *tod);
 
 #ifdef	__cplusplus
 }

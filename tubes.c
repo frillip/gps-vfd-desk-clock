@@ -162,6 +162,65 @@ void display_blink_stop(void)
     T3CONbits.TON = 0;
 }
 
+// DST is stupid
+// Valid for UK and EU and other places where
+// DST starts on the last Sunday of March
+// and ends on the last Sunday of October
+// at 0100 UTC
+bool isDST(const time_t *tod)
+{
+    struct tm *disp_time;
+    
+    // Convert our time_t into a time struct
+    disp_time = gmtime(tod);
+    uint8_t month = disp_time->tm_mon;
+    uint8_t mday = disp_time->tm_mday;
+    uint8_t wday = disp_time->tm_wday;
+    uint8_t hour = disp_time->tm_hour;
+    uint8_t last_sunday = 0;
+    bool dst = 0;
+
+    // April to October is DST
+    if(disp_time->tm_mon > 2 && disp_time->tm_mon <9)
+    {
+        dst = 1;
+    }
+    // If we're in March/October
+    if(disp_time->tm_mon == 2 || disp_time->tm_mon == 9)
+    {
+        // Calculate when the last Sunday is
+        last_sunday = disp_time->tm_mday + disp_time->tm_wday;
+        // Are we already past the last sunday
+        if(last_sunday > 31)
+        {
+            dst = 1;
+        }
+        else
+        {
+            if((last_sunday + 7) < 31) last_sunday += 7;
+            // If we're past that mday, we're in DST
+            if(disp_time->tm_mday > last_sunday)
+            {
+                dst = 1;
+            }
+            // If today is the day
+            if(disp_time->tm_mday == last_sunday)
+            {
+                // Apply DST after 0100 UTC
+                if(disp_time->tm_hour >= 1)
+                {
+                    dst = 1;
+                }
+            }
+        }
+    }
+    
+    printf("%h %h %h %h\r\n", month, mday, wday, hour);
+    // Return DST status
+    if(dst) return 1;
+    else return 0;
+}
+
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
 {
     printf(".");
