@@ -43,6 +43,8 @@ extern "C" {
 #define SC16IS7X0_REG_DLL 0x00
 #define SC16IS7X0_REG_DLH 0X01
 
+#define SC16IS7X0_XTAL 14745600UL
+
 void sc16is7x0_init(uint32_t freq, uint32_t baud);
 bool sc16is7x0_available(void);
 uint8_t sc16is7x0_rx_lvl(void);
