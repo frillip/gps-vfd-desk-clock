@@ -173,10 +173,6 @@ bool isDST(const time_t *tod)
     
     // Convert our time_t into a time struct
     disp_time = gmtime(tod);
-    uint8_t month = disp_time->tm_mon;
-    uint8_t mday = disp_time->tm_mday;
-    uint8_t wday = disp_time->tm_wday;
-    uint8_t hour = disp_time->tm_hour;
     uint8_t last_sunday = 0;
     bool dst = 0;
 
@@ -197,7 +193,7 @@ bool isDST(const time_t *tod)
         }
         else
         {
-            if((last_sunday + 7) < 31) last_sunday += 7;
+            while((last_sunday + 7) < 31) last_sunday += 7;
             // If we're past that mday, we're in DST
             if(disp_time->tm_mday > last_sunday)
             {
@@ -214,11 +210,8 @@ bool isDST(const time_t *tod)
             }
         }
     }
-    
-    printf("%h %h %h %h\r\n", month, mday, wday, hour);
     // Return DST status
-    if(dst) return 1;
-    else return 0;
+    return dst;
 }
 
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
