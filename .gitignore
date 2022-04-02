@@ -1,3 +1,10 @@
+/src/nbproject/
+/src/dist/
+/src/build/
+/src/debug/
+/src/mcc_generated_files/docs/
+/src/.generated_files/
+/src/Makefile
 /nbproject/
 /dist/
 /build/
@@ -5,4 +12,3 @@
 /mcc_generated_files/docs/
 /.generated_files/
 /Makefile
-
