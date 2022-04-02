@@ -21,23 +21,6 @@
 #define DST_OFFSET 3600
 
 extern bool ubx_waiting;
-extern bool ubx_valid;
-extern uint16_t ubx_edge_count;
-extern uint32_t ubx_rising_ms;
-extern uint32_t ubx_rising_ms_old;
-extern int32_t ubx_rising_ms_diff;
-extern uint32_t ubx_rising_ns;
-extern uint32_t ubx_rising_ns_old;
-extern int32_t ubx_rising_ns_diff;
-extern uint32_t ubx_falling_ms;
-extern uint32_t ubx_falling_ms_old;
-extern int32_t ubx_falling_ms_diff;
-extern uint32_t ubx_falling_ns;
-extern uint32_t ubx_falling_ns_old;
-extern int32_t ubx_falling_ns_diff;
-extern int32_t ubx_ms_diff;
-extern int32_t ubx_ns_diff;
-extern uint32_t ubx_accuracy_ns;
 
 extern bool rmc_waiting;
 uint8_t timezone = 1;
