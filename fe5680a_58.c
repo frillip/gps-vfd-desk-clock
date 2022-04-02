@@ -1,6 +1,7 @@
 #include "fe5680a_58.h"
 
 char fe5680_config_string[64] = {0};
+enum fe5680_state rb_state = FE5680_INIT;
 
 long double fe5680_calc_rb_acc(int32_t slipped_cycles, time_t time_delta)
 {
@@ -118,5 +119,15 @@ bool fe5680_set_f_val(uint32_t f_val)
 
 bool fe5680_get_response(void)
 {
-    return 1;
+    if(sc16is7x0_rx_lvl() == 3)
+    {
+        char ok_str[3] = "OK\r";
+        char buf[3] = {0};
+        sc16is7x0_nread(&buf, 3);
+        if(memcmp(ok_str, buf, 3))
+        {
+            return 1;
+        }
+    }
+    return 0;
 }

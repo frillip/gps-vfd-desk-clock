@@ -25,6 +25,8 @@ extern "C" {
 #define ADRES 4294967296
 #define TRILLION 1000000000000
 
+enum fe5680_state {FE5680_INIT, FE5680_READ_CONFIG, FE5680_GOT_CONFIG, FE5680_ADJ_FVAL, FE5680_ADJ_RVAL, FE5680_RESP_WAIT, FE5680_RESP_OK};
+
 long double fe5680_calc_rb_acc(int32_t slipped_cycles, time_t time_delta);
 long double fe5680_calc_rb_freq(long double accuracy);
 long double fe5680_calc_rb_r_val(long double freq, uint32_t f_val);
