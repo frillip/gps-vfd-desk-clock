@@ -18,6 +18,7 @@ extern "C" {
     
 void rx_gps(void);
 void process_ubx(void);
+void print_ubx_data(void);
 time_t process_rmc(void);
 
 #ifdef	__cplusplus

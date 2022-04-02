@@ -154,6 +154,15 @@ void process_ubx(void)
     memset(ubx_buffer, 0, sizeof ubx_buffer);
 }
 
+void print_ubx_data(void)
+{
+    printf("UBX Rm: %lu Fm: %lu Dm: %li\r\n",ubx_rising_ms, ubx_falling_ms, ubx_ms_diff);
+    printf("UBX Rmd: %li Fmd: %li\r\n",ubx_rising_ms_diff, ubx_falling_ms_diff);
+    printf("UBX Rn: %lu Fn: %lu Dn: %li\r\n",ubx_rising_ns, ubx_falling_ns, ubx_ns_diff);
+    printf("UBX Rnd: %li Fnd: %li\r\n",ubx_rising_ns_diff, ubx_falling_ns_diff);
+    printf("UBX C: %u A: %luns V: %i\r\n",ubx_edge_count, ubx_accuracy_ns, ubx_valid);
+}
+
 time_t process_rmc(void)
 {
     struct tm gps_time;
