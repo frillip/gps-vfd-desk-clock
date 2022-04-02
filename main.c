@@ -12,8 +12,13 @@
 #include "scheduler.h"
 #include "ds1307.h"
 #include "fe5680a_58.h"
+#include "sc16is7x0.h"
 
 //#define DEBUG_ENABLED
+#define LOCAL_TIME 1
+#define TZ_OFFSET 0
+#define DST_ENABLED 1
+#define DST_OFFSET 3600
 
 extern bool ubx_waiting;
 extern bool ubx_valid;
@@ -76,6 +81,11 @@ extern bool gps_fix;
 bool print_data = 0;
 bool print_ubx = 0;
 bool disable_manual_print = 0;
+
+long double r_val;
+uint32_t f_val;
+extern char fe5680_config_string[64];
+extern enum fe5680_state rb_state;
 
 bool rtc_sync = 0;
 
@@ -142,14 +152,26 @@ int main(void)
     time_t utc;
     time_t gps;
     time_t rtc;
+    time_t local;
     
+    sc16is7x0_init(FRBSET, 9600L);
+    r_val = 50255055;
+    r_val += 0.433269;
+    f_val = 0x32F0AD97;
     // Read RTC for an estimate of current time and display it
     rtc = DS1307_read();
     utc = rtc;
 #ifdef DEBUG_ENABLED
     display_mmss(&utc);
 #else
-    display_time(&utc);
+    if(LOCAL_TIME)
+    {
+        local = utc;
+        if(DST_ENABLED && isDST(&local)) local += DST_OFFSET;
+        local += TZ_OFFSET;
+        display_time(&local);
+    }
+    else display_time(&utc);
 #endif
     
     // ISO8601 string buffer
@@ -212,8 +234,6 @@ int main(void)
 #ifdef DEBUG_ENABLED
                 print_data = 1;
 #endif
-                
-                //rtc = DS1307_read();
                 oc_event = 0;
             }
         }
@@ -260,11 +280,7 @@ int main(void)
                 printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
                 if(print_ubx)
                 {
-                    printf("UBX Rm: %lu Fm: %lu Dm: %li\r\n",ubx_rising_ms, ubx_falling_ms, ubx_ms_diff);
-                    printf("UBX Rmd: %li Fmd: %li\r\n",ubx_rising_ms_diff, ubx_falling_ms_diff);
-                    printf("UBX Rn: %lu Fn: %lu Dn: %li\r\n",ubx_rising_ns, ubx_falling_ns, ubx_ns_diff);
-                    printf("UBX Rnd: %li Fnd: %li\r\n",ubx_rising_ns_diff, ubx_falling_ns_diff);
-                    printf("UBX C: %u A: %luns V: %i\r\n",ubx_edge_count, ubx_accuracy_ns, ubx_valid);
+                    print_ubx_data();
                     print_ubx = 0;
                 }
                 else
@@ -272,19 +288,16 @@ int main(void)
                     printf("No new UBX time mark data\r\n");
                 }
                 
-                if(pps_sync && accumulation_delta > 300)
+                if(pps_sync && accumulation_delta > 30)
                 {
-                    long double r_val = 50255055;
-                    r_val += 0.433269;
-                    uint32_t f_val = 0x32F0AD97;
                     long double acc;
-                    acc = calc_rb_acc(accumulated_clocks, accumulation_delta);
+                    acc = fe5680_calc_rb_acc(accumulated_clocks, accumulation_delta);
                     long double freq;
-                    freq = calc_rb_freq(acc);
+                    freq = fe5680_calc_rb_freq(acc);
                     long double new_r_val;
-                    new_r_val = calc_rb_r_val(freq, f_val);
+                    new_r_val = fe5680_calc_rb_r_val(freq, f_val);
                     uint32_t new_f_val;
-                    new_f_val = calc_rb_f_val(freq, f_val);
+                    new_f_val = fe5680_calc_rb_f_val(freq, f_val);
 
                     // Stupid double decimal hacks incoming:
                     uint32_t freq_i = freq;
@@ -295,8 +308,8 @@ int main(void)
                     float new_r_val_f = new_r_val - new_r_val_i;
 
                     printf("Rb freq: %lu.%03.0fHz Rb acc: %.3lfppt\r\n",freq_i, freq_f*1000, acc*TRILLION);
-                    printf("Rb old R: %lu.%03.0fHz Rb old F: %0lx \r\n",r_val_i, r_val_f*1000, f_val);
-                    printf("Rb new R: %lu.%03.0fHz Rb new F: %0lx \r\n",new_r_val_i, new_r_val_f*1000, new_f_val);
+                    printf("Rb old R: %lu.%03.0fHz Rb old F: %0lX \r\n",r_val_i, r_val_f*1000, f_val);
+                    printf("Rb new R: %lu.%03.0fHz Rb new F: %0lX \r\n",new_r_val_i, new_r_val_f*1000, new_f_val);
                 }
                 else
                 {
@@ -365,10 +378,56 @@ int main(void)
 #ifdef DEBUG_ENABLED
             display_mmss(&utc);
 #else
-            display_time(&utc);
+            if(LOCAL_TIME)
+            {
+                local = utc;
+                if(DST_ENABLED && isDST(&local)) local += DST_OFFSET;
+                local += TZ_OFFSET;
+                display_time(&local);
+            }
+            else display_time(&utc);
 #endif
             // Re-enable manual printing
             disable_manual_print = 0;
+            
+            if(rb_state==FE5680_INIT)
+            {
+                fe5680_get_config_string();
+                rb_state=FE5680_READ_CONFIG;
+            }
+            else if(rb_state==FE5680_READ_CONFIG)
+            {
+                if(fe5680_process_config_string(&fe5680_config_string))
+                {
+                    r_val = fe5680_get_r_val(&fe5680_config_string);
+                    f_val = fe5680_get_f_val(&fe5680_config_string);
+                    if((f_val > 0x32E0AD97) && (f_val < 0x3300AD97))
+                    {
+                        if((r_val > 50155055) && (r_val < 50355055))
+                        {
+                            rb_state=FE5680_GOT_CONFIG;
+                        }
+                        else rb_state=FE5680_INIT;
+                    }
+                    else rb_state=FE5680_INIT;
+                }
+                else
+                {
+                    rb_state=FE5680_INIT;
+                }
+            }
+            /*
+            else if(rb_state==FE5680_GOT_CONFIG)
+            {
+                fe5680_set_f_val(f_val);
+                rb_state=FE5680_ADJ_FVAL;
+            }
+            else if(rb_state==FE5680_ADJ_FVAL)
+            {
+                if(fe5680_get_response()) rb_state=FE5680_RESP_OK;
+                else rb_state=FE5680_INIT;
+            }
+            */
         }
     }
     return 1; 
