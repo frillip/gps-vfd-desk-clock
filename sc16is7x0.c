@@ -26,10 +26,24 @@ uint8_t sc16is7x0_rx_lvl(void)
     return rx_lvl;
 }
 
+void sc16is7x0_clear_rx_fifo(void)
+{
+    uint8_t fcr_reg = sc16is7x0_read_reg(SC16IS7X0_REG_FCR);
+    fcr_reg = fcr_reg | 0x02;
+    sc16is7x0_write_reg(SC16IS7X0_REG_THR, fcr_reg);
+}
+
 uint8_t sc16is7x0_tx_lvl(void)
 {
     uint8_t tx_lvl = sc16is7x0_read_reg(SC16IS7X0_REG_TXLVL);
     return tx_lvl;
+}
+
+void sc16is7x0_clear_tx_fifo(void)
+{
+    uint8_t fcr_reg = sc16is7x0_read_reg(SC16IS7X0_REG_FCR);
+    fcr_reg = fcr_reg | 0x04;
+    sc16is7x0_write_reg(SC16IS7X0_REG_THR, fcr_reg);
 }
 
 char sc16is7x0_read(void)
