@@ -14,7 +14,7 @@
     This header file provides APIs for driver for SPI2.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP512GP502
+        Device            :  dsPIC33EP64GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB             :  MPLAB X v5.45

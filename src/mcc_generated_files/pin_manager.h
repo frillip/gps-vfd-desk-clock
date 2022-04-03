@@ -16,7 +16,7 @@
     This source file provides implementations for PIN MANAGER.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP512GP502
+        Device            :  dsPIC33EP64GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB 	          :  MPLAB X v5.45
@@ -73,11 +73,11 @@
   @Example
     <code>
     // Set RA0 high (1)
-    OSC_READY_SetHigh();
+    DST_SetHigh();
     </code>
 
 */
-#define OSC_READY_SetHigh()          (_LATA0 = 1)
+#define DST_SetHigh()          (_LATA0 = 1)
 /**
   @Summary
     Sets the GPIO pin, RA0, low using LATA0.
@@ -97,11 +97,11 @@
   @Example
     <code>
     // Set RA0 low (0)
-    OSC_READY_SetLow();
+    DST_SetLow();
     </code>
 
 */
-#define OSC_READY_SetLow()           (_LATA0 = 0)
+#define DST_SetLow()           (_LATA0 = 0)
 /**
   @Summary
     Toggles the GPIO pin, RA0, using LATA0.
@@ -121,11 +121,11 @@
   @Example
     <code>
     // Toggle RA0
-    OSC_READY_Toggle();
+    DST_Toggle();
     </code>
 
 */
-#define OSC_READY_Toggle()           (_LATA0 ^= 1)
+#define DST_Toggle()           (_LATA0 ^= 1)
 /**
   @Summary
     Reads the value of the GPIO pin, RA0.
@@ -147,11 +147,11 @@
     uint16_t portValue;
 
     // Read RA0
-    postValue = OSC_READY_GetValue();
+    postValue = DST_GetValue();
     </code>
 
 */
-#define OSC_READY_GetValue()         _RA0
+#define DST_GetValue()         _RA0
 /**
   @Summary
     Configures the GPIO pin, RA0, as an input.
@@ -171,11 +171,11 @@
   @Example
     <code>
     // Sets the RA0 as an input
-    OSC_READY_SetDigitalInput();
+    DST_SetDigitalInput();
     </code>
 
 */
-#define OSC_READY_SetDigitalInput()  (_TRISA0 = 1)
+#define DST_SetDigitalInput()  (_TRISA0 = 1)
 /**
   @Summary
     Configures the GPIO pin, RA0, as an output.
@@ -195,20 +195,20 @@
   @Example
     <code>
     // Sets the RA0 as an output
-    OSC_READY_SetDigitalOutput();
+    DST_SetDigitalOutput();
     </code>
 
 */
-#define OSC_READY_SetDigitalOutput() (_TRISA0 = 0)
+#define DST_SetDigitalOutput() (_TRISA0 = 0)
 /**
   @Summary
-    Sets the GPIO pin, RA4, high using LATA4.
+    Sets the GPIO pin, RA10, high using LATA10.
 
   @Description
-    Sets the GPIO pin, RA4, high using LATA4.
+    Sets the GPIO pin, RA10, high using LATA10.
 
   @Preconditions
-    The RA4 must be set to an output.
+    The RA10 must be set to an output.
 
   @Returns
     None.
@@ -218,21 +218,21 @@
 
   @Example
     <code>
-    // Set RA4 high (1)
-    SCK2OUT_SetHigh();
+    // Set RA10 high (1)
+    STATUS_LED_SetHigh();
     </code>
 
 */
-#define SCK2OUT_SetHigh()          (_LATA4 = 1)
+#define STATUS_LED_SetHigh()          (_LATA10 = 1)
 /**
   @Summary
-    Sets the GPIO pin, RA4, low using LATA4.
+    Sets the GPIO pin, RA10, low using LATA10.
 
   @Description
-    Sets the GPIO pin, RA4, low using LATA4.
+    Sets the GPIO pin, RA10, low using LATA10.
 
   @Preconditions
-    The RA4 must be set to an output.
+    The RA10 must be set to an output.
 
   @Returns
     None.
@@ -242,21 +242,21 @@
 
   @Example
     <code>
-    // Set RA4 low (0)
-    SCK2OUT_SetLow();
+    // Set RA10 low (0)
+    STATUS_LED_SetLow();
     </code>
 
 */
-#define SCK2OUT_SetLow()           (_LATA4 = 0)
+#define STATUS_LED_SetLow()           (_LATA10 = 0)
 /**
   @Summary
-    Toggles the GPIO pin, RA4, using LATA4.
+    Toggles the GPIO pin, RA10, using LATA10.
 
   @Description
-    Toggles the GPIO pin, RA4, using LATA4.
+    Toggles the GPIO pin, RA10, using LATA10.
 
   @Preconditions
-    The RA4 must be set to an output.
+    The RA10 must be set to an output.
 
   @Returns
     None.
@@ -266,18 +266,18 @@
 
   @Example
     <code>
-    // Toggle RA4
-    SCK2OUT_Toggle();
+    // Toggle RA10
+    STATUS_LED_Toggle();
     </code>
 
 */
-#define SCK2OUT_Toggle()           (_LATA4 ^= 1)
+#define STATUS_LED_Toggle()           (_LATA10 ^= 1)
 /**
   @Summary
-    Reads the value of the GPIO pin, RA4.
+    Reads the value of the GPIO pin, RA10.
 
   @Description
-    Reads the value of the GPIO pin, RA4.
+    Reads the value of the GPIO pin, RA10.
 
   @Preconditions
     None.
@@ -292,18 +292,18 @@
     <code>
     uint16_t portValue;
 
-    // Read RA4
-    postValue = SCK2OUT_GetValue();
+    // Read RA10
+    postValue = STATUS_LED_GetValue();
     </code>
 
 */
-#define SCK2OUT_GetValue()         _RA4
+#define STATUS_LED_GetValue()         _RA10
 /**
   @Summary
-    Configures the GPIO pin, RA4, as an input.
+    Configures the GPIO pin, RA10, as an input.
 
   @Description
-    Configures the GPIO pin, RA4, as an input.
+    Configures the GPIO pin, RA10, as an input.
 
   @Preconditions
     None.
@@ -316,18 +316,18 @@
 
   @Example
     <code>
-    // Sets the RA4 as an input
-    SCK2OUT_SetDigitalInput();
+    // Sets the RA10 as an input
+    STATUS_LED_SetDigitalInput();
     </code>
 
 */
-#define SCK2OUT_SetDigitalInput()  (_TRISA4 = 1)
+#define STATUS_LED_SetDigitalInput()  (_TRISA10 = 1)
 /**
   @Summary
-    Configures the GPIO pin, RA4, as an output.
+    Configures the GPIO pin, RA10, as an output.
 
   @Description
-    Configures the GPIO pin, RA4, as an output.
+    Configures the GPIO pin, RA10, as an output.
 
   @Preconditions
     None.
@@ -340,12 +340,158 @@
 
   @Example
     <code>
-    // Sets the RA4 as an output
-    SCK2OUT_SetDigitalOutput();
+    // Sets the RA10 as an output
+    STATUS_LED_SetDigitalOutput();
     </code>
 
 */
-#define SCK2OUT_SetDigitalOutput() (_TRISA4 = 0)
+#define STATUS_LED_SetDigitalOutput() (_TRISA10 = 0)
+/**
+  @Summary
+    Sets the GPIO pin, RA7, high using LATA7.
+
+  @Description
+    Sets the GPIO pin, RA7, high using LATA7.
+
+  @Preconditions
+    The RA7 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RA7 high (1)
+    TZ_SetHigh();
+    </code>
+
+*/
+#define TZ_SetHigh()          (_LATA7 = 1)
+/**
+  @Summary
+    Sets the GPIO pin, RA7, low using LATA7.
+
+  @Description
+    Sets the GPIO pin, RA7, low using LATA7.
+
+  @Preconditions
+    The RA7 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RA7 low (0)
+    TZ_SetLow();
+    </code>
+
+*/
+#define TZ_SetLow()           (_LATA7 = 0)
+/**
+  @Summary
+    Toggles the GPIO pin, RA7, using LATA7.
+
+  @Description
+    Toggles the GPIO pin, RA7, using LATA7.
+
+  @Preconditions
+    The RA7 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Toggle RA7
+    TZ_Toggle();
+    </code>
+
+*/
+#define TZ_Toggle()           (_LATA7 ^= 1)
+/**
+  @Summary
+    Reads the value of the GPIO pin, RA7.
+
+  @Description
+    Reads the value of the GPIO pin, RA7.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    uint16_t portValue;
+
+    // Read RA7
+    postValue = TZ_GetValue();
+    </code>
+
+*/
+#define TZ_GetValue()         _RA7
+/**
+  @Summary
+    Configures the GPIO pin, RA7, as an input.
+
+  @Description
+    Configures the GPIO pin, RA7, as an input.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RA7 as an input
+    TZ_SetDigitalInput();
+    </code>
+
+*/
+#define TZ_SetDigitalInput()  (_TRISA7 = 1)
+/**
+  @Summary
+    Configures the GPIO pin, RA7, as an output.
+
+  @Description
+    Configures the GPIO pin, RA7, as an output.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RA7 as an output
+    TZ_SetDigitalOutput();
+    </code>
+
+*/
+#define TZ_SetDigitalOutput() (_TRISA7 = 0)
 /**
   @Summary
     Sets the GPIO pin, RB0, high using LATB0.
@@ -657,11 +803,11 @@
   @Example
     <code>
     // Set RB10 high (1)
-    LATCH_SetHigh();
+    LATCH_OC_SetHigh();
     </code>
 
 */
-#define LATCH_SetHigh()          (_LATB10 = 1)
+#define LATCH_OC_SetHigh()          (_LATB10 = 1)
 /**
   @Summary
     Sets the GPIO pin, RB10, low using LATB10.
@@ -681,11 +827,11 @@
   @Example
     <code>
     // Set RB10 low (0)
-    LATCH_SetLow();
+    LATCH_OC_SetLow();
     </code>
 
 */
-#define LATCH_SetLow()           (_LATB10 = 0)
+#define LATCH_OC_SetLow()           (_LATB10 = 0)
 /**
   @Summary
     Toggles the GPIO pin, RB10, using LATB10.
@@ -705,11 +851,11 @@
   @Example
     <code>
     // Toggle RB10
-    LATCH_Toggle();
+    LATCH_OC_Toggle();
     </code>
 
 */
-#define LATCH_Toggle()           (_LATB10 ^= 1)
+#define LATCH_OC_Toggle()           (_LATB10 ^= 1)
 /**
   @Summary
     Reads the value of the GPIO pin, RB10.
@@ -731,11 +877,11 @@
     uint16_t portValue;
 
     // Read RB10
-    postValue = LATCH_GetValue();
+    postValue = LATCH_OC_GetValue();
     </code>
 
 */
-#define LATCH_GetValue()         _RB10
+#define LATCH_OC_GetValue()         _RB10
 /**
   @Summary
     Configures the GPIO pin, RB10, as an input.
@@ -755,11 +901,11 @@
   @Example
     <code>
     // Sets the RB10 as an input
-    LATCH_SetDigitalInput();
+    LATCH_OC_SetDigitalInput();
     </code>
 
 */
-#define LATCH_SetDigitalInput()  (_TRISB10 = 1)
+#define LATCH_OC_SetDigitalInput()  (_TRISB10 = 1)
 /**
   @Summary
     Configures the GPIO pin, RB10, as an output.
@@ -779,11 +925,157 @@
   @Example
     <code>
     // Sets the RB10 as an output
-    LATCH_SetDigitalOutput();
+    LATCH_OC_SetDigitalOutput();
     </code>
 
 */
-#define LATCH_SetDigitalOutput() (_TRISB10 = 0)
+#define LATCH_OC_SetDigitalOutput() (_TRISB10 = 0)
+/**
+  @Summary
+    Sets the GPIO pin, RB11, high using LATB11.
+
+  @Description
+    Sets the GPIO pin, RB11, high using LATB11.
+
+  @Preconditions
+    The RB11 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RB11 high (1)
+    LATCH_GPIO_SetHigh();
+    </code>
+
+*/
+#define LATCH_GPIO_SetHigh()          (_LATB11 = 1)
+/**
+  @Summary
+    Sets the GPIO pin, RB11, low using LATB11.
+
+  @Description
+    Sets the GPIO pin, RB11, low using LATB11.
+
+  @Preconditions
+    The RB11 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RB11 low (0)
+    LATCH_GPIO_SetLow();
+    </code>
+
+*/
+#define LATCH_GPIO_SetLow()           (_LATB11 = 0)
+/**
+  @Summary
+    Toggles the GPIO pin, RB11, using LATB11.
+
+  @Description
+    Toggles the GPIO pin, RB11, using LATB11.
+
+  @Preconditions
+    The RB11 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Toggle RB11
+    LATCH_GPIO_Toggle();
+    </code>
+
+*/
+#define LATCH_GPIO_Toggle()           (_LATB11 ^= 1)
+/**
+  @Summary
+    Reads the value of the GPIO pin, RB11.
+
+  @Description
+    Reads the value of the GPIO pin, RB11.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    uint16_t portValue;
+
+    // Read RB11
+    postValue = LATCH_GPIO_GetValue();
+    </code>
+
+*/
+#define LATCH_GPIO_GetValue()         _RB11
+/**
+  @Summary
+    Configures the GPIO pin, RB11, as an input.
+
+  @Description
+    Configures the GPIO pin, RB11, as an input.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RB11 as an input
+    LATCH_GPIO_SetDigitalInput();
+    </code>
+
+*/
+#define LATCH_GPIO_SetDigitalInput()  (_TRISB11 = 1)
+/**
+  @Summary
+    Configures the GPIO pin, RB11, as an output.
+
+  @Description
+    Configures the GPIO pin, RB11, as an output.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RB11 as an output
+    LATCH_GPIO_SetDigitalOutput();
+    </code>
+
+*/
+#define LATCH_GPIO_SetDigitalOutput() (_TRISB11 = 0)
 /**
   @Summary
     Sets the GPIO pin, RB12, high using LATB12.
@@ -803,11 +1095,11 @@
   @Example
     <code>
     // Set RB12 high (1)
-    PPS_SetHigh();
+    BLANK_SetHigh();
     </code>
 
 */
-#define PPS_SetHigh()          (_LATB12 = 1)
+#define BLANK_SetHigh()          (_LATB12 = 1)
 /**
   @Summary
     Sets the GPIO pin, RB12, low using LATB12.
@@ -827,11 +1119,11 @@
   @Example
     <code>
     // Set RB12 low (0)
-    PPS_SetLow();
+    BLANK_SetLow();
     </code>
 
 */
-#define PPS_SetLow()           (_LATB12 = 0)
+#define BLANK_SetLow()           (_LATB12 = 0)
 /**
   @Summary
     Toggles the GPIO pin, RB12, using LATB12.
@@ -851,11 +1143,11 @@
   @Example
     <code>
     // Toggle RB12
-    PPS_Toggle();
+    BLANK_Toggle();
     </code>
 
 */
-#define PPS_Toggle()           (_LATB12 ^= 1)
+#define BLANK_Toggle()           (_LATB12 ^= 1)
 /**
   @Summary
     Reads the value of the GPIO pin, RB12.
@@ -877,11 +1169,11 @@
     uint16_t portValue;
 
     // Read RB12
-    postValue = PPS_GetValue();
+    postValue = BLANK_GetValue();
     </code>
 
 */
-#define PPS_GetValue()         _RB12
+#define BLANK_GetValue()         _RB12
 /**
   @Summary
     Configures the GPIO pin, RB12, as an input.
@@ -901,11 +1193,11 @@
   @Example
     <code>
     // Sets the RB12 as an input
-    PPS_SetDigitalInput();
+    BLANK_SetDigitalInput();
     </code>
 
 */
-#define PPS_SetDigitalInput()  (_TRISB12 = 1)
+#define BLANK_SetDigitalInput()  (_TRISB12 = 1)
 /**
   @Summary
     Configures the GPIO pin, RB12, as an output.
@@ -925,303 +1217,11 @@
   @Example
     <code>
     // Sets the RB12 as an output
-    PPS_SetDigitalOutput();
-    </code>
-
-*/
-#define PPS_SetDigitalOutput() (_TRISB12 = 0)
-/**
-  @Summary
-    Sets the GPIO pin, RB13, high using LATB13.
-
-  @Description
-    Sets the GPIO pin, RB13, high using LATB13.
-
-  @Preconditions
-    The RB13 must be set to an output.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Set RB13 high (1)
-    BLANK_SetHigh();
-    </code>
-
-*/
-#define BLANK_SetHigh()          (_LATB13 = 1)
-/**
-  @Summary
-    Sets the GPIO pin, RB13, low using LATB13.
-
-  @Description
-    Sets the GPIO pin, RB13, low using LATB13.
-
-  @Preconditions
-    The RB13 must be set to an output.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Set RB13 low (0)
-    BLANK_SetLow();
-    </code>
-
-*/
-#define BLANK_SetLow()           (_LATB13 = 0)
-/**
-  @Summary
-    Toggles the GPIO pin, RB13, using LATB13.
-
-  @Description
-    Toggles the GPIO pin, RB13, using LATB13.
-
-  @Preconditions
-    The RB13 must be set to an output.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Toggle RB13
-    BLANK_Toggle();
-    </code>
-
-*/
-#define BLANK_Toggle()           (_LATB13 ^= 1)
-/**
-  @Summary
-    Reads the value of the GPIO pin, RB13.
-
-  @Description
-    Reads the value of the GPIO pin, RB13.
-
-  @Preconditions
-    None.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    uint16_t portValue;
-
-    // Read RB13
-    postValue = BLANK_GetValue();
-    </code>
-
-*/
-#define BLANK_GetValue()         _RB13
-/**
-  @Summary
-    Configures the GPIO pin, RB13, as an input.
-
-  @Description
-    Configures the GPIO pin, RB13, as an input.
-
-  @Preconditions
-    None.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Sets the RB13 as an input
-    BLANK_SetDigitalInput();
-    </code>
-
-*/
-#define BLANK_SetDigitalInput()  (_TRISB13 = 1)
-/**
-  @Summary
-    Configures the GPIO pin, RB13, as an output.
-
-  @Description
-    Configures the GPIO pin, RB13, as an output.
-
-  @Preconditions
-    None.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Sets the RB13 as an output
     BLANK_SetDigitalOutput();
     </code>
 
 */
-#define BLANK_SetDigitalOutput() (_TRISB13 = 0)
-/**
-  @Summary
-    Sets the GPIO pin, RB14, high using LATB14.
-
-  @Description
-    Sets the GPIO pin, RB14, high using LATB14.
-
-  @Preconditions
-    The RB14 must be set to an output.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Set RB14 high (1)
-    POL_SetHigh();
-    </code>
-
-*/
-#define POL_SetHigh()          (_LATB14 = 1)
-/**
-  @Summary
-    Sets the GPIO pin, RB14, low using LATB14.
-
-  @Description
-    Sets the GPIO pin, RB14, low using LATB14.
-
-  @Preconditions
-    The RB14 must be set to an output.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Set RB14 low (0)
-    POL_SetLow();
-    </code>
-
-*/
-#define POL_SetLow()           (_LATB14 = 0)
-/**
-  @Summary
-    Toggles the GPIO pin, RB14, using LATB14.
-
-  @Description
-    Toggles the GPIO pin, RB14, using LATB14.
-
-  @Preconditions
-    The RB14 must be set to an output.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Toggle RB14
-    POL_Toggle();
-    </code>
-
-*/
-#define POL_Toggle()           (_LATB14 ^= 1)
-/**
-  @Summary
-    Reads the value of the GPIO pin, RB14.
-
-  @Description
-    Reads the value of the GPIO pin, RB14.
-
-  @Preconditions
-    None.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    uint16_t portValue;
-
-    // Read RB14
-    postValue = POL_GetValue();
-    </code>
-
-*/
-#define POL_GetValue()         _RB14
-/**
-  @Summary
-    Configures the GPIO pin, RB14, as an input.
-
-  @Description
-    Configures the GPIO pin, RB14, as an input.
-
-  @Preconditions
-    None.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Sets the RB14 as an input
-    POL_SetDigitalInput();
-    </code>
-
-*/
-#define POL_SetDigitalInput()  (_TRISB14 = 1)
-/**
-  @Summary
-    Configures the GPIO pin, RB14, as an output.
-
-  @Description
-    Configures the GPIO pin, RB14, as an output.
-
-  @Preconditions
-    None.
-
-  @Returns
-    None.
-
-  @Param
-    None.
-
-  @Example
-    <code>
-    // Sets the RB14 as an output
-    POL_SetDigitalOutput();
-    </code>
-
-*/
-#define POL_SetDigitalOutput() (_TRISB14 = 0)
+#define BLANK_SetDigitalOutput() (_TRISB12 = 0)
 /**
   @Summary
     Sets the GPIO pin, RB4, high using LATB4.
@@ -1241,11 +1241,11 @@
   @Example
     <code>
     // Set RB4 high (1)
-    SDO2_SetHigh();
+    PPS_SetHigh();
     </code>
 
 */
-#define SDO2_SetHigh()          (_LATB4 = 1)
+#define PPS_SetHigh()          (_LATB4 = 1)
 /**
   @Summary
     Sets the GPIO pin, RB4, low using LATB4.
@@ -1265,11 +1265,11 @@
   @Example
     <code>
     // Set RB4 low (0)
-    SDO2_SetLow();
+    PPS_SetLow();
     </code>
 
 */
-#define SDO2_SetLow()           (_LATB4 = 0)
+#define PPS_SetLow()           (_LATB4 = 0)
 /**
   @Summary
     Toggles the GPIO pin, RB4, using LATB4.
@@ -1289,11 +1289,11 @@
   @Example
     <code>
     // Toggle RB4
-    SDO2_Toggle();
+    PPS_Toggle();
     </code>
 
 */
-#define SDO2_Toggle()           (_LATB4 ^= 1)
+#define PPS_Toggle()           (_LATB4 ^= 1)
 /**
   @Summary
     Reads the value of the GPIO pin, RB4.
@@ -1315,11 +1315,11 @@
     uint16_t portValue;
 
     // Read RB4
-    postValue = SDO2_GetValue();
+    postValue = PPS_GetValue();
     </code>
 
 */
-#define SDO2_GetValue()         _RB4
+#define PPS_GetValue()         _RB4
 /**
   @Summary
     Configures the GPIO pin, RB4, as an input.
@@ -1339,11 +1339,11 @@
   @Example
     <code>
     // Sets the RB4 as an input
-    SDO2_SetDigitalInput();
+    PPS_SetDigitalInput();
     </code>
 
 */
-#define SDO2_SetDigitalInput()  (_TRISB4 = 1)
+#define PPS_SetDigitalInput()  (_TRISB4 = 1)
 /**
   @Summary
     Configures the GPIO pin, RB4, as an output.
@@ -1363,20 +1363,20 @@
   @Example
     <code>
     // Sets the RB4 as an output
-    SDO2_SetDigitalOutput();
+    PPS_SetDigitalOutput();
     </code>
 
 */
-#define SDO2_SetDigitalOutput() (_TRISB4 = 0)
+#define PPS_SetDigitalOutput() (_TRISB4 = 0)
 /**
   @Summary
-    Sets the GPIO pin, RB5, high using LATB5.
+    Sets the GPIO pin, RC8, high using LATC8.
 
   @Description
-    Sets the GPIO pin, RB5, high using LATB5.
+    Sets the GPIO pin, RC8, high using LATC8.
 
   @Preconditions
-    The RB5 must be set to an output.
+    The RC8 must be set to an output.
 
   @Returns
     None.
@@ -1386,21 +1386,21 @@
 
   @Example
     <code>
-    // Set RB5 high (1)
-    STATUS_LED_SetHigh();
+    // Set RC8 high (1)
+    SCK2OUT_SetHigh();
     </code>
 
 */
-#define STATUS_LED_SetHigh()          (_LATB5 = 1)
+#define SCK2OUT_SetHigh()          (_LATC8 = 1)
 /**
   @Summary
-    Sets the GPIO pin, RB5, low using LATB5.
+    Sets the GPIO pin, RC8, low using LATC8.
 
   @Description
-    Sets the GPIO pin, RB5, low using LATB5.
+    Sets the GPIO pin, RC8, low using LATC8.
 
   @Preconditions
-    The RB5 must be set to an output.
+    The RC8 must be set to an output.
 
   @Returns
     None.
@@ -1410,21 +1410,21 @@
 
   @Example
     <code>
-    // Set RB5 low (0)
-    STATUS_LED_SetLow();
+    // Set RC8 low (0)
+    SCK2OUT_SetLow();
     </code>
 
 */
-#define STATUS_LED_SetLow()           (_LATB5 = 0)
+#define SCK2OUT_SetLow()           (_LATC8 = 0)
 /**
   @Summary
-    Toggles the GPIO pin, RB5, using LATB5.
+    Toggles the GPIO pin, RC8, using LATC8.
 
   @Description
-    Toggles the GPIO pin, RB5, using LATB5.
+    Toggles the GPIO pin, RC8, using LATC8.
 
   @Preconditions
-    The RB5 must be set to an output.
+    The RC8 must be set to an output.
 
   @Returns
     None.
@@ -1434,18 +1434,18 @@
 
   @Example
     <code>
-    // Toggle RB5
-    STATUS_LED_Toggle();
+    // Toggle RC8
+    SCK2OUT_Toggle();
     </code>
 
 */
-#define STATUS_LED_Toggle()           (_LATB5 ^= 1)
+#define SCK2OUT_Toggle()           (_LATC8 ^= 1)
 /**
   @Summary
-    Reads the value of the GPIO pin, RB5.
+    Reads the value of the GPIO pin, RC8.
 
   @Description
-    Reads the value of the GPIO pin, RB5.
+    Reads the value of the GPIO pin, RC8.
 
   @Preconditions
     None.
@@ -1460,18 +1460,18 @@
     <code>
     uint16_t portValue;
 
-    // Read RB5
-    postValue = STATUS_LED_GetValue();
+    // Read RC8
+    postValue = SCK2OUT_GetValue();
     </code>
 
 */
-#define STATUS_LED_GetValue()         _RB5
+#define SCK2OUT_GetValue()         _RC8
 /**
   @Summary
-    Configures the GPIO pin, RB5, as an input.
+    Configures the GPIO pin, RC8, as an input.
 
   @Description
-    Configures the GPIO pin, RB5, as an input.
+    Configures the GPIO pin, RC8, as an input.
 
   @Preconditions
     None.
@@ -1484,18 +1484,18 @@
 
   @Example
     <code>
-    // Sets the RB5 as an input
-    STATUS_LED_SetDigitalInput();
+    // Sets the RC8 as an input
+    SCK2OUT_SetDigitalInput();
     </code>
 
 */
-#define STATUS_LED_SetDigitalInput()  (_TRISB5 = 1)
+#define SCK2OUT_SetDigitalInput()  (_TRISC8 = 1)
 /**
   @Summary
-    Configures the GPIO pin, RB5, as an output.
+    Configures the GPIO pin, RC8, as an output.
 
   @Description
-    Configures the GPIO pin, RB5, as an output.
+    Configures the GPIO pin, RC8, as an output.
 
   @Preconditions
     None.
@@ -1508,19 +1508,165 @@
 
   @Example
     <code>
-    // Sets the RB5 as an output
-    STATUS_LED_SetDigitalOutput();
+    // Sets the RC8 as an output
+    SCK2OUT_SetDigitalOutput();
     </code>
 
 */
-#define STATUS_LED_SetDigitalOutput() (_TRISB5 = 0)
+#define SCK2OUT_SetDigitalOutput() (_TRISC8 = 0)
+/**
+  @Summary
+    Sets the GPIO pin, RC9, high using LATC9.
+
+  @Description
+    Sets the GPIO pin, RC9, high using LATC9.
+
+  @Preconditions
+    The RC9 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RC9 high (1)
+    SDO2_SetHigh();
+    </code>
+
+*/
+#define SDO2_SetHigh()          (_LATC9 = 1)
+/**
+  @Summary
+    Sets the GPIO pin, RC9, low using LATC9.
+
+  @Description
+    Sets the GPIO pin, RC9, low using LATC9.
+
+  @Preconditions
+    The RC9 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RC9 low (0)
+    SDO2_SetLow();
+    </code>
+
+*/
+#define SDO2_SetLow()           (_LATC9 = 0)
+/**
+  @Summary
+    Toggles the GPIO pin, RC9, using LATC9.
+
+  @Description
+    Toggles the GPIO pin, RC9, using LATC9.
+
+  @Preconditions
+    The RC9 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Toggle RC9
+    SDO2_Toggle();
+    </code>
+
+*/
+#define SDO2_Toggle()           (_LATC9 ^= 1)
+/**
+  @Summary
+    Reads the value of the GPIO pin, RC9.
+
+  @Description
+    Reads the value of the GPIO pin, RC9.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    uint16_t portValue;
+
+    // Read RC9
+    postValue = SDO2_GetValue();
+    </code>
+
+*/
+#define SDO2_GetValue()         _RC9
+/**
+  @Summary
+    Configures the GPIO pin, RC9, as an input.
+
+  @Description
+    Configures the GPIO pin, RC9, as an input.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RC9 as an input
+    SDO2_SetDigitalInput();
+    </code>
+
+*/
+#define SDO2_SetDigitalInput()  (_TRISC9 = 1)
+/**
+  @Summary
+    Configures the GPIO pin, RC9, as an output.
+
+  @Description
+    Configures the GPIO pin, RC9, as an output.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RC9 as an output
+    SDO2_SetDigitalOutput();
+    </code>
+
+*/
+#define SDO2_SetDigitalOutput() (_TRISC9 = 0)
 
 /**
     Section: Function Prototypes
 */
 /**
   @Summary
-    Configures the pin settings of the dsPIC33EP512GP502
+    Configures the pin settings of the dsPIC33EP64GP504
     The peripheral pin select, PPS, configuration is also handled by this manager.
 
   @Description

@@ -14,7 +14,7 @@
     This file will be removed in future MCC releases. Use system.h instead.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP512GP502
+        Device            :  dsPIC33EP64GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB             :  MPLAB X v5.45
@@ -56,12 +56,12 @@
 #include "reset.h"
 #include "spi2.h"
 #include "watchdog.h"
-#include "uart1.h"
-#include "uart2.h"
-#include "i2c1.h"
 #include "delay.h"
+#include "i2c1.h"
 #include "interrupt_manager.h"
 #include "traps.h"
+#include "uart1.h"
+#include "uart2.h"
 
 #warning "This file will be removed in future MCC releases. Use system.h instead."
 

@@ -14,7 +14,7 @@
     This header file provides implementations for driver APIs for all modules selected in the GUI.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP512GP502
+        Device            :  dsPIC33EP64GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB             :  MPLAB X v5.45
@@ -45,12 +45,12 @@
 // Configuration bits: selected in the GUI
 
 // FICD
-#pragma config ICS = PGD1    //ICD Communication Channel Select bits->Communicate on PGEC1 and PGED1
+#pragma config ICS = PGD2    //ICD Communication Channel Select bits->Communicate on PGEC2 and PGED2
 #pragma config JTAGEN = OFF    //JTAG Enable bit->JTAG is disabled
 
 // FPOR
 #pragma config ALTI2C1 = ON    //Alternate I2C1 pins->I2C1 mapped to ASDA1/ASCL1 pins
-#pragma config ALTI2C2 = ON    //Alternate I2C2 pins->I2C2 mapped to ASDA2/ASCL2 pins
+#pragma config ALTI2C2 = OFF    //Alternate I2C2 pins->I2C2 mapped to SDA2/SCL2 pins
 #pragma config WDTWIN = WIN25    //Watchdog Window Select bits->WDT Window is 25% of WDT period
 
 // FWDT
@@ -79,18 +79,18 @@
 #include "system.h"
 #include "system_types.h"
 #include "spi2.h"
-#include "uart1.h"
-#include "uart2.h"
-#include "i2c1.h"
 #include "delay.h"
+#include "i2c1.h"
 #include "interrupt_manager.h"
 #include "traps.h"
+#include "uart1.h"
+#include "uart2.h"
 
 void SYSTEM_Initialize(void)
 {
     PIN_MANAGER_Initialize();
-    INTERRUPT_Initialize();
     CLOCK_Initialize();
+    INTERRUPT_Initialize();
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();

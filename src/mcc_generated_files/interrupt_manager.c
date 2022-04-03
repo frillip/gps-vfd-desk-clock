@@ -15,7 +15,7 @@
     This source file provides implementations for PIC24 / dsPIC33 / PIC32MM MCUs interrupts.
     Generation Information : 
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP512GP502
+        Device            :  dsPIC33EP64GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB             :  MPLAB X v5.45
@@ -52,6 +52,12 @@
 */
 void INTERRUPT_Initialize (void)
 {
+    //    MICI: I2C1 Master Events
+    //    Priority: 1
+        IPC4bits.MI2C1IP = 1;
+    //    SICI: I2C1 Slave Events
+    //    Priority: 1
+        IPC4bits.SI2C1IP = 1;
     //    UERI: UART2 Error
     //    Priority: 1
         IPC16bits.U2EIP = 1;
@@ -64,10 +70,4 @@ void INTERRUPT_Initialize (void)
     //    CNI: Change Notification Interrupt
     //    Priority: 1
         IPC4bits.CNIP = 1;
-    //    MICI: I2C1 Master Events
-    //    Priority: 1
-        IPC4bits.MI2C1IP = 1;
-    //    SICI: I2C1 Slave Events
-    //    Priority: 1
-        IPC4bits.SI2C1IP = 1;
 }

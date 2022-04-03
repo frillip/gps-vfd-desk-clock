@@ -10,7 +10,7 @@ void display_init(void)
 {
     uint32_t driver_buffer = 0x00000000; // Set a blank buffer
     BLANK_SetHigh(); // Disable the blanking function
-    POL_SetHigh(); // Set normal polarity
+    //POL_SetHigh(); // Set normal polarity (not needed with HV5812)
     display_buffer(driver_buffer); // Load buffer into the driver
 }
 
@@ -134,9 +134,9 @@ void display_buffer(uint32_t buffer)
 // Manual display latch, not required with OC running
 void display_latch(void)
 {
-    LATCH_SetHigh();
+    LATCH_GPIO_SetHigh();
     DELAY_microseconds(5);
-    LATCH_SetLow();
+    LATCH_GPIO_SetLow();
 }
 
 // Set up timer 3 to blink the display every 0.5s

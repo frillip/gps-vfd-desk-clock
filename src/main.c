@@ -11,8 +11,6 @@
 #include "pdo.h"
 #include "scheduler.h"
 #include "ds1307.h"
-#include "fe5680a_58.h"
-#include "sc16is7x0.h"
 
 //#define DEBUG_ENABLED
 #define LOCAL_TIME 1
@@ -65,11 +63,6 @@ bool print_data = 0;
 bool print_ubx = 0;
 bool disable_manual_print = 0;
 
-long double r_val;
-uint32_t f_val;
-extern char fe5680_config_string[64];
-extern enum fe5680_state rb_state;
-
 bool rtc_sync = 0;
 
 extern bool scheduler_sync;
@@ -106,7 +99,7 @@ int main(void)
     
     SPI2_Initialize();
     display_blink_start(3685000UL);
-    while(!OSC_READY_GetValue());
+    // while(!OSC_READY_GetValue()); // No Rb on this clock
     DELAY_milliseconds(20);
     display_blink_stop();
     
@@ -136,11 +129,7 @@ int main(void)
     time_t gps;
     time_t rtc;
     time_t local;
-    
-    sc16is7x0_init(FRBSET, 9600L);
-    r_val = 50255055;
-    r_val += 0.433269;
-    f_val = 0x32F0AD97;
+
     // Read RTC for an estimate of current time and display it
     rtc = DS1307_read();
     utc = rtc;
@@ -271,34 +260,6 @@ int main(void)
                     printf("No new UBX time mark data\r\n");
                 }
                 
-                if(pps_sync && accumulation_delta > 30)
-                {
-                    long double acc;
-                    acc = fe5680_calc_rb_acc(accumulated_clocks, accumulation_delta);
-                    long double freq;
-                    freq = fe5680_calc_rb_freq(acc);
-                    long double new_r_val;
-                    new_r_val = fe5680_calc_rb_r_val(freq, f_val);
-                    uint32_t new_f_val;
-                    new_f_val = fe5680_calc_rb_f_val(freq, f_val);
-
-                    // Stupid double decimal hacks incoming:
-                    uint32_t freq_i = freq;
-                    float freq_f = freq - freq_i;
-                    uint32_t r_val_i = r_val;
-                    float r_val_f = r_val - r_val_i;
-                    uint32_t new_r_val_i = new_r_val;
-                    float new_r_val_f = new_r_val - new_r_val_i;
-
-                    printf("Rb freq: %lu.%03.0fHz Rb acc: %.3lfppt\r\n",freq_i, freq_f*1000, acc*TRILLION);
-                    printf("Rb old R: %lu.%03.0fHz Rb old F: %0lX \r\n",r_val_i, r_val_f*1000, f_val);
-                    printf("Rb new R: %lu.%03.0fHz Rb new F: %0lX \r\n",new_r_val_i, new_r_val_f*1000, new_f_val);
-                }
-                else
-                {
-                    printf("More time required for Rb tuning\r\n");
-                }
-                
                 printf("\r\n");
                 print_data = 0;
             }
@@ -372,45 +333,6 @@ int main(void)
 #endif
             // Re-enable manual printing
             disable_manual_print = 0;
-            
-            if(rb_state==FE5680_INIT)
-            {
-                fe5680_get_config_string();
-                rb_state=FE5680_READ_CONFIG;
-            }
-            else if(rb_state==FE5680_READ_CONFIG)
-            {
-                if(fe5680_process_config_string(&fe5680_config_string))
-                {
-                    r_val = fe5680_get_r_val(&fe5680_config_string);
-                    f_val = fe5680_get_f_val(&fe5680_config_string);
-                    if((f_val > 0x32E0AD97) && (f_val < 0x3300AD97))
-                    {
-                        if((r_val > 50155055) && (r_val < 50355055))
-                        {
-                            rb_state=FE5680_GOT_CONFIG;
-                        }
-                        else rb_state=FE5680_INIT;
-                    }
-                    else rb_state=FE5680_INIT;
-                }
-                else
-                {
-                    rb_state=FE5680_INIT;
-                }
-            }
-            /*
-            else if(rb_state==FE5680_GOT_CONFIG)
-            {
-                fe5680_set_f_val(f_val);
-                rb_state=FE5680_ADJ_FVAL;
-            }
-            else if(rb_state==FE5680_ADJ_FVAL)
-            {
-                if(fe5680_get_response()) rb_state=FE5680_RESP_OK;
-                else rb_state=FE5680_INIT;
-            }
-            */
         }
     }
     return 1; 
