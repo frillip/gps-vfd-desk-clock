@@ -17,6 +17,9 @@ extern "C" {
 #include "mcc_generated_files/spi2.h"
 #include "mcc_generated_files/delay.h"
 #include <time.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 // Segment mapping on the driver
 #define SEG_G       0x00000004
@@ -49,21 +52,21 @@ extern "C" {
 #define DIGIT_DASH SEG_G
 #define DIGIT_NONE SEG_NONE
 
+void spi2_dma_init(void);
 void display_init(void);
 void display_count(uint16_t count);
-void display_buffer(uint32_t buffer);
+void display_buffer(uint64_t buffer);
 void display_time(const time_t *tod);
 void display_mmss(const time_t *tod);
 void display_dashes(void);
 void display_blank(void);
 void display_latch(void);
+bool isDST(const time_t *tod);
 void display_blink_start(uint32_t fcy);
 void display_blink_stop(void);
-bool isDST(const time_t *tod);
 
 #ifdef	__cplusplus
 }
 #endif
 
 #endif	/* TUBES_H */
-
