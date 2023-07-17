@@ -14,7 +14,7 @@
     This header file provides implementations for driver APIs for all modules selected in the GUI.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP64GP504
+        Device            :  dsPIC33EP256GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB             :  MPLAB X v5.45
@@ -62,9 +62,9 @@
 
 // FOSC
 #pragma config POSCMD = EC    //Primary Oscillator Mode Select bits->EC (External Clock) Mode
-#pragma config OSCIOFNC = OFF    //OSC2 Pin Function bit->OSC2 is clock output
+#pragma config OSCIOFNC = ON    //OSC2 Pin Function bit->OSC2 is general purpose digital I/O pin
 #pragma config IOL1WAY = ON    //Peripheral pin select configuration->Allow only one reconfiguration
-#pragma config FCKSM = CSECME    //Clock Switching Mode bits->Both Clock switching and Fail-safe Clock Monitor are enabled
+#pragma config FCKSM = CSECMD    //Clock Switching Mode bits->Clock switching is enabled,Fail-safe Clock Monitor is disabled
 
 // FOSCSEL
 #pragma config FNOSC = FRC    //Oscillator Source Selection->FRC
@@ -78,13 +78,13 @@
 #include "clock.h"
 #include "system.h"
 #include "system_types.h"
-#include "spi2.h"
 #include "delay.h"
-#include "i2c1.h"
+#include "uart1.h"
+#include "spi2.h"
+#include "uart2.h"
 #include "interrupt_manager.h"
 #include "traps.h"
-#include "uart1.h"
-#include "uart2.h"
+#include "i2c1.h"
 
 void SYSTEM_Initialize(void)
 {

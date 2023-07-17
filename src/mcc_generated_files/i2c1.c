@@ -15,7 +15,7 @@
     This header file provides APIs for driver for i2c1.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP64GP504
+        Device            :  dsPIC33EP256GP504
 
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
@@ -204,8 +204,8 @@ void I2C1_Initialize(void)
     i2c1_object.i2cErrors = 0;
     
     // initialize the hardware
-    // Baud Rate Generator Value: I2CBRG 395;   
-    I2C1BRG = 0x18B;
+    // Baud Rate Generator Value: I2CBRG 95;   
+    I2C1BRG = 0x5F;
     // ACKEN disabled; STREN disabled; GCEN disabled; SMEN disabled; DISSLW enabled; I2CSIDL disabled; ACKDT Sends ACK; SCLREL Holds; RSEN disabled; IPMIEN disabled; A10M 7 Bit; PEN disabled; RCEN disabled; SEN disabled; I2CEN enabled; 
     I2C1CON = 0x8000;
     // BCL disabled; P disabled; S disabled; I2COV disabled; IWCOL disabled; 

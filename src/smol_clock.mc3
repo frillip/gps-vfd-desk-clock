@@ -1,4 +1,4 @@
-<config configName="default" projectName="vfd_gps_desk_clock" configVersion="1.1" device="dsPIC33EP64GP504" deviceLibraryClass="com.microchip.mcc.mcu16.Mcu16PeripheralLibrary" coreVersion="5.3.3">
+<config configName="default" projectName="smol_clock" configVersion="1.1" device="dsPIC33EP256GP504" deviceLibraryClass="com.microchip.mcc.mcu16.Mcu16PeripheralLibrary" coreVersion="5.3.3">
    <usedPackages class="java.util.ArrayList"/>
    <usedClasses class="java.util.TreeMap">
       <entry>
@@ -59,8 +59,8 @@
       </entry>
    </usedClasses>
    <usedLibraries class="java.util.ArrayList">
+      <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.foundationservices.library.FoundationServicesLibrary" version="0.2.3"/>
       <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.mcu16.Mcu16PeripheralLibrary" version="1.170.0"/>
-      <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.foundationservices.library.FoundationServicesLibrary" version="0.2.2"/>
    </usedLibraries>
    <tokenMap class="java.util.TreeMap">
       <entry>
@@ -69,7 +69,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="I2C1" name="BaudRate"/>
-         <value>100000</value>
+         <value>400000</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="I2C1" name="I2C1_MICIISRFunction"/>
@@ -337,7 +337,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="I2C1" registerAlias="I2CBRG"/>
-         <value>395</value>
+         <value>95</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="I2C1" registerAlias="I2CCON"/>
@@ -361,7 +361,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="I2C1" registerAlias="I2CBRG" settingAlias="I2CBRG"/>
-         <value>395</value>
+         <value>95</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="I2C1" registerAlias="I2CCON" settingAlias="A10M"/>
@@ -529,7 +529,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="CLKPinsOutput"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="CLOCK_FOSC"/>
@@ -565,7 +565,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="FailSafe"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="FeatureAutoTune"/>
@@ -693,11 +693,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="FeatureRefoClockDivider"/>
-         <value>AVAILABLE</value>
+         <value>NOTAVAILABLE</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="FeatureRefoClockSource"/>
-         <value>AVAILABLE</value>
+         <value>NOTAVAILABLE</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="FeatureRefoClockTrim"/>
@@ -749,7 +749,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="PllDivisor"/>
-         <value>1:32</value>
+         <value>1:64</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="PllEnable"/>
@@ -757,7 +757,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="PllPostscaler"/>
-         <value>1:2</value>
+         <value>1:4</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="PllPrescaler"/>
@@ -769,15 +769,15 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="REFCLKOUT"/>
-         <value>8.0E7</value>
+         <value/>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="REFCLKOUT_ENABLE"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="REFCLKOUT_INPUT_FREQUENCY"/>
-         <value>80000000</value>
+         <value/>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="REFCLKOUT_RODIV"/>
@@ -793,7 +793,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="REFOPinsOutput"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="Requested CAN Clock Frequency"/>
@@ -825,7 +825,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="UpdatePllPostscalerOptions"/>
-         <value>[1:8, 1:4, 1:2]</value>
+         <value>[1:8, 1:4]</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="UpdatePllPrescalerClock"/>
@@ -837,11 +837,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="UpdatePllfbDivisorClock"/>
-         <value>160000000</value>
+         <value>320000000</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="customClkOut"/>
-         <value>OSC2 is clock output</value>
+         <value>OSC2 is general purpose digital I/O pin</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="customMasterSlaveViewerEnable"/>
@@ -1737,7 +1737,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV"/>
-         <value>12544</value>
+         <value>12608</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CORCON"/>
@@ -1753,7 +1753,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="PLLFBD"/>
-         <value>30</value>
+         <value>62</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="PMD1"/>
@@ -1777,7 +1777,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="REFOCON"/>
-         <value>32768</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV" settingAlias="DOZE"/>
@@ -1789,7 +1789,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV" settingAlias="PLLPOST"/>
-         <value>1:2</value>
+         <value>1:4</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV" settingAlias="PLLPRE"/>
@@ -1881,7 +1881,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="PLLFBD" settingAlias="PLLDIV"/>
-         <value>30</value>
+         <value>62</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="PMD1" settingAlias="ADC1MD"/>
@@ -1997,7 +1997,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="REFOCON" settingAlias="ROEN"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="REFOCON" settingAlias="ROSEL"/>
@@ -2017,7 +2017,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RA0"/>
-         <value>DST</value>
+         <value>DST_SW</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RA1"/>
@@ -2041,11 +2041,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RA7"/>
-         <value>TZ</value>
+         <value>TZ_BT</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RA8"/>
-         <value/>
+         <value>PPS</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RA9"/>
@@ -2065,11 +2065,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB11"/>
-         <value>LATCH_GPIO</value>
+         <value>BLANK</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB12"/>
-         <value>BLANK</value>
+         <value>LATCH_GPIO</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB13"/>
@@ -2093,7 +2093,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB4"/>
-         <value>PPS</value>
+         <value/>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB5"/>
@@ -2105,7 +2105,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB7"/>
-         <value/>
+         <value>BUZZER</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RB8"/>
@@ -2149,7 +2149,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RC8"/>
-         <value>SCK2OUT</value>
+         <value>SCLK2</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="Custom Name RC9"/>
@@ -2189,7 +2189,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="RA8"/>
-         <value>disabled</value>
+         <value>input</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="RA9"/>
@@ -2237,7 +2237,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="RB4"/>
-         <value>input</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="RB5"/>
@@ -2249,7 +2249,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="RB7"/>
-         <value>disabled</value>
+         <value>output</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="RB8"/>
@@ -2325,7 +2325,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="anselUserSetRA4"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="anselUserSetRB0"/>
@@ -2349,15 +2349,15 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="anselUserSetRC0"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="anselUserSetRC1"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="anselUserSetRC2"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet MCLRn"/>
@@ -2393,7 +2393,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RA8"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RA9"/>
@@ -2441,7 +2441,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RB4"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RB5"/>
@@ -2453,7 +2453,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RB7"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RB8"/>
@@ -2497,7 +2497,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RC8"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="customNameUserSet RC9"/>
@@ -2537,7 +2537,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="ioc RA8"/>
-         <value>none</value>
+         <value>any</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="ioc RA9"/>
@@ -2585,7 +2585,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="ioc RB4"/>
-         <value>any</value>
+         <value>none</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="ioc RB5"/>
@@ -2681,7 +2681,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="iocUserSet RA8"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="iocUserSet RA9"/>
@@ -2729,7 +2729,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="iocUserSet RB4"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="iocUserSet RB5"/>
@@ -2793,7 +2793,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="packageId"/>
-         <value>TQFP44</value>
+         <value>VTLA44</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="trisUserSetRA0"/>
@@ -2841,11 +2841,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="trisUserSetRB10"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="trisUserSetRB11"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="trisUserSetRB12"/>
@@ -4705,7 +4705,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="ANSELA"/>
-         <value>2</value>
+         <value>18</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="ANSELB"/>
@@ -4713,15 +4713,15 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="ANSELC"/>
-         <value>0</value>
+         <value>7</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="CNENA"/>
-         <value>0</value>
+         <value>256</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="CNENB"/>
-         <value>16</value>
+         <value>0</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="CNENC"/>
@@ -4757,7 +4757,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="LATB"/>
-         <value>8</value>
+         <value>2056</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="LATC"/>
@@ -4853,7 +4853,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="TRISB"/>
-         <value>58359</value>
+         <value>58231</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="TRISC"/>
@@ -4869,7 +4869,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ANSELA" settingAlias="ANSA4"/>
-         <value>digital</value>
+         <value>analog</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ANSELB" settingAlias="ANSB0"/>
@@ -4893,15 +4893,15 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ANSELC" settingAlias="ANSC0"/>
-         <value>digital</value>
+         <value>analog</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ANSELC" settingAlias="ANSC1"/>
-         <value>digital</value>
+         <value>analog</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="ANSELC" settingAlias="ANSC2"/>
-         <value>digital</value>
+         <value>analog</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNENA" settingAlias="CNIEA0"/>
@@ -4933,7 +4933,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNENA" settingAlias="CNIEA8"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNENA" settingAlias="CNIEA9"/>
@@ -4981,7 +4981,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNENB" settingAlias="CNIEB4"/>
-         <value>enabled</value>
+         <value>disabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNENB" settingAlias="CNIEB5"/>
@@ -5385,7 +5385,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="LATB" settingAlias="LATB11"/>
-         <value>clear</value>
+         <value>set</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="LATB" settingAlias="LATB12"/>
@@ -5817,7 +5817,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="TRISB" settingAlias="TRISB7"/>
-         <value>input</value>
+         <value>output</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="TRISB" settingAlias="TRISB8"/>
@@ -6649,7 +6649,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="System Module" registerAlias="FOSC"/>
-         <value>36</value>
+         <value>96</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="System Module" registerAlias="FOSCSEL"/>
@@ -6681,7 +6681,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="System Module" registerAlias="FOSC" settingAlias="FCKSM"/>
-         <value>CSECME</value>
+         <value>CSECMD</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="System Module" registerAlias="FOSC" settingAlias="IOL1WAY"/>
@@ -6689,7 +6689,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="System Module" registerAlias="FOSC" settingAlias="OSCIOFCN"/>
-         <value>OFF</value>
+         <value>ON</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="System Module" registerAlias="FOSC" settingAlias="POSCMOD"/>
@@ -7671,47 +7671,47 @@
    <generatedFileHashHistoryMap class="java.util.HashMap">
       <entry>
          <file>mcc_generated_files\interrupt_manager.h</file>
-         <hash>f987f5fb01cece90acfb315cfadf2671e6bb5c4932c78f9e90b43a10d6d6a6d1</hash>
+         <hash>25d182fb915e21e99f9fa89fe07c90ea8c1112706b03b3cd6d8fe9531ccddacf</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\i2c1.c</file>
-         <hash>e38ca199835cfcab0e14a5d304258139f162fda679098d5087e8cd81552a640f</hash>
+         <hash>960ab61439f37a387e5de995f1a9cde1a5030aa80c51760c83434996c6f0cfc6</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\spi2.h</file>
-         <hash>2f78d28ac4306bf54277914546f1b1cf0b8c34d136452e5c37cd21be42315fae</hash>
+         <hash>c1142b550d6d7ffdbb0908311e4fd5595fdf31bdc6c51a9f094301972b4c653f</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\i2c1.h</file>
-         <hash>74eafc0a97e39ee7d70b24e37827258f2b9c74136398e24f1c1ebb9bcd611b4f</hash>
+         <hash>7b06b4388aeee062294562c14a2775d030b282755d421dcc4d51acd44507c10b</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\spi2.c</file>
-         <hash>6ee6235b31e88b40c53f222bf8fe7c5ffe796ab4105423d9fe2beda5837efd9b</hash>
+         <hash>6c6aa09deaad46b1340cb65b4afd118192fa76597d92ee21a58dbfc5e0d85623</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\system_types.h</file>
-         <hash>7824c0254c30e499a6919bf02e2c227195cfd72c45dd24769b097cb9e8243fa4</hash>
+         <hash>e0fcff97fcd23818bcd5f453300d27fda5f2278cafee1d67aa3c84e17d6599c5</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\system.h</file>
-         <hash>317ad173a98b21d33ef6d8f9a970b7bc8147f4964a4a9be8e86081492c788ec0</hash>
+         <hash>de11e0bb0084d68f895359e3bd6b36fd311d9452ad5f166852c6933a02e2e374</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\delay.c</file>
          <hash>4a6b8bbd5d2fbe5f20e79db8d915e50e2cd43920940679b40db90f3789cbccd5</hash>
       </entry>
       <entry>
-         <file>mcc_generated_files\system.c</file>
-         <hash>e73e2bf721bb13ee01f85c5b30709ee62c5e1ab9b11c84addca6d82e521924c0</hash>
-      </entry>
-      <entry>
          <file>mcc_generated_files\delay.h</file>
          <hash>dda77102dba9adc0f9aef1c8c542cfee6d6cccc96446f4cd1bf07be2150a4d95</hash>
       </entry>
       <entry>
+         <file>mcc_generated_files\system.c</file>
+         <hash>36891fcb7a21f9f8e9e368a8c8468675ddba8b736c6f70cecf51639ed951c676</hash>
+      </entry>
+      <entry>
          <file>mcc_generated_files\clock.h</file>
-         <hash>3f0eb6ec43b0d68af40bfe6ba7aa138835cff4a96fbcec0e2483abf88202eb8e</hash>
+         <hash>bbdfa015dddb874da29d13da8299c65b86d48a77389e25e2df3e5db9c7413817</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\docs\delay.dox</file>
@@ -7719,71 +7719,71 @@
       </entry>
       <entry>
          <file>mcc_generated_files\mcc.c</file>
-         <hash>670e702b7f5f8790c75aa923503cb15692ec48984ff6253e0060b72ba10484dc</hash>
+         <hash>4cdd1060ffbe252965803485ca0adac109290972e9df2ff22ceb579696d8c3fe</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\reset.h</file>
-         <hash>7cd4a9f24cb0d5502aae109965fe5f6ec218fda972c372a16680a2b5673f4b64</hash>
+         <hash>88b3897a0bcc41da43aff85c7698476fb1314fbae1591b1ad723178798cc6631</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\mcc.h</file>
-         <hash>c9b2d8cc4f8767f6556a9529c16e3ab16cdf41a82f9b5047cbebd5b4f4d8a564</hash>
+         <hash>5b3b9df7b54d9115a2e4bfa7b138aecdcd8af310fc6f90c99eb2624b44cc4c82</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\uart2.h</file>
-         <hash>0018420b857c62224dfb25bbfeebfee1e6099a483ae95a017727f6eb12309872</hash>
-      </entry>
-      <entry>
-         <file>mcc_generated_files\reset.c</file>
-         <hash>1e09beff62796fbf935106f80d695d7b82f60bd5a53553fcb41956c3b842f0a2</hash>
+         <hash>feb413652c5ccf111c22fbad03df7b34b2f5c11ab37ef9d477e0e11cc7c8626d</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\uart1.h</file>
-         <hash>c3ca9e69768d4c236885cf1570893e6a0032f9589a38f2f56910ccb56726c253</hash>
+         <hash>b7bffa746d5bed5bb5d4715edadf30bc3672408abcd19e505317813a491e8074</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\reset.c</file>
+         <hash>487fac4e7927b3787b809a7ec3e412f7683e885fccef3c5fe4485ac34857a5b0</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\uart1.c</file>
-         <hash>b4e2819ce4f9b02834678a8139672fb51d6018e6cc870d09fbd9a7c556d31ec8</hash>
+         <hash>955ffa64bf8abe63230901b5d9326befcaf193555124d68bfb355f4dad18a766</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\clock.c</file>
-         <hash>47c9045682697c85620cfb77bdae45b509ceb195026e7212ab0a5190950d73d0</hash>
+         <hash>aac153a42cbaa68551d3173f488c0c5df47a8cfe9c22ae48ac89b536f90cec14</hash>
       </entry>
       <entry>
          <file>main.c</file>
-         <hash>ef6eb7b019315fb2591d77dc03259d9e8b39092fee8c5b86dab8cfbc0132dc41</hash>
+         <hash>2bf7184af98e4ba83cbc2e040fd43050bb13ce8e2f2b31ec0858d581d342a190</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\uart2.c</file>
-         <hash>8f604072312f9ac1a0dcad6444a9f8bd88c04fc86d06a2a6d2c075083f448a02</hash>
+         <hash>b6e8cb0f047995404cf7e96f8bc761c57aff76cfd7200a99fef96213a5a0bf8b</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.h</file>
-         <hash>1f2434a825130fc6cc9e41d0ebe05f6b7c6a068da1c957af468a9119e735938d</hash>
+         <hash>6283c23cc30a6122cc08479bce430c002c938eee048d496a7786262abb4e37a7</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.c</file>
-         <hash>5323f6b753234aed268d0ab4c20ef6712cbc29fe908372f3472f208933c894f5</hash>
+         <hash>778eba04cf340e184387d1a9707044cb14eee9aec351dd35f6ad5c1614d5e54c</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\traps.c</file>
-         <hash>8b97480c3ceda1a858f9b26a5380b6a8bf8037f83d454c043fbbf2eec3f4d987</hash>
+         <hash>40d5b1cfe102cbcdd78325e74dd75eb79bb4c5da82eef8f6fbadc3c89d3721e9</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\traps.h</file>
-         <hash>b2b52573e8711a9800785445ecf4d1d43a9bd81e4917c0db48a80efd67e65a31</hash>
+         <hash>abe011806ede9de1d58ed3ccf79756053c772ac000ea611dcce4f8469a8c9e5e</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\interrupt_manager.c</file>
-         <hash>81b8a8a9c2fc6e165009112f1a52266b8755087a5263af25a41ceb04d86ad612</hash>
+         <hash>118362dadc165eb2c9b19985a096d19a7b5177116f4af79852bc2ce823e1b02b</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\watchdog.h</file>
-         <hash>53cad7d24945e492b80d70cc87bafd1005afd23f3a5c929480f7a9d22aebf0c9</hash>
+         <hash>e6de2c7d6ccdef186d96ed95a161ca339b4d4a14b8fba4c9dcdbc2f98c2a29d4</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\reset_types.h</file>
-         <hash>be59b82e365d6829d21c763fc3ada5f1edc0d2ddcf631dffe68b05012a7eab11</hash>
+         <hash>e9d95ebcc6dadb3c2eeba06c37416944a9fe93cdea154c2b5eacb8654b3fc35a</hash>
       </entry>
    </generatedFileHashHistoryMap>
 </config>

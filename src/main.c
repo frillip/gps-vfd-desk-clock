@@ -1,69 +1,33 @@
-#include <stdio.h>
+#include"mcc_generated_files/system.h"
+#include"mcc_generated_files/clock.h"
+#include"mcc_generated_files/pin_manager.h"
+#include"mcc_generated_files/interrupt_manager.h"
+#include"mcc_generated_files/i2c1.h"
+#include"mcc_generated_files/spi2.h"
+#include"mcc_generated_files/uart1.h"
+#include"mcc_generated_files/uart2.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
-#include "mcc_generated_files/mcc.h"
-#include "tubes.h"
-#include "gps.h"
-#include "gps_pps.h"
+#include <xc.h>
+
+#include "freq.h"
+#include "gnss.h"
+#include "gnss_pps.h"
+#include "pcf8563.h"
+#include "rtc.h"
 #include "pic_pps.h"
-#include "pdo.h"
 #include "scheduler.h"
-#include "ds1307.h"
-
-//#define DEBUG_ENABLED
-#define LOCAL_TIME 1
-#define TZ_OFFSET 0
-#define DST_ENABLED 1
-#define DST_OFFSET 3600
-
-extern bool ubx_waiting;
-
-extern bool rmc_waiting;
-uint8_t timezone = 1;
-
-extern uint16_t ic1_val;
-extern uint16_t ic1_val_old;
-extern uint16_t ic2_val;
-extern uint16_t ic2_val_old;
-extern uint32_t pps_count;
-extern uint32_t pps_count_diff;
-extern uint32_t pps_count_old;
-extern uint16_t pps_seq_count;
-
-int32_t accumulated_clocks = 0;
-time_t accumulation_start = 0;
-time_t accumulation_delta = 0;
-
-extern uint16_t ic3_val;
-extern uint16_t ic3_val_old;
-extern uint16_t ic4_val;
-extern uint16_t ic4_val_old;
-extern uint32_t oc_count;
-extern int32_t oc_offset;
-extern uint32_t oc_count_diff;
-extern uint32_t oc_count_old;
-
-uint16_t pdo_adc = 0;
-float pdo_mv = 0;
-float pps_offset_ns = 0;
-
-extern bool oc_adjust_in_progress;
-extern bool pps_sync;
-extern bool pps_done;
-extern bool oc_event;
-
-bool gps_calendar_sync = 0;
-int minute = 0;
-int old_minute = 0;
-extern bool gps_fix;
+#include "sht30.h"
+#include "tubes.h"
+#include "ublox_ubx.h"
 
 bool print_data = 0;
-bool print_ubx = 0;
 bool disable_manual_print = 0;
-
-bool rtc_sync = 0;
+uint8_t resync_interval = 30;
 
 extern bool scheduler_sync;
 extern bool scheduler_adjust_in_progress;
@@ -72,117 +36,101 @@ extern uint8_t t10ms0;
 extern uint8_t t100ms0;
 extern uint8_t t100ms1;
 
-uint8_t bcd2bin(uint8_t val);
-uint8_t bin2bcd(uint8_t val);
-void incr_clock(void);
-void set_latch_cycles(uint32_t);
+// time_t to store UTC, GNSS, RTC and local time
+time_t utc;
+time_t local;
+
+int32_t tz_offset = 0;
+
+uint32_t fosc_freq = FCYCLE;
+
+extern bool oc_adjust_in_progress;
+
+extern uint32_t pps_seq_count;
+
+extern int32_t accumulated_clocks;
+extern time_t accumulation_start;
+extern time_t accumulation_delta;
+
+extern int32_t oc_offset;
+extern bool oc_event;
+
+extern bool pps_sync;
+extern bool gnss_fix;
+
+extern bool display_blinking;
 
 int main(void)
 {
     // initialize the device
     PIN_MANAGER_Initialize();
-    DELAY_milliseconds(50);
-    // STSEL 1; IREN disabled; PDSEL 8N; UARTEN enabled; RTSMD disabled; USIDL disabled; WAKE disabled; ABAUD disabled; LPBACK disabled; BRGH enabled; URXINV disabled; UEN TX_RX; 
-    // Data Bits = 8; Parity = None; Stop Bits = 1;
-    U1MODE = (0x8008 & ~(1<<15));  // disabling UARTEN bit
-    // UTXISEL0 TX_ONE_CHAR; UTXINV disabled; OERR NO_ERROR_cleared; URXISEL RX_ONE_CHAR; UTXBRK COMPLETED; UTXEN disabled; ADDEN disabled; 
-    U1STA = 0x00;
-    // BaudRate = 115200; Frequency = 3685000 Hz; BRG 7; 
-    U1BRG = 0x07;
-    
-    U1MODEbits.UARTEN = 1;   // enabling UART ON bit
-    U1STAbits.UTXEN = 1;
-    printf("\033[2J\033[1;1H"); // Clear the terminal window
-    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
-    printf("Running on FRC, switching to Rb\r\n");
-    printf("Waiting for Rb lock");
-    
-    SPI2_Initialize();
-    display_blink_start(3685000UL);
-    // while(!OSC_READY_GetValue()); // No Rb on this clock
-    DELAY_milliseconds(20);
-    display_blink_stop();
-    
     CLOCK_Initialize();
     INTERRUPT_Initialize();
-    UART1_Initialize();
-    pic_pps_init();
-    gps_pps_init();
     UART2_Initialize();
     I2C1_Initialize();
     SPI2_Initialize();
-    pdo_init();
+    UART1_Initialize();
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
-    DELAY_milliseconds(100); // Wait for things to wake up
-    printf(" locked!\r\n\r\n");
     
-    CN_SetInterruptHandler(incr_clock);
-    UART2_SetRxInterruptHandler(rx_gps);
+    gnss_pps_init();
+    pic_pps_init();
+    UART2_SetRxInterruptHandler(rx_gnss);
     scheduler_init();
-    ADC1_ChannelSelect(PDO);
-    
     display_init();
 
-    // time_t to store UTC, GPS and RTC time
-    time_t utc;
-    time_t gps;
-    time_t rtc;
-    time_t local;
-
-    // Read RTC for an estimate of current time and display it
-    rtc = DS1307_read();
-    utc = rtc;
-#ifdef DEBUG_ENABLED
-    display_mmss(&utc);
-#else
-    if(LOCAL_TIME)
-    {
-        local = utc;
-        if(DST_ENABLED && isDST(&local)) local += DST_OFFSET;
-        local += TZ_OFFSET;
-        display_time(&local);
-    }
-    else display_time(&utc);
-#endif
+    bool startup = 1;
     
     // ISO8601 string buffer
     char buf[32] = {0};
     
+    printf("\033[2J\033[1;1H"); // Clear the terminal window
+    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
+    printf("Running @ 80MHz on 10.000000MHz XTAL\r\n");
+    DELAY_microseconds(10000);
+    // sht30_start_periodic_meas();
+    DELAY_microseconds(10000);
+    
+    set_from_rtc_calendar();
+    reset_sync();
+    reset_pps_stats();
+
+    local = utc + tz_offset;
+    if(isDST(&utc)) local = local+3600; 
+    if(DST_SW_GetValue()) display_time(&local);
+    else display_mmss(&utc);
+    display_latch();
+    
+    uint8_t minute = 0;
+    uint8_t old_minute = 0;
+    
     while (1)
     {
-        // Every 1ms
         if(t1ms0)
         {
             t1ms0=0;
             // Have we had an OC event?
             if(oc_event)
             {
-                // Calculate our PPS and OC stats
-                pps_count = (((uint32_t)ic2_val)<<16) + ic1_val; // Raw timer
-                pps_count_diff = pps_count-pps_count_old; // Difference from last
-                pps_count_old = pps_count; // Store the new value as old
-                accumulated_clocks += pps_count_diff;
-                while(accumulated_clocks>30000000) accumulated_clocks -= 40000000;
-                accumulation_delta = utc - accumulation_start;
+                // Calculate some PPS statistics
+                calculate_pps_stats();
 
-                oc_count = (((uint32_t)ic4_val)<<16) + ic3_val; // Raw timer
-                oc_count_diff = oc_count - oc_count_old; // Difference from last
-                oc_offset = pps_count-oc_count; // Calculate the offset between PPS and OC
-                oc_count_old = oc_count; // Store the new value as old
-                
-                // Do we need to resync?
-                if((pps_seq_count>10)&&((oc_offset<-132)||(oc_offset>-92)))
+                // Calculate some OC statistics
+                calculate_oc_stats();
+                if(accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE || accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE)
                 {
-                    pps_sync = 0;
-                    scheduler_sync = 0;
-                    gps_calendar_sync = 0;
-                    rtc_sync = 0;
+                    if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN && scheduler_sync)||accumulated_clocks > FCYCLE_ACC_RESET_POSITIVE || accumulated_clocks < FCYCLE_ACC_RESET_NEGATIVE)
+                    {
+                        fosc_freq = calculate_fosc_freq(fosc_freq);
+                        printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+                        printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+                        reset_sync();
+                        reset_pps_stats();
+                    }
                 }
-                // Only sync if required and if we get 40000000 cycles
-                if(!pps_sync && pps_count_diff == 40000000)
+                if(!pps_sync && pps_seq_count>5)
                 {
-                    set_latch_cycles(40000000 + oc_offset+107);
+                    set_latch_cycles(fosc_freq + oc_offset);
                     oc_adjust_in_progress = 1;
                     if(!accumulation_start)
                     {
@@ -190,8 +138,14 @@ int main(void)
                         accumulated_clocks = 0;
                     }
                 }
-
-                // Print resulting time to serial
+                
+                //// sht30_read_data();
+                
+                // Clear window if we're in debug mode
+#ifdef __DEBUG
+                print_clear_window();
+#endif
+                // Print IS08601 timestamp to serial
                 struct tm *utc_oc;
                 utc_oc = gmtime(&utc);
                 strftime(buf, 32, "UTC: %Y-%m-%dT%H:%M:%SZ", utc_oc);
@@ -203,23 +157,51 @@ int main(void)
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
-#ifdef DEBUG_ENABLED
+#ifdef __DEBUG
                 print_data = 1;
 #endif
                 oc_event = 0;
             }
         }
-        // Every 10ms
+        
         if(t10ms0)
         {
             t10ms0=0;
-            
-            if(ubx_waiting)
+            _LATB7 = !TZ_BT_GetValue();
+            // Is there a new set of GNSS time data available
+            if(ubx_gnss_available())
             {
-                ubx_waiting = 0;
-                process_ubx();
-                print_ubx = 1;
+                ubx_update_gnss_time();
+                
+                // Check our time solution is valid
+                if(ubx_gnss_time_valid())
+                {
+                    //Check that UTC and GNSS time match
+                    if(!is_gnss_calendar_sync(utc))
+                    {
+                        // Trigger a re-sync if not
+                        reset_gnss_calendar_sync();
+                        reset_rtc_calendar_sync();
+                        sync_gnss_calendar();
+                        PCF8563_write(utc);
+                        // Update our RTC now we have a GNSS time
+                        if(!is_rtc_calendar_sync())
+                        {
+                            printf("Writing RTC\r\n");
+                            PCF8563_write(utc);
+                            sync_rtc_calendar(utc);
+                        }
+                    }
+                }
+                else
+                {
+                    reset_sync();
+                    reset_pps_stats();
+                }
             }
+            
+            // Is there new time mark data available
+            if(ubx_timemark_waiting()) ubx_update_timemark();
             
             // Check for any bytes on UART1
             while(U1STAbits.URXDA)
@@ -232,135 +214,64 @@ int main(void)
                     // Disable spamming in case of cats on keyboards
                     disable_manual_print = 1;
                 }
+                if(c==0x72 && !resync_interval)
+                {
+                    resync_interval = 30;
+                    fosc_freq = calculate_fosc_freq(fosc_freq);
+                    printf("\r\nManual resync\r\n");
+                    printf("New Fosc freq: %luHz\r\n", fosc_freq);
+                    printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+                    reset_sync();
+                    reset_pps_stats();
+                }
             }
+
             // Print some statistics if required
             if(print_data)
             {
-#ifdef DEBUG_ENABLED
-                    printf("\033[2J\033[1;1H"); // Clear the terminal window
-#endif
-                // Cycles between current and last PPS, and the OC offset from this
-                printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
-                // Raw timer values for both PPS and OC
-                printf("PPS C:%lu OC C:%li\r\n", pps_count, oc_count);
-                // PPS sync status
-                printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
-                // Scheduler sync status
-                printf("SCH S: %i GPS FIX: %i\r\n", scheduler_sync, gps_fix);
-                // PD output information
-                printf("mV: %.0f ns: %.0f\r\n",pdo_mv, pps_offset_ns);
-                printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-                if(print_ubx)
-                {
-                    print_ubx_data();
-                    print_ubx = 0;
-                }
-                else
-                {
-                    printf("No new UBX time mark data\r\n");
-                }
-                
+                print_stats();
+                print_ubx_tim_tm2_data();
+                print_ubx_nav_timeutc_data();
+                print_ubx_nav_clock_data();
+                print_ubx_nav_status_data();
+                //print_sht30_data();
                 printf("\r\n");
                 print_data = 0;
             }
         }
-        // Every 100ms
+        
         if(t100ms0==1)
         {
             t100ms0 = 0;
-            STATUS_LED_Toggle(); // Toggle the LED for no reason
-            // Do we have a GPS message waiting?
-            if(rmc_waiting)
-            {
-                rmc_waiting=0;
-                // Process our waiting GNRMC message into our time_t
-                gps = process_rmc();
-
-                // Do we have a valid time from GPS
-                if(gps_fix)
-                {
-                    // Check if we've still got the correct time
-                    if(utc!=gps)
-                    {
-                        // Trigger a re-sync if not
-                        gps_calendar_sync = 0;
-                        rtc_sync = 0;
-                    }
-
-                    //If we're not sync'd
-                    if(!gps_calendar_sync)
-                    {
-                        // Copy GPS time into our UTC calendar
-                        utc = gps;
-                        // Print resulting time to serial
-                        char buf[32] = {0};
-                        struct tm *utc_time;
-                        utc_time = gmtime(&utc);
-                        strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
-                        printf("GPS calendar sync\r\nTime is now: ");
-                        printf(buf);
-                        printf("\r\n");
-
-                        // Update our RTC now we have a GPS time
-                        if(!rtc_sync)
-                        {
-                            printf("Writing RTC\r\n");
-                            rtc_sync = DS1307_write(utc);
-                        }
-                        // Our internal calendar is now sync'd with GPS
-                        gps_calendar_sync = 1;
-                    }
-                }
-            }
+            STATUS_LED_Toggle();
         }
-        // Every 1000ms, but at a 900ms offset
+        
         if(t100ms1==9)
         {
-            t100ms1 = -1; // Reset to -1 to trigger every 1s at 900ms offset
-            // Increment for next PPS and load into display
+            t100ms1 = -1;
             utc++;
-#ifdef DEBUG_ENABLED
-            display_mmss(&utc);
-#else
-            if(LOCAL_TIME)
-            {
-                local = utc;
-                if(DST_ENABLED && isDST(&local)) local += DST_OFFSET;
-                local += TZ_OFFSET;
-                display_time(&local);
-            }
-            else display_time(&utc);
-#endif
+            
+            local = utc + tz_offset;
+            if(isDST(&utc)) local = local+3600; 
+            
+            if(DST_SW_GetValue()) display_time(&local);
+            else display_mmss(&utc);
+            //display_latch();
+
+            //// sht30_start_meas();
+            // sht30_read_periodic_data();
             // Re-enable manual printing
             disable_manual_print = 0;
+            if(resync_interval) resync_interval--;
+            
+            //LATCH_GPIO_Toggle();
+            //BLANK_Toggle();
         }
     }
     return 1; 
 }
 
-void incr_clock(void)
+void print_clear_window(void)
 {
-    if(PPS_GetValue())
-    {
-        // Wait for at least 2us for the capacitor to stop charging
-        DELAY_microseconds(2);
-        // Trigger a conversion
-        AD1CON1bits.SAMP=1;
-        // Wait a bit more...
-        DELAY_microseconds(2);
-        // Stop sampling and convert
-        AD1CON1bits.SAMP=0;
-        // Wait for conversion to finish
-        while(!AD1CON1bits.DONE);
-        // Read ADC
-        pdo_adc = ADC1BUF0;
-        // Convert reading to mV
-        pdo_mv = pdo_calculate_mv(pdo_adc);
-        // Convert from mV to nanoseconds
-        pps_offset_ns =  pdo_calculate_ns(pdo_mv);
-    }
+    printf("\033[2J\033[1;1H"); // Clear the terminal window
 }
-
-/**
- End of File
-*/

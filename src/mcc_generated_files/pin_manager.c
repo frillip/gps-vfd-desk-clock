@@ -16,7 +16,7 @@
     This source file provides implementations for PIN MANAGER.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP64GP504
+        Device            :  dsPIC33EP256GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB 	          :  MPLAB X v5.45
@@ -67,14 +67,14 @@ void PIN_MANAGER_Initialize (void)
      * Setting the Output Latch SFR(s)
      ***************************************************************************/
     LATA = 0x0000;
-    LATB = 0x0008;
+    LATB = 0x0808;
     LATC = 0x0080;
 
     /****************************************************************************
      * Setting the GPIO Direction SFR(s)
      ***************************************************************************/
     TRISA = 0x0397;
-    TRISB = 0xE3F7;
+    TRISB = 0xE377;
     TRISC = 0x017F;
 
     /****************************************************************************
@@ -97,35 +97,34 @@ void PIN_MANAGER_Initialize (void)
     /****************************************************************************
      * Setting the Analog/Digital Configuration SFR(s)
      ***************************************************************************/
-    ANSELA = 0x0002;
+    ANSELA = 0x0012;
     ANSELB = 0x0000;
-    ANSELC = 0x0000;
+    ANSELC = 0x0007;
     
     /****************************************************************************
      * Set the PPS
      ***************************************************************************/
     __builtin_write_OSCCONL(OSCCON & 0xbf); // unlock PPS
 
-    RPINR18bits.U1RXR = 0x0036;    //RC6->UART1:U1RX
-    RPINR19bits.U2RXR = 0x0022;    //RB2->UART2:U2RX
-    RPINR22bits.SCK2R = 0x0038;    //RC8->SPI2:SCK2OUT
-    RPINR22bits.SCK2R = 0x0038;    //RC8->SPI2:SCK2OUT
-    RPINR7bits.IC1R = 0x0024;    //RB4->IC1:IC1
-    RPINR7bits.IC2R = 0x0024;    //RB4->IC2:IC2
+    RPOR6bits.RP57R = 0x0008;   //RC9->SPI2:SDO2
+    RPINR18bits.U1RXR = 0x0036; //RC6->UART1:U1RX
+    RPOR0bits.RP35R = 0x0003;   //RB3->UART2:U2TX
+    RPINR19bits.U2RXR = 0x0022; //RB2->UART2:U2RX
+    RPINR22bits.SCK2R = 0x0038; //RC8->SPI2:SCK2OUT
+    RPOR5bits.RP55R = 0x0001;   //RC7->UART1:U1TX
+    RPOR6bits.RP56R = 0x0009;   //RC8->SPI2:SCK2OUT
+    RPINR7bits.IC1R = 0x0018;   //RA8->IC1:IC1
+    RPINR7bits.IC2R = 0x0018;   //RA8->IC2:IC2
     RPINR8bits.IC3R = 0x002A;    //RB10->IC3:IC3
-    RPINR8bits.IC4R = 0x002A;    //RB10->IC4:IC4
-    RPOR0bits.RP35R = 0x0003;    //RB3->UART2:U2TX
+    RPINR8bits.IC4R = 0x002A;    //RB10->IC3:IC3
     RPOR4bits.RP42R = 0x0011;    //RB10->OC2:OC2
-    RPOR5bits.RP55R = 0x0001;    //RC7->UART1:U1TX
-    RPOR6bits.RP56R = 0x0009;    //RC8->SPI2:SCK2OUT
-    RPOR6bits.RP57R = 0x0008;    //RC9->SPI2:SDO2
 
     __builtin_write_OSCCONL(OSCCON | 0x40); // lock PPS
     
     /****************************************************************************
      * Interrupt On Change: any
      ***************************************************************************/
-    CNENBbits.CNIEB4 = 1;    //Pin : RB4
+    CNENAbits.CNIEA8 = 1;    //Pin : RA8
     
     /* Initialize IOC Interrupt Handler*/
     CN_SetInterruptHandler(&CN_CallBack);

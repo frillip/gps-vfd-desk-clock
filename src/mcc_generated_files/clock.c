@@ -14,7 +14,7 @@
     This header file provides implementations for driver APIs for all modules selected in the GUI.
     Generation Information :
         Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.170.0
-        Device            :  dsPIC33EP64GP504
+        Device            :  dsPIC33EP256GP504
     The generated drivers are tested against the following:
         Compiler          :  XC16 v1.61
         MPLAB             :  MPLAB X v5.45
@@ -48,14 +48,14 @@
 
 void CLOCK_Initialize(void)
 {
-    // FRCDIV FRC/2; PLLPRE 2; DOZE 1:8; PLLPOST 1:2; DOZEN disabled; ROI disabled; 
-    CLKDIV = 0x3100;
+    // FRCDIV FRC/2; PLLPRE 2; DOZE 1:8; PLLPOST 1:4; DOZEN disabled; ROI disabled; 
+    CLKDIV = 0x3140;
     // TUN Center frequency; 
     OSCTUN = 0x00;
-    // ROON enabled; ROSEL FOSC; RODIV 0; ROSSLP disabled; 
-    REFOCON = 0x8000;
-    // PLLDIV 30; 
-    PLLFBD = 0x1E;
+    // ROON disabled; ROSEL FOSC; RODIV 0; ROSSLP disabled; 
+    REFOCON = 0x00;
+    // PLLDIV 62; 
+    PLLFBD = 0x3E;
     // AD1MD enabled; T3MD enabled; T4MD enabled; T1MD enabled; U2MD enabled; T2MD enabled; U1MD enabled; SPI2MD enabled; SPI1MD enabled; C1MD enabled; T5MD enabled; I2C1MD enabled; 
     PMD1 = 0x00;
     // IC4MD enabled; IC3MD enabled; OC1MD enabled; IC2MD enabled; OC2MD enabled; IC1MD enabled; OC3MD enabled; OC4MD enabled; 
