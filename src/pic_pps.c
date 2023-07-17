@@ -1,5 +1,4 @@
 #include "pic_pps.h"
-#include "scheduler.h"
 
 uint16_t ic3_val = 0;
 uint16_t ic3_val_old = 0;
@@ -12,6 +11,7 @@ uint32_t oc_count_old = 0;
 bool oc_event = 0;
 
 bool oc_adjust_in_progress = 0;
+bool oc_adjust_fudge = 0;
 bool pps_sync = 0;
 bool pps_done = 0;
 
@@ -19,11 +19,28 @@ extern bool print_data;
 extern bool rmc_waiting;
 extern bool scheduler_sync;
 
+extern uint32_t fosc_freq;
+
+extern uint32_t pps_count;
+extern uint32_t pps_count_diff;
+extern int32_t accumulated_clocks;
+extern time_t accumulation_delta;
+
+extern bool gnss_fix;
+
+extern bool pps_sync;
+extern bool scheduler_sync;
+extern bool gnss_calendar_sync;
+extern bool rtc_sync;
+
+//extern float pdo_mv;
+//extern float pps_offset_ns;
+
 void pic_pps_init(void)
 {
     IC4_Initialize();
     IC3_Initialize();
-    set_latch_cycles(40000000UL); // Set up our R & RS registers for OC1 & OC2
+    set_latch_cycles(fosc_freq); // Set up our R & RS registers for OC1 & OC2
     OC2_Initialize();
     OC1_Initialize();
 }
@@ -68,6 +85,57 @@ void IC4_Initialize (void)
     IPC9bits.IC4IP = 1; // Set interrupt priority
 }
 
+// Adjusts the trigger registers for OC1 and OC2
+void set_latch_cycles(uint32_t cycles)
+{
+    // Split into two 16 bit values for OC1 and OC2
+    uint16_t msb = ((cycles - 1) >> 16) & 0xFFFF;
+    uint16_t lsb = (cycles - 1) & 0xFFFF;
+    if(!msb)
+    {
+        msb = 1; // Make sure we have SOMETHING in MSB
+        oc_adjust_fudge = 1; // Set the fudge flag so we can correct
+    }
+    OC1R = lsb - 50; // - 5000; // Latch pulse width is 5000 cycles
+    OC1RS = lsb;
+    OC2R = msb;// -1; // Investigate Latch/Blank/GPIO weirdness --- dodgy soldering. CHECK YOUR JOINTS, PEOPLE!!
+    OC2RS = msb;
+}
+
+void calculate_oc_stats(void)
+{
+    oc_count = (((uint32_t)ic4_val)<<16) + ic3_val; // Raw timer
+    oc_count_diff = oc_count - oc_count_old; // Difference from last
+    oc_offset = pps_count-oc_count; // Calculate the offset between PPS and OC
+    oc_count_old = oc_count; // Store the new value as old
+}
+
+void print_stats(void)
+{
+    printf("\r\n=== Clock and PPS stats ===\r\n");
+    // Cycles between current and last PPS, and the OC offset from this
+    float fosc_freq_f = ((float)fosc_freq * 10)/FCYCLE;
+    printf("Crystal freq: %.06fMHz\r\n", fosc_freq_f);
+    printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
+    // Raw timer values for both PPS and OC
+    printf("PPS C:%lu OC C:%li\r\n", pps_count, oc_count);
+    // PPS sync status
+    printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
+    // Scheduler sync status
+    printf("SCH S: %i GNSS FIX: %i\r\n", scheduler_sync, gnss_fix);
+    // PD output information
+    //printf("mV: %.0f ns: %.0f\r\n",pdo_mv, pps_offset_ns);
+    printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+}
+
+void reset_sync(void)
+{
+    pps_sync = 0;
+    scheduler_sync = 0;
+    gnss_calendar_sync = 0;
+    rtc_sync = 0;
+}
+
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
 {	
     if(IFS2bits.IC3IF)
@@ -79,13 +147,29 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         }
         if(oc_adjust_in_progress)
         {
-            set_latch_cycles(40000000); // Reset our OC to 1Hz
+            // Protect against bullshit maths
+            if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
+            if(oc_adjust_fudge)
+            {
+                set_latch_cycles(fosc_freq + oc_offset); // Correct our fudge
+            }
+            else
+            {
+                set_latch_cycles(fosc_freq); // Reset our OC to 1Hz
+                pps_sync = 1; // Indicate we are now sync'd with PPS
+            }
             oc_adjust_in_progress = 0; // Clear the adjustment flag
-            pps_sync = 1; // Indicate we are now sync'd with PPS
-            print_data = 1; // Print stats after resync
+        }
+        else if(oc_adjust_fudge)
+        {
+            // Protect against bullshit maths
+            if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
+            set_latch_cycles(fosc_freq); // Reset our OC to 1Hz
+            oc_adjust_fudge = 0;
+            pps_sync = 1; // Indicate we are now sync'd with PPS 
         }
         oc_event = 1; // Flag we've just had an OC event
-        rmc_waiting = 0; // Invalidate any GPS data that's waiting
+        rmc_waiting = 0; // Invalidate any GNSS data that's waiting
         ic3_val = IC3BUF; // Read the IC3 timer
         IFS2bits.IC3IF = 0;
     }
@@ -98,16 +182,4 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC4Interrupt( void )
         ic4_val = IC4BUF; // Read the IC4 timer
         IFS2bits.IC4IF = 0;
     }
-}
-
-// Adjusts the trigger registers for OC1 and OC2
-void set_latch_cycles(uint32_t cycles)
-{
-    // Split into two 16 bit values for OC1 and OC2
-    uint16_t msb = ((cycles - 1) >> 16) & 0xFFFF;
-    uint16_t lsb = (cycles - 1) & 0xFFFF;
-    OC1R = lsb - 3; // Latch pulse width is 3 cycles
-    OC1RS = lsb;
-    OC2R = msb;
-    OC2RS = msb;
 }
