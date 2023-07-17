@@ -1,12 +1,12 @@
 /* 
- * File:   gps_pps.h
+ * File:   gnss_pps.h
  * Author: Frillip
  *
  * Created on October 23, 2021, 7:36 PM
  */
 
-#ifndef GPS_PPS_H
-#define	GPS_PPS_H
+#ifndef GNSS_PPS_H
+#define	GNSS_PPS_H
 
 #ifdef	__cplusplus
 extern "C" {
@@ -14,15 +14,21 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <time.h>
 #include <xc.h>
     
-void gps_pps_init(void);
+#include "freq.h"
+
+void gnss_pps_init(void);
 void IC1_Initialize (void);
 void IC2_Initialize (void);
+void calculate_pps_stats(void);
+void reset_pps_stats(void);
+uint32_t calculate_fosc_freq(uint32_t fosc_freq);
 
 #ifdef	__cplusplus
 }
 #endif
 
-#endif	/* GPS_PPS_H */
+#endif	/* GNSS_PPS_H */
 

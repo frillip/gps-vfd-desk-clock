@@ -1,12 +1,12 @@
 /* 
- * File:   gps.h
+ * File:   gnss.h
  * Author: Frillip
  *
  * Created on October 2, 2021, 9:14 PM
  */
 
-#ifndef GPS_H
-#define	GPS_H
+#ifndef GNSS_H
+#define	GNSS_H
 
 #ifdef	__cplusplus
 extern "C" {
@@ -16,14 +16,22 @@ extern "C" {
 #include <stdbool.h>
 #include <time.h>
     
-void rx_gps(void);
-void process_ubx(void);
-void print_ubx_data(void);
+#define GNSS_BUFFER_SIZE 100
+#define CHECK_BUFFER_SIZE 6
+    
+void rx_gnss(void);
+
+void sync_gnss_calendar(void);
+bool is_gnss_calendar_sync(time_t utc);
+void reset_gnss_calendar_sync(void);
+
 time_t process_rmc(void);
+
+enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_GNRMC};
 
 #ifdef	__cplusplus
 }
 #endif
 
-#endif	/* GPS_H */
+#endif	/* GNSS_H */
 
