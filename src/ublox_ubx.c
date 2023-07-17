@@ -5,7 +5,7 @@
 #include <time.h>
 #include "mcc_generated_files/uart2.h"
 #include "mcc_generated_files/uart1.h"
-#include "gps.h"
+#include "gnss.h"
 #include "ublox_ubx.h"
 
 extern time_t gnss;
