@@ -25,6 +25,12 @@
 #include "tubes.h"
 #include "ublox_ubx.h"
 
+#define BEEP_MINOR_INTERVAL 15
+#define MAJOR_BEEP_ON       5
+#define MAJOR_BEEP_OFF      4
+#define MINOR_BEEP_ON       2
+#define MINOR_BEEP_OFF      1
+
 bool print_data = 0;
 bool disable_manual_print = 0;
 uint8_t resync_interval = 30;
@@ -101,8 +107,10 @@ int main(void)
     else display_mmss(&utc);
     display_latch();
     
+    uint8_t second = 0;
     uint8_t minute = 0;
     uint8_t old_minute = 0;
+    uint8_t beep_state = 0;
     
     while (1)
     {
@@ -153,9 +161,19 @@ int main(void)
                 printf("\r\n");
                 
                 // Every minute, print some statistics
-                minute =  utc_oc->tm_min;
+                second = utc_oc->tm_sec;
+                minute = utc_oc->tm_min;
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
+                
+                if(scheduler_sync && !second)
+                {
+                    if(minute%BEEP_MINOR_INTERVAL==0 || !minute)
+                    {
+                        if(!minute) beep_state = MAJOR_BEEP_ON;
+                        else beep_state = MINOR_BEEP_ON;
+                    }
+                }
                 
 #ifdef __DEBUG
                 print_data = 1;
@@ -167,7 +185,10 @@ int main(void)
         if(t10ms0)
         {
             t10ms0=0;
-            _LATB7 = !TZ_BT_GetValue();
+            
+            // Don't interfere with scheduled beeping!
+            if(!beep_state) _LATB7 = !TZ_BT_GetValue();
+            
             // Is there a new set of GNSS time data available
             if(ubx_gnss_available())
             {
@@ -244,6 +265,22 @@ int main(void)
         {
             t100ms0 = 0;
             STATUS_LED_Toggle();
+            
+            // Check if we should be making noise
+            if(beep_state)
+            {
+                // Only make noise if we're not already making noise
+                if(TZ_BT_GetValue())
+                {
+                    if(beep_state==MAJOR_BEEP_ON) _LATB7 = 1;
+                    if(beep_state==MAJOR_BEEP_OFF) _LATB7 = 0;
+                    if(beep_state==MINOR_BEEP_ON) _LATB7 = 1;
+                    if(beep_state==MINOR_BEEP_OFF) _LATB7 = 0;
+                }
+                
+                // Decrement the noisy variable
+                beep_state--;
+            }
         }
         
         if(t100ms1==9)
