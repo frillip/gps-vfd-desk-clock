@@ -6,6 +6,8 @@ uint64_t segments[] = {0,0,0,0};
 bool dash_display = 0;
 bool display_blinking = 0;
 
+extern bool pps_sync;
+
 #define SPI2_DMA_BUFFER_LENGTH 4
 uint16_t spi2_dma_buffer[SPI2_DMA_BUFFER_LENGTH];
 
@@ -76,21 +78,22 @@ void display_count(uint16_t count)
     segments[2] = characters[digits[2]];
     segments[1] = characters[digits[1]];
     segments[0] = characters[digits[0]]; // Determine the segments needed for each digit
+    
     // OR the segments into the buffer at the required offsets
     driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
-    /*
+    
     // Toggle both the dots/dashes based on if the counter is even or odd
     if(!(count&0x01))
     {
-        driver_buffer |= 0x10000000;
-        driver_buffer |= 0x40000000;
+        driver_buffer |= 0x0800;
+        driver_buffer |= 0x80000000;
     }
     else
     {
-        driver_buffer |= 0x20000000;
-        driver_buffer |= 0x80000000;
+        driver_buffer |= 0x1000;
+        driver_buffer |= 0x100000000;
     }
-    */
+    
     display_buffer(driver_buffer); // Load buffer into the driver
 }
 
@@ -111,23 +114,22 @@ void display_time(const time_t *tod)
     segments[2] = characters[digits[2]];
     segments[1] = characters[digits[1]];
     segments[0] = characters[digits[0]]; // Determine the segments needed for each digit
+    
     // OR the segments into the buffer at the required offsets
     driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
-    /*
+
     // Toggle the middle dots/dashes based on if the seconds are even or odd
-    if(disp_time->tm_sec%2)
+    if(!(disp_time->tm_sec%2))
     {
-        driver_buffer |= 0x10000000;
+        driver_buffer |= 0x1800;
     }
-    else
-    {
-        driver_buffer |= 0x20000000;
-    }
+
     // Show the left hand dot if we have PPS sync
     if(pps_sync) driver_buffer |= 0x80000000;
+
     // Placeholder for left hand dash condition
-    //if(somethingselse) driver_buffer |= 0x40000000;
-    */
+    //if(somethingselse) driver_buffer |= 0x100000000;
+
     display_buffer(driver_buffer); // Load buffer into the driver
 }
 
@@ -148,23 +150,22 @@ void display_mmss(const time_t *tod)
     segments[2] = characters[digits[2]];
     segments[1] = characters[digits[1]];
     segments[0] = characters[digits[0]]; // Determine the segments needed for each digit
+    
     // OR the segments into the buffer at the required offsets
     driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
-    /*
+
     // Toggle the middle dots/dashes based on if the seconds are even or odd
-    if(disp_time->tm_sec%2)
+    if(!(disp_time->tm_sec%2))
     {
-        driver_buffer |= 0x10000000;
+        driver_buffer |= 0x1800;
     }
-    else
-    {
-        driver_buffer |= 0x20000000;
-    }
+
     // Show the left hand dot if we have PPS sync
     if(pps_sync) driver_buffer |= 0x80000000;
+
     // Placeholder for left hand dash condition
-    //if(somethingselse) driver_buffer |= 0x40000000;
-    */
+    //if(somethingselse) driver_buffer |= 0x100000000;
+
     display_buffer(driver_buffer); // Load buffer into the driver
 }
 
