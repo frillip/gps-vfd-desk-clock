@@ -107,6 +107,9 @@ int main(void)
     else display_mmss(&utc);
     display_latch();
     
+    // Enable WDT (set to 32s timeout non-windowed mode)
+    RCONbits.SWDTEN = 1;
+    
     uint8_t second = 0;
     uint8_t minute = 0;
     uint8_t old_minute = 0;
@@ -120,6 +123,9 @@ int main(void)
             // Have we had an OC event?
             if(oc_event)
             {
+                // Clear the WDT
+                ClrWdt();
+                
                 // Calculate some PPS statistics
                 calculate_pps_stats();
 
