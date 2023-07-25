@@ -9,6 +9,8 @@
 #include "ublox_ubx.h"
 
 time_t gnss;
+extern time_t power_on_time;
+extern uint32_t total_oc_seq_count;
 
 char gnss_buffer[GNSS_BUFFER_SIZE] = {0};
 uint8_t gnss_offset = 0;
@@ -158,17 +160,12 @@ void rx_gnss(void)
 extern time_t utc;
 void sync_gnss_calendar(void)
 {
-    // Print resulting time to serial
-    char buf[32] = {0};
-    struct tm *utc_time;
-    utc_time = gmtime(&gnss);
-    strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
     printf("GNSS calendar sync\r\nTime is now: ");
-    strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", utc_time);
-    printf(buf);
+    print_iso8601_string(gnss);
     printf("\r\n");
     
     utc = gnss;
+    if(!power_on_time) power_on_time = utc - total_oc_seq_count;
     gnss_calendar_sync = 1;
 }
 
@@ -234,4 +231,13 @@ time_t process_rmc(void)
     time_t utc;
     utc = mktime(&gnss_time);
     return utc;
+}
+
+void print_iso8601_string(time_t iso)
+{
+    char buf[32] = {0}; // Allocate buffer
+    struct tm *iso_time; // Allocate buffer
+    iso_time = gmtime(&iso);
+    strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", iso_time);
+    printf(buf);
 }

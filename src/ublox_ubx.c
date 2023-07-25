@@ -182,10 +182,8 @@ void print_ubx_nav_timeutc_data(void)
     printf("\r\n=== UBX-NAV-TIMEUTC ===\r\n");
     if(print_ubx_nav_timeutc)
     {
-        char buf[32] = {0};
-        struct tm* utc_ubx = gmtime(&gnss);
-        strftime(buf, 32, "UTC: %Y-%m-%dT%H:%M:%SZ", utc_ubx);
-        printf(buf);
+        printf("UTC: ");
+        print_iso8601_string(gnss);
         printf("\r\nAcc: %luns Val: %i\r\n",ubx_nav_timeutc_accuracy_ns, ubx_nav_timeutc_valid);
     }
     else

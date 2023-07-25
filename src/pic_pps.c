@@ -9,6 +9,7 @@ int32_t oc_offset = 0;
 uint32_t oc_count_diff = 0;
 uint32_t oc_count_old = 0;
 bool oc_event = 0;
+uint32_t total_oc_seq_count = 0;
 
 bool oc_adjust_in_progress = 0;
 bool oc_adjust_fudge = 0;
@@ -25,6 +26,9 @@ extern uint32_t pps_count;
 extern uint32_t pps_count_diff;
 extern int32_t accumulated_clocks;
 extern time_t accumulation_delta;
+
+extern time_t utc;
+time_t power_on_time = 0;
 
 extern bool gnss_fix;
 
@@ -126,6 +130,21 @@ void print_stats(void)
     // PD output information
     //printf("mV: %.0f ns: %.0f\r\n",pdo_mv, pps_offset_ns);
     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+    
+    uint32_t run_time = utc - power_on_time;
+    uint16_t days = (run_time/86400);
+    run_time = run_time - ((uint32_t)days*86400);
+    uint8_t hours = (run_time/3600);
+    run_time = run_time - ((uint32_t)days*3600);
+    uint8_t minutes = ((uint16_t)run_time/60);
+    uint8_t seconds = ((uint16_t)run_time%60);
+    
+    printf("Up ");
+    if(days) printf("%u days, ",days);
+    printf("%u:%02u:%02u since ",hours,minutes,seconds);
+    print_iso8601_string(power_on_time);
+    printf("\r\n");
+    printf("OC events: %lu\r\n",total_oc_seq_count);
 }
 
 void reset_sync(void)
@@ -169,6 +188,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
             pps_sync = 1; // Indicate we are now sync'd with PPS 
         }
         oc_event = 1; // Flag we've just had an OC event
+        total_oc_seq_count++; // Increment oc event counter
         rmc_waiting = 0; // Invalidate any GNSS data that's waiting
         ic3_val = IC3BUF; // Read the IC3 timer
         IFS2bits.IC3IF = 0;

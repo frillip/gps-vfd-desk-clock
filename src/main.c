@@ -84,12 +84,7 @@ int main(void)
     UART2_SetRxInterruptHandler(rx_gnss);
     scheduler_init();
     display_init();
-
-    bool startup = 1;
-    
-    // ISO8601 string buffer
-    char buf[32] = {0};
-    
+ 
     printf("\033[2J\033[1;1H"); // Clear the terminal window
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
     printf("Running @ 80MHz on 10.000000MHz XTAL\r\n");
@@ -160,15 +155,15 @@ int main(void)
                 print_clear_window();
 #endif
                 // Print IS08601 timestamp to serial
-                struct tm *utc_oc;
-                utc_oc = gmtime(&utc);
-                strftime(buf, 32, "UTC: %Y-%m-%dT%H:%M:%SZ", utc_oc);
-                printf(buf);
+                printf("UTC: ");
+                print_iso8601_string(utc);
                 printf("\r\n");
                 
                 // Every minute, print some statistics
-                second = utc_oc->tm_sec;
-                minute = utc_oc->tm_min;
+                struct tm *utc_tm;
+                utc_tm = gmtime(&utc);
+                second = utc_tm->tm_sec;
+                minute = utc_tm->tm_min;
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
