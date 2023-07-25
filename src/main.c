@@ -241,7 +241,8 @@ int main(void)
                     // Disable spamming in case of cats on keyboards
                     disable_manual_print = 1;
                 }
-                if(c==0x72 && !resync_interval)
+                // Press 'r' for manual resync
+                else if(c==0x72 && !resync_interval)
                 {
                     resync_interval = 30;
                     fosc_freq = calculate_fosc_freq(fosc_freq);
@@ -250,6 +251,12 @@ int main(void)
                     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
                     reset_sync();
                     reset_pps_stats();
+                }
+                // Reset the entire device if we see 'R'
+                else if(c==0x52)
+                {
+                    printf("\r\nRESETTING!!!\r\n");
+                    __asm__ volatile ( "reset "); 
                 }
             }
 
