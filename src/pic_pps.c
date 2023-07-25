@@ -135,13 +135,13 @@ void print_stats(void)
     uint16_t days = (run_time/86400);
     run_time = run_time - ((uint32_t)days*86400);
     uint8_t hours = (run_time/3600);
-    run_time = run_time - ((uint32_t)days*3600);
+    run_time = run_time - ((uint32_t)hours*3600);
     uint8_t minutes = ((uint16_t)run_time/60);
     uint8_t seconds = ((uint16_t)run_time%60);
     
     printf("Up ");
     if(days) printf("%u days, ",days);
-    printf("%u:%02u:%02u since ",hours,minutes,seconds);
+    printf("%02u:%02u:%02u since ",hours,minutes,seconds);
     print_iso8601_string(power_on_time);
     printf("\r\n");
     printf("OC events: %lu\r\n",total_oc_seq_count);
