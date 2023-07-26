@@ -162,7 +162,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         // Only sync the scheduler after OC
         if(pps_sync && !scheduler_sync)
         {
-            scheduler_align(); // Align the scheduler with our OC
+            scheduler_align(fosc_freq); // Align the scheduler with our OC
         }
         if(oc_adjust_in_progress)
         {

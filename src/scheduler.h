@@ -15,9 +15,11 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include "mcc_generated_files/pin_manager.h"
+    
+#define SCHEDULER_PRECISION 4000 // (8:1 * 1000Hz) / 2 = 4000
 
 void scheduler_init(void);
-void scheduler_align(void);
+void scheduler_align(uint32_t fosc);
 
 #ifdef	__cplusplus
 }

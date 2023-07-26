@@ -33,9 +33,11 @@ void scheduler_init(void)
 
 
 // Sync the scheduler when called
-void scheduler_align()
+void scheduler_align(uint32_t fosc)
 {
-    TMR2 = 0x9C4; // Set the timer counter to expire in 500us
+    uint16_t new_tmr2_pr = (((fosc + SCHEDULER_PRECISION)>>3)/1000);
+    PR2 = new_tmr2_pr-1; // Readjust our scheduler timer
+    TMR2 = new_tmr2_pr/2; // Set the timer counter to expire in 500us
     STATUS_LED_SetHigh(); // Drive the LED high for no reason
     t1ms=0;
     t1ms0=0;
