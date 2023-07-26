@@ -20,6 +20,7 @@ extern "C" {
 #include "mcc_generated_files/uart2.h"
 #include "mcc_generated_files/uart1.h"
 #include "gnss.h"
+#include "ui.h"
     
 #define UBX_HEADER_LENGTH 6
 #define UBX_CHECKSUM_LENGTH 2

@@ -19,6 +19,7 @@ extern "C" {
 #include <time.h>
 #include "mcc_generated_files/uart2.h"
 #include "mcc_generated_files/uart1.h"
+#include "ui.h"
 #include "ublox_ubx.h"
     
 #define GNSS_BUFFER_SIZE 100
@@ -31,8 +32,6 @@ bool is_gnss_calendar_sync(time_t utc);
 void reset_gnss_calendar_sync(void);
 
 time_t process_rmc(void);
-
-void print_iso8601_string(time_t iso);
 
 enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_GNRMC};
 

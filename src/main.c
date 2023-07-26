@@ -24,6 +24,7 @@
 #include "sht30.h"
 #include "tubes.h"
 #include "ublox_ubx.h"
+#include "ui.h"
 
 #define BEEP_MINOR_INTERVAL 15
 #define BEEP_GROUP_SIZE 4

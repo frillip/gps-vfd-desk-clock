@@ -20,6 +20,7 @@ extern "C" {
     
 #include "freq.h"
 #include "scheduler.h"
+#include "ui.h"
 
 void pic_pps_init(void);
 void OC1_Initialize(void);
