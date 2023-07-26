@@ -62,8 +62,6 @@ void display_dashes(void);
 void display_blank(void);
 void display_latch(void);
 bool isDST(const time_t *tod);
-void display_blink_start(uint32_t fcy);
-void display_blink_stop(void);
 
 #ifdef	__cplusplus
 }

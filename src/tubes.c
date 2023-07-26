@@ -258,58 +258,6 @@ bool isDST(const time_t *tod)
     return dst;
 }
 
-// Set up timer 3 to blink the display every 0.5s
-void display_blink_start(uint32_t fcy)
-{
-    // TMR3 starts at 0
-    TMR3 = 0x00;
-    // Period ~0.5 s, calculated from fcy / 4
-    PR3 = (uint16_t)(fcy >> 11)-1;
-    // TCKPS 1:256; T32 16 Bit; TON enabled; TSIDL disabled; TCS FOSC/2; TGATE disabled
-    T3CON = 0x8030;
-    // Set the display blinking flag
-    display_blinking = 1;
-    // Clear T3 interrupt flag
-    IFS0bits.T3IF = false;
-    // Enable T3 interrupts
-    IEC0bits.T3IE = true;
-    // Set interrupt priority
-    IPC2bits.T3IP = 1;
-}
-
-void display_blink_stop(void)
-{
-    // Turn the timer off
-    T3CONbits.TON = 0;
-    // Set the display blinking flag
-    display_blinking = 0;
-}
-
-uint8_t t3_counter = 0;
-
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
-{
-    t3_counter++;
-    if(t3_counter==4)
-    {
-        t3_counter=0;
-        if(dash_display)
-        {
-            display_dashes();
-            display_latch();
-            dash_display = 0;
-        }
-        else
-        {
-            display_blank();
-            display_latch();
-            dash_display = 1;
-        }
-    }
-    // Clear the interrupt flag
-    IFS0bits.T3IF = false;
-}
-
 void __attribute__((__interrupt__,no_auto_psv)) _SPI2Interrupt(void)
 {
     IFS2bits.SPI2IF = 0;

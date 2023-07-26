@@ -62,8 +62,6 @@ extern bool oc_event;
 extern bool pps_sync;
 extern bool gnss_fix;
 
-extern bool display_blinking;
-
 int main(void)
 {
     // initialize the device
