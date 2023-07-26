@@ -8,6 +8,9 @@ void get_rtc_calendar(void)
 {
     //rtc = DS1307_read();
     rtc = PCF8563_read();
+    printf("RTC time is: ");
+    print_iso8601_string(rtc);
+    printf("\r\n");
 }
 
 void set_from_rtc_calendar(void)

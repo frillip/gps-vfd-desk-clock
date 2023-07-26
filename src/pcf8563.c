@@ -35,11 +35,6 @@ time_t PCF8563_read(void)
     rtc_time.tm_mday = bcd2bin(pdata_read[3]);
     rtc_time.tm_mon = bcd2bin(pdata_read[5]) - 1;
     rtc_time.tm_year = bcd2bin(pdata_read[6]) + 100;
-    char buf[32] = {0};
-    strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", &rtc_time);
-    printf("RTC time is: ");
-    printf(buf);
-    printf("\r\n");
     rtc = mktime(&rtc_time);
     return rtc;
 }

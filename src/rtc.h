@@ -19,6 +19,8 @@ extern "C" {
 //#include "ds1307.h"
 #include "pcf8563.h"
 
+#include "ui.h"
+
 void get_rtc_calendar(void);
 void set_from_rtc_calendar(void);
 void sync_rtc_calendar(time_t utc);
