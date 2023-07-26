@@ -26,10 +26,6 @@
 #include "ublox_ubx.h"
 #include "ui.h"
 
-#define BEEP_MINOR_INTERVAL 15
-#define BEEP_GROUP_SIZE 4
-#define BEEP_PAUSE_LENGTH 3
-
 bool print_data = 0;
 bool disable_manual_print = 0;
 uint8_t resync_interval = 30;
@@ -38,6 +34,7 @@ extern bool scheduler_sync;
 extern bool scheduler_adjust_in_progress;
 extern uint8_t t1ms0;
 extern uint8_t t10ms0;
+extern uint8_t t10ms1;
 extern uint8_t t100ms0;
 extern uint8_t t100ms1;
 
@@ -104,11 +101,7 @@ int main(void)
     
     uint8_t second = 0;
     uint8_t minute = 0;
-    uint8_t hour = 0;
     uint8_t old_minute = 0;
-    uint8_t beep_count = 0;
-    uint8_t beep_seq = 0;
-    uint8_t beep_pause = 0;
     
     while (1)
     {
@@ -164,23 +157,13 @@ int main(void)
                 local_tm = gmtime(&local);
                 second = local_tm->tm_sec;
                 minute = local_tm->tm_min;
-                hour = local_tm->tm_hour;
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
+                // Run the buzzer interval task on each minute
                 if(scheduler_sync && !second)
                 {
-                    if(minute%BEEP_MINOR_INTERVAL==0 || !minute)
-                    {
-                        if(!minute) 
-                        {
-                            if(!hour) beep_count = 12;
-                            else if(hour>12) beep_count = hour - 12;
-                            else beep_count = hour;
-                        }
-                        else beep_count = 1;
-                        beep_seq = 0;
-                    }
+                    ui_buzzer_interval_beep();
                 }
                 
 #ifdef __DEBUG
@@ -188,14 +171,12 @@ int main(void)
 #endif
                 oc_event = 0;
             }
+            
         }
         
         if(t10ms0)
         {
             t10ms0=0;
-            
-            // Don't interfere with scheduled beeping!
-            if(!beep_count) _LATB7 = !TZ_BT_GetValue();
             
             // Is there a new set of GNSS time data available
             if(ubx_gnss_available())
@@ -275,43 +256,16 @@ int main(void)
                 print_data = 0;
             }
         }
-        
+
+        if(t10ms1==2)
+        {
+            t10ms1=0;
+            ui_buzzer_sounder();
+        }
         if(t100ms0==1)
         {
             t100ms0 = 0;
             STATUS_LED_Toggle();
-            
-            // Check if we should be making noise
-            if(beep_count)
-            {
-                // Only make noise if we're not already making noise
-                if(TZ_BT_GetValue())
-                {
-                    // Make some noise
-                    if(!_RB7 && !beep_pause)
-                    {
-                        _LATB7 = 1;
-                        beep_seq++;
-                    }
-                    else
-                    {
-                        // Stop making noise
-                        _LATB7 = 0;
-                        // Add a small gap between groups
-                        if((beep_seq%BEEP_GROUP_SIZE == 0) && !beep_pause)
-                        {
-                            beep_pause = BEEP_PAUSE_LENGTH;
-                        }
-                        else
-                        {
-                            // Only decrement the pause variable if we're pausing
-                            if(beep_pause) beep_pause--;
-                            // Decrement the noisy variable
-                            if(!beep_pause) beep_count--;
-                        }
-                    }
-                }
-            }
         }
         
         if(t100ms1==9)
