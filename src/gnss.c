@@ -1,12 +1,4 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <time.h>
-#include "mcc_generated_files/uart2.h"
-#include "mcc_generated_files/uart1.h"
 #include "gnss.h"
-#include "ublox_ubx.h"
 
 time_t gnss;
 extern time_t power_on_time;

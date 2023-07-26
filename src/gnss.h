@@ -12,9 +12,14 @@
 extern "C" {
 #endif
 
+#include <string.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include "mcc_generated_files/uart2.h"
+#include "mcc_generated_files/uart1.h"
+#include "ublox_ubx.h"
     
 #define GNSS_BUFFER_SIZE 100
 #define CHECK_BUFFER_SIZE 6
