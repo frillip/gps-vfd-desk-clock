@@ -26,10 +26,8 @@
 #include "ublox_ubx.h"
 
 #define BEEP_MINOR_INTERVAL 15
-#define MAJOR_BEEP_ON       5
-#define MAJOR_BEEP_OFF      4
-#define MINOR_BEEP_ON       2
-#define MINOR_BEEP_OFF      1
+#define BEEP_GROUP_SIZE 4
+#define BEEP_PAUSE_LENGTH 3
 
 bool print_data = 0;
 bool disable_manual_print = 0;
@@ -107,8 +105,11 @@ int main(void)
     
     uint8_t second = 0;
     uint8_t minute = 0;
+    uint8_t hour = 0;
     uint8_t old_minute = 0;
-    uint8_t beep_state = 0;
+    uint8_t beep_count = 0;
+    uint8_t beep_seq = 0;
+    uint8_t beep_pause = 0;
     
     while (1)
     {
@@ -164,6 +165,7 @@ int main(void)
                 utc_tm = gmtime(&utc);
                 second = utc_tm->tm_sec;
                 minute = utc_tm->tm_min;
+                hour = utc_tm->tm_hour;
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
@@ -171,8 +173,14 @@ int main(void)
                 {
                     if(minute%BEEP_MINOR_INTERVAL==0 || !minute)
                     {
-                        if(!minute) beep_state = MAJOR_BEEP_ON;
-                        else beep_state = MINOR_BEEP_ON;
+                        if(!minute) 
+                        {
+                            if(!hour) beep_count = 12;
+                            else if(hour>12) beep_count = hour - 12;
+                            else beep_count = hour;
+                        }
+                        else beep_count = 1;
+                        beep_seq = 0;
                     }
                 }
                 
@@ -188,7 +196,7 @@ int main(void)
             t10ms0=0;
             
             // Don't interfere with scheduled beeping!
-            if(!beep_state) _LATB7 = !TZ_BT_GetValue();
+            if(!beep_count) _LATB7 = !TZ_BT_GetValue();
             
             // Is there a new set of GNSS time data available
             if(ubx_gnss_available())
@@ -275,19 +283,35 @@ int main(void)
             STATUS_LED_Toggle();
             
             // Check if we should be making noise
-            if(beep_state)
+            if(beep_count)
             {
                 // Only make noise if we're not already making noise
                 if(TZ_BT_GetValue())
                 {
-                    if(beep_state==MAJOR_BEEP_ON) _LATB7 = 1;
-                    if(beep_state==MAJOR_BEEP_OFF) _LATB7 = 0;
-                    if(beep_state==MINOR_BEEP_ON) _LATB7 = 1;
-                    if(beep_state==MINOR_BEEP_OFF) _LATB7 = 0;
+                    // Make some noise
+                    if(!_RB7 && !beep_pause)
+                    {
+                        _LATB7 = 1;
+                        beep_seq++;
+                    }
+                    else
+                    {
+                        // Stop making noise
+                        _LATB7 = 0;
+                        // Add a small gap between groups
+                        if((beep_seq%BEEP_GROUP_SIZE == 0) && !beep_pause)
+                        {
+                            beep_pause = BEEP_PAUSE_LENGTH;
+                        }
+                        else
+                        {
+                            // Only decrement the pause variable if we're pausing
+                            if(beep_pause) beep_pause--;
+                            // Decrement the noisy variable
+                            if(!beep_pause) beep_count--;
+                        }
+                    }
                 }
-                
-                // Decrement the noisy variable
-                beep_state--;
             }
         }
         
