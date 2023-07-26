@@ -161,11 +161,11 @@ int main(void)
                 printf("\r\n");
                 
                 // Every minute, print some statistics
-                struct tm *utc_tm;
-                utc_tm = gmtime(&utc);
-                second = utc_tm->tm_sec;
-                minute = utc_tm->tm_min;
-                hour = utc_tm->tm_hour;
+                struct tm *local_tm;
+                local_tm = gmtime(&local);
+                second = local_tm->tm_sec;
+                minute = local_tm->tm_min;
+                hour = local_tm->tm_hour;
                 if(minute!=old_minute) print_data = 1;
                 old_minute = minute;
                 
