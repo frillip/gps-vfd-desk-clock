@@ -67,7 +67,7 @@ void reset_pps_stats(void)
     accumulation_delta = 0;
 }
 
-uint32_t calculate_fosc_freq(uint32_t fosc_freq)
+void recalculate_fosc_freq(void)
 {
     long double new_fosc_freq_f = fosc_freq;
     uint32_t new_fosc_freq = 0;
@@ -75,7 +75,7 @@ uint32_t calculate_fosc_freq(uint32_t fosc_freq)
     new_fosc_freq_f = new_fosc_freq_f + accumulated_clocks;
     new_fosc_freq_f = new_fosc_freq_f / accumulation_delta;
     new_fosc_freq = (new_fosc_freq_f + 0.5); //DIRTY ROUNDL() EQUIVALENT
-    return new_fosc_freq;
+    fosc_freq = new_fosc_freq;
 }
 
 // IC1 ISR

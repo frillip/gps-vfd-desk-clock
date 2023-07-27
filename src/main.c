@@ -119,7 +119,7 @@ int main(void)
                 {
                     if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN && scheduler_sync)||accumulated_clocks > FCYCLE_ACC_RESET_POSITIVE || accumulated_clocks < FCYCLE_ACC_RESET_NEGATIVE)
                     {
-                        fosc_freq = calculate_fosc_freq(fosc_freq);
+                        recalculate_fosc_freq();
                         printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
                         printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
                         reset_sync();
@@ -213,7 +213,7 @@ int main(void)
                 else if(c==0x72 && !resync_interval)
                 {
                     resync_interval = 30;
-                    fosc_freq = calculate_fosc_freq(fosc_freq);
+                    recalculate_fosc_freq();
                     printf("\r\nManual resync\r\n");
                     printf("New Fosc freq: %luHz\r\n", fosc_freq);
                     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);

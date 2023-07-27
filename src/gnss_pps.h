@@ -24,7 +24,7 @@ void IC1_Initialize (void);
 void IC2_Initialize (void);
 void calculate_pps_stats(void);
 void reset_pps_stats(void);
-uint32_t calculate_fosc_freq(uint32_t fosc_freq);
+void recalculate_fosc_freq(void);
 
 #ifdef	__cplusplus
 }
