@@ -18,7 +18,6 @@ void ui_tasks(void)
     ui_display_task();
 }
 
-
 void ui_button_task(void)
 {
     
@@ -38,7 +37,6 @@ void ui_buzzer_interval_beep(void)
     
     if(minute%BEEP_MINOR_INTERVAL==0)
     {
-        ui_buzzer_on();
         memset(buzzer_buffer, 0, BUZZER_BUFFER_LENGTH);
         beep_start = 1;
         beep_seq = 0;
@@ -60,7 +58,6 @@ void ui_buzzer_interval_beep(void)
             else buzzer_buffer[(i*2)+1] = BEEP_GAP;
             i++;
         }
-        buzzer_buffer[(i*2)-1] = 0xFF;
     }
 }
 
@@ -69,7 +66,7 @@ void ui_buzzer_sounder(void)
 {
     if(beep_start)
     {
-        if(buzzer_buffer[beep_seq] == 0xFF)
+        if(!buzzer_buffer[beep_seq])
         {
             ui_buzzer_off();
             beep_start = 0;
@@ -81,7 +78,6 @@ void ui_buzzer_sounder(void)
             buzzer_buffer[beep_seq]--;
             if(!(buzzer_buffer[beep_seq] & 0x7F)) beep_seq++;
         }
-        
     }
 }
 
