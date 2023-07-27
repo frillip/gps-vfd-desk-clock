@@ -32,10 +32,11 @@ void ui_buzzer_interval_beep(void)
 {
     struct tm *local_tm;
     local_tm = gmtime(&local);
+    uint8_t second = local_tm->tm_sec;
     uint8_t minute = local_tm->tm_min;
     uint8_t hour = local_tm->tm_hour;
     
-    if(minute%BEEP_MINOR_INTERVAL==0)
+    if(minute%BEEP_MINOR_INTERVAL==0 && !second)
     {
         memset(buzzer_buffer, 0, BUZZER_BUFFER_LENGTH);
         beep_start = 1;

@@ -99,10 +99,6 @@ int main(void)
     // Enable WDT (set to 32s timeout non-windowed mode)
     RCONbits.SWDTEN = 1;
     
-    uint8_t second = 0;
-    uint8_t minute = 0;
-    uint8_t old_minute = 0;
-    
     while (1)
     {
         if(t1ms0)
@@ -152,20 +148,9 @@ int main(void)
                 print_iso8601_string(utc);
                 printf("\r\n");
                 
-                // Every minute, print some statistics
-                struct tm *local_tm;
-                local_tm = gmtime(&local);
-                second = local_tm->tm_sec;
-                minute = local_tm->tm_min;
-                if(minute!=old_minute) print_data = 1;
-                old_minute = minute;
-                
-                // Run the buzzer interval task on each minute
-                if(scheduler_sync && !second)
-                {
-                    ui_buzzer_interval_beep();
-                }
-                
+                // Check if we need to beep
+                ui_buzzer_interval_beep();
+
 #ifdef __DEBUG
                 print_data = 1;
 #endif
