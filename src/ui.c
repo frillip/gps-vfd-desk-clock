@@ -1,10 +1,18 @@
 #include "ui.h"
 
 extern time_t local;
+extern uint32_t fosc_freq;
+extern int32_t accumulated_clocks;
+extern time_t accumulation_start;
+extern time_t accumulation_delta;
 
 uint8_t beep_seq = 0;
 bool beep_start = 0;
 uint8_t buzzer_buffer[BUZZER_BUFFER_LENGTH] = {0};
+
+bool print_data = 0;
+bool disable_manual_print = 0;
+uint8_t resync_interval = 30;
 
 void ui_init(void)
 {
@@ -85,6 +93,38 @@ void ui_buzzer_sounder(void)
 void ui_display_task(void)
 {
     
+}
+
+void ui_uart1_input(void)
+{
+    while(U1STAbits.URXDA)
+    {
+        char c = UART1_Read();
+        // print some data if enter has been pressed
+        if(c==0x0d && !disable_manual_print)
+        {
+            print_data = 1;
+            // Disable spamming in case of cats on keyboards
+            disable_manual_print = 1;
+        }
+        // Press 'r' for manual resync
+        else if(c==0x72 && !resync_interval)
+        {
+            resync_interval = 30;
+            recalculate_fosc_freq();
+            printf("\r\nManual resync\r\n");
+            printf("New Fosc freq: %luHz\r\n", fosc_freq);
+            printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+            reset_sync();
+            reset_pps_stats();
+        }
+        // Reset the entire device if we see 'R'
+        else if(c==0x52)
+        {
+            printf("\r\nRESETTING!!!\r\n");
+            __asm__ volatile ( "reset "); 
+        }
+    }
 }
 
 void print_iso8601_string(time_t iso)

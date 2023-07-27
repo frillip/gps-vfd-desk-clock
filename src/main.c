@@ -26,9 +26,9 @@
 #include "ublox_ubx.h"
 #include "ui.h"
 
-bool print_data = 0;
-bool disable_manual_print = 0;
-uint8_t resync_interval = 30;
+extern bool print_data;
+extern bool disable_manual_print;
+extern uint8_t resync_interval;
 
 extern bool scheduler_sync;
 extern bool scheduler_adjust_in_progress;
@@ -199,34 +199,7 @@ int main(void)
             if(ubx_timemark_waiting()) ubx_update_timemark();
             
             // Check for any bytes on UART1
-            while(U1STAbits.URXDA)
-            {
-                char c = UART1_Read();
-                // print some data if enter has been pressed
-                if(c==0x0d && !disable_manual_print)
-                {
-                    print_data = 1;
-                    // Disable spamming in case of cats on keyboards
-                    disable_manual_print = 1;
-                }
-                // Press 'r' for manual resync
-                else if(c==0x72 && !resync_interval)
-                {
-                    resync_interval = 30;
-                    recalculate_fosc_freq();
-                    printf("\r\nManual resync\r\n");
-                    printf("New Fosc freq: %luHz\r\n", fosc_freq);
-                    printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-                    reset_sync();
-                    reset_pps_stats();
-                }
-                // Reset the entire device if we see 'R'
-                else if(c==0x52)
-                {
-                    printf("\r\nRESETTING!!!\r\n");
-                    __asm__ volatile ( "reset "); 
-                }
-            }
+            if(U1STAbits.URXDA) ui_uart1_input();
 
             // Print some statistics if required
             if(print_data)

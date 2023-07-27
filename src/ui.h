@@ -18,6 +18,9 @@ extern "C" {
 #include <stdbool.h>
 #include <time.h>
 #include "mcc_generated_files/pin_manager.h"
+#include "mcc_generated_files/uart1.h"
+#include "gnss_pps.h"
+#include "pic_pps.h"
 
 void ui_init(void);
 void ui_tasks(void);
@@ -27,6 +30,7 @@ void ui_buzzer_interval_beep(void);
 void ui_buzzer_sounder(void);
 void ui_display_task(void);
 
+void ui_uart1_input(void);
 void print_iso8601_string(time_t iso);
 
 #define BUZZER_BUFFER_LENGTH 64
