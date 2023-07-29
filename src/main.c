@@ -161,7 +161,8 @@ int main(void)
                 old_minute = minute;
                 
                 // Run the buzzer interval task on each minute
-                if(scheduler_sync && !second)
+                // if the switch input is high
+                if(scheduler_sync && !second && DST_SW_GetValue())
                 {
                     ui_buzzer_interval_beep();
                 }
