@@ -119,13 +119,14 @@ void display_time(const time_t *tod)
     driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
 
     // Toggle the middle dots/dashes based on if the seconds are even or odd
-    if(!(disp_time->tm_sec%2))
+    // but only if we have PPS sync
+    if(!(disp_time->tm_sec%2) && pps_sync)
     {
         driver_buffer |= 0x1800;
     }
 
-    // Show the left hand dot if we have PPS sync
-    if(pps_sync) driver_buffer |= 0x80000000;
+    // Show the switch input is high
+    if(DST_SW_GetValue()) driver_buffer |= 0x80000000;
 
     // Placeholder for left hand dash condition
     //if(somethingselse) driver_buffer |= 0x100000000;
