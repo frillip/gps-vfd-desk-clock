@@ -175,7 +175,7 @@ void print_ubx_nav_timeutc_data(void)
     if(print_ubx_nav_timeutc)
     {
         printf("UTC: ");
-        print_iso8601_string(gnss);
+        ui_print_iso8601_string(gnss);
         printf("\r\nAcc: %luns Val: %i\r\n",ubx_nav_timeutc_accuracy_ns, ubx_nav_timeutc_valid);
     }
     else

@@ -33,7 +33,8 @@ void ui_buzzer_sounder(void);
 
 void ui_display_task(void);
 
-void print_iso8601_string(time_t iso);
+void ui_print_iso8601_string(time_t iso);
+void ui_print_clear_window(void)
 
 #define BUZZER_BUFFER_LENGTH 64
 

@@ -122,11 +122,16 @@ void ui_display_task(void)
     display_latch();
 }
 
-void print_iso8601_string(time_t iso)
+void ui_print_iso8601_string(time_t iso)
 {
     char buf[32] = {0}; // Allocate buffer
     struct tm *iso_time; // Allocate buffer
     iso_time = gmtime(&iso);
     strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", iso_time);
     printf(buf);
+}
+
+void ui_print_clear_window(void)
+{
+    printf("\033[2J\033[1;1H"); // Clear the terminal window
 }

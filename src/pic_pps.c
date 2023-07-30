@@ -142,7 +142,7 @@ void print_stats(void)
     printf("Up ");
     if(days) printf("%u days, ",days);
     printf("%02u:%02u:%02u since ",hours,minutes,seconds);
-    print_iso8601_string(power_on_time);
+    ui_print_iso8601_string(power_on_time);
     printf("\r\n");
     printf("OC events: %lu\r\n",total_oc_seq_count);
 }

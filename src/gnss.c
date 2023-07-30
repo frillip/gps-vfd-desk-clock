@@ -153,7 +153,7 @@ extern time_t utc;
 void sync_gnss_calendar(void)
 {
     printf("GNSS calendar sync\r\nTime is now: ");
-    print_iso8601_string(gnss);
+    ui_print_iso8601_string(gnss);
     printf("\r\n");
     
     utc = gnss;
