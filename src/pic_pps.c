@@ -40,6 +40,8 @@ extern bool scheduler_sync;
 extern bool gnss_calendar_sync;
 extern bool rtc_sync;
 
+extern bool display_update_pending;
+
 //extern float pdo_mv;
 //extern float pps_offset_ns;
 
@@ -227,6 +229,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
             pps_sync = 1; // Indicate we are now sync'd with PPS 
         }
         oc_event = 1; // Flag we've just had an OC event
+        display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter
         rmc_waiting = 0; // Invalidate any GNSS data that's waiting
         ic3_val = IC3BUF; // Read the IC3 timer
