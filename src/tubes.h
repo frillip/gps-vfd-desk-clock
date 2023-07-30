@@ -23,6 +23,12 @@ extern "C" {
     
 #include "ui.h"
 
+// Digit offsets
+#define TUBE_4_OFFSET   33
+#define TUBE_3_OFFSET   20
+#define TUBE_2_OFFSET   13
+#define TUBE_1_OFFSET   0    
+
 // Segment mapping on the driver
 #define SEG_G       0x00000004
 #define SEG_F       0x00000002
@@ -64,7 +70,8 @@ extern "C" {
 void spi2_dma_init(void);
 void display_init(void);
 void display_count(uint16_t count);
-void display_buffer(uint64_t buffer);
+uint64_t display_generate_buffer(uint16_t digits);
+void display_send_buffer(uint64_t buffer);
 void display_time(const time_t *tod);
 void display_mmss(const time_t *tod);
 void display_dashes(void);

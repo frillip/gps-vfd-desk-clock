@@ -1,8 +1,6 @@
 #include "tubes.h"
 
 uint32_t characters[] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, DIGIT_A, DIGIT_B, DIGIT_C, DIGIT_D, DIGIT_E, DIGIT_F};
-uint32_t digits[] = {0,0,0,0};
-uint64_t segments[] = {0,0,0,0};
 bool dash_display = 0;
 bool display_blinking = 0;
 bool display_update_pending = 0;
@@ -64,24 +62,23 @@ void display_init(void)
     uint64_t driver_buffer = 0x00000000; // Set a blank buffer
     BLANK_SetLow(); // Disable the blanking function
     //spi2_dma_init();
-    display_buffer(driver_buffer); // Load buffer into the driver
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+    display_latch();
 }
 
 // Show a counter on the display
 void display_count(uint16_t count)
 {
-    uint64_t driver_buffer = 0ULL; // Start with an empty buffer
-    digits[3] = count / 1000;
-    digits[2] = (count%1000) / 100;
-    digits[1] = (count%100) / 10;
-    digits[0] = count%10; // Break the counter down into individual digits
-    segments[3] = characters[digits[3]];
-    segments[2] = characters[digits[2]];
-    segments[1] = characters[digits[1]];
-    segments[0] = characters[digits[0]]; // Determine the segments needed for each digit
+    uint16_t display_digits = 0;
     
-    // OR the segments into the buffer at the required offsets
-    driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
+    // Construct the counter in BCD
+    display_digits |= (count / 1000)<<12;
+    display_digits |= ((count%1000) / 100)<<8;
+    display_digits |= ((count%100) / 10)<<4;
+    display_digits |= (count%10); // Break the counter down into individual digits
+    
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
     
     // Toggle both the dots/dashes based on if the counter is even or odd
     if(!(count&0x01))
@@ -95,29 +92,25 @@ void display_count(uint16_t count)
         driver_buffer |= MIDDLE_SEPARATOR_LINE;
     }
     
-    display_buffer(driver_buffer); // Load buffer into the driver
+    display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
 void display_time(const time_t *tod)
 {
-    uint64_t driver_buffer = 0ULL; // Start with an empty buffer
+    uint16_t display_digits = 0;
     struct tm *disp_time;
-    //extern bool pps_sync;
     
     // Convert our time_t into a time struct
     disp_time = gmtime(tod);
     
-    digits[3] = disp_time->tm_hour / 10;
-    digits[2] = disp_time->tm_hour % 10;
-    digits[1] = disp_time->tm_min / 10;
-    digits[0] = disp_time->tm_min % 10; // Display hours and minutes on the digits
-    segments[3] = characters[digits[3]];
-    segments[2] = characters[digits[2]];
-    segments[1] = characters[digits[1]];
-    segments[0] = characters[digits[0]]; // Determine the segments needed for each digit
+    // Construct our BCD time
+    display_digits |= (disp_time->tm_hour / 10)<<12;
+    display_digits |= (disp_time->tm_hour % 10)<<8;
+    display_digits |= (disp_time->tm_min / 10)<<4;
+    display_digits |= (disp_time->tm_min % 10);
     
-    // OR the segments into the buffer at the required offsets
-    driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
 
     // Toggle the middle dots/dashes based on if the seconds are even or odd
     // but only if we have PPS sync
@@ -132,32 +125,27 @@ void display_time(const time_t *tod)
     // Show the left hand dot if button is pressed
     if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
 
-    display_buffer(driver_buffer); // Load buffer into the driver
+    display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
 void display_mmss(const time_t *tod)
 {
-    uint64_t driver_buffer = 0ULL; // Start with an empty buffer
+    uint16_t display_digits = 0;
     struct tm *disp_time;
-    //extern bool pps_sync;
     
     // Convert our time_t into a time struct
     disp_time = gmtime(tod);
     
-    digits[3] = disp_time->tm_min / 10;
-    digits[2] = disp_time->tm_min % 10;
-    digits[1] = disp_time->tm_sec / 10;
-    digits[0] = disp_time->tm_sec % 10; // Display minutes and seconds on the digits
-    segments[3] = characters[digits[3]];
-    segments[2] = characters[digits[2]];
-    segments[1] = characters[digits[1]];
-    segments[0] = characters[digits[0]]; // Determine the segments needed for each digit
-    
-    // OR the segments into the buffer at the required offsets
-    driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
+    // Construct our BCD time
+    display_digits |= (disp_time->tm_min / 10)<<12;
+    display_digits |= (disp_time->tm_min % 10)<<8;
+    display_digits |= (disp_time->tm_sec / 10)<<4;
+    display_digits |= (disp_time->tm_sec % 10);
 
-    // Enable the middle dots on mmss display
-    // if we have PPS sync
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Enable the middle dots on mmss display if we have PPS sync
     if(pps_sync) driver_buffer |= MIDDLE_SEPARATOR_BOTH;
 
     // Show the left hand dot if switch is closed
@@ -166,22 +154,48 @@ void display_mmss(const time_t *tod)
     // Show the left hand dot if button is pressed
     if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
 
-    display_buffer(driver_buffer); // Load buffer into the driver
+    display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
 void display_dashes(void)
 {
-    uint64_t driver_buffer = 0x800408004; // Buffer containing only dashes
-    display_buffer(driver_buffer);
+    // Create buffer with only dashes
+    uint64_t driver_buffer = 0ULL;
+    driver_buffer |= (DIGIT_DASH << TUBE_4_OFFSET);
+    driver_buffer |= (DIGIT_DASH << TUBE_3_OFFSET);
+    driver_buffer |= (DIGIT_DASH << TUBE_2_OFFSET);
+    driver_buffer |= (DIGIT_DASH << TUBE_1_OFFSET);
+    driver_buffer |= START_SEPARATOR_LINE;
+    driver_buffer |= MIDDLE_SEPARATOR_LINE;
+    display_send_buffer(driver_buffer);
 }
 
 void display_blank(void)
 {
     uint64_t driver_buffer = 0x00000000; // Start with an empty buffer
-    display_buffer(driver_buffer); // Load buffer into the driver
+    display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
-void display_buffer(uint64_t buffer)
+uint64_t display_generate_buffer(uint16_t digits)
+{
+    uint64_t driver_buffer = 0ULL; // Start with an empty buffer
+    uint64_t segments[] = {0,0,0,0};
+    
+    segments[3] = characters[(digits & 0xF000)>>12];
+    segments[2] = characters[(digits & 0x0F00)>>8];
+    segments[1] = characters[(digits & 0x00F0)>>4];
+    segments[0] = characters[(digits & 0x000F)]; // Determine the segments needed for each digit
+    
+    // OR the segments into the buffer at the required offsets
+    driver_buffer |= (segments[3] << TUBE_4_OFFSET);
+    driver_buffer |= (segments[2] << TUBE_3_OFFSET);
+    driver_buffer |= (segments[1] << TUBE_2_OFFSET);
+    driver_buffer |= (segments[0] << TUBE_1_OFFSET);
+    
+    return driver_buffer;
+}
+
+void display_send_buffer(uint64_t buffer)
 {
     SPI2_Exchange16bit((uint16_t)((buffer>>24)&0xFFFF));
     SPI2_Exchange16bit((uint16_t)((buffer>>32)&0xFFFF));
