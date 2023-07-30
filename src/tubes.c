@@ -5,6 +5,7 @@ uint32_t digits[] = {0,0,0,0};
 uint64_t segments[] = {0,0,0,0};
 bool dash_display = 0;
 bool display_blinking = 0;
+bool display_update_pending = 0;
 
 extern bool pps_sync;
 
@@ -186,6 +187,7 @@ void display_buffer(uint64_t buffer)
     SPI2_Exchange16bit((uint16_t)((buffer>>32)&0xFFFF));
     SPI2_Exchange16bit((uint16_t)((buffer>>16)&0xFFFF));
     SPI2_Exchange16bit((uint16_t)(buffer&0xFFFF));
+    display_update_pending = 1;
 }
 
 /*
@@ -206,6 +208,7 @@ void display_latch(void)
     LATCH_GPIO_SetHigh();
     DELAY_microseconds(5);
     LATCH_GPIO_SetLow();
+    display_update_pending = 0;
 }
 
 // DST is stupid
