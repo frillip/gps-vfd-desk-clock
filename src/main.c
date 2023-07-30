@@ -77,10 +77,8 @@ int main(void)
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
     printf("Running @ 80MHz on 10.000000MHz XTAL\r\n");
     DELAY_microseconds(10000);
-    // sht30_start_periodic_meas();
-    DELAY_microseconds(10000);
     
-    set_from_rtc_calendar();
+    rtc_read_set_calendar();
     pic_pps_reset_sync();
     reset_pps_stats();
 
@@ -113,9 +111,7 @@ int main(void)
                 pic_pps_evaluate_sync();
                 
                 if(pic_pps_resync_required()) pic_pps_resync();
-                
-                //// sht30_read_data();
-                
+
                 // Clear window if we're in debug mode
 #ifdef __DEBUG
                 ui_print_clear_window();
@@ -152,15 +148,14 @@ int main(void)
                     {
                         // Trigger a re-sync if not
                         reset_gnss_calendar_sync();
-                        reset_rtc_calendar_sync();
+                        rtc_reset_calendar_sync();
                         sync_gnss_calendar();
-                        PCF8563_write(utc);
+                        rtc_write_from_calendar(utc);
                         // Update our RTC now we have a GNSS time
-                        if(!is_rtc_calendar_sync())
+                        if(!rtc_is_calendar_sync())
                         {
                             printf("Writing RTC\r\n");
-                            PCF8563_write(utc);
-                            sync_rtc_calendar(utc);
+                            rtc_write_from_calendar(utc);
                         }
                     }
                 }
@@ -213,14 +208,10 @@ int main(void)
             
             display_time(&local);
             
-            //// sht30_start_meas();
-            // sht30_read_periodic_data();
             // Re-enable manual printing
             disable_manual_print = 0;
             if(resync_interval) resync_interval--;
             
-            //LATCH_GPIO_Toggle();
-            //BLANK_Toggle();
         }
     }
     return 1; 

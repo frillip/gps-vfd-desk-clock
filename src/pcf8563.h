@@ -42,8 +42,8 @@ extern "C" {
 
 time_t PCF8563_read(void);
 bool PCF8563_write(time_t rtc);
-uint8_t bin2bcd(uint8_t val);
-uint8_t bcd2bin(uint8_t val);
+uint8_t PCF8563_bin2bcd(uint8_t val);
+uint8_t PCF8563_bcd2bin(uint8_t val);
 
 #ifdef	__cplusplus
 }

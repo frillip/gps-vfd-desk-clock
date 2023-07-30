@@ -16,16 +16,24 @@ extern "C" {
 #include <stdbool.h>
 #include <time.h>
 
-//#include "ds1307.h"
-#include "pcf8563.h"
+#define RTC_SOURCE_PCF8563
+//#define RTC_SOURCE_DS1307
+
+#ifdef RTC_SOURCE_DS1307
+    #include "ds1307.h"
+#else
+    #ifdef RTC_SOURCE_PCF8563
+        #include "pcf8563.h"
+    #endif
+#endif
 
 #include "ui.h"
 
-void get_rtc_calendar(void);
-void set_from_rtc_calendar(void);
-void sync_rtc_calendar(time_t utc);
-bool is_rtc_calendar_sync(void);
-void reset_rtc_calendar_sync(void);
+void rtc_get_calendar(void);
+void rtc_read_set_calendar(void);
+void rtc_write_from_calendar(time_t utc);
+bool rtc_is_calendar_sync(void);
+void rtc_reset_calendar_sync(void);
 
 #ifdef	__cplusplus
 }
