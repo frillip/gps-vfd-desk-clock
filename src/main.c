@@ -48,12 +48,6 @@ uint32_t fosc_freq = FCYCLE;
 
 extern bool oc_adjust_in_progress;
 
-extern uint32_t pps_seq_count;
-
-extern int32_t accumulated_clocks;
-extern time_t accumulation_start;
-extern time_t accumulation_delta;
-
 extern int32_t oc_offset;
 extern bool oc_event;
 
@@ -114,27 +108,11 @@ int main(void)
 
                 // Calculate some OC statistics
                 calculate_oc_stats();
-                if(accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE || accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE)
-                {
-                    if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN && scheduler_sync)||accumulated_clocks > FCYCLE_ACC_RESET_POSITIVE || accumulated_clocks < FCYCLE_ACC_RESET_NEGATIVE)
-                    {
-                        recalculate_fosc_freq();
-                        printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
-                        printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-                        reset_sync();
-                        reset_pps_stats();
-                    }
-                }
-                if(!pps_sync && pps_seq_count>5)
-                {
-                    set_latch_cycles(fosc_freq + oc_offset);
-                    oc_adjust_in_progress = 1;
-                    if(!accumulation_start)
-                    {
-                        accumulation_start = utc;
-                        accumulated_clocks = 0;
-                    }
-                }
+                
+                // Check if we are still in sync
+                pic_pps_evaluate_sync();
+                
+                if(pic_pps_resync_required()) pic_pps_resync();
                 
                 //// sht30_read_data();
                 

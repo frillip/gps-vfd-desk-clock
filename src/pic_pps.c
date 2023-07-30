@@ -24,7 +24,10 @@ extern uint32_t fosc_freq;
 
 extern uint32_t pps_count;
 extern uint32_t pps_count_diff;
+extern uint32_t pps_seq_count;
+
 extern int32_t accumulated_clocks;
+extern time_t accumulation_start;
 extern time_t accumulation_delta;
 
 extern time_t utc;
@@ -145,6 +148,37 @@ void print_stats(void)
     ui_print_iso8601_string(power_on_time);
     printf("\r\n");
     printf("OC events: %lu\r\n",total_oc_seq_count);
+}
+
+void pic_pps_evaluate_sync(void)
+{
+    if(accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE || accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE)
+    {
+        if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN && scheduler_sync)||accumulated_clocks > FCYCLE_ACC_RESET_POSITIVE || accumulated_clocks < FCYCLE_ACC_RESET_NEGATIVE)
+        {
+            recalculate_fosc_freq();
+            printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+            printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+            reset_sync();
+            reset_pps_stats();
+        }
+    }
+}
+
+bool pic_pps_resync_required(void)
+{
+    return (!pps_sync && pps_seq_count>5);
+}
+
+void pic_pps_resync(void)
+{
+    set_latch_cycles(fosc_freq + oc_offset);
+    oc_adjust_in_progress = 1;
+    if(!accumulation_start)
+    {
+        accumulation_start = utc;
+        accumulated_clocks = 0;
+    }
 }
 
 void reset_sync(void)
