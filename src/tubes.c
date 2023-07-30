@@ -85,13 +85,13 @@ void display_count(uint16_t count)
     // Toggle both the dots/dashes based on if the counter is even or odd
     if(!(count&0x01))
     {
-        driver_buffer |= 0x0800;
-        driver_buffer |= 0x80000000;
+        driver_buffer |= START_SEPARATOR_DOT;
+        driver_buffer |= MIDDLE_SEPARATOR_DOT;
     }
     else
     {
-        driver_buffer |= 0x1000;
-        driver_buffer |= 0x100000000;
+        driver_buffer |= START_SEPARATOR_LINE;
+        driver_buffer |= MIDDLE_SEPARATOR_LINE;
     }
     
     display_buffer(driver_buffer); // Load buffer into the driver
@@ -122,14 +122,14 @@ void display_time(const time_t *tod)
     // but only if we have PPS sync
     if(!(disp_time->tm_sec%2) && pps_sync)
     {
-        driver_buffer |= 0x1800;
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
 
-    // Show the switch input is high
-    if(DST_SW_GetValue()) driver_buffer |= 0x80000000;
-
-    // Placeholder for left hand dash condition
-    //if(somethingselse) driver_buffer |= 0x100000000;
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    // Show the left hand dot if button is pressed
+    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
 
     display_buffer(driver_buffer); // Load buffer into the driver
 }
@@ -155,14 +155,15 @@ void display_mmss(const time_t *tod)
     // OR the segments into the buffer at the required offsets
     driver_buffer = (segments[3]<<33) | (segments[2]<<20) | (segments[1]<<13) | (segments[0]);
 
-    // Always enable the middle dots on mmss display
-    driver_buffer |= 0x1800;
+    // Enable the middle dots on mmss display
+    // if we have PPS sync
+    if(pps_sync) driver_buffer |= MIDDLE_SEPARATOR_BOTH;
 
-    // Show the left hand dot if we have PPS sync
-    if(pps_sync) driver_buffer |= 0x80000000;
-
-    // Placeholder for left hand dash condition
-    //if(somethingselse) driver_buffer |= 0x100000000;
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    // Show the left hand dot if button is pressed
+    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
 
     display_buffer(driver_buffer); // Load buffer into the driver
 }

@@ -92,8 +92,7 @@ int main(void)
 
     local = utc + tz_offset;
     if(isDST(&utc)) local = local+3600; 
-    if(DST_SW_GetValue()) display_time(&local);
-    else display_mmss(&utc);
+    display_time(&local);
     display_latch();
     
     // Enable WDT (set to 32s timeout non-windowed mode)
@@ -162,7 +161,7 @@ int main(void)
                 
                 // Run the buzzer interval task on each minute
                 // if the switch input is high
-                if(scheduler_sync && !second && DST_SW_GetValue())
+                if(scheduler_sync && !second)
                 {
                     ui_buzzer_interval_beep();
                 }
@@ -262,6 +261,7 @@ int main(void)
         {
             t10ms1=0;
             ui_buzzer_sounder();
+            ui_button_task();
         }
         if(t100ms0==1)
         {
@@ -277,10 +277,8 @@ int main(void)
             local = utc + tz_offset;
             if(isDST(&utc)) local = local+3600; 
             
-            if(DST_SW_GetValue()) display_time(&local);
-            else display_mmss(&utc);
-            //display_latch();
-
+            display_time(&local);
+            
             //// sht30_start_meas();
             // sht30_read_periodic_data();
             // Re-enable manual printing
