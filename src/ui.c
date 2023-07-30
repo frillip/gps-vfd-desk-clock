@@ -12,9 +12,11 @@ uint8_t buzzer_buffer[BUZZER_BUFFER_LENGTH] = {0};
 
 bool button_state;
 bool button_last_state;
+bool button_input_last_state;
 
 bool switch_state;
 bool switch_last_state;
+bool switch_input_last_state;
 
 bool print_data = 0;
 bool disable_manual_print = 0;
@@ -36,19 +38,21 @@ void ui_button_task(void)
 {
     bool update_display = 0;
 
-    if(ui_button_input_state() == button_last_state)
+    if(ui_button_input_state() == button_input_last_state)
     {
         button_state = ui_button_input_state();
-        update_display = 1;
+        if(button_state != button_last_state) update_display = 1;
+        button_last_state = button_state;
     }
-    button_last_state = ui_button_input_state();
+    button_input_last_state = ui_button_input_state();
     
-    if(ui_switch_input_state() == switch_last_state)
+    if(ui_switch_input_state() == switch_input_last_state)
     {
         switch_state = ui_switch_input_state();
-        update_display = 1;
+        if(switch_state != switch_last_state) update_display = 1;
+        switch_last_state = switch_state;
     }
-    switch_last_state = ui_switch_input_state();
+    switch_input_last_state = ui_switch_input_state();
     
     if(update_display) ui_display_task();
 }
