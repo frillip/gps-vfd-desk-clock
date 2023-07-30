@@ -81,7 +81,7 @@ int main(void)
     DELAY_microseconds(10000);
     
     set_from_rtc_calendar();
-    reset_sync();
+    pic_pps_reset_sync();
     reset_pps_stats();
 
     local = utc + tz_offset;
@@ -107,7 +107,7 @@ int main(void)
                 calculate_pps_stats();
 
                 // Calculate some OC statistics
-                calculate_oc_stats();
+                pic_pps_calculate_oc_stats();
                 
                 // Check if we are still in sync
                 pic_pps_evaluate_sync();
@@ -166,7 +166,7 @@ int main(void)
                 }
                 else
                 {
-                    reset_sync();
+                    pic_pps_reset_sync();
                     reset_pps_stats();
                 }
             }
@@ -180,7 +180,7 @@ int main(void)
             // Print some statistics if required
             if(print_data)
             {
-                print_stats();
+                pic_pps_print_stats();
                 print_ubx_tim_tm2_data();
                 print_ubx_nav_timeutc_data();
                 print_ubx_nav_clock_data();

@@ -28,15 +28,15 @@ void OC2_Initialize(void);
 void IC3_Initialize(void);
 void IC4_Initialize(void);
 
-void set_latch_cycles(uint32_t cycles);
-void calculate_oc_stats(void);
+void pic_pps_set_latch_cycles(uint32_t cycles);
+void pic_pps_calculate_oc_stats(void);
 
 void pic_pps_evaluate_sync(void);
 bool pic_pps_resync_required(void);
 void pic_pps_resync(void);
 
-void print_stats(void);
-void reset_sync(void);
+void pic_pps_print_stats(void);
+void pic_pps_reset_sync(void);
     
 #ifdef	__cplusplus
 }

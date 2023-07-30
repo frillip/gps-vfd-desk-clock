@@ -155,7 +155,7 @@ void ui_uart1_input(void)
             printf("\r\nManual resync\r\n");
             printf("New Fosc freq: %luHz\r\n", fosc_freq);
             printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-            reset_sync();
+            pic_pps_reset_sync();
             reset_pps_stats();
         }
         // Reset the entire device if we see 'R'
