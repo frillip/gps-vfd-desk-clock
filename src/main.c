@@ -210,7 +210,6 @@ int main(void)
             
             // Re-enable manual printing
             disable_manual_print = 0;
-            if(resync_interval) resync_interval--;
             
         }
     }

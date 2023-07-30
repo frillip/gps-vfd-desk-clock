@@ -31,6 +31,8 @@ extern "C" {
 #define OC_OFFSET_MAX (OC_OFFSET_CONST + OC_OFFSET_MARGIN)
 #define PPS_SYNC_MIN 10
 
+#define PPS_MANUAL_RESYNC_INTERVAL 30
+
 #ifdef	__cplusplus
 }
 #endif

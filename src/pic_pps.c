@@ -164,6 +164,12 @@ void pic_pps_evaluate_sync(void)
     }
 }
 
+bool pic_pps_manual_resync_available(void)
+{
+    if(accumulation_delta>PPS_MANUAL_RESYNC_INTERVAL) return 1;
+    else return 0;
+}
+
 bool pic_pps_resync_required(void)
 {
     return (!pps_sync && pps_seq_count>5);

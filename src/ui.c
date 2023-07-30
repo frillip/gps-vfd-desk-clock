@@ -20,7 +20,6 @@ bool switch_input_last_state;
 
 bool print_data = 0;
 bool disable_manual_print = 0;
-uint8_t resync_interval = 30;
 
 void ui_init(void)
 {
@@ -148,9 +147,8 @@ void ui_uart1_input(void)
             disable_manual_print = 1;
         }
         // Press 'r' for manual resync
-        else if(c==0x72 && !resync_interval)
+        else if(c==0x72 && pic_pps_manual_resync_available())
         {
-            resync_interval = 30;
             recalculate_fosc_freq();
             printf("\r\nManual resync\r\n");
             printf("New Fosc freq: %luHz\r\n", fosc_freq);

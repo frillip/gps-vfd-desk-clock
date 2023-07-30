@@ -32,6 +32,7 @@ void pic_pps_set_latch_cycles(uint32_t cycles);
 void pic_pps_calculate_oc_stats(void);
 
 void pic_pps_evaluate_sync(void);
+bool pic_pps_manual_resync_available(void);
 bool pic_pps_resync_required(void);
 void pic_pps_resync(void);
 
