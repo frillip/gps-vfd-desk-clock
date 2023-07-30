@@ -21,17 +21,24 @@ extern "C" {
 #include "mcc_generated_files/uart1.h"
 #include "gnss_pps.h"
 #include "pic_pps.h"
+#include "tubes.h"
 
 void ui_init(void);
 void ui_tasks(void);
+
 void ui_button_task(void);
+bool ui_button_state(void);
+bool ui_switch_state(void);
+
 void ui_buzzer_task(void);
 void ui_buzzer_interval_beep(void);
 void ui_buzzer_sounder(void);
+
 void ui_display_task(void);
 
 void ui_uart1_input(void);
-void print_iso8601_string(time_t iso);
+void ui_print_iso8601_string(time_t iso);
+void ui_print_clear_window(void);
 
 #define BUZZER_BUFFER_LENGTH 64
 
@@ -48,6 +55,12 @@ void print_iso8601_string(time_t iso);
 #define ui_buzzer_on()      (_LATB7 = 1)
 #define ui_buzzer_off()     (_LATB7 = 0)
 #define ui_buzzer_state()   _RB7
+
+// Button pulls RA7 to ground
+#define ui_button_input_state()   !_RA7
+
+// Switch pulls RA0 to ground
+#define ui_switch_input_state()   !_RA0
 
 #ifdef	__cplusplus
 }

@@ -92,8 +92,7 @@ int main(void)
 
     local = utc + tz_offset;
     if(isDST(&utc)) local = local+3600; 
-    if(DST_SW_GetValue()) display_time(&local);
-    else display_mmss(&utc);
+    display_time(&local);
     display_latch();
     
     // Enable WDT (set to 32s timeout non-windowed mode)
@@ -141,16 +140,15 @@ int main(void)
                 
                 // Clear window if we're in debug mode
 #ifdef __DEBUG
-                print_clear_window();
+                ui_print_clear_window();
 #endif
                 // Print IS08601 timestamp to serial
                 printf("UTC: ");
-                print_iso8601_string(utc);
+                ui_print_iso8601_string(utc);
                 printf("\r\n");
-                
+
                 // Check if we need to beep
                 ui_buzzer_interval_beep();
-
 #ifdef __DEBUG
                 print_data = 1;
 #endif
@@ -219,6 +217,7 @@ int main(void)
         {
             t10ms1=0;
             ui_buzzer_sounder();
+            ui_button_task();
         }
         if(t100ms0==1)
         {
@@ -234,10 +233,8 @@ int main(void)
             local = utc + tz_offset;
             if(isDST(&utc)) local = local+3600; 
             
-            if(DST_SW_GetValue()) display_time(&local);
-            else display_mmss(&utc);
-            //display_latch();
-
+            display_time(&local);
+            
             //// sht30_start_meas();
             // sht30_read_periodic_data();
             // Re-enable manual printing
@@ -249,9 +246,4 @@ int main(void)
         }
     }
     return 1; 
-}
-
-void print_clear_window(void)
-{
-    printf("\033[2J\033[1;1H"); // Clear the terminal window
 }
