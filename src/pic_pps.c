@@ -172,7 +172,7 @@ bool pic_pps_manual_resync_available(void)
 
 bool pic_pps_resync_required(void)
 {
-    return (!pps_sync && pps_seq_count>5);
+    return (!pps_sync && pps_seq_count>PPS_SEQ_COUNT_MIN);
 }
 
 void pic_pps_resync(void)

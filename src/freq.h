@@ -32,6 +32,7 @@ extern "C" {
 #define PPS_SYNC_MIN 10
 
 #define PPS_MANUAL_RESYNC_INTERVAL 30
+#define PPS_SEQ_COUNT_MIN 5
 
 #ifdef	__cplusplus
 }
