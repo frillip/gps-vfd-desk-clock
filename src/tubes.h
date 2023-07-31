@@ -30,14 +30,14 @@ extern "C" {
 #define TUBE_1_OFFSET   0    
 
 // Segment mapping on the driver
-#define SEG_G       0x00000004
-#define SEG_F       0x00000002
-#define SEG_E       0x00000001
-#define SEG_D       0x00000040
-#define SEG_C       0x00000020
-#define SEG_B       0x00000010
-#define SEG_A       0x00000008
-#define SEG_NONE    0x00000000
+#define SEG_G       0x00000004ULL
+#define SEG_F       0x00000002ULL
+#define SEG_E       0x00000001ULL
+#define SEG_D       0x00000040ULL
+#define SEG_C       0x00000020ULL
+#define SEG_B       0x00000010ULL
+#define SEG_A       0x00000008ULL
+#define SEG_NONE    0x00000000ULL
 
 // Define the segments required for each digit
 #define DIGIT_0    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
@@ -56,6 +56,26 @@ extern "C" {
 #define DIGIT_D    SEG_B | SEG_C | SEG_D | SEG_E | SEG_G
 #define DIGIT_E    SEG_A | SEG_D | SEG_E | SEG_F | SEG_G
 #define DIGIT_F    SEG_A | SEG_E | SEG_F | SEG_G
+#define DIGIT_G    SEG_A | SEG_C | SEG_D | SEG_E | SEG_F
+#define DIGIT_H    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G
+#define DIGIT_I    SEG_E | SEG_F
+#define DIGIT_J    SEG_B | SEG_C | SEG_D | SEG_E
+#define DIGIT_K    SEG_A | SEG_C | SEG_E | SEG_F | SEG_G
+#define DIGIT_L    SEG_D | SEG_E | SEG_F
+#define DIGIT_M    SEG_A | SEG_C | SEG_E
+#define DIGIT_N    SEG_A | SEG_B | SEG_C | SEG_E | SEG_F
+#define DIGIT_O    SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
+#define DIGIT_P    SEG_A | SEG_B | SEG_E | SEG_F | SEG_G
+#define DIGIT_Q    SEG_A | SEG_B | SEG_C | SEG_F | SEG_G
+#define DIGIT_R    SEG_A | SEG_B | SEG_E | SEG_F
+#define DIGIT_S    SEG_A | SEG_C | SEG_D | SEG_F | SEG_G
+#define DIGIT_T    SEG_D | SEG_E | SEG_F | SEG_G
+#define DIGIT_U    SEG_B | SEG_C | SEG_D | SEG_E | SEG_F
+#define DIGIT_V    SEG_B | SEG_C | SEG_D | SEG_F
+#define DIGIT_W    SEG_B | SEG_D | SEG_F
+#define DIGIT_X    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G
+#define DIGIT_Y    SEG_B | SEG_C | SEG_D | SEG_F | SEG_G
+#define DIGIT_Z    SEG_A | SEG_B | SEG_D | SEG_E | SEG_G
 #define DIGIT_ALL  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F | SEG_G
 #define DIGIT_DASH SEG_G
 #define DIGIT_NONE SEG_NONE
