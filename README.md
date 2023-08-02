@@ -18,7 +18,7 @@ Much like [the big one](https://github.com/frillip/gpsdo), we have IV-12 VFD 7 s
 
 ## Tube drivers
 
-I've gone for a very similar Microchip offering in 2x HV5812WG-G, this gives us 40 HV outputs which we can control via the SPI peripheral and latch with our output compare module.
+I've gone for a very similar Microchip offering in 2x HV5812WG-G, this gives us 40 HV outputs which we can control via the SPI peripheral and latch with our output compare module. Looking at moving to HV5308PG for 32 outputs on a single chip in TQFP package.
 
 ## Microcontroller
 
