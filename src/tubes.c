@@ -4,6 +4,8 @@ uint32_t characters[] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, D
 bool dash_display = 0;
 bool display_blinking = 0;
 bool display_update_pending = 0;
+uint16_t display_brightness = DISPLAY_BRIGHTNESS_DEFAULT;
+bool display_brightness_oc_running = 0;
 
 extern bool pps_sync;
 
@@ -57,13 +59,62 @@ void spi2_dma_init(void)
     IEC0bits.DMA1IE = 0;
 }
 
+void OC3_Initialize(void)
+{
+    OC3R = display_brightness;
+    OC3RS = DISPLAY_BRIGHTNESS_PR;
+    // Peripheral clock, Double compare continuous
+    OC3CON1 = 0x1C0D;
+    // 16-bit, inverted, self-sync
+    //OC3CON2 = 0x101F;
+    OC3CON2 = 0x1F;
+    display_brightness_oc_running = 1;
+}
+
 void display_init(void)
 {
     uint64_t driver_buffer = 0x00000000; // Set a blank buffer
-    BLANK_SetLow(); // Disable the blanking function
+    display_brightness_set(DISPLAY_BRIGHTNESS_DEFAULT);
+    OC3_Initialize();
+    //BLANK_SetLow(); // Disable the blanking function
     //spi2_dma_init();
     display_send_buffer(driver_buffer); // Load buffer into the driver
     display_latch();
+}
+
+void display_brightness_off(void)
+{
+    OC3CON1bits.OCM = 0b000;
+    BLANK_SetHigh();
+    display_brightness = 0;
+    display_brightness_oc_running = 0;
+}
+
+void display_brightness_min(void)
+{
+    display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
+}
+
+void display_brightness_max(void)
+{
+    display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
+}
+
+void display_brightness_set(uint16_t brightness)
+{
+    if(brightness>DISPLAY_BRIGHTNESS_MAX) brightness = DISPLAY_BRIGHTNESS_MAX;
+    if(brightness<DISPLAY_BRIGHTNESS_MIN) brightness = DISPLAY_BRIGHTNESS_MIN;
+    OC3R = brightness;
+    display_brightness = brightness;
+    if(!display_brightness_oc_running) OC3_Initialize();
+}
+
+void display_brightness_on(void)
+{
+    OC3CON1bits.OCM = 0b000;
+    BLANK_SetLow();
+    display_brightness = 4000;
+    display_brightness_oc_running = 0;
 }
 
 // Show a counter on the display

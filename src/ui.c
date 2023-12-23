@@ -21,6 +21,8 @@ bool switch_input_last_state;
 bool print_data = 0;
 bool disable_manual_print = 0;
 
+extern uint16_t display_brightness;
+
 void ui_init(void)
 {
 
@@ -161,6 +163,41 @@ void ui_uart1_input(void)
         {
             printf("\r\nRESETTING!!!\r\n");
             __asm__ volatile ( "reset "); 
+        }
+        // Brightness up on 'B'
+        else if(c==0x42)
+        {
+            display_brightness_set(display_brightness+DISPLAY_BRIGHTNESS_STEP);
+            printf("BRI: %u\r\n", display_brightness);
+        }
+        // Brightness down on 'b'
+        else if(c==0x62)
+        {
+            display_brightness_set(display_brightness-DISPLAY_BRIGHTNESS_STEP);
+            printf("BRI: %u\r\n", display_brightness);
+        }
+        // Max brightness on 'M'
+        else if(c==0x4D)
+        {
+            display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
+            printf("BRI: %u\r\n", display_brightness);
+        }
+        // Min brightness on 'm'
+        else if(c==0x6D)
+        {
+            display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
+            printf("BRI: %u\r\n", display_brightness);
+        }
+        else if(c==0x4F)
+        {
+            display_brightness_on();
+            printf("BRI: %u\r\n", display_brightness);
+        }
+        // Min brightness on 'm'
+        else if(c==0x6F)
+        {
+            display_brightness_off();
+            printf("BRI: %u\r\n", display_brightness);
         }
     }
 }

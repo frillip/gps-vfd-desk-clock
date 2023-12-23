@@ -128,7 +128,6 @@ int main(void)
 #endif
                 oc_event = 0;
             }
-            
         }
         
         if(t10ms0)

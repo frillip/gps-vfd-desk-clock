@@ -115,9 +115,10 @@ void PIN_MANAGER_Initialize (void)
     RPOR6bits.RP56R = 0x0009;   //RC8->SPI2:SCK2OUT
     RPINR7bits.IC1R = 0x0018;   //RA8->IC1:IC1
     RPINR7bits.IC2R = 0x0018;   //RA8->IC2:IC2
-    RPINR8bits.IC3R = 0x002A;    //RB10->IC3:IC3
-    RPINR8bits.IC4R = 0x002A;    //RB10->IC3:IC3
-    RPOR4bits.RP42R = 0x0011;    //RB10->OC2:OC2
+    RPINR8bits.IC3R = 0x002A;   //RB10->IC3:IC3
+    RPINR8bits.IC4R = 0x002A;   //RB10->IC3:IC3
+    RPOR4bits.RP42R = 0x0011;   //RB10->OC2:OC2
+    RPOR4bits.RP43R = 0x0012;   //RB11->OC3:OC3
 
     __builtin_write_OSCCONL(OSCCON | 0x40); // lock PPS
     
