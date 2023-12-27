@@ -10,6 +10,7 @@ uint32_t oc_count_diff = 0;
 uint32_t oc_count_old = 0;
 bool oc_event = 0;
 uint32_t total_oc_seq_count = 0;
+uint32_t sync_events = 0;
 
 bool oc_adjust_in_progress = 0;
 bool oc_adjust_fudge = 0;
@@ -148,7 +149,7 @@ void pic_pps_print_stats(void)
     printf("%02u:%02u:%02u since ",hours,minutes,seconds);
     ui_print_iso8601_string(power_on_time);
     printf("\r\n");
-    printf("OC events: %lu\r\n",total_oc_seq_count);
+    printf("OC events: %lu Resync events: %lu\r\n",total_oc_seq_count, sync_events);
 }
 
 void pic_pps_evaluate_sync(void)
@@ -186,6 +187,7 @@ void pic_pps_resync(void)
         accumulation_start = utc;
         accumulated_clocks = 0;
     }
+    sync_events++;
 }
 
 void pic_pps_reset_sync(void)
