@@ -175,16 +175,19 @@ void pic_pps_evaluate_sync(void)
         }
         else if(((oc_offset + OC_OFFSET_MAX) > FCYCLE_ACC_RESET_POSITIVE) || ((oc_offset + OC_OFFSET_MIN) < FCYCLE_ACC_RESET_NEGATIVE))
         {
-            printf("\r\nOC unsynchronised... resetting\r\n");
-            printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-            printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
-            if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN) && scheduler_sync)
+            if(!oc_adjust_fudge && !oc_adjust_in_progress)
             {
-                recalculate_fosc_freq();
-                printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+                printf("\r\nOC unsynchronised... resetting\r\n");
+                printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+                printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
+                if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN) && scheduler_sync)
+                {
+                    recalculate_fosc_freq();
+                    printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+                }
+                pic_pps_reset_sync();
+                reset_pps_stats();
             }
-            pic_pps_reset_sync();
-            reset_pps_stats();
         }
     }
 }
