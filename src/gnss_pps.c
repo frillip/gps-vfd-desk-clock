@@ -62,8 +62,8 @@ void calculate_pps_stats(void)
 void reset_pps_stats(void)
 {
     pps_seq_count = 0;
+    accumulation_start = utc;
     accumulated_clocks = 0;
-    accumulation_start = 0;
     accumulation_delta = 0;
 }
 

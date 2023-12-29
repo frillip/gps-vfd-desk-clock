@@ -154,7 +154,7 @@ void pic_pps_print_stats(void)
 
 void pic_pps_evaluate_sync(void)
 {
-    if(accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE || accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE)
+    if(((accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE) || (accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE)) && pps_seq_count > PPS_SEQ_COUNT_MIN && pps_sync)
     {
         if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN) && scheduler_sync)
         {
@@ -175,7 +175,7 @@ void pic_pps_evaluate_sync(void)
         }
         else if(((oc_offset + OC_OFFSET_MAX) > FCYCLE_ACC_RESET_POSITIVE) || ((oc_offset + OC_OFFSET_MIN) < FCYCLE_ACC_RESET_NEGATIVE))
         {
-            if(!oc_adjust_fudge && !oc_adjust_in_progress)
+            if(!oc_adjust_fudge && !oc_adjust_in_progress && pps_count_diff)
             {
                 printf("\r\nOC unsynchronised... resetting\r\n");
                 printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
@@ -207,11 +207,8 @@ void pic_pps_resync(void)
 {
     pic_pps_set_latch_cycles(fosc_freq + oc_offset);
     oc_adjust_in_progress = 1;
-    if(!accumulation_start)
-    {
-        accumulation_start = utc;
-        accumulated_clocks = 0;
-    }
+    accumulation_start = utc;
+    accumulated_clocks = 0;
     sync_events++;
 }
 
