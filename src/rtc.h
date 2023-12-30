@@ -29,8 +29,10 @@ extern "C" {
 
 #include "ui.h"
 
+#define RTC_DETECT_LIMIT 3
+    
 void rtc_get_calendar(void);
-void rtc_read_set_calendar(void);
+void rtc_set_calendar(void);
 void rtc_write_from_calendar(time_t utc);
 bool rtc_is_calendar_sync(void);
 void rtc_reset_calendar_sync(void);
