@@ -22,6 +22,7 @@ extern "C" {
 #include "gnss_pps.h"
 #include "pic_pps.h"
 #include "tubes.h"
+#include "sync_state.h"
 
 void ui_init(void);
 void ui_tasks(void);

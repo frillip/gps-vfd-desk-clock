@@ -151,12 +151,8 @@ void ui_uart1_input(void)
         // Press 'r' for manual resync
         else if(c==0x72 && pic_pps_manual_resync_available())
         {
-            recalculate_fosc_freq();
             printf("\r\nManual resync\r\n");
-            printf("New Fosc freq: %luHz\r\n", fosc_freq);
-            printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-            pic_pps_reset_sync();
-            reset_pps_stats();
+            sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
         }
         // Reset the entire device if we see 'R'
         else if(c==0x52)

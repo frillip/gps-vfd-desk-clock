@@ -3,7 +3,7 @@
 extern time_t gnss;
 
 char ubx_tim_tm2_buffer[UBX_TIM_TM2_LENGTH] = {0};
-char ubx_tim_tm2_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x0D, 0x03, 0x1C, 0x00};
+char ubx_tim_tm2_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x0D, 0x03, 0x1C, 0x00};
 bool ubx_tim_tm2_waiting = 0;
 bool ubx_tim_tm2_valid = 0;
 uint16_t ubx_tim_tm2_edge_count = 0;
@@ -27,13 +27,13 @@ int32_t ubx_tim_tm2_ns_diff_diff = 0;
 uint32_t ubx_tim_tm2_accuracy_ns = 0;
 
 char ubx_nav_timeutc_buffer[UBX_NAV_TIMEUTC_LENGTH] = {0};
-char ubx_nav_timeutc_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x21, 0x14, 0x00};
+char ubx_nav_timeutc_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x21, 0x14, 0x00};
 bool ubx_nav_timeutc_waiting = 0;
 bool ubx_nav_timeutc_valid = 0;
 uint32_t ubx_nav_timeutc_accuracy_ns = 0;
 
 char ubx_nav_clock_buffer[UBX_NAV_CLOCK_LENGTH] = {0};
-char ubx_nav_clock_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x22, 0x14, 0x00};
+char ubx_nav_clock_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x22, 0x14, 0x00};
 bool ubx_nav_clock_waiting = 0;
 uint32_t ubx_nav_clock_tow_ms = 0;
 int32_t ubx_nav_clock_bias_ns = 0;
@@ -42,7 +42,7 @@ uint32_t ubx_nav_clock_accuracy_ns = 0;
 uint32_t ubx_nav_clock_f_accuracy_pss = 0;
 
 char ubx_nav_status_buffer[UBX_NAV_STATUS_LENGTH] = {0};
-char ubx_nav_status_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x03, 0x10, 0x00};
+char ubx_nav_status_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x03, 0x10, 0x00};
 bool ubx_nav_status_waiting = 0;
 uint8_t ubx_nav_status_gpsfix = 0;
 bool ubx_nav_status_gpsfixok = 0;

@@ -13,6 +13,8 @@ int32_t accumulated_clocks = 0;
 time_t accumulation_start = 0;
 time_t accumulation_delta = 0;
 
+bool ic_event = 0;
+
 extern time_t utc;
 extern uint16_t counter;
 extern uint32_t fosc_freq;
@@ -56,7 +58,10 @@ void calculate_pps_stats(void)
     accumulated_clocks += pps_count_diff;
     while(accumulated_clocks>FCYCLE_POSITIVE_SUM) accumulated_clocks -= fosc_freq;
     while(accumulated_clocks<FCYCLE_NEGATIVE_SUM) accumulated_clocks += fosc_freq; // Should not happen, but if GPS is evaluated to be significantly 'early' we end up here.
-    accumulation_delta = utc - accumulation_start;
+    if(accumulation_start) accumulation_delta = utc - accumulation_start;
+    else accumulation_delta = 0;
+    ic1_val = 0;
+    ic2_val = 0;
 }
 
 void reset_pps_stats(void)
@@ -76,6 +81,7 @@ void recalculate_fosc_freq(void)
     new_fosc_freq_f = new_fosc_freq_f / accumulation_delta;
     new_fosc_freq = (new_fosc_freq_f + 0.5); //DIRTY ROUNDL() EQUIVALENT
     fosc_freq = new_fosc_freq;
+    if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
 }
 
 // IC1 ISR
@@ -84,6 +90,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC1Interrupt( void )
     if(IFS0bits.IC1IF)
     {
         pps_seq_count++; // Increment our PPS counter
+        ic_event = 1;    // Flag we've had an IC event on GNSS
         ic1_val = IC1BUF; // Read the IC1 timer
         IFS0bits.IC1IF = 0; // Clear the interrupt flag
     }

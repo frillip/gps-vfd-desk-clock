@@ -18,7 +18,7 @@ bool pps_sync = 0;
 bool pps_done = 0;
 
 extern bool print_data;
-extern bool rmc_waiting;
+extern bool gnss_rmc_waiting;
 extern bool scheduler_sync;
 
 extern uint32_t fosc_freq;
@@ -42,6 +42,8 @@ extern bool gnss_calendar_sync;
 extern bool rtc_sync;
 
 extern bool display_update_pending;
+
+extern CLOCK_SYNC_STATUS clock_sync_state;
 
 //extern float pdo_mv;
 //extern float pps_offset_ns;
@@ -106,9 +108,9 @@ void pic_pps_set_latch_cycles(uint32_t cycles)
         msb = 1; // Make sure we have SOMETHING in MSB
         oc_adjust_fudge = 1; // Set the fudge flag so we can correct
     }
-    OC1R = lsb - 50; // - 5000; // Latch pulse width is 5000 cycles
+    OC1R = lsb - 50; // 1.25us
     OC1RS = lsb;
-    OC2R = msb;// -1; // Investigate Latch/Blank/GPIO weirdness --- dodgy soldering. CHECK YOUR JOINTS, PEOPLE!!
+    OC2R = msb;
     OC2RS = msb;
 }
 
@@ -152,46 +154,6 @@ void pic_pps_print_stats(void)
     printf("OC events: %lu Resync events: %lu\r\n",total_oc_seq_count, sync_events);
 }
 
-void pic_pps_evaluate_sync(void)
-{
-    if(((accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE) || (accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE)) && pps_seq_count > PPS_SEQ_COUNT_MIN && pps_sync)
-    {
-        if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN) && scheduler_sync)
-        {
-            recalculate_fosc_freq();
-            printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
-            printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
-            pic_pps_reset_sync();
-            reset_pps_stats();
-        }
-        else if((accumulated_clocks > FCYCLE_ACC_RESET_POSITIVE) || (accumulated_clocks < FCYCLE_ACC_RESET_NEGATIVE))
-        {
-            recalculate_fosc_freq();
-            printf("\r\nMajor frequency excursion...\r\n");
-            printf("New Fosc freq: %luHz\r\n", fosc_freq);
-            printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
-            pic_pps_reset_sync();
-            reset_pps_stats();
-        }
-        else if(((oc_offset + OC_OFFSET_MAX) > FCYCLE_ACC_RESET_POSITIVE) || ((oc_offset + OC_OFFSET_MIN) < FCYCLE_ACC_RESET_NEGATIVE))
-        {
-            if(!oc_adjust_fudge && !oc_adjust_in_progress && pps_count_diff)
-            {
-                printf("\r\nOC unsynchronised... resetting\r\n");
-                printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-                printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
-                if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN) && scheduler_sync)
-                {
-                    recalculate_fosc_freq();
-                    printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
-                }
-                pic_pps_reset_sync();
-                reset_pps_stats();
-            }
-        }
-    }
-}
-
 bool pic_pps_manual_resync_available(void)
 {
     if(accumulation_delta>PPS_MANUAL_RESYNC_INTERVAL) return 1;
@@ -224,7 +186,6 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
 {	
     if(IFS2bits.IC3IF)
     {
-        // Only sync the scheduler after OC
         if(pps_sync && !scheduler_sync)
         {
             scheduler_align(fosc_freq); // Align the scheduler with our OC
@@ -255,7 +216,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         oc_event = 1; // Flag we've just had an OC event
         display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter
-        rmc_waiting = 0; // Invalidate any GNSS data that's waiting
+        gnss_rmc_waiting = 0; // Invalidate any GNSS data that's waiting
         ic3_val = IC3BUF; // Read the IC3 timer
         IFS2bits.IC3IF = 0;
     }

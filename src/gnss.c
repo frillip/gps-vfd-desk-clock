@@ -4,40 +4,49 @@ time_t gnss;
 extern time_t power_on_time;
 extern uint32_t total_oc_seq_count;
 
-char gnss_buffer[GNSS_BUFFER_SIZE] = {0};
+char gnss_string_buffer[GNSS_STRING_BUFFER_SIZE] = {0};
 uint8_t gnss_offset = 0;
 uint8_t gnss_bytes_remaining = 0;
 uint8_t gnss_checksum = 0;
 uint8_t gnss_recieved_checksum = 0;
-char check_buffer[CHECK_BUFFER_SIZE] = {0};
+char gnss_check_buffer[GNSS_CHECK_BUFFER_SIZE] = {0};
 enum gnss_message_type gnss_incoming = GNSS_NONE;
 enum gnss_message_type gnss_waiting = GNSS_NONE;
 
 extern char ubx_tim_tm2_buffer[UBX_TIM_TM2_LENGTH];
-extern char ubx_tim_tm2_string[CHECK_BUFFER_SIZE];
+extern char ubx_tim_tm2_string[GNSS_CHECK_BUFFER_SIZE];
 extern bool ubx_tim_tm2_waiting;
 
 extern char ubx_nav_timeutc_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_timeutc_string[CHECK_BUFFER_SIZE];
+extern char ubx_nav_timeutc_string[GNSS_CHECK_BUFFER_SIZE];
 extern bool ubx_nav_timeutc_waiting;
 
 extern char ubx_nav_clock_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_clock_string[CHECK_BUFFER_SIZE];
+extern char ubx_nav_clock_string[GNSS_CHECK_BUFFER_SIZE];
 extern bool ubx_nav_clock_waiting;
 
 extern char ubx_nav_status_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_status_string[CHECK_BUFFER_SIZE];
+extern char ubx_nav_status_string[GNSS_CHECK_BUFFER_SIZE];
 extern bool ubx_nav_status_waiting;
 
-char rmc_buffer[GNSS_BUFFER_SIZE] = {0};
-char rmc_string[CHECK_BUFFER_SIZE] = "$GNRMC";
-bool rmc_waiting = 0;
+char gnss_rmc_buffer[GNSS_STRING_BUFFER_SIZE] = {0};
+char gnss_rmc_string[GNSS_CHECK_BUFFER_SIZE] = "$GNRMC";
+bool gnss_rmc_waiting = 0;
 
-bool rmc_gnss_fix = 0;
+bool gnss_rmc_fix = 0;
 
 bool gnss_calendar_sync = 0;
 
-void rx_gnss(void)
+bool gnss_detected = 0;
+
+void gnss_init(void)
+{
+    memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
+    memset(gnss_check_buffer, 0, GNSS_CHECK_BUFFER_SIZE);
+    UART2_SetRxInterruptHandler(gnss_rx);
+}
+
+void gnss_rx(void)
 {
     char rx_char = 0;
     
@@ -46,22 +55,23 @@ void rx_gnss(void)
         // Read the character from the UART
         rx_char = UART2_Read();
         // Shuffle our check buffer along
-        memmove(check_buffer, check_buffer+1, 5);
+        memmove(gnss_check_buffer, gnss_check_buffer+1, GNSS_CHECK_BUFFER_SIZE-1);
         // Add the new character to the end of the buffer
-        check_buffer[5] = rx_char;
+        gnss_check_buffer[GNSS_CHECK_BUFFER_SIZE-1] = rx_char;
         
         // Add the character to the end of the main buffer
         // if we're still receiving a message
         if(gnss_incoming!=GNSS_NONE)
         {
-            gnss_buffer[gnss_offset] = rx_char;
+            gnss_detected = 1;
+            gnss_string_buffer[gnss_offset] = rx_char;
             gnss_offset++;
             gnss_bytes_remaining--;
             // If we've reached the end of our buffer
             // then we're getting unknown messages
             // Discard anything that doesn't fit
             // and flag the incoming message as waiting
-            if(gnss_offset>=GNSS_BUFFER_SIZE-1 || gnss_bytes_remaining==0)
+            if(gnss_offset>=GNSS_STRING_BUFFER_SIZE-1 || gnss_bytes_remaining==0)
             {
                 gnss_waiting = gnss_incoming;
                 gnss_incoming = GNSS_NONE;
@@ -74,31 +84,31 @@ void rx_gnss(void)
             // if so, copy it to the right buffer
             if(gnss_waiting==GNSS_UBX_TIM_TM2)
             {
-                memcpy(ubx_tim_tm2_buffer, gnss_buffer, UBX_TIM_TM2_LENGTH);
+                memcpy(ubx_tim_tm2_buffer, gnss_string_buffer, UBX_TIM_TM2_LENGTH);
                 ubx_tim_tm2_waiting=1;
             }
             else if(gnss_waiting==GNSS_UBX_NAV_TIMEUTC)
             {
-                memcpy(ubx_nav_timeutc_buffer, gnss_buffer, UBX_NAV_TIMEUTC_LENGTH);
+                memcpy(ubx_nav_timeutc_buffer, gnss_string_buffer, UBX_NAV_TIMEUTC_LENGTH);
                 ubx_nav_timeutc_waiting=1;
             }
             else if(gnss_waiting==GNSS_UBX_NAV_CLOCK)
             {
-                memcpy(ubx_nav_clock_buffer, gnss_buffer, UBX_NAV_CLOCK_LENGTH);
+                memcpy(ubx_nav_clock_buffer, gnss_string_buffer, UBX_NAV_CLOCK_LENGTH);
                 ubx_nav_clock_waiting=1;
             }
             else if(gnss_waiting==GNSS_UBX_NAV_STATUS)
             {
-                memcpy(ubx_nav_status_buffer, gnss_buffer, UBX_NAV_STATUS_LENGTH);
+                memcpy(ubx_nav_status_buffer, gnss_string_buffer, UBX_NAV_STATUS_LENGTH);
                 ubx_nav_status_waiting=1;
             }
             else if(gnss_waiting==GNSS_GNRMC)
             {
-                memcpy(rmc_buffer, gnss_buffer, GNSS_BUFFER_SIZE);
-                rmc_waiting=1;
+                memcpy(gnss_rmc_buffer, gnss_string_buffer, GNSS_STRING_BUFFER_SIZE);
+                gnss_rmc_waiting=1;
             }
             // Then reset the message buffer
-            memset(gnss_buffer, 0, GNSS_BUFFER_SIZE);
+            memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
             // Reset the message waiting flag
             gnss_waiting=GNSS_NONE;
         }
@@ -106,51 +116,51 @@ void rx_gnss(void)
         // Check if the check buffer matches any of our magic strings
         // But don't do anything with it yet as there may still
         // old message data in the buffer
-        if(memcmp(check_buffer, ubx_tim_tm2_string, CHECK_BUFFER_SIZE)==0)
+        if(memcmp(gnss_check_buffer, ubx_tim_tm2_string, GNSS_CHECK_BUFFER_SIZE)==0)
         {
             gnss_waiting = gnss_incoming;
             gnss_incoming = GNSS_UBX_TIM_TM2;
-            gnss_bytes_remaining = UBX_TIM_TM2_LENGTH - CHECK_BUFFER_SIZE;
-            gnss_offset = CHECK_BUFFER_SIZE;
-            memcpy(gnss_buffer, check_buffer, CHECK_BUFFER_SIZE);
+            gnss_bytes_remaining = UBX_TIM_TM2_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
         }
-        else if(memcmp(check_buffer, ubx_nav_timeutc_string, CHECK_BUFFER_SIZE)==0)
+        else if(memcmp(gnss_check_buffer, ubx_nav_timeutc_string, GNSS_CHECK_BUFFER_SIZE)==0)
         {
             gnss_waiting = gnss_incoming;
             gnss_incoming = GNSS_UBX_NAV_TIMEUTC;
-            gnss_bytes_remaining = UBX_NAV_TIMEUTC_LENGTH - CHECK_BUFFER_SIZE;
-            gnss_offset = CHECK_BUFFER_SIZE;
-            memcpy(gnss_buffer, check_buffer, CHECK_BUFFER_SIZE);
+            gnss_bytes_remaining = UBX_NAV_TIMEUTC_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
         }
-        else if(memcmp(check_buffer, ubx_nav_clock_string, CHECK_BUFFER_SIZE)==0)
+        else if(memcmp(gnss_check_buffer, ubx_nav_clock_string, GNSS_CHECK_BUFFER_SIZE)==0)
         {
             gnss_waiting = gnss_incoming;
             gnss_incoming = GNSS_UBX_NAV_CLOCK;
-            gnss_bytes_remaining = UBX_NAV_CLOCK_LENGTH - CHECK_BUFFER_SIZE;
-            gnss_offset = CHECK_BUFFER_SIZE;
-            memcpy(gnss_buffer, check_buffer, CHECK_BUFFER_SIZE);
+            gnss_bytes_remaining = UBX_NAV_CLOCK_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
         }
-        else if(memcmp(check_buffer, ubx_nav_status_string, CHECK_BUFFER_SIZE)==0)
+        else if(memcmp(gnss_check_buffer, ubx_nav_status_string, GNSS_CHECK_BUFFER_SIZE)==0)
         {
             gnss_waiting = gnss_incoming;
             gnss_incoming = GNSS_UBX_NAV_STATUS;
-            gnss_bytes_remaining = UBX_NAV_STATUS_LENGTH - CHECK_BUFFER_SIZE;
-            gnss_offset = CHECK_BUFFER_SIZE;
-            memcpy(gnss_buffer, check_buffer, CHECK_BUFFER_SIZE);
+            gnss_bytes_remaining = UBX_NAV_STATUS_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
         }
-        else if(memcmp(check_buffer, rmc_string, CHECK_BUFFER_SIZE)==0)
+        else if(memcmp(gnss_check_buffer, gnss_rmc_string, GNSS_CHECK_BUFFER_SIZE)==0)
         {
             gnss_waiting = gnss_incoming;
             gnss_incoming = GNSS_GNRMC;
-            gnss_bytes_remaining = GNSS_BUFFER_SIZE - CHECK_BUFFER_SIZE;
-            gnss_offset = CHECK_BUFFER_SIZE;
-            memcpy(gnss_buffer, check_buffer, CHECK_BUFFER_SIZE);
+            gnss_bytes_remaining = GNSS_STRING_BUFFER_SIZE - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
         }
     }
 }
 
 extern time_t utc;
-void sync_gnss_calendar(void)
+void gnss_sync_calendar(void)
 {
     printf("GNSS calendar sync\r\nTime is now: ");
     ui_print_iso8601_string(gnss);
@@ -161,65 +171,65 @@ void sync_gnss_calendar(void)
     gnss_calendar_sync = 1;
 }
 
-bool is_gnss_calendar_sync(time_t utc)
+bool gnss_is_calendar_sync(time_t utc)
 {
     return utc==gnss;
 }
 
-void reset_gnss_calendar_sync(void)
+void gnss_reset_calendar_sync(void)
 {
     gnss_calendar_sync=0;
 }
 
-time_t process_rmc(void)
+time_t gnss_process_rmc(void)
 {
     struct tm gnss_time;
     gnss_time.tm_isdst = 0;
     uint8_t i;
     uint8_t field = 0;
     bool field_waiting = 0;
-    for(i=0; i<GNSS_BUFFER_SIZE; i++)
+    for(i=0; i<GNSS_STRING_BUFFER_SIZE; i++)
     {
         if(field==1 && field_waiting)
         {
-            if(rmc_buffer[i] == ',') return 0; // We don't have a time yet, so return 0
-            gnss_time.tm_sec = (rmc_buffer[i+5]-0x30);
-            gnss_time.tm_sec += (rmc_buffer[i+4]-0x30)*10;
-            gnss_time.tm_min = (rmc_buffer[i+3]-0x30);
-            gnss_time.tm_min += (rmc_buffer[i+2]-0x30)*10;
-            gnss_time.tm_hour = (rmc_buffer[i+1]-0x30);
-            gnss_time.tm_hour += (rmc_buffer[i]-0x30)*10;
+            if(gnss_rmc_buffer[i] == ',') return 0; // We don't have a time yet, so return 0
+            gnss_time.tm_sec = (gnss_rmc_buffer[i+5]-0x30);
+            gnss_time.tm_sec += (gnss_rmc_buffer[i+4]-0x30)*10;
+            gnss_time.tm_min = (gnss_rmc_buffer[i+3]-0x30);
+            gnss_time.tm_min += (gnss_rmc_buffer[i+2]-0x30)*10;
+            gnss_time.tm_hour = (gnss_rmc_buffer[i+1]-0x30);
+            gnss_time.tm_hour += (gnss_rmc_buffer[i]-0x30)*10;
             field_waiting = 0;
         }
         else if(field==2 && field_waiting)
         {
-            if(rmc_buffer[i] == 'A') rmc_gnss_fix = 1;
-            else rmc_gnss_fix = 0;
+            if(gnss_rmc_buffer[i] == 'A') gnss_rmc_fix = 1;
+            else gnss_rmc_fix = 0;
             field_waiting = 0;
         }
         else if(field==9 && field_waiting)
         {
-            gnss_time.tm_mday = (rmc_buffer[i+1]-0x30);
-            gnss_time.tm_mday += (rmc_buffer[i]-0x30)*10;
-            gnss_time.tm_mon = (rmc_buffer[i+3]-0x30);
-            gnss_time.tm_mon += (rmc_buffer[i+2]-0x30)*10;
+            gnss_time.tm_mday = (gnss_rmc_buffer[i+1]-0x30);
+            gnss_time.tm_mday += (gnss_rmc_buffer[i]-0x30)*10;
+            gnss_time.tm_mon = (gnss_rmc_buffer[i+3]-0x30);
+            gnss_time.tm_mon += (gnss_rmc_buffer[i+2]-0x30)*10;
             gnss_time.tm_mon -= 1; // tm_mon is zero indexed for no reason
-            gnss_time.tm_year = (rmc_buffer[i+5]-0x30+100);
-            gnss_time.tm_year += (rmc_buffer[i+4]-0x30)*10;
+            gnss_time.tm_year = (gnss_rmc_buffer[i+5]-0x30+100);
+            gnss_time.tm_year += (gnss_rmc_buffer[i+4]-0x30)*10;
             field_waiting = 0;
         }
         else field_waiting = 0;
-        if(rmc_buffer[i]==',')
+        if(gnss_rmc_buffer[i]==',')
         {
             field++;
             field_waiting = 1;
         }
-        else if(rmc_buffer[i]==0x0a)
+        else if(gnss_rmc_buffer[i]==0x0a)
         {
-            i=GNSS_BUFFER_SIZE;
+            i=GNSS_STRING_BUFFER_SIZE;
         }
     }
-    memset(rmc_buffer, 0, GNSS_BUFFER_SIZE);
+    memset(gnss_rmc_buffer, 0, GNSS_STRING_BUFFER_SIZE);
     time_t utc;
     utc = mktime(&gnss_time);
     return utc;
