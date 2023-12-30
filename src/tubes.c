@@ -146,13 +146,13 @@ void display_count(uint16_t count)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
-void display_time(const time_t *tod)
+void display_time(const time_t *time)
 {
     uint16_t display_digits = 0;
     struct tm *disp_time;
     
     // Convert our time_t into a time struct
-    disp_time = gmtime(tod);
+    disp_time = gmtime(time);
     
     // Construct our BCD time
     display_digits |= (disp_time->tm_hour / 10)<<12;
@@ -179,13 +179,13 @@ void display_time(const time_t *tod)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
-void display_mmss(const time_t *tod)
+void display_mmss(const time_t *mmss)
 {
     uint16_t display_digits = 0;
     struct tm *disp_time;
     
     // Convert our time_t into a time struct
-    disp_time = gmtime(tod);
+    disp_time = gmtime(mmss);
     
     // Construct our BCD time
     display_digits |= (disp_time->tm_min / 10)<<12;
