@@ -130,7 +130,7 @@ void pic_pps_print_stats(void)
     printf("Crystal freq: %.06fMHz\r\n", fosc_freq_f);
     printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
     // Raw timer values for both PPS and OC
-    printf("PPS C:%lu OC C:%li\r\n", pps_count, oc_count);
+    printf("PPS C:%lu OC C:%lu\r\n", pps_count, oc_count);
     // PPS sync status
     printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
     // Scheduler sync status
