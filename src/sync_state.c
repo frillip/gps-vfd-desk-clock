@@ -74,7 +74,7 @@ void sync_state_machine(void)
         printf("\r\nOC unsynchronised... resetting\r\n");
         printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
         printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
-        if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN) && scheduler_sync)
+        if((accumulation_delta > PPS_SEQ_COUNT_MIN) && scheduler_sync)
         {
             recalculate_fosc_freq();
             printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
@@ -88,6 +88,13 @@ void sync_state_machine(void)
         recalculate_fosc_freq();
         printf("\r\nMajor frequency excursion...\r\n");
         printf("New Fosc freq: %luHz\r\n", fosc_freq);
+        printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+        pic_pps_reset_sync();
+        reset_pps_stats();
+        sync_state_machine_set_state(SYNC_NOSYNC);
+    }
+    else if(clock_sync_state == SYNC_NOSYNC_MINOR_OC)
+    {
         printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
         pic_pps_reset_sync();
         reset_pps_stats();
@@ -363,6 +370,7 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
     else if(sync_state==SYNC_INTERVAL) printf("SYNC_INTERVAL");
     else if(sync_state==SYNC_SYNC) printf("SYNC_SYNC");
     else if(sync_state==SYNC_NOSYNC_MINOR) printf("SYNC_NOSYNC_MINOR");
+    else if(sync_state==SYNC_NOSYNC_MINOR) printf("SYNC_NOSYNC_MINOR_OC");
     else if(sync_state==SYNC_NOSYNC_MAJOR) printf("SYNC_NOSYNC_MAJOR");
     else if(sync_state==SYNC_NOSYNC_MAJOR_OC) printf("SYNC_NOSYNC_MAJOR_OC");
     else if(sync_state==SYNC_NO_CLOCK) printf("SYNC_NO_CLOCK");
@@ -375,15 +383,22 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
 {
     if((accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE) || (accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE))
     {
-        if((accumulation_delta > FCYCLE_ACC_INTERVAL_MIN))
+        if(accumulation_delta > FCYCLE_ACC_INTERVAL_MIN)
         {
-            return SYNC_NOSYNC_MINOR;
+            if((accumulated_clocks > (accumulation_delta * FCYCLE_ACC_LIM_MULTIPLE)))
+            {
+                return SYNC_NOSYNC_MINOR;
+            }
+            else
+            {
+                return SYNC_NOSYNC_MINOR_OC;
+            }
         }
         else if((accumulated_clocks > FCYCLE_ACC_RESET_POSITIVE) || (accumulated_clocks < FCYCLE_ACC_RESET_NEGATIVE))
         {
             return SYNC_NOSYNC_MAJOR;
         }
-        else if(((oc_offset + OC_OFFSET_MAX) > FCYCLE_ACC_RESET_POSITIVE) || ((oc_offset + OC_OFFSET_MIN) < FCYCLE_ACC_RESET_NEGATIVE))
+        else if(((oc_offset + OC_OFFSET_MAX) > (FCYCLE_ACC_RESET_POSITIVE + FCYCLE_ACC_LIM_POSITIVE)) || ((oc_offset + OC_OFFSET_MIN) < (FCYCLE_ACC_RESET_NEGATIVE + FCYCLE_ACC_LIM_NEGATIVE)))
         {
             if(pps_count_diff)
             {
