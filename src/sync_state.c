@@ -385,7 +385,11 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
     {
         if(accumulation_delta > FCYCLE_ACC_INTERVAL_MIN)
         {
-            if((accumulated_clocks > (accumulation_delta * FCYCLE_ACC_LIM_MULTIPLE)))
+            if(((accumulated_clocks) > (accumulation_delta * FCYCLE_ACC_LIM_MULTIPLE)))
+            {
+                return SYNC_NOSYNC_MINOR;
+            }
+            else if(((accumulated_clocks^0xFFFFFFFF)+1) > (accumulation_delta * FCYCLE_ACC_LIM_MULTIPLE)) // Dirty hack to get abs() equivalent
             {
                 return SYNC_NOSYNC_MINOR;
             }
