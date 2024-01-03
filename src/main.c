@@ -110,8 +110,6 @@ int main(void)
                 sync_state_machine();
             }            
 
-            /*
-            // Is there a new set of GNSS time data available
             if(ubx_gnss_available())
             {
                 ubx_update_gnss_time();
@@ -135,12 +133,7 @@ int main(void)
                         }
                     }
                 }
-                else
-                {
-                    //pic_pps_reset_sync();
-                    reset_pps_stats();
-                }
-            }*/
+            }
             
             // Is there new time mark data available
             if(ubx_timemark_waiting()) ubx_update_timemark();
@@ -156,7 +149,7 @@ int main(void)
                 print_ubx_nav_timeutc_data();
                 print_ubx_nav_clock_data();
                 print_ubx_nav_status_data();
-                sync_state_machine_print();
+                print_sync_state_machine();
                 printf("\r\n");
                 print_data = 0;
             }

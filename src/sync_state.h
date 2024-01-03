@@ -61,6 +61,8 @@ typedef enum
     SYNC_NOSYNC_MINOR_OC,
     SYNC_NOSYNC_MAJOR,
     SYNC_NOSYNC_MAJOR_OC,
+    SYNC_NOSYNC_GNSS,
+    SYNC_NOSYNC_MANUAL,
     SYNC_NO_CLOCK,
     SYNC_RTC_ONLY,
     SYNC_NTP_ONLY,
@@ -69,7 +71,7 @@ typedef enum
 
 void sync_state_machine(void);
 void sync_state_machine_set_state(CLOCK_SYNC_STATUS state);
-void sync_state_machine_print(void);
+void print_sync_state_machine(void);
 void sync_state_print(CLOCK_SYNC_STATUS sync_state);
 CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void);
 

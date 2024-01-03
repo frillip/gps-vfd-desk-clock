@@ -152,7 +152,7 @@ void ui_uart1_input(void)
         else if(c==0x72 && pic_pps_manual_resync_available())
         {
             printf("\r\nManual resync\r\n");
-            sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
+            sync_state_machine_set_state(SYNC_NOSYNC_MANUAL);
         }
         // Reset the entire device if we see 'R'
         else if(c==0x52)

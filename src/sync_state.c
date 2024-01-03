@@ -51,6 +51,7 @@ extern int32_t oc_offset;
 extern uint32_t fosc_freq;
 
 CLOCK_SYNC_STATUS sync_check_result = SYNC_SYNC;
+CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
 
 void sync_state_machine(void)
 {
@@ -69,6 +70,25 @@ void sync_state_machine(void)
         state_new_oc = 1;
         oc_event=0;
     }
+    else if(clock_sync_state == SYNC_NOSYNC_MANUAL)
+    {
+        recalculate_fosc_freq();
+        printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+        printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+        pic_pps_reset_sync();
+        reset_pps_stats();
+        sync_state_machine_set_state(SYNC_NOSYNC);
+        last_sync_cause = SYNC_NOSYNC_MANUAL;
+    }
+    else if(clock_sync_state == SYNC_NOSYNC_GNSS)
+    {
+        recalculate_fosc_freq();
+        printf("\r\nGNSS sync loss\r\n");
+        pic_pps_reset_sync();
+        reset_pps_stats();
+        sync_state_machine_set_state(SYNC_NOSYNC);
+        last_sync_cause = SYNC_NOSYNC_GNSS;
+    }
     if(clock_sync_state == SYNC_NOSYNC_MAJOR_OC)
     {
         printf("\r\nOC unsynchronised... resetting\r\n");
@@ -82,6 +102,7 @@ void sync_state_machine(void)
         pic_pps_reset_sync();
         reset_pps_stats();
         sync_state_machine_set_state(SYNC_NOSYNC);
+        last_sync_cause = SYNC_NOSYNC_MAJOR_OC;
     }
     else if(clock_sync_state == SYNC_NOSYNC_MAJOR)
     {
@@ -92,6 +113,7 @@ void sync_state_machine(void)
         pic_pps_reset_sync();
         reset_pps_stats();
         sync_state_machine_set_state(SYNC_NOSYNC);
+        last_sync_cause = SYNC_NOSYNC_MAJOR;
     }
     else if(clock_sync_state == SYNC_NOSYNC_MINOR_OC)
     {
@@ -99,6 +121,7 @@ void sync_state_machine(void)
         pic_pps_reset_sync();
         reset_pps_stats();
         sync_state_machine_set_state(SYNC_NOSYNC);
+        last_sync_cause = SYNC_NOSYNC_MINOR_OC;
     }
     else if(clock_sync_state == SYNC_NOSYNC_MINOR)
     {
@@ -108,6 +131,7 @@ void sync_state_machine(void)
         pic_pps_reset_sync();
         reset_pps_stats();
         sync_state_machine_set_state(SYNC_NOSYNC);
+        last_sync_cause = SYNC_NOSYNC_MINOR;
     }
     else if(clock_sync_state == SYNC_SYNC)
     {
@@ -127,6 +151,7 @@ void sync_state_machine(void)
             {
                 sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
             }
+            state_new_oc = 0;
         }
     }
     if(clock_sync_state == SYNC_INTERVAL)
@@ -342,14 +367,17 @@ void sync_state_machine_set_state(CLOCK_SYNC_STATUS state)
     printf("\r\n");
 }
 
-void sync_state_machine_print(void)
+void print_sync_state_machine(void)
 {
+    printf("\r\n=== STATE MACHINE ===\r\n");
     printf("STATE: ");
     sync_state_print(clock_sync_state);
     printf(" OLD: ");
     sync_state_print(clock_sync_state_old2);
     printf(" LAST: ");
     sync_state_print(clock_sync_state_last);
+    printf("\r\nLAST SYNC CAUSE: ");
+    sync_state_print(last_sync_cause);
     printf("\r\n");
 }
 
@@ -370,9 +398,11 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
     else if(sync_state==SYNC_INTERVAL) printf("SYNC_INTERVAL");
     else if(sync_state==SYNC_SYNC) printf("SYNC_SYNC");
     else if(sync_state==SYNC_NOSYNC_MINOR) printf("SYNC_NOSYNC_MINOR");
-    else if(sync_state==SYNC_NOSYNC_MINOR) printf("SYNC_NOSYNC_MINOR_OC");
+    else if(sync_state==SYNC_NOSYNC_MINOR_OC) printf("SYNC_NOSYNC_MINOR_OC");
     else if(sync_state==SYNC_NOSYNC_MAJOR) printf("SYNC_NOSYNC_MAJOR");
     else if(sync_state==SYNC_NOSYNC_MAJOR_OC) printf("SYNC_NOSYNC_MAJOR_OC");
+    else if(sync_state==SYNC_NOSYNC_GNSS) printf("SYNC_NOSYNC_GNSS");
+    else if(sync_state==SYNC_NOSYNC_MANUAL) printf("SYNC_NOSYNC_MANUAL");
     else if(sync_state==SYNC_NO_CLOCK) printf("SYNC_NO_CLOCK");
     else if(sync_state==SYNC_RTC_ONLY) printf("SYNC_RTC_ONLY");
     else if(sync_state==SYNC_NTP_ONLY) printf("SYNC_NTP_ONLY");
