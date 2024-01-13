@@ -68,6 +68,7 @@ void sync_state_machine(void)
         ui_print_iso8601_string(utc);
         printf("\r\n");
         state_new_oc = 1;
+        ui_buzzer_interval_beep();
         oc_event=0;
     }
     else if(clock_sync_state == SYNC_NOSYNC_MANUAL)
