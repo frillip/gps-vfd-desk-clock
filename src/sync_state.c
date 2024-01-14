@@ -157,6 +157,10 @@ void sync_state_machine(void)
             {
                 sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
             }
+            else if(sync_check_result==SYNC_NOSYNC_MINOR_OC)
+            {
+                sync_state_machine_set_state(SYNC_NOSYNC_MINOR_OC);
+            }
             
             struct tm *time_struct;
             time_struct = gmtime(&utc);
