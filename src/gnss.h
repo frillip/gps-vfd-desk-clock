@@ -27,8 +27,8 @@ extern "C" {
 #define GNSS_STRING_BUFFER_SIZE 100
 #define GNSS_CHECK_BUFFER_SIZE 6
     
-#define GNSS_DETECT_LIMIT 3000
-#define GNSS_FIX_LIMIT 600000
+#define GNSS_DETECT_LIMIT 300
+#define GNSS_FIX_LIMIT 12000
     
 void gnss_init(void);
 
