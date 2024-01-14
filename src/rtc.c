@@ -34,6 +34,9 @@ void rtc_write_from_calendar(time_t utc)
         PCF8563_write(utc);
     #endif
 #endif
+    printf("RTC time is now: ");
+    ui_print_iso8601_string(rtc);
+    printf("\r\n");
     rtc_sync = 1; 
 }
 
