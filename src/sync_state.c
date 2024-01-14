@@ -15,6 +15,8 @@ extern int32_t tz_offset;
 extern int32_t dst_offset;
 
 extern bool rtc_detected;
+//extern bool esp_ntp_detected;
+bool esp_ntp_detected = 0;
 extern bool gnss_detected;
 
 extern uint32_t pps_seq_count;
@@ -28,6 +30,9 @@ bool state_new_ic = 0;
 extern bool print_data;
 extern bool gnss_rmc_waiting;
 extern bool scheduler_sync;
+
+//extern bool esp_ntp_valid;
+bool esp_ntp_valid = 0;
 
 extern uint32_t fosc_freq;
 
@@ -152,6 +157,13 @@ void sync_state_machine(void)
             {
                 sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
             }
+            
+            struct tm *time_struct;
+            time_struct = gmtime(utc);
+            if(time_struct->tm_sec==0)
+            {
+                if(!(time_struct->tm_min%15)) rtc_write_from_calendar(utc);
+            }
             state_new_oc = 0;
         }
     }
@@ -203,7 +215,11 @@ void sync_state_machine(void)
         if(state_new_oc)
         {
             pic_pps_calculate_oc_stats();
-            if(pps_sync) sync_state_machine_set_state(SYNC_SCHED_SYNC);
+            if(pps_sync) 
+            {
+                rtc_write_from_calendar(utc);
+                sync_state_machine_set_state(SYNC_SCHED_SYNC);
+            }
             state_new_oc = 0;
         }
     }
@@ -238,6 +254,49 @@ void sync_state_machine(void)
             sync_state_machine_set_state(SYNC_NOSYNC);
         }
     }
+    else if(clock_sync_state == SYNC_NTP_ONLY)
+    {
+        if(state_new_oc)
+        {
+            printf("Shouldn't be here yet...\r\n");
+        }
+    }
+    else if(clock_sync_state == SYNC_NTP_NO_NETWORK)
+    {
+        if(state_new_oc)
+        {
+            printf("Shouldn't be here yet...\r\n");
+        }
+    }
+    else if(clock_sync_state == SYNC_RTC_ONLY)
+    {
+        if(gnss_detected)
+        {
+            if(ubx_gnss_available())
+            {
+                ubx_update_gnss_time();
+                if(ubx_gnss_time_valid())
+                {
+                    printf("GNSS FIX ACQUIRED\r\n");
+                    if(!gnss_is_calendar_sync(utc))
+                    {
+                        gnss_reset_calendar_sync();
+                        rtc_reset_calendar_sync();
+                        gnss_sync_calendar();
+                        rtc_write_from_calendar(utc);
+                    }
+                    sync_state_machine_set_state(SYNC_STARTUP);
+                }
+            }
+        }
+    }
+    else if(clock_sync_state == SYNC_NO_CLOCK)
+    {
+        if(state_new_oc)
+        {
+            printf("NO CLOCK!\r\n");
+        }
+    }
     else if(clock_sync_state == SYNC_GNSS_WAIT_FOR_FIX)
     {
         if(sync_state_detect_timeout < GNSS_FIX_LIMIT)
@@ -260,6 +319,30 @@ void sync_state_machine(void)
                 }
             }
         }
+        else
+        {
+            printf("NO GNSS FIX... ");
+            if(esp_ntp_valid)
+            {
+                printf("NTP ONLY MODE\r\n");
+                sync_state_machine_set_state(SYNC_NTP_ONLY);
+            }
+            else if(esp_ntp_detected)
+            {
+                printf("NTP ONLY MODE - NO NETWORK\r\n");
+                sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
+            }
+            else if(rtc_detected)
+            {
+                printf("RTC ONLY MODE\r\n");
+                sync_state_machine_set_state(SYNC_RTC_ONLY);
+            }
+            else
+            {
+                printf("NO CLOCK DETECTED\r\n");
+                sync_state_machine_set_state(SYNC_NO_CLOCK);
+            }
+        }
     }
     else if(clock_sync_state == SYNC_GNSS_DETECT)
     {
@@ -278,14 +361,18 @@ void sync_state_machine(void)
         }
         else
         {
-            /*
-            if(esp_ntp_valid) sync_state_machine_set_state(SYNC_NTP_ONLY);
-            else if(esp_ntp_detected) sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
-            else if(rtc_detected) sync_state_machine_set_state(SYNC_RTC_ONLY);
-            else sync_state_machine_set_state(SYNC_NO_CLOCK);
-            */
             printf("NO GNSS DETECTED... ");
-            if(rtc_detected)
+            if(esp_ntp_valid)
+            {
+                printf("NTP ONLY MODE\r\n");
+                sync_state_machine_set_state(SYNC_NTP_ONLY);
+            }
+            else if(esp_ntp_detected)
+            {
+                printf("NTP ONLY MODE - NO NETWORK\r\n");
+                sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
+            }
+            else if(rtc_detected)
             {
                 printf("RTC ONLY MODE\r\n");
                 sync_state_machine_set_state(SYNC_RTC_ONLY);
@@ -300,7 +387,7 @@ void sync_state_machine(void)
     else if(clock_sync_state == SYNC_NTP_DETECT)
     {
         /*
-        if(detect_timeout < GNSS_DETECT_LIMIT)
+        if(detect_timeout < ESP_DETECT_LIMIT)
         {
             detect_timeout++;
             if(clock_sync_state!=clock_sync_state_old)
