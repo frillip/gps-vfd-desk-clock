@@ -159,7 +159,7 @@ void sync_state_machine(void)
             }
             
             struct tm *time_struct;
-            time_struct = gmtime(utc);
+            time_struct = gmtime(&utc);
             if(time_struct->tm_sec==0)
             {
                 if(!(time_struct->tm_min%15)) rtc_write_from_calendar(utc);
