@@ -44,6 +44,7 @@ bool sync_state_machine_run = 0;
 // time_t to store UTC, GNSS, RTC and local time
 time_t utc;
 time_t local;
+time_t previous_local;
 extern time_t rtc;
 extern bool rtc_detected;
 
@@ -172,6 +173,7 @@ int main(void)
             t100ms1 = -1;
             utc++;
             
+            previous_local = local;
             local = utc + tz_offset;
             if(isDST(&utc)) local = local+dst_offset; 
             

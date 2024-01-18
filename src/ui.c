@@ -23,6 +23,10 @@ bool disable_manual_print = 0;
 
 extern uint16_t display_brightness;
 
+extern bool display_update_pending;
+extern time_t local;
+extern time_t previous_local;
+
 void ui_init(void)
 {
 
@@ -132,8 +136,17 @@ void ui_buzzer_sounder(void)
 
 void ui_display_task(void)
 {
-    display_time(&local);
-    display_latch();
+    if(display_update_pending)
+    {
+        display_time(&previous_local);
+        display_latch();
+        display_time(&local);
+    }
+    else
+    {
+        display_time(&local);
+        display_latch();
+    }
 }
 
 void ui_uart1_input(void)
