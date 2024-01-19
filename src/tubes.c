@@ -196,9 +196,12 @@ void display_mmss(const time_t *mmss)
     // Generate the buffer content
     uint64_t driver_buffer = display_generate_buffer(display_digits);
     
-    // Enable the middle dots on mmss display if we have PPS sync
-    if(pps_sync) driver_buffer |= MIDDLE_SEPARATOR_BOTH;
-
+    // Toggle the middle dots/dashes based on if the seconds are even or odd
+    // but only if we have PPS sync
+    if(!(disp_time->tm_sec%2) && pps_sync)
+    {
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+    }
     // Show the left hand dot if switch is closed
     if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
     
