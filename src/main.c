@@ -72,6 +72,8 @@ extern CLOCK_SYNC_STATUS clock_sync_state;
 extern CLOCK_SYNC_STATUS clock_sync_state_old;
 extern CLOCK_SYNC_STATUS clock_sync_state_last;
 
+extern UI_STATE ui_state_current;
+
 int main(void)
 {
     // initialize the device
@@ -92,6 +94,8 @@ int main(void)
     
     scheduler_init();
     sync_state_machine_run = 1;
+    
+    ui_init();
 
     // Enable WDT (set to 32s timeout non-windowed mode)
     RCONbits.SWDTEN = 1;
@@ -177,7 +181,8 @@ int main(void)
             local = utc + tz_offset;
             if(isDST(&utc)) local = local+dst_offset; 
             
-            display_time(&local);
+            if(ui_state_current==UI_STATE_CLOCK_HHMM) display_time(&local);
+            else if(ui_state_current==UI_STATE_CLOCK_MMSS) display_mmss(&local);
             
             // Re-enable manual printing
             disable_manual_print = 0;

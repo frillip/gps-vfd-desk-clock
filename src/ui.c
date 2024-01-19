@@ -27,9 +27,11 @@ extern bool display_update_pending;
 extern time_t local;
 extern time_t previous_local;
 
+UI_STATE ui_state_current = UI_STATE_INIT;
+
 void ui_init(void)
 {
-
+    ui_state_current = UI_STATE_CLOCK_HHMM;
 }
 
 void ui_tasks(void)
@@ -46,7 +48,12 @@ void ui_button_task(void)
     if(ui_button_input_state() == button_input_last_state)
     {
         button_state = ui_button_input_state();
-        if(button_state != button_last_state) update_display = 1;
+        if(button_state != button_last_state)
+        {
+            if(ui_button_input_state()) ui_state_current=UI_STATE_CLOCK_MMSS;
+            else ui_state_current=UI_STATE_CLOCK_HHMM;
+            update_display = 1;
+        }
         button_last_state = button_state;
     }
     button_input_last_state = ui_button_input_state();
@@ -136,16 +143,33 @@ void ui_buzzer_sounder(void)
 
 void ui_display_task(void)
 {
-    if(display_update_pending)
+    if(ui_state_current==UI_STATE_CLOCK_HHMM)
     {
-        display_time(&previous_local);
-        display_latch();
-        display_time(&local);
+        if(display_update_pending)
+        {
+            display_time(&previous_local);
+            display_latch();
+            display_time(&local);
+        }
+        else
+        {
+            display_time(&local);
+            display_latch();
+        }
     }
-    else
+    if(ui_state_current==UI_STATE_CLOCK_MMSS)
     {
-        display_time(&local);
-        display_latch();
+        if(display_update_pending)
+        {
+            display_mmss(&previous_local);
+            display_latch();
+            display_mmss(&local);
+        }
+        else
+        {
+            display_mmss(&local);
+            display_latch();
+        }
     }
 }
 

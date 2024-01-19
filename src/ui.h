@@ -23,6 +23,17 @@ extern "C" {
 #include "pic_pps.h"
 #include "tubes.h"
 #include "sync_state.h"
+    
+typedef enum
+{
+    UI_STATE_INIT,
+    UI_STATE_CLOCK_HHMM,
+    UI_STATE_CLOCK_MMSS,
+    UI_STATE_CLOCK_SSMM,
+    UI_STATE_MENU_ROOT,
+    UI_STATE_MENU_TZ_ADJUST,
+    UI_STATE_MENU_ALARM_SET,
+} UI_STATE;
 
 void ui_init(void);
 void ui_tasks(void);
