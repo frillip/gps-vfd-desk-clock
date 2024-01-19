@@ -72,7 +72,7 @@ extern CLOCK_SYNC_STATUS clock_sync_state;
 extern CLOCK_SYNC_STATUS clock_sync_state_old;
 extern CLOCK_SYNC_STATUS clock_sync_state_last;
 
-extern UI_STATE ui_state_current;
+extern UI_DISPLAY_STATE ui_state_current;
 
 int main(void)
 {
@@ -165,6 +165,7 @@ int main(void)
             t10ms1=0;
             ui_buzzer_sounder();
             ui_button_task();
+            ui_display_task();
         }
         if(t100ms0==1)
         {
@@ -181,8 +182,8 @@ int main(void)
             local = utc + tz_offset;
             if(isDST(&utc)) local = local+dst_offset; 
             
-            if(ui_state_current==UI_STATE_CLOCK_HHMM) display_time(&local);
-            else if(ui_state_current==UI_STATE_CLOCK_MMSS) display_mmss(&local);
+            if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&local);
+            else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&local);
             
             // Re-enable manual printing
             disable_manual_print = 0;
