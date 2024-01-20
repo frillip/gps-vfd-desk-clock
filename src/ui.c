@@ -30,6 +30,7 @@ extern time_t previous_local;
 bool update_display = 0;
 
 UI_DISPLAY_STATE ui_state_current = UI_DISPLAY_STATE_INIT;
+uint16_t ui_display_timeout = 0;
 
 UI_BUTTON_STATE ui_button_action = UI_BUTTON_STATE_NO_PRESS;
 uint16_t ui_button_counter = 0;
@@ -55,7 +56,6 @@ void ui_button_task(void)
             if(ui_button_counter==UI_BUTTON_LONG_PRESS_COUNT)
             {
                 ui_button_action=UI_BUTTON_STATE_LONG_PRESS;
-                printf("BTN_LONG\r\n");
             }
             ui_button_counter++;
         }
@@ -67,7 +67,6 @@ void ui_button_task(void)
             if(ui_button_counter>UI_BUTTON_SHORT_PRESS_COUNT && ui_button_counter<UI_BUTTON_LONG_PRESS_COUNT)
             {
                 ui_button_action=UI_BUTTON_STATE_SHORT_PRESS;
-                printf("BTN_SHORT\r\n");
             }
         }
         ui_button_counter=0;
@@ -156,17 +155,28 @@ void ui_buzzer_sounder(void)
 
 void ui_display_task(void)
 {
+    if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM && !ui_switch_input_state())
+    {
+        ui_display_timeout++;
+    }
+    if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
+    {
+        ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        // Don't update display immediately, let it update on the next second increment
+        //update_display = 1;
+        ui_display_timeout=0;
+    }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
         if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
         else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         update_display = 1;
-        printf("yes\r\n");
     }
     ui_button_action = UI_BUTTON_STATE_NO_PRESS;
 
     if(update_display)
     {
+        ui_display_timeout=0;
         if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM)
         {
             if(display_update_pending)
@@ -195,6 +205,7 @@ void ui_display_task(void)
                 display_latch();
             }
         }
+        update_display=0;
     }
 }
 
