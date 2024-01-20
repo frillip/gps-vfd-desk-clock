@@ -240,8 +240,8 @@ void print_ubx_nav_status_data(void)
 
 void process_ubx_nav_posllh(void)
 {
-    memcpy(&ubx_nav_posllh_lat, ubx_nav_posllh_buffer+10, 4);
-    memcpy(&ubx_nav_posllh_lon, ubx_nav_posllh_buffer+14, 4);
+    memcpy(&ubx_nav_posllh_lon, ubx_nav_posllh_buffer+10, 4);
+    memcpy(&ubx_nav_posllh_lat, ubx_nav_posllh_buffer+14, 4);
     memcpy(&ubx_nav_posllh_height, ubx_nav_posllh_buffer+18, 4);
     memcpy(&ubx_nav_posllh_hmsl, ubx_nav_posllh_buffer+22, 4);
     memcpy(&ubx_nav_posllh_hacc, ubx_nav_posllh_buffer+26, 4);
