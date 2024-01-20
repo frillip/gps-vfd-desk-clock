@@ -40,7 +40,7 @@ void gnss_reset_calendar_sync(void);
 
 time_t gnss_process_rmc(void);
 
-enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_GNRMC};
+enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_UBX_NAV_POSLLH, GNSS_GNRMC};
 
 #ifdef	__cplusplus
 }

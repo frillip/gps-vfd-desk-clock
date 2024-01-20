@@ -47,11 +47,22 @@ bool ubx_nav_status_waiting = 0;
 uint8_t ubx_nav_status_gpsfix = 0;
 bool ubx_nav_status_gpsfixok = 0;
 
+char ubx_nav_posllh_buffer[UBX_NAV_POSLLH_LENGTH] = {0};
+char ubx_nav_posllh_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x02, 0x1C, 0x00};
+bool ubx_nav_posllh_waiting = 0;
+int32_t ubx_nav_posllh_lat = 0;
+int32_t ubx_nav_posllh_lon = 0;
+int32_t ubx_nav_posllh_height = 0;
+int32_t ubx_nav_posllh_hmsl = 0;
+uint32_t ubx_nav_posllh_hacc = 0;
+uint32_t ubx_nav_posllh_vacc = 0;
+
 bool gnss_fix;
 bool print_ubx_tim_tm2 = 0;
 bool print_ubx_nav_timeutc = 0;
 bool print_ubx_nav_clock = 0;
 bool print_ubx_nav_status = 0;
+bool print_ubx_nav_posllh = 0;
 
 void process_ubx_tim_tm2(void)
 {
@@ -264,9 +275,55 @@ void print_ubx_nav_status_data(void)
     }
 }
 
+void process_ubx_nav_posllh(void)
+{
+    memcpy(&ubx_nav_posllh_lat, ubx_nav_posllh_buffer+10, 4);
+    memcpy(&ubx_nav_posllh_lon, ubx_nav_posllh_buffer+14, 4);
+    memcpy(&ubx_nav_posllh_height, ubx_nav_posllh_buffer+18, 4);
+    memcpy(&ubx_nav_posllh_hmsl, ubx_nav_posllh_buffer+22, 4);
+    memcpy(&ubx_nav_posllh_hacc, ubx_nav_posllh_buffer+26, 4);
+    memcpy(&ubx_nav_posllh_vacc, ubx_nav_posllh_buffer+30, 4);
+
+    memset(ubx_nav_posllh_buffer, 0, UBX_NAV_POSLLH_LENGTH);
+}
+
+void print_ubx_nav_posllh_data(void)
+{
+    printf("\r\n=== UBX-NAV-POSLLH ===\r\n");
+    if(print_ubx_nav_posllh)
+    {
+        int16_t lat_d = ubx_nav_posllh_lat / 10000000;
+        int32_t lat_p = ubx_nav_posllh_lat - (lat_d * 10000000);
+        if(lat_p<0) lat_p = (lat_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
+        printf("LAT: %4i.%7li\r\n", lat_d, lat_p);
+        
+        int16_t lon_d = ubx_nav_posllh_lon / 10000000;
+        int32_t lon_p = ubx_nav_posllh_lon - (lon_d * 10000000);
+        if(lon_p<0) lon_p = (lon_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
+        printf("LON: %4i.%7li\r\n", lon_d, lon_p);
+        
+        float height_m = ubx_nav_posllh_height;
+        height_m = height_m / 1000;
+        float hmsl_m = ubx_nav_posllh_hmsl;
+        hmsl_m = hmsl_m / 1000;
+        printf("Height: %4.0fm aMSL: %4.0fm\r\n", height_m, hmsl_m);
+        
+        float hacc_m = ubx_nav_posllh_hacc;
+        hacc_m = hacc_m / 1000;
+        float vacc_m = ubx_nav_posllh_vacc;
+        vacc_m = vacc_m / 1000;
+        printf("Acc H: %6.3fm V: %6.3fm\r\n" ,hacc_m, vacc_m);
+        
+    }
+    else
+    {
+        printf("No new data\r\n");
+    }
+}
+
 bool ubx_gnss_available(void)
 {
-    if(ubx_nav_timeutc_waiting && ubx_nav_status_waiting && ubx_nav_clock_waiting) return 1;
+    if(ubx_nav_timeutc_waiting && ubx_nav_status_waiting && ubx_nav_clock_waiting && ubx_nav_posllh_waiting) return 1;
     else return 0;
 }
 
@@ -283,6 +340,10 @@ void ubx_update_gnss_time(void)
     ubx_nav_clock_waiting = 0;
     process_ubx_nav_clock();
     print_ubx_nav_clock = 1;
+    
+    ubx_nav_posllh_waiting = 0;
+    process_ubx_nav_posllh();
+    print_ubx_nav_posllh = 1;
 }
 
 bool ubx_gnss_time_valid(void)

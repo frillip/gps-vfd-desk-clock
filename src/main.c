@@ -154,6 +154,7 @@ int main(void)
                 print_ubx_nav_timeutc_data();
                 print_ubx_nav_clock_data();
                 print_ubx_nav_status_data();
+                print_ubx_nav_posllh_data();
                 print_sync_state_machine();
                 printf("\r\n");
                 print_data = 0;

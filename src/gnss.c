@@ -29,6 +29,10 @@ extern char ubx_nav_status_buffer[UBX_NAV_TIMEUTC_LENGTH];
 extern char ubx_nav_status_string[GNSS_CHECK_BUFFER_SIZE];
 extern bool ubx_nav_status_waiting;
 
+extern char ubx_nav_posllh_buffer[UBX_NAV_TIMEUTC_LENGTH];
+extern char ubx_nav_posllh_string[GNSS_CHECK_BUFFER_SIZE];
+extern bool ubx_nav_posllh_waiting;
+
 char gnss_rmc_buffer[GNSS_STRING_BUFFER_SIZE] = {0};
 char gnss_rmc_string[GNSS_CHECK_BUFFER_SIZE] = "$GNRMC";
 bool gnss_rmc_waiting = 0;
@@ -102,6 +106,11 @@ void gnss_rx(void)
                 memcpy(ubx_nav_status_buffer, gnss_string_buffer, UBX_NAV_STATUS_LENGTH);
                 ubx_nav_status_waiting=1;
             }
+            else if(gnss_waiting==GNSS_UBX_NAV_POSLLH)
+            {
+                memcpy(ubx_nav_posllh_buffer, gnss_string_buffer, UBX_NAV_POSLLH_LENGTH);
+                ubx_nav_posllh_waiting=1;
+            }
             else if(gnss_waiting==GNSS_GNRMC)
             {
                 memcpy(gnss_rmc_buffer, gnss_string_buffer, GNSS_STRING_BUFFER_SIZE);
@@ -145,6 +154,14 @@ void gnss_rx(void)
             gnss_waiting = gnss_incoming;
             gnss_incoming = GNSS_UBX_NAV_STATUS;
             gnss_bytes_remaining = UBX_NAV_STATUS_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+        }
+        else if(memcmp(gnss_check_buffer, ubx_nav_posllh_string, GNSS_CHECK_BUFFER_SIZE)==0)
+        {
+            gnss_waiting = gnss_incoming;
+            gnss_incoming = GNSS_UBX_NAV_POSLLH;
+            gnss_bytes_remaining = UBX_NAV_POSLLH_LENGTH - GNSS_CHECK_BUFFER_SIZE;
             gnss_offset = GNSS_CHECK_BUFFER_SIZE;
             memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
         }
