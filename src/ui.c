@@ -32,6 +32,8 @@ bool update_display = 0;
 UI_DISPLAY_STATE ui_state_current = UI_DISPLAY_STATE_INIT;
 uint16_t ui_display_timeout = 0;
 
+UI_MENU_STATE ui_menu_current = UI_MENU_STATE_ROOT;
+
 UI_BUTTON_STATE ui_button_action = UI_BUTTON_STATE_NO_PRESS;
 uint16_t ui_button_counter = 0;
 
@@ -162,14 +164,22 @@ void ui_display_task(void)
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
         ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
-        // Don't update display immediately, let it update on the next second increment
-        //update_display = 1;
+        update_display = 1;
         ui_display_timeout=0;
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
         if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
         else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        update_display = 1;
+    }
+    else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
+    {
+        if(ui_state_current==UI_DISPLAY_STATE_MENU)
+        {
+            if(ui_menu_current==UI_MENU_STATE_EXIT) ui_menu_current=UI_MENU_STATE_ROOT;
+            else ui_menu_current++;
+        }
         update_display = 1;
     }
     ui_button_action = UI_BUTTON_STATE_NO_PRESS;
@@ -204,6 +214,11 @@ void ui_display_task(void)
                 display_mmss(&local);
                 display_latch();
             }
+        }
+        if(ui_state_current==UI_DISPLAY_STATE_MENU)
+        {
+            display_menu();
+            display_latch();
         }
         update_display=0;
     }
