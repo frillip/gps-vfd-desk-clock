@@ -265,15 +265,15 @@ void print_ubx_nav_posllh_data(void)
         if(lon_p<0) lon_p = (lon_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
         printf("LON: %4i.%7li\r\n", lon_d, lon_p);
         
-        float height_m = ubx_nav_posllh_height;
+        double height_m = ubx_nav_posllh_height;
         height_m = height_m / 1000;
-        float hmsl_m = ubx_nav_posllh_hmsl;
+        double hmsl_m = ubx_nav_posllh_hmsl;
         hmsl_m = hmsl_m / 1000;
         printf("Height: %4.0fm aMSL: %4.0fm\r\n", height_m, hmsl_m);
         
-        float hacc_m = ubx_nav_posllh_hacc;
+        double hacc_m = ubx_nav_posllh_hacc;
         hacc_m = hacc_m / 1000;
-        float vacc_m = ubx_nav_posllh_vacc;
+        double vacc_m = ubx_nav_posllh_vacc;
         vacc_m = vacc_m / 1000;
         printf("Acc H: %6.3fm V: %6.3fm\r\n" ,hacc_m, vacc_m);
         
