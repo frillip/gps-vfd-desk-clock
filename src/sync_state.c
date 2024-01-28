@@ -31,8 +31,8 @@ extern bool print_data;
 extern bool gnss_rmc_waiting;
 extern bool scheduler_sync;
 
-//extern bool esp_ntp_valid;
-bool esp_ntp_valid = 0;
+extern bool esp_detected;
+extern bool esp_ntp_valid;
 
 extern uint32_t fosc_freq;
 
