@@ -19,21 +19,28 @@ extern "C" {
 #include <time.h>
 #include "mcc_generated_files/uart2.h"
 #include "mcc_generated_files/uart1.h"
+#include"mcc_generated_files/system.h"
+#include"mcc_generated_files/clock.h"
 #include "ui.h"
 #include "ublox_ubx.h"
     
-#define GNSS_BUFFER_SIZE 100
-#define CHECK_BUFFER_SIZE 6
+#define GNSS_STRING_BUFFER_SIZE 100
+#define GNSS_CHECK_BUFFER_SIZE 6
     
-void rx_gnss(void);
+#define GNSS_DETECT_LIMIT 300
+#define GNSS_FIX_LIMIT 12000
+    
+void gnss_init(void);
 
-void sync_gnss_calendar(void);
-bool is_gnss_calendar_sync(time_t utc);
-void reset_gnss_calendar_sync(void);
+void gnss_rx(void);
 
-time_t process_rmc(void);
+void gnss_sync_calendar(void);
+bool gnss_is_calendar_sync(time_t utc);
+void gnss_reset_calendar_sync(void);
 
-enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_GNRMC};
+time_t gnss_process_rmc(void);
+
+enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_UBX_NAV_POSLLH, GNSS_GNRMC};
 
 #ifdef	__cplusplus
 }

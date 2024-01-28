@@ -3,7 +3,7 @@
 extern time_t gnss;
 
 char ubx_tim_tm2_buffer[UBX_TIM_TM2_LENGTH] = {0};
-char ubx_tim_tm2_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x0D, 0x03, 0x1C, 0x00};
+char ubx_tim_tm2_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x0D, 0x03, 0x1C, 0x00};
 bool ubx_tim_tm2_waiting = 0;
 bool ubx_tim_tm2_valid = 0;
 uint16_t ubx_tim_tm2_edge_count = 0;
@@ -27,13 +27,13 @@ int32_t ubx_tim_tm2_ns_diff_diff = 0;
 uint32_t ubx_tim_tm2_accuracy_ns = 0;
 
 char ubx_nav_timeutc_buffer[UBX_NAV_TIMEUTC_LENGTH] = {0};
-char ubx_nav_timeutc_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x21, 0x14, 0x00};
+char ubx_nav_timeutc_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x21, 0x14, 0x00};
 bool ubx_nav_timeutc_waiting = 0;
 bool ubx_nav_timeutc_valid = 0;
 uint32_t ubx_nav_timeutc_accuracy_ns = 0;
 
 char ubx_nav_clock_buffer[UBX_NAV_CLOCK_LENGTH] = {0};
-char ubx_nav_clock_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x22, 0x14, 0x00};
+char ubx_nav_clock_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x22, 0x14, 0x00};
 bool ubx_nav_clock_waiting = 0;
 uint32_t ubx_nav_clock_tow_ms = 0;
 int32_t ubx_nav_clock_bias_ns = 0;
@@ -42,16 +42,27 @@ uint32_t ubx_nav_clock_accuracy_ns = 0;
 uint32_t ubx_nav_clock_f_accuracy_pss = 0;
 
 char ubx_nav_status_buffer[UBX_NAV_STATUS_LENGTH] = {0};
-char ubx_nav_status_string[CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x03, 0x10, 0x00};
+char ubx_nav_status_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x03, 0x10, 0x00};
 bool ubx_nav_status_waiting = 0;
 uint8_t ubx_nav_status_gpsfix = 0;
 bool ubx_nav_status_gpsfixok = 0;
+
+char ubx_nav_posllh_buffer[UBX_NAV_POSLLH_LENGTH] = {0};
+char ubx_nav_posllh_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x01, 0x02, 0x1C, 0x00};
+bool ubx_nav_posllh_waiting = 0;
+int32_t ubx_nav_posllh_lat = 0;
+int32_t ubx_nav_posllh_lon = 0;
+int32_t ubx_nav_posllh_height = 0;
+int32_t ubx_nav_posllh_hmsl = 0;
+uint32_t ubx_nav_posllh_hacc = 0;
+uint32_t ubx_nav_posllh_vacc = 0;
 
 bool gnss_fix;
 bool print_ubx_tim_tm2 = 0;
 bool print_ubx_nav_timeutc = 0;
 bool print_ubx_nav_clock = 0;
 bool print_ubx_nav_status = 0;
+bool print_ubx_nav_posllh = 0;
 
 void process_ubx_tim_tm2(void)
 {
@@ -81,30 +92,15 @@ void process_ubx_tim_tm2(void)
     // Byte 10-11 is week number rising edge
     // Byte 12-13 is week number falling edge
     // Byte 14-17 is rising edge time of week in ms
-    ubx_tim_tm2_rising_ms  = ((uint32_t)ubx_tim_tm2_buffer[14]&0xFF);
-    ubx_tim_tm2_rising_ms += ((uint32_t)ubx_tim_tm2_buffer[15]&0xFF)<<8;
-    ubx_tim_tm2_rising_ms += ((uint32_t)ubx_tim_tm2_buffer[16]&0xFF)<<16;
-    ubx_tim_tm2_rising_ms += ((uint32_t)ubx_tim_tm2_buffer[17]&0xFF)<<24;
+    memcpy(&ubx_tim_tm2_rising_ms, ubx_tim_tm2_buffer+14, 4);
     // Byte 18-21 is rising edge ms fraction in ns
-    ubx_tim_tm2_rising_ns  = ((uint32_t)ubx_tim_tm2_buffer[18]&0xFF);
-    ubx_tim_tm2_rising_ns += ((uint32_t)ubx_tim_tm2_buffer[19]&0xFF)<<8;
-    ubx_tim_tm2_rising_ns += ((uint32_t)ubx_tim_tm2_buffer[20]&0xFF)<<16;
-    ubx_tim_tm2_rising_ns += ((uint32_t)ubx_tim_tm2_buffer[21]&0xFF)<<24;
+    memcpy(&ubx_tim_tm2_rising_ns, ubx_tim_tm2_buffer+18, 4);
     // Byte 22-25 is falling edge time of week in ms
-    ubx_tim_tm2_falling_ms  = ((uint32_t)ubx_tim_tm2_buffer[22]&0xFF);
-    ubx_tim_tm2_falling_ms += ((uint32_t)ubx_tim_tm2_buffer[23]&0xFF)<<8;
-    ubx_tim_tm2_falling_ms += ((uint32_t)ubx_tim_tm2_buffer[24]&0xFF)<<16;
-    ubx_tim_tm2_falling_ms += ((uint32_t)ubx_tim_tm2_buffer[25]&0xFF)<<24;
+    memcpy(&ubx_tim_tm2_falling_ms, ubx_tim_tm2_buffer+22, 4);
     // Byte 26-29 is falling edge ms fraction in ns
-    ubx_tim_tm2_falling_ns  = ((uint32_t)ubx_tim_tm2_buffer[26]&0xFF);
-    ubx_tim_tm2_falling_ns += ((uint32_t)ubx_tim_tm2_buffer[27]&0xFF)<<8;
-    ubx_tim_tm2_falling_ns += ((uint32_t)ubx_tim_tm2_buffer[28]&0xFF)<<16;
-    ubx_tim_tm2_falling_ns += ((uint32_t)ubx_tim_tm2_buffer[29]&0xFF)<<24;
+    memcpy(&ubx_tim_tm2_falling_ns, ubx_tim_tm2_buffer+26, 4);
     // Byte 30-33 is accuracy estimate in ns
-    ubx_tim_tm2_accuracy_ns  = ((uint32_t)ubx_tim_tm2_buffer[30]&0xFF);
-    ubx_tim_tm2_accuracy_ns += ((uint32_t)ubx_tim_tm2_buffer[31]&0xFF)<<8;
-    ubx_tim_tm2_accuracy_ns += ((uint32_t)ubx_tim_tm2_buffer[32]&0xFF)<<16;
-    ubx_tim_tm2_accuracy_ns += ((uint32_t)ubx_tim_tm2_buffer[33]&0xFF)<<24;
+    memcpy(&ubx_tim_tm2_accuracy_ns, ubx_tim_tm2_buffer+30, 4);
     
     //ubx_tim_tm2_rising_ns = ubx_tim_tm2_rising_ns + ((uint32_t)(ubx_tim_tm2_rising_ms)*1000000);
     //ubx_tim_tm2_falling_ns = ubx_tim_tm2_falling_ns + ((uint32_t)(ubx_tim_tm2_falling_ms)*1000000);
@@ -157,10 +153,7 @@ time_t process_ubx_nav_timeutc(void)
     gnss_time.tm_year += (((uint16_t)ubx_nav_timeutc_buffer[19]&0xFF)<<8)-1900;
     
 
-    ubx_nav_timeutc_accuracy_ns  = ((uint32_t)ubx_nav_timeutc_buffer[10]&0xFF);
-    ubx_nav_timeutc_accuracy_ns += ((uint32_t)ubx_nav_timeutc_buffer[11]&0xFF)<<8;
-    ubx_nav_timeutc_accuracy_ns += ((uint32_t)ubx_nav_timeutc_buffer[12]&0xFF)<<16;
-    ubx_nav_timeutc_accuracy_ns += ((uint32_t)ubx_nav_timeutc_buffer[13]&0xFF)<<24;
+    memcpy(&ubx_nav_timeutc_accuracy_ns, ubx_nav_timeutc_buffer+10, 4);
     
     ubx_nav_timeutc_valid = (ubx_nav_timeutc_buffer[25]&0x04)>>2;
     memset(ubx_nav_timeutc_buffer, 0, UBX_NAV_TIMEUTC_LENGTH);
@@ -186,30 +179,11 @@ void print_ubx_nav_timeutc_data(void)
 
 void process_ubx_nav_clock(void)
 {
-    ubx_nav_clock_tow_ms  = ((uint32_t)ubx_nav_clock_buffer[6]&0xFF);
-    ubx_nav_clock_tow_ms += ((uint32_t)ubx_nav_clock_buffer[7]&0xFF)<<8;
-    ubx_nav_clock_tow_ms += ((uint32_t)ubx_nav_clock_buffer[8]&0xFF)<<16;
-    ubx_nav_clock_tow_ms += ((uint32_t)ubx_nav_clock_buffer[9]&0xFF)<<24;
-    
-    ubx_nav_clock_bias_ns  = ((uint32_t)ubx_nav_clock_buffer[10]&0xFF);
-    ubx_nav_clock_bias_ns |= ((uint32_t)ubx_nav_clock_buffer[11]&0xFF)<<8;
-    ubx_nav_clock_bias_ns |= ((uint32_t)ubx_nav_clock_buffer[12]&0xFF)<<16;
-    ubx_nav_clock_bias_ns |= ((uint32_t)ubx_nav_clock_buffer[13]&0xFF)<<24;
-    
-    ubx_nav_clock_drift_nss  = ((uint32_t)ubx_nav_clock_buffer[14]&0xFF);
-    ubx_nav_clock_drift_nss |= ((uint32_t)ubx_nav_clock_buffer[15]&0xFF)<<8;
-    ubx_nav_clock_drift_nss |= ((uint32_t)ubx_nav_clock_buffer[16]&0xFF)<<16;
-    ubx_nav_clock_drift_nss |= ((uint32_t)ubx_nav_clock_buffer[17]&0xFF)<<24;
-    
-    ubx_nav_clock_accuracy_ns  = ((uint32_t)ubx_nav_clock_buffer[18]&0xFF);
-    ubx_nav_clock_accuracy_ns += ((uint32_t)ubx_nav_clock_buffer[19]&0xFF)<<8;
-    ubx_nav_clock_accuracy_ns += ((uint32_t)ubx_nav_clock_buffer[20]&0xFF)<<16;
-    ubx_nav_clock_accuracy_ns += ((uint32_t)ubx_nav_clock_buffer[21]&0xFF)<<24;
-    
-    ubx_nav_clock_f_accuracy_pss  = ((uint32_t)ubx_nav_clock_buffer[22]&0xFF);
-    ubx_nav_clock_f_accuracy_pss += ((uint32_t)ubx_nav_clock_buffer[23]&0xFF)<<8;
-    ubx_nav_clock_f_accuracy_pss += ((uint32_t)ubx_nav_clock_buffer[24]&0xFF)<<16;
-    ubx_nav_clock_f_accuracy_pss += ((uint32_t)ubx_nav_clock_buffer[25]&0xFF)<<24;
+    memcpy(&ubx_nav_clock_tow_ms, ubx_nav_clock_buffer+6, 4);
+    memcpy(&ubx_nav_clock_bias_ns,ubx_nav_clock_buffer+10, 4);
+    memcpy(&ubx_nav_clock_drift_nss,ubx_nav_clock_buffer+14, 4);
+    memcpy(&ubx_nav_clock_accuracy_ns,ubx_nav_clock_buffer+18, 4);
+    memcpy(&ubx_nav_clock_f_accuracy_pss,ubx_nav_clock_buffer+22, 4);
     
     memset(ubx_nav_clock_buffer, 0, UBX_NAV_CLOCK_LENGTH);
 }
@@ -264,9 +238,55 @@ void print_ubx_nav_status_data(void)
     }
 }
 
+void process_ubx_nav_posllh(void)
+{
+    memcpy(&ubx_nav_posllh_lon, ubx_nav_posllh_buffer+10, 4);
+    memcpy(&ubx_nav_posllh_lat, ubx_nav_posllh_buffer+14, 4);
+    memcpy(&ubx_nav_posllh_height, ubx_nav_posllh_buffer+18, 4);
+    memcpy(&ubx_nav_posllh_hmsl, ubx_nav_posllh_buffer+22, 4);
+    memcpy(&ubx_nav_posllh_hacc, ubx_nav_posllh_buffer+26, 4);
+    memcpy(&ubx_nav_posllh_vacc, ubx_nav_posllh_buffer+30, 4);
+
+    memset(ubx_nav_posllh_buffer, 0, UBX_NAV_POSLLH_LENGTH);
+}
+
+void print_ubx_nav_posllh_data(void)
+{
+    printf("\r\n=== UBX-NAV-POSLLH ===\r\n");
+    if(print_ubx_nav_posllh)
+    {
+        int16_t lat_d = ubx_nav_posllh_lat / 10000000;
+        int32_t lat_p = ubx_nav_posllh_lat - (lat_d * 10000000);
+        if(lat_p<0) lat_p = (lat_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
+        printf("LAT: %4i.%7li\r\n", lat_d, lat_p);
+        
+        int16_t lon_d = ubx_nav_posllh_lon / 10000000;
+        int32_t lon_p = ubx_nav_posllh_lon - (lon_d * 10000000);
+        if(lon_p<0) lon_p = (lon_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
+        printf("LON: %4i.%7li\r\n", lon_d, lon_p);
+        
+        double height_m = ubx_nav_posllh_height;
+        height_m = height_m / 1000;
+        double hmsl_m = ubx_nav_posllh_hmsl;
+        hmsl_m = hmsl_m / 1000;
+        printf("Height: %4.0fm aMSL: %4.0fm\r\n", height_m, hmsl_m);
+        
+        double hacc_m = ubx_nav_posllh_hacc;
+        hacc_m = hacc_m / 1000;
+        double vacc_m = ubx_nav_posllh_vacc;
+        vacc_m = vacc_m / 1000;
+        printf("Acc H: %6.3fm V: %6.3fm\r\n" ,hacc_m, vacc_m);
+        
+    }
+    else
+    {
+        printf("No new data\r\n");
+    }
+}
+
 bool ubx_gnss_available(void)
 {
-    if(ubx_nav_timeutc_waiting && ubx_nav_status_waiting && ubx_nav_clock_waiting) return 1;
+    if(ubx_nav_timeutc_waiting && ubx_nav_status_waiting && ubx_nav_clock_waiting && ubx_nav_posllh_waiting) return 1;
     else return 0;
 }
 
@@ -283,6 +303,10 @@ void ubx_update_gnss_time(void)
     ubx_nav_clock_waiting = 0;
     process_ubx_nav_clock();
     print_ubx_nav_clock = 1;
+    
+    ubx_nav_posllh_waiting = 0;
+    process_ubx_nav_posllh();
+    print_ubx_nav_posllh = 1;
 }
 
 bool ubx_gnss_time_valid(void)

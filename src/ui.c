@@ -23,9 +23,23 @@ bool disable_manual_print = 0;
 
 extern uint16_t display_brightness;
 
+extern bool display_update_pending;
+extern time_t local;
+extern time_t previous_local;
+
+bool update_display = 0;
+
+UI_DISPLAY_STATE ui_state_current = UI_DISPLAY_STATE_INIT;
+uint16_t ui_display_timeout = 0;
+
+UI_MENU_STATE ui_menu_current = UI_MENU_STATE_ROOT;
+
+UI_BUTTON_STATE ui_button_action = UI_BUTTON_STATE_NO_PRESS;
+uint16_t ui_button_counter = 0;
+
 void ui_init(void)
 {
-
+    ui_state_current = UI_DISPLAY_STATE_CLOCK_HHMM;
 }
 
 void ui_tasks(void)
@@ -37,15 +51,28 @@ void ui_tasks(void)
 
 void ui_button_task(void)
 {
-    bool update_display = 0;
-
-    if(ui_button_input_state() == button_input_last_state)
+    if(ui_button_input_state())
     {
-        button_state = ui_button_input_state();
-        if(button_state != button_last_state) update_display = 1;
-        button_last_state = button_state;
+        if(ui_button_action==UI_BUTTON_STATE_NO_PRESS)
+        {
+            if(ui_button_counter==UI_BUTTON_LONG_PRESS_COUNT)
+            {
+                ui_button_action=UI_BUTTON_STATE_LONG_PRESS;
+            }
+            ui_button_counter++;
+        }
     }
-    button_input_last_state = ui_button_input_state();
+    else
+    {
+        if(ui_button_action==UI_BUTTON_STATE_NO_PRESS)
+        {
+            if(ui_button_counter>UI_BUTTON_SHORT_PRESS_COUNT && ui_button_counter<UI_BUTTON_LONG_PRESS_COUNT)
+            {
+                ui_button_action=UI_BUTTON_STATE_SHORT_PRESS;
+            }
+        }
+        ui_button_counter=0;
+    }
     
     if(ui_switch_input_state() == switch_input_last_state)
     {
@@ -54,8 +81,6 @@ void ui_button_task(void)
         switch_last_state = switch_state;
     }
     switch_input_last_state = ui_switch_input_state();
-    
-    if(update_display) ui_display_task();
 }
 
 bool ui_button_state(void)
@@ -132,8 +157,71 @@ void ui_buzzer_sounder(void)
 
 void ui_display_task(void)
 {
-    display_time(&local);
-    display_latch();
+    if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM && !ui_switch_input_state())
+    {
+        ui_display_timeout++;
+    }
+    if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
+    {
+        ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        update_display = 1;
+        ui_display_timeout=0;
+    }
+    if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
+    {
+        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        update_display = 1;
+    }
+    else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
+    {
+        if(ui_state_current==UI_DISPLAY_STATE_MENU)
+        {
+            if(ui_menu_current==UI_MENU_STATE_EXIT) ui_menu_current=UI_MENU_STATE_ROOT;
+            else ui_menu_current++;
+        }
+        update_display = 1;
+    }
+    ui_button_action = UI_BUTTON_STATE_NO_PRESS;
+
+    if(update_display)
+    {
+        ui_display_timeout=0;
+        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM)
+        {
+            if(display_update_pending)
+            {
+                display_time(&previous_local);
+                display_latch();
+                display_time(&local);
+            }
+            else
+            {
+                display_time(&local);
+                display_latch();
+            }
+        }
+        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS)
+        {
+            if(display_update_pending)
+            {
+                display_mmss(&previous_local);
+                display_latch();
+                display_mmss(&local);
+            }
+            else
+            {
+                display_mmss(&local);
+                display_latch();
+            }
+        }
+        if(ui_state_current==UI_DISPLAY_STATE_MENU)
+        {
+            display_menu();
+            display_latch();
+        }
+        update_display=0;
+    }
 }
 
 void ui_uart1_input(void)
@@ -151,12 +239,8 @@ void ui_uart1_input(void)
         // Press 'r' for manual resync
         else if(c==0x72 && pic_pps_manual_resync_available())
         {
-            recalculate_fosc_freq();
             printf("\r\nManual resync\r\n");
-            printf("New Fosc freq: %luHz\r\n", fosc_freq);
-            printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-            pic_pps_reset_sync();
-            reset_pps_stats();
+            sync_state_machine_set_state(SYNC_NOSYNC_MANUAL);
         }
         // Reset the entire device if we see 'R'
         else if(c==0x52)

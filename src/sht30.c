@@ -1,7 +1,7 @@
 #include "sht30.h"
 
-float temperature = 0;
-float humidity = 0;
+double temperature = 0;
+double humidity = 0;
 
 void sht30_start_meas(void)
 {
@@ -99,23 +99,23 @@ void sht30_read_periodic_data(void)
     printf("2 %u %u",status,i2c_timeout);
 }
 
-float sht30_convert_temp(uint16_t val)
+double sht30_convert_temp(uint16_t val)
 {
     // Borrowed from Adafruit
     int32_t stemp = val;
     // simplified (65536 instead of 65535) integer version of:
     // temp = (stemp * 175.0f) / 65535.0f - 45.0f;
     stemp = ((4375 * stemp) >> 14) - 4500;
-    return (float)stemp / 100.0f;
+    return (double)stemp / 100.0f;
 }
 
-float sht30_convert_humidity(uint16_t val)
+double sht30_convert_humidity(uint16_t val)
 {
     uint32_t shum = val;
     // simplified (65536 instead of 65535) integer version of:
     // humidity = (shum * 100.0f) / 65535.0f;
     shum = (625 * shum) >> 12;
-    return (float)shum / 100.0f;
+    return (double)shum / 100.0f;
 }
 
 void print_sht30_data(void)

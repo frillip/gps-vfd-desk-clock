@@ -29,11 +29,13 @@ extern "C" {
 #define UBX_NAV_TIMEUTC_PAYLOAD_LENGTH 20
 #define UBX_NAV_CLOCK_PAYLOAD_LENGTH 20
 #define UBX_NAV_STATUS_PAYLOAD_LENGTH 16
+#define UBX_NAV_POSLLH_PAYLOAD_LENGTH 28
 
 #define UBX_TIM_TM2_LENGTH UBX_HEADER_LENGTH + UBX_TIM_TM2_PAYLOAD_LENGTH + UBX_CHECKSUM_LENGTH
 #define UBX_NAV_TIMEUTC_LENGTH UBX_HEADER_LENGTH + UBX_NAV_TIMEUTC_PAYLOAD_LENGTH + UBX_CHECKSUM_LENGTH
 #define UBX_NAV_CLOCK_LENGTH UBX_HEADER_LENGTH + UBX_NAV_CLOCK_PAYLOAD_LENGTH + UBX_CHECKSUM_LENGTH
 #define UBX_NAV_STATUS_LENGTH UBX_HEADER_LENGTH + UBX_NAV_STATUS_PAYLOAD_LENGTH + UBX_CHECKSUM_LENGTH
+#define UBX_NAV_POSLLH_LENGTH UBX_HEADER_LENGTH + UBX_NAV_POSLLH_PAYLOAD_LENGTH + UBX_CHECKSUM_LENGTH
     
 void process_ubx_tim_tm2(void);
 void print_ubx_tim_tm2_data(void);
@@ -46,6 +48,9 @@ void print_ubx_nav_clock_data(void);
 
 void process_ubx_nav_status(void);
 void print_ubx_nav_status_data(void);
+
+void process_ubx_nav_posllh(void);
+void print_ubx_nav_posllh_data(void);
 
 bool ubx_gnss_available(void);
 void ubx_update_gnss_time(void);

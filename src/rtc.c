@@ -3,6 +3,7 @@
 time_t rtc;
 extern time_t utc;
 bool rtc_sync = 0;
+bool rtc_detected = 0;
 
 void rtc_get_calendar(void)
 {
@@ -13,20 +14,15 @@ void rtc_get_calendar(void)
         rtc = PCF8563_read();
     #endif
 #endif
+    if(rtc) rtc_detected = 1;
     printf("RTC time is: ");
     ui_print_iso8601_string(rtc);
     printf("\r\n");
 }
 
-void rtc_read_set_calendar(void)
+void rtc_set_calendar(void)
 {
-#ifdef RTC_SOURCE_DS1307
-    utc = DS1307_read();
-#else
-    #ifdef RTC_SOURCE_PCF8563
-        utc = PCF8563_read();
-    #endif
-#endif
+    utc = rtc;
 }
 
 void rtc_write_from_calendar(time_t utc)
@@ -38,6 +34,10 @@ void rtc_write_from_calendar(time_t utc)
         PCF8563_write(utc);
     #endif
 #endif
+    rtc = utc;
+    printf("RTC time is now: ");
+    ui_print_iso8601_string(rtc);
+    printf("\r\n");
     rtc_sync = 1; 
 }
 

@@ -25,8 +25,8 @@ void sht30_start_meas(void);
 void sht30_read_data(void);
 void sht30_start_periodic_meas(void);
 void sht30_read_periodic_data(void);
-float sht30_convert_temp(uint16_t val);
-float sht30_convert_humidity(uint16_t val);
+double sht30_convert_temp(uint16_t val);
+double sht30_convert_humidity(uint16_t val);
 void print_sht30_data(void);
 
 #ifdef	__cplusplus
