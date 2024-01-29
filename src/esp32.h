@@ -45,7 +45,7 @@ extern "C" {
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500
     
-enum gnss_message_type {ESP_TIME, ESP_GPS, ESP_OFFSET, ESP_NET, ESP_RTC, ESP_SENSOR, ESP_DISPLAY, ESP_USER};
+enum esp_message_type {ESP_TIME, ESP_GPS, ESP_OFFSET, ESP_NET, ESP_RTC, ESP_SENSOR, ESP_DISPLAY, ESP_USER};
     
 void esp_ntp_init(void);
 void esp_ntp_set_calendar(void);
