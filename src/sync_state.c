@@ -307,21 +307,10 @@ void sync_state_machine(void)
             if(sync_state_detect_timeout < GNSS_FIX_LIMIT)
             {
                 sync_state_detect_timeout++;
-                if(ubx_gnss_available())
+                if(ubx_gnss_time_valid())
                 {
-                    ubx_update_gnss_time();
-                    if(ubx_gnss_time_valid())
-                    {
-                        printf("GNSS FIX ACQUIRED\r\n");
-                        if(!gnss_is_calendar_sync(utc))
-                        {
-                            gnss_reset_calendar_sync();
-                            rtc_reset_calendar_sync();
-                            gnss_sync_calendar();
-                            rtc_write_from_calendar(utc);
-                        }
-                        sync_state_machine_set_state(SYNC_STARTUP);
-                    }
+                    printf("GNSS FIX ACQUIRED\r\n");
+                    sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
             else
@@ -358,6 +347,10 @@ void sync_state_machine(void)
                 {
                     gnss_init(); // Only do this the first loop
                 }
+                
+                // Run our UBX data task
+                ubx_data_task();
+                
                 if(gnss_detected)
                 {
                     printf("GNSS DETECTED\r\n");

@@ -1,5 +1,6 @@
 #include "ublox_ubx.h"
 
+extern time_t utc;
 extern time_t gnss;
 
 char ubx_tim_tm2_buffer[UBX_TIM_TM2_LENGTH] = {0};
@@ -325,4 +326,35 @@ void ubx_update_timemark(void)
     ubx_tim_tm2_waiting = 0;
     process_ubx_tim_tm2();
     print_ubx_tim_tm2 = 1;
+}
+
+void ubx_data_task(void)
+{
+    if(ubx_gnss_available())
+    {
+        ubx_update_gnss_time();
+
+        // Check our time solution is valid
+        if(ubx_gnss_time_valid())
+        {
+            //Check that UTC and GNSS time match
+            if(!gnss_is_calendar_sync(utc))
+            {
+                // Trigger a re-sync if not
+                gnss_reset_calendar_sync();
+                rtc_reset_calendar_sync();
+                gnss_sync_calendar();
+                rtc_write_from_calendar(utc);
+                // Update our RTC now we have a GNSS time
+                if(!rtc_is_calendar_sync())
+                {
+                    printf("Writing RTC\r\n");
+                    rtc_write_from_calendar(utc);
+                }
+            }
+        }
+    }
+        
+    // Is there new time mark data available
+    if(ubx_timemark_waiting()) ubx_update_timemark();
 }

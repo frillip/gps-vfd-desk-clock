@@ -115,33 +115,8 @@ int main(void)
                 sync_state_machine();
             }            
 
-            if(ubx_gnss_available())
-            {
-                ubx_update_gnss_time();
-                
-                // Check our time solution is valid
-                if(ubx_gnss_time_valid())
-                {
-                    //Check that UTC and GNSS time match
-                    if(!gnss_is_calendar_sync(utc))
-                    {
-                        // Trigger a re-sync if not
-                        gnss_reset_calendar_sync();
-                        rtc_reset_calendar_sync();
-                        gnss_sync_calendar();
-                        rtc_write_from_calendar(utc);
-                        // Update our RTC now we have a GNSS time
-                        if(!rtc_is_calendar_sync())
-                        {
-                            printf("Writing RTC\r\n");
-                            rtc_write_from_calendar(utc);
-                        }
-                    }
-                }
-            }
-            
-            // Is there new time mark data available
-            if(ubx_timemark_waiting()) ubx_update_timemark();
+            // Run our UBX data task if we have GNSS module
+            if(gnss_detected) ubx_data_task();
             
             // Check for any bytes on UART1
             if(U1STAbits.URXDA) ui_uart1_input();
@@ -150,11 +125,18 @@ int main(void)
             if(print_data)
             {
                 pic_pps_print_stats();
-                print_ubx_tim_tm2_data();
-                print_ubx_nav_timeutc_data();
-                print_ubx_nav_clock_data();
-                print_ubx_nav_status_data();
-                print_ubx_nav_posllh_data();
+                if(gnss_detected)
+                {
+                    print_ubx_tim_tm2_data();
+                    print_ubx_nav_timeutc_data();
+                    print_ubx_nav_clock_data();
+                    print_ubx_nav_status_data();
+                    print_ubx_nav_posllh_data();
+                }
+                else
+                {
+                    printf("\r\n=== NO GNSS DETECTED ===\r\n");
+                }
                 print_sync_state_machine();
                 printf("\r\n");
                 print_data = 0;

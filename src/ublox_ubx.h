@@ -59,6 +59,8 @@ bool ubx_gnss_time_valid(void);
 bool ubx_timemark_waiting(void);
 void ubx_update_timemark(void);
 
+void ubx_data_task(void);
+
 #ifdef	__cplusplus
 }
 #endif
