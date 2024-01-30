@@ -44,7 +44,7 @@ extern time_t utc;
 
 void esp_ntp_init(void)
 {
-    
+    // Do something useful here
 }
 
 void esp_ntp_set_calendar(void)

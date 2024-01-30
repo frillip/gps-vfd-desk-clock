@@ -28,6 +28,7 @@ extern "C" {
 #include <time.h>
 #include <xc.h>
 
+#include "esp32.h"
 #include "freq.h"
 #include "gnss.h"
 #include "gnss_pps.h"

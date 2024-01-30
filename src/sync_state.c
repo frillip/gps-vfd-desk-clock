@@ -391,11 +391,10 @@ void sync_state_machine(void)
             break;
         
         case SYNC_NTP_DETECT:
-            /*
-            if(detect_timeout < ESP_DETECT_LIMIT)
+            if(sync_state_detect_timeout < ESP_DETECT_LIMIT)
             {
-                detect_timeout++;
-                if(clock_sync_state!=clock_sync_state_old)
+                sync_state_detect_timeout++;
+                if(clock_sync_state!=clock_sync_state_old2)
                 {
                     esp_ntp_init(); // Only do this the first loop
                 }
@@ -403,20 +402,12 @@ void sync_state_machine(void)
                 {
                     esp_ntp_set_calendar();
                     sync_state_machine_set_state(SYNC_GNSS_DETECT);
-                    detect_timeout = 0;
                 }
             }
             else
             {
                 if(esp_detected) printf("ESP DETECTED BUT NO NTP SYNC\r\n");
                 else printf("NO ESP DETECTED\r\n");
-                sync_state_machine_set_state(SYNC_GNSS_DETECT);
-                detect_timeout = 0;
-            }
-            */
-            if(clock_sync_state==clock_sync_state_old)
-            {
-                printf("NO ESP DETECTED\r\n");
                 sync_state_machine_set_state(SYNC_GNSS_DETECT);
             }
             break;
