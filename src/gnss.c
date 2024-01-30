@@ -45,6 +45,7 @@ bool gnss_detected = 0;
 
 void gnss_init(void)
 {
+    UART2_Initialize();
     memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
     memset(gnss_check_buffer, 0, GNSS_CHECK_BUFFER_SIZE);
     UART2_SetRxInterruptHandler(gnss_rx);
