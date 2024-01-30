@@ -176,6 +176,11 @@ void pic_pps_resync(void)
     sync_events++;
 }
 
+void pic_pps_resync_oc_only(void)
+{
+    pic_pps_set_latch_cycles(fosc_freq);
+}
+
 void pic_pps_reset_sync(void)
 {
     pps_sync = 0;

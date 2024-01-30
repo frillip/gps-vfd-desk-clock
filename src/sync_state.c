@@ -43,6 +43,7 @@ extern uint32_t pps_seq_count;
 extern int32_t accumulated_clocks;
 extern time_t accumulation_start;
 extern time_t accumulation_delta;
+extern double accumulated_clocks_diff_avg;
 
 uint32_t state_machine_oc_seq_count_last = 0;
 extern uint32_t total_oc_seq_count;
@@ -97,15 +98,36 @@ void sync_state_machine(void)
             last_sync_cause = SYNC_NOSYNC_GNSS;
             break;
         
+        case SYNC_NOSYNC_FREQ_ONLY:
+            recalculate_fosc_freq_short();
+            printf("\r\nLarge short term Freq deviation\r\n");
+            printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+            sync_state_print_stats();
+            pic_pps_resync_oc_only();
+            reset_pps_stats();
+            sync_state_machine_set_state(SYNC_MIN_INTERVAL);
+            last_sync_cause = SYNC_NOSYNC_FREQ_ONLY;
+            break;
+        
+        case SYNC_NOSYNC_FREQ:
+            recalculate_fosc_freq_short();
+            printf("\r\nLarge short term Freq deviation\r\n");
+            printf("New Fosc freq: %luHz\r\n", fosc_freq);
+            sync_state_print_stats();
+            pic_pps_reset_sync();
+            reset_pps_stats();
+            sync_state_machine_set_state(SYNC_NOSYNC);
+            last_sync_cause = SYNC_NOSYNC_FREQ;
+            break;
+
         case SYNC_NOSYNC_MAJOR_OC:
             printf("\r\nOC unsynchronised... resetting\r\n");
-            printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-            printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
             if((accumulation_delta > PPS_SEQ_COUNT_MIN) && scheduler_sync)
             {
                 recalculate_fosc_freq();
                 printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
             }
+            sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
             sync_state_machine_set_state(SYNC_NOSYNC);
@@ -116,7 +138,7 @@ void sync_state_machine(void)
             recalculate_fosc_freq();
             printf("\r\nMajor frequency excursion...\r\n");
             printf("New Fosc freq: %luHz\r\n", fosc_freq);
-            printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+            sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
             sync_state_machine_set_state(SYNC_NOSYNC);
@@ -124,7 +146,8 @@ void sync_state_machine(void)
             break;
         
         case SYNC_NOSYNC_MINOR_OC:
-            printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+            printf("\r\nOC unsynchronised... resetting\r\n");
+            sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
             sync_state_machine_set_state(SYNC_NOSYNC);
@@ -134,7 +157,7 @@ void sync_state_machine(void)
         case SYNC_NOSYNC_MINOR:
             recalculate_fosc_freq();
             printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
-            printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+            sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
             sync_state_machine_set_state(SYNC_NOSYNC);
@@ -146,7 +169,15 @@ void sync_state_machine(void)
             {
                 pic_pps_calculate_oc_stats();
                 sync_check_result = pic_pps_evaluate_sync();
-                if(sync_check_result==SYNC_NOSYNC_MAJOR_OC)
+                if(sync_check_result==SYNC_NOSYNC_FREQ_ONLY)
+                {
+                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ_ONLY);
+                }
+                else if(sync_check_result==SYNC_NOSYNC_FREQ)
+                {
+                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ);
+                }
+                else if(sync_check_result==SYNC_NOSYNC_MAJOR_OC)
                 {
                     sync_state_machine_set_state(SYNC_NOSYNC_MAJOR_OC);
                 }
@@ -178,7 +209,15 @@ void sync_state_machine(void)
             {
                 pic_pps_calculate_oc_stats();
                 sync_check_result = pic_pps_evaluate_sync();
-                if(sync_check_result==SYNC_NOSYNC_MAJOR_OC)
+                if(sync_check_result==SYNC_NOSYNC_FREQ_ONLY)
+                {
+                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ_ONLY);
+                }
+                else if(sync_check_result==SYNC_NOSYNC_FREQ)
+                {
+                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ);
+                }
+                else if(sync_check_result==SYNC_NOSYNC_MAJOR_OC)
                 {
                     sync_state_machine_set_state(SYNC_NOSYNC_MAJOR_OC);
                 }
@@ -539,6 +578,14 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
             printf("SYNC_NOSYNC_MAJOR_OC");
             break;
             
+        case SYNC_NOSYNC_FREQ:
+            printf("SYNC_NOSYNC_FREQ");
+            break;
+            
+        case SYNC_NOSYNC_FREQ_ONLY:
+            printf("SYNC_NOSYNC_FREQ_ONLY");
+            break;
+            
         case SYNC_NOSYNC_GNSS:
             printf("SYNC_NOSYNC_GNSS");
             break;
@@ -571,7 +618,7 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
 
 CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
 {
-    if((accumulated_clocks > FCYCLE_ACC_LIM_POSITIVE) || (accumulated_clocks < FCYCLE_ACC_LIM_NEGATIVE))
+    if((oc_offset > FCYCLE_ACC_LIM_POSITIVE) || (oc_offset < FCYCLE_ACC_LIM_NEGATIVE))
     {
         if(accumulation_delta > FCYCLE_ACC_INTERVAL_MIN)
         {
@@ -600,5 +647,26 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
             }
         }
     }
+    if(accumulation_delta > (FCYCLE_ACC_AVG_PERIOD * FCYCLE_ACC_AVG_PERIOD_MULTIPLE))
+    {
+        if((accumulated_clocks_diff_avg > FCYCLE_ACC_AVG_POSITIVE) || (accumulated_clocks_diff_avg < FCYCLE_ACC_AVG_NEGATIVE))
+        {
+            if((accumulated_clocks > (FCYCLE_ACC_LIM_POSITIVE / 4)) || (accumulated_clocks < (FCYCLE_ACC_LIM_NEGATIVE / 4)))
+            {
+                return SYNC_NOSYNC_FREQ;
+            }
+            else
+            {
+                return SYNC_NOSYNC_FREQ_ONLY;
+            }
+        }
+    }
     return SYNC_SYNC;
+}
+
+void sync_state_print_stats(void)
+{
+    printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+    printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
+    printf("AVG D: %6.2f\r\n", accumulated_clocks_diff_avg);
 }
