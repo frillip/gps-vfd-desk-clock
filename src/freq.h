@@ -22,9 +22,12 @@ extern "C" {
 #define FCYCLE_ACC_LIM_NEGATIVE (-2000L)
 #define FCYCLE_ACC_RESET_POSITIVE (20000L)
 #define FCYCLE_ACC_RESET_NEGATIVE (-20000L)
-    
+
 #define FCYCLE_ACC_INTERVAL_MIN (120)
 #define FCYCLE_ACC_LIM_MULTIPLE (2)
+
+#define FCYCLE_ACC_SHORT_PERIOD (10)
+#define FCYCLE_ACC_SHORT_PERIOD_MULTIPLE (2)
     
 #define OC_OFFSET_CONST (-107)
 #define OC_OFFSET_MARGIN (15)
@@ -34,7 +37,7 @@ extern "C" {
 
 #define PPS_MANUAL_RESYNC_INTERVAL (30)
 #define PPS_SEQ_COUNT_MIN (5)
-
+    
 #ifdef	__cplusplus
 }
 #endif

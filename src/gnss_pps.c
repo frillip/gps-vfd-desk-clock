@@ -10,6 +10,10 @@ uint32_t pps_count_diff = 0;
 uint32_t pps_count_old = 0;
 uint32_t pps_seq_count = 0;
 int32_t accumulated_clocks = 0;
+int32_t accumulated_clocks_old = 0;
+int32_t accumulated_clocks_diff[FCYCLE_ACC_SHORT_PERIOD] = {};
+uint8_t accumulated_clocks_diff_index = 0;
+double accumulated_clocks_diff_avg = 0.0;
 time_t accumulation_start = 0;
 time_t accumulation_delta = 0;
 
@@ -58,6 +62,16 @@ void calculate_pps_stats(void)
     accumulated_clocks += pps_count_diff;
     while(accumulated_clocks>FCYCLE_POSITIVE_SUM) accumulated_clocks -= fosc_freq;
     while(accumulated_clocks<FCYCLE_NEGATIVE_SUM) accumulated_clocks += fosc_freq; // Should not happen, but if GPS is evaluated to be significantly 'early' we end up here.
+    accumulated_clocks_diff[accumulated_clocks_diff_index] = accumulated_clocks_old - accumulated_clocks;
+    accumulated_clocks_diff_index++;
+    if(accumulated_clocks_diff_index == 10) accumulated_clocks_diff_index = 0;
+    uint8_t i;
+    accumulated_clocks_diff_avg = 0;
+    for (i=0;i<FCYCLE_ACC_SHORT_PERIOD;i++)
+    {
+        accumulated_clocks_diff_avg += (float)accumulated_clocks_diff[i] / 10;
+    }
+    accumulated_clocks_old = accumulated_clocks;
     if(accumulation_start) accumulation_delta = utc - accumulation_start;
     else accumulation_delta = 0;
     ic1_val = 0;
@@ -70,6 +84,9 @@ void reset_pps_stats(void)
     accumulation_start = utc;
     accumulated_clocks = 0;
     accumulation_delta = 0;
+    memset(accumulated_clocks_diff, 0, FCYCLE_ACC_SHORT_PERIOD);
+    accumulated_clocks_diff_index = 0;
+    accumulated_clocks_diff_avg = 0.0;
 }
 
 void recalculate_fosc_freq(void)
