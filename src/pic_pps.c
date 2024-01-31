@@ -138,7 +138,7 @@ void pic_pps_print_stats(void)
     printf("SCH S: %i GNSS FIX: %i\r\n", scheduler_sync, gnss_fix);
     // Accumulated clock data
     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-    printf("AVG D: %6.2f\r\n", accumulated_clocks_diff_avg);
+    printf("AVG D: %.1f\r\n", accumulated_clocks_diff_avg);
     
     uint32_t run_time = utc - power_on_time;
     uint16_t days = (run_time/86400);

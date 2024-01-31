@@ -668,5 +668,5 @@ void sync_state_print_stats(void)
 {
     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
     printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
-    printf("AVG D: %6.2f\r\n", accumulated_clocks_diff_avg);
+    printf("AVG D: %.1f\r\n", accumulated_clocks_diff_avg);
 }
