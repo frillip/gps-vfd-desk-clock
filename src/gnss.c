@@ -87,35 +87,41 @@ void gnss_rx(void)
         if(gnss_waiting!=GNSS_NONE)
         {
             // if so, copy it to the right buffer
-            if(gnss_waiting==GNSS_UBX_TIM_TM2)
+            switch (gnss_waiting)
             {
-                memcpy(ubx_tim_tm2_buffer, gnss_string_buffer, UBX_TIM_TM2_LENGTH);
-                ubx_tim_tm2_waiting=1;
-            }
-            else if(gnss_waiting==GNSS_UBX_NAV_TIMEUTC)
-            {
-                memcpy(ubx_nav_timeutc_buffer, gnss_string_buffer, UBX_NAV_TIMEUTC_LENGTH);
-                ubx_nav_timeutc_waiting=1;
-            }
-            else if(gnss_waiting==GNSS_UBX_NAV_CLOCK)
-            {
-                memcpy(ubx_nav_clock_buffer, gnss_string_buffer, UBX_NAV_CLOCK_LENGTH);
-                ubx_nav_clock_waiting=1;
-            }
-            else if(gnss_waiting==GNSS_UBX_NAV_STATUS)
-            {
-                memcpy(ubx_nav_status_buffer, gnss_string_buffer, UBX_NAV_STATUS_LENGTH);
-                ubx_nav_status_waiting=1;
-            }
-            else if(gnss_waiting==GNSS_UBX_NAV_POSLLH)
-            {
-                memcpy(ubx_nav_posllh_buffer, gnss_string_buffer, UBX_NAV_POSLLH_LENGTH);
-                ubx_nav_posllh_waiting=1;
-            }
-            else if(gnss_waiting==GNSS_GNRMC)
-            {
-                memcpy(gnss_rmc_buffer, gnss_string_buffer, GNSS_STRING_BUFFER_SIZE);
-                gnss_rmc_waiting=1;
+                case GNSS_UBX_TIM_TM2:
+                    memcpy(ubx_tim_tm2_buffer, gnss_string_buffer, UBX_TIM_TM2_LENGTH);
+                    ubx_tim_tm2_waiting=1;
+                    break;
+                    
+                case GNSS_UBX_NAV_TIMEUTC:
+                    memcpy(ubx_nav_timeutc_buffer, gnss_string_buffer, UBX_NAV_TIMEUTC_LENGTH);
+                    ubx_nav_timeutc_waiting=1;
+                    break;
+                    
+                case GNSS_UBX_NAV_CLOCK:
+                    memcpy(ubx_nav_clock_buffer, gnss_string_buffer, UBX_NAV_CLOCK_LENGTH);
+                    ubx_nav_clock_waiting=1;
+                    break;
+                    
+                case GNSS_UBX_NAV_STATUS:
+                    memcpy(ubx_nav_status_buffer, gnss_string_buffer, UBX_NAV_STATUS_LENGTH);
+                    ubx_nav_status_waiting=1;
+                    break;
+                    
+                case GNSS_UBX_NAV_POSLLH:
+                    memcpy(ubx_nav_posllh_buffer, gnss_string_buffer, UBX_NAV_POSLLH_LENGTH);
+                    ubx_nav_posllh_waiting=1;
+                    break;
+                    
+                case GNSS_GNRMC:
+                    memcpy(gnss_rmc_buffer, gnss_string_buffer, GNSS_STRING_BUFFER_SIZE);
+                    gnss_rmc_waiting=1;
+                    break;
+                    
+                default:
+                    gnss_waiting=GNSS_NONE;
+                    break;
             }
             // Then reset the message buffer
             memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
