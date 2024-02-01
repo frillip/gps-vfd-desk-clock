@@ -38,13 +38,14 @@ typedef enum
     GNSS_UBX_NAV_CLOCK,
     GNSS_UBX_NAV_STATUS,
     GNSS_UBX_NAV_POSLLH,
-    GNSS_GNRMC
+    GNSS_GNRMC,
 } GNSS_MESSAGE_TYPE;
 
 void gnss_init(void);
 
 void gnss_rx(void);
 void gnss_copy_buffer(GNSS_MESSAGE_TYPE gnss_waiting);
+GNSS_MESSAGE_TYPE gnss_check_incoming(void);
 
 void gnss_sync_calendar(void);
 bool gnss_is_calendar_sync(time_t utc);
