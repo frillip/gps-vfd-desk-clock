@@ -29,18 +29,28 @@ extern "C" {
     
 #define GNSS_DETECT_LIMIT 300
 #define GNSS_FIX_LIMIT 12000
-    
+
+typedef enum
+{
+    GNSS_NONE,
+    GNSS_UBX_TIM_TM2,
+    GNSS_UBX_NAV_TIMEUTC,
+    GNSS_UBX_NAV_CLOCK,
+    GNSS_UBX_NAV_STATUS,
+    GNSS_UBX_NAV_POSLLH,
+    GNSS_GNRMC
+} GNSS_MESSAGE_TYPE;
+
 void gnss_init(void);
 
 void gnss_rx(void);
+void gnss_copy_buffer(GNSS_MESSAGE_TYPE gnss_waiting);
 
 void gnss_sync_calendar(void);
 bool gnss_is_calendar_sync(time_t utc);
 void gnss_reset_calendar_sync(void);
 
 time_t gnss_process_rmc(void);
-
-enum gnss_message_type {GNSS_NONE, GNSS_UBX_TIM_TM2, GNSS_UBX_NAV_TIMEUTC, GNSS_UBX_NAV_CLOCK, GNSS_UBX_NAV_STATUS, GNSS_UBX_NAV_POSLLH, GNSS_GNRMC};
 
 #ifdef	__cplusplus
 }
