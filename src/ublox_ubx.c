@@ -206,8 +206,8 @@ void print_ubx_nav_clock_data(void)
 
 void process_ubx_nav_status(void)
 {
-    ubx_nav_status_gpsfix = ubx_nav_status_buffer[10];
-    ubx_nav_status_gpsfixok = ubx_nav_status_buffer[10]&0x01;
+    ubx_nav_status_gpsfix = ubx_nav_status_buffer[10] & 0x0F;
+    ubx_nav_status_gpsfixok = ubx_nav_status_buffer[11]&0x01;
     
     if(ubx_nav_status_gpsfix>=0x03 && ubx_nav_status_gpsfix<=0x05 && ubx_nav_status_gpsfixok)
     {
