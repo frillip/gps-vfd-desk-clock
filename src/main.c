@@ -52,6 +52,9 @@ extern bool rtc_detected;
 extern time_t gnss;
 extern bool gnss_detected;
 
+extern time_t ntp;
+extern bool esp_detected;
+
 int32_t tz_offset = 0;
 int32_t dst_offset = 3600;
 
@@ -120,7 +123,7 @@ int main(void)
             if(gnss_detected) ubx_data_task();
             
             // Check for any bytes on UART1
-            //if(U1STAbits.URXDA) esp_rx();
+            if(esp_detected) esp_data_task();
 
             // Print some statistics if required
             if(print_data)

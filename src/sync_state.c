@@ -70,6 +70,7 @@ void sync_state_machine(void)
     if(oc_event)
     {
         ClrWdt();
+        if(esp_detected) esp_tx_time();
         printf("UTC: ");
         ui_print_iso8601_string(utc);
         printf("\r\n");

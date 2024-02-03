@@ -17,13 +17,17 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include "mcc_generated_files/uart2.h"
+#include "mcc_generated_files/uart1.h"
+#include"mcc_generated_files/system.h"
+#include"mcc_generated_files/clock.h"
 #include "ui.h"
 
 #define ESP_UART_HEADER 0x83
 #define ESP_UART_TYPE_TX 0x65
 #define ESP_UART_TYPE_RX 0x70
 #define ESP_UART_DATATYPE_TIMEDATA 0x00
-#define ESP_UART_DATATYPE_GPSDATA 0x10
+#define ESP_UART_DATATYPE_GNSSDATA 0x10
 #define ESP_UART_DATATYPE_OFFSETDATA 0x20
 #define ESP_UART_DATATYPE_NETDATA 0x30
 #define ESP_UART_DATATYPE_RTCDATA 0x40
@@ -35,7 +39,7 @@ extern "C" {
 #define ESP_STRING_BUFFER_SIZE 100
 #define ESP_CHECK_BUFFER_SIZE 3
 #define ESP_TIME_LENGTH 11
-#define ESP_GPS_LENGTH 12
+#define ESP_GNSS_LENGTH 12
 #define ESP_OFFSET_LENGTH 16
 #define ESP_NET_LENGTH 11
 #define ESP_RTC_LENGTH 7
@@ -48,8 +52,9 @@ extern "C" {
     
 typedef enum
 {
+    ESP_NONE,
     ESP_TIME,
-    ESP_GPS,
+    ESP_GNSS,
     ESP_OFFSET,
     ESP_NET,
     ESP_RTC,
@@ -60,6 +65,9 @@ typedef enum
     
 void esp_ntp_init(void);
 void esp_rx(void);
+void esp_copy_buffer(ESP_MESSAGE_TYPE esp_waiting);
+ESP_MESSAGE_TYPE esp_check_incoming(void);
+
 void esp_ntp_set_calendar(void);
 void esp_process_time(void);
 void esp_process_net(void);
@@ -67,7 +75,17 @@ void esp_process_rtc(void);
 void esp_process_sensor(void);
 void esp_process_display(void);
 void esp_process_user(void);
+void esp_data_task(void);
 
+void esp_tx(void *buffer, uint16_t len);
+void esp_tx_time(void);
+void esp_tx_gnss(void);
+void esp_tx_offset(void);
+void exp_tx_net(void);
+void esp_tx_rtc(void);
+void esp_tx_sensor(void);
+void esp_tx_display(void);
+void esp_tx_user(void);
 
 #ifdef	__cplusplus
 }
