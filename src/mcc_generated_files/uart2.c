@@ -149,11 +149,6 @@ void UART2_SetTxInterruptHandler(void (* interruptHandler)(void))
 
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _U2TXInterrupt ( void )
 {
-    if(UART2_TxDefaultInterruptHandler)
-    {
-        UART2_TxDefaultInterruptHandler();
-    }
-
     if(txHead == txTail)
     {
         IEC1bits.U2TXIE = 0;
@@ -177,6 +172,10 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _U2TXInterrupt ( void )
                 break;
             }
         }
+    }
+    if(UART2_TxDefaultInterruptHandler)
+    {
+        UART2_TxDefaultInterruptHandler();
     }
 }
 

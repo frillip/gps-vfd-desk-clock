@@ -70,4 +70,13 @@ void INTERRUPT_Initialize (void)
     //    CNI: Change Notification Interrupt
     //    Priority: 1
         IPC4bits.CNIP = 1;
+    //    UERI: UART1 Error
+    //    Priority: 1
+        IPC16bits.U1EIP = 1;
+    //    UTXI: UART1 Transmitter
+    //    Priority: 1
+        IPC3bits.U1TXIP = 1;
+    //    URXI: UART1 Receiver
+    //    Priority: 1
+        IPC2bits.U1RXIP = 1;
 }

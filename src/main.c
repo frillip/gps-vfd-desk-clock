@@ -120,7 +120,7 @@ int main(void)
             if(gnss_detected) ubx_data_task();
             
             // Check for any bytes on UART1
-            if(U1STAbits.URXDA) esp_uart1_input();
+            //if(U1STAbits.URXDA) esp_rx();
 
             // Print some statistics if required
             if(print_data)

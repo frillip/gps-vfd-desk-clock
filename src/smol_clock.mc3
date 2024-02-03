@@ -59,8 +59,8 @@
       </entry>
    </usedClasses>
    <usedLibraries class="java.util.ArrayList">
-      <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.foundationservices.library.FoundationServicesLibrary" version="0.2.3"/>
       <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.mcu16.Mcu16PeripheralLibrary" version="1.170.0"/>
+      <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.foundationservices.library.FoundationServicesLibrary" version="0.2.3"/>
    </usedLibraries>
    <tokenMap class="java.util.TreeMap">
       <entry>
@@ -6737,7 +6737,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="UART1" name="AllInterrupts"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="UART1" name="BaudRate"/>
@@ -6769,11 +6769,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="UART1" name="SWRXBufferSize"/>
-         <value>8</value>
+         <value>128</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="UART1" name="SWTXBufferSize"/>
-         <value>8</value>
+         <value>128</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="UART1" name="UART1_UERIISRFunction"/>
@@ -7045,7 +7045,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="UART1" registerAlias="UERI" settingAlias="enable"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="UART1" registerAlias="UERI" settingAlias="flag"/>
@@ -7109,7 +7109,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="UART1" registerAlias="URXI" settingAlias="enable"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="UART1" registerAlias="URXI" settingAlias="flag"/>
@@ -7177,7 +7177,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="UART1" registerAlias="UTXI" settingAlias="enable"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="UART1" registerAlias="UTXI" settingAlias="flag"/>
@@ -7707,7 +7707,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\system.c</file>
-         <hash>36891fcb7a21f9f8e9e368a8c8468675ddba8b736c6f70cecf51639ed951c676</hash>
+         <hash>abfa241635bd9e5f1d5438924f74fa4f988ca96546fa0328409a34e5175a32cb</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\clock.h</file>
@@ -7727,7 +7727,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\mcc.h</file>
-         <hash>5b3b9df7b54d9115a2e4bfa7b138aecdcd8af310fc6f90c99eb2624b44cc4c82</hash>
+         <hash>32872a7d856275dd76eebf99892996d323045fe0a9ab70f258be9bdb1c8702cb</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\uart2.h</file>
@@ -7735,7 +7735,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\uart1.h</file>
-         <hash>b7bffa746d5bed5bb5d4715edadf30bc3672408abcd19e505317813a491e8074</hash>
+         <hash>c7d5d6577e66abbaed7721970cfd9012202833af3fe864b98c2b2162e7c27a72</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\reset.c</file>
@@ -7743,7 +7743,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\uart1.c</file>
-         <hash>955ffa64bf8abe63230901b5d9326befcaf193555124d68bfb355f4dad18a766</hash>
+         <hash>33fb75a8b8bcb599d42f6eb045f79909cb9c9bb81c708d5919bcc311b5dbb723</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\clock.c</file>
@@ -7763,7 +7763,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.c</file>
-         <hash>778eba04cf340e184387d1a9707044cb14eee9aec351dd35f6ad5c1614d5e54c</hash>
+         <hash>3a9d94673d71df41034a391148177c13aa591775c957102a9b539b67c1f2b23d</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\traps.c</file>
@@ -7775,7 +7775,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\interrupt_manager.c</file>
-         <hash>118362dadc165eb2c9b19985a096d19a7b5177116f4af79852bc2ce823e1b02b</hash>
+         <hash>3c1cfe93ea92f176500ee5ecd71e613bae09b99c8c8aa8dc23fbac14553a77b2</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\watchdog.h</file>
