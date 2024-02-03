@@ -17,6 +17,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include "ui.h"
 
 #define ESP_UART_HEADER 0x83
 #define ESP_UART_TYPE_TX 0x65
@@ -45,9 +46,20 @@ extern "C" {
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500
     
-enum esp_message_type {ESP_TIME, ESP_GPS, ESP_OFFSET, ESP_NET, ESP_RTC, ESP_SENSOR, ESP_DISPLAY, ESP_USER};
+typedef enum
+{
+    ESP_TIME,
+    ESP_GPS,
+    ESP_OFFSET,
+    ESP_NET,
+    ESP_RTC,
+    ESP_SENSOR,
+    ESP_DISPLAY,
+    ESP_USER,
+} ESP_MESSAGE_TYPE;
     
 void esp_ntp_init(void);
+void esp_uart1_input(void);
 void esp_ntp_set_calendar(void);
 void esp_process_time(void);
 void esp_process_net(void);

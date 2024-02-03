@@ -14,6 +14,7 @@
 #include <time.h>
 #include <xc.h>
 
+#include "esp32.h"
 #include "freq.h"
 #include "gnss.h"
 #include "gnss_pps.h"
@@ -119,7 +120,7 @@ int main(void)
             if(gnss_detected) ubx_data_task();
             
             // Check for any bytes on UART1
-            if(U1STAbits.URXDA) ui_uart1_input();
+            if(U1STAbits.URXDA) esp_uart1_input();
 
             // Print some statistics if required
             if(print_data)

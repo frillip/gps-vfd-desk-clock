@@ -224,79 +224,74 @@ void ui_display_task(void)
     }
 }
 
-void ui_uart1_input(void)
+void ui_uart1_input(char c)
 {
-    while(U1STAbits.URXDA)
+    switch (c)
     {
-        char c = UART1_Read();
-        
-        switch (c)
-        {
-            // print some data if enter has been pressed
-            case 0x0d:
-                if(!disable_manual_print)
-                {
-                    print_data = 1;
-                    // Disable spamming in case of cats on keyboards
-                    disable_manual_print = 1;
-                }
-                break;
-                
-            // Press 'r' for manual resync
-            case 0x72: 
-                if(pic_pps_manual_resync_available())
-                {
-                    printf("\r\nManual resync\r\n");
-                    sync_state_machine_set_state(SYNC_NOSYNC_MANUAL);
-                }
-                break;
-                
-            // Reset the entire device if we see 'R'
-            case 0x52:
-                printf("\r\nRESETTING!!!\r\n");
-                __asm__ volatile ( "reset ");
-                break; // Pointless, but good practise I guess
-                
-            // Brightness up on 'B'
-            case 0x42:
-                display_brightness_set(display_brightness+DISPLAY_BRIGHTNESS_STEP);
-                printf("BRI: %u\r\n", display_brightness);
-                break;
-                
-            // Brightness down on 'b'
-            case 0x62:
-                display_brightness_set(display_brightness-DISPLAY_BRIGHTNESS_STEP);
-                printf("BRI: %u\r\n", display_brightness);
-                break;
-                
-            // Max brightness on 'M'
-            case 0x4D:
-                display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
-                printf("BRI: %u\r\n", display_brightness);
-                break;
-                
-            // Min brightness on 'm'
-            case 0x6D:
+        // print some data if enter has been pressed
+        case 0x0d:
+            if(!disable_manual_print)
+            {
+                print_data = 1;
+                // Disable spamming in case of cats on keyboards
+                disable_manual_print = 1;
+            }
+            break;
 
-                display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
-                printf("BRI: %u\r\n", display_brightness);
-                break;
+        // Press 'r' for manual resync
+        case 0x72: 
+            if(pic_pps_manual_resync_available())
+            {
+                printf("\r\nManual resync\r\n");
+                sync_state_machine_set_state(SYNC_NOSYNC_MANUAL);
+            }
+            break;
 
-            // Full brightness
-            case 0x4F:
-                display_brightness_on();
-                printf("BRI: %u\r\n", display_brightness);
-                break;
-                
-            // Display off
-            case 0x6F:
-                display_brightness_off();
-                printf("BRI: %u\r\n", display_brightness);
-                break;
-                
-            default:
-                break;
-        }
+        // Reset the entire device if we see 'R'
+        case 0x52:
+            printf("\r\nRESETTING!!!\r\n");
+            __asm__ volatile ( "reset ");
+            break; // Pointless, but good practise I guess
+
+        // Brightness up on 'B'
+        case 0x42:
+            display_brightness_set(display_brightness+DISPLAY_BRIGHTNESS_STEP);
+            printf("BRI: %u\r\n", display_brightness);
+            break;
+
+        // Brightness down on 'b'
+        case 0x62:
+            display_brightness_set(display_brightness-DISPLAY_BRIGHTNESS_STEP);
+            printf("BRI: %u\r\n", display_brightness);
+            break;
+
+        // Max brightness on 'M'
+        case 0x4D:
+            display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
+            printf("BRI: %u\r\n", display_brightness);
+            break;
+
+        // Min brightness on 'm'
+        case 0x6D:
+
+            display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
+            printf("BRI: %u\r\n", display_brightness);
+            break;
+
+        // Full brightness
+        case 0x4F:
+            display_brightness_on();
+            printf("BRI: %u\r\n", display_brightness);
+            break;
+
+        // Display off
+        case 0x6F:
+            display_brightness_off();
+            printf("BRI: %u\r\n", display_brightness);
+            break;
+
+        default:
+            break;
     }
 }
 

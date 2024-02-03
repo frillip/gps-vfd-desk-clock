@@ -88,7 +88,7 @@ void ui_buzzer_sounder(void);
 
 void ui_display_task(void);
 
-void ui_uart1_input(void);
+void ui_uart1_input(char c);
 void ui_print_iso8601_string(time_t iso);
 void ui_print_clear_window(void);
 

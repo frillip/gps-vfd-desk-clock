@@ -3,6 +3,12 @@
 bool esp_detected = 0;
 bool esp_ntp_valid = 0;
 
+uint8_t uart1_offset = 0;
+char uart1_check_buffer[ESP_CHECK_BUFFER_SIZE] = {0};
+char uart1_string_buffer[ESP_STRING_BUFFER_SIZE] = {0};
+ESP_MESSAGE_TYPE esp_incoming = GNSS_NONE;
+ESP_MESSAGE_TYPE esp_waiting = GNSS_NONE;
+
 char esp_time_buffer[ESP_TIME_LENGTH] = {0};
 char esp_time_string[ESP_CHECK_BUFFER_SIZE] = {ESP_UART_HEADER, ESP_UART_TYPE_TX, ESP_UART_DATATYPE_TIMEDATA};
 bool esp_wifi_status = 0;
@@ -45,6 +51,16 @@ extern time_t utc;
 void esp_ntp_init(void)
 {
     // Do something useful here
+}
+
+void esp_uart1_input(void)
+{
+    while(U1STAbits.URXDA)
+    {
+        char c = UART1_Read();
+        
+        ui_uart1_input(c);
+    }
 }
 
 void esp_ntp_set_calendar(void)
