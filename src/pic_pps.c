@@ -177,6 +177,7 @@ void pic_pps_resync(void)
     oc_adjust_in_progress = 1;
     accumulation_start = utc;
     accumulated_clocks = 0;
+    memset(accumulated_clocks_diff, 0, FCYCLE_ACC_AVG_PERIOD);
     sync_events++;
 }
 

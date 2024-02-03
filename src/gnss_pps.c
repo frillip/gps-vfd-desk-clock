@@ -62,14 +62,17 @@ void calculate_pps_stats(void)
     accumulated_clocks += pps_count_diff;
     while(accumulated_clocks>FCYCLE_POSITIVE_SUM) accumulated_clocks -= fosc_freq;
     while(accumulated_clocks<FCYCLE_NEGATIVE_SUM) accumulated_clocks += fosc_freq; // Should not happen, but if GPS is evaluated to be significantly 'early' we end up here.
-    accumulated_clocks_diff[accumulated_clocks_diff_index] = accumulated_clocks - accumulated_clocks_old;
-    accumulated_clocks_diff_index++;
-    if(accumulated_clocks_diff_index == 10) accumulated_clocks_diff_index = 0;
-    uint8_t i;
-    accumulated_clocks_diff_avg = 0;
-    for (i=0;i<FCYCLE_ACC_AVG_PERIOD;i++)
+    if(accumulation_delta)
     {
-        accumulated_clocks_diff_avg += (float)accumulated_clocks_diff[i] / 10;
+        accumulated_clocks_diff[accumulated_clocks_diff_index] = accumulated_clocks - accumulated_clocks_old;
+        accumulated_clocks_diff_index++;
+        if(accumulated_clocks_diff_index == 10) accumulated_clocks_diff_index = 0;
+        uint8_t i;
+        accumulated_clocks_diff_avg = 0;
+        for (i=0;i<FCYCLE_ACC_AVG_PERIOD;i++)
+        {
+            accumulated_clocks_diff_avg += (float)accumulated_clocks_diff[i] / 10;
+        }
     }
     accumulated_clocks_old = accumulated_clocks;
     if(accumulation_start) accumulation_delta = utc - accumulation_start;
@@ -95,7 +98,7 @@ void recalculate_fosc_freq(void)
     uint32_t new_fosc_freq = 0;
     new_fosc_freq_f = new_fosc_freq_f * accumulation_delta;
     new_fosc_freq_f = new_fosc_freq_f + accumulated_clocks;
-    new_fosc_freq_f = new_fosc_freq_f / accumulation_delta;
+    new_fosc_freq_f = new_fosc_freq_f / accumulation_delta; // accumulation_delta should never be 0 at this point
     new_fosc_freq = (new_fosc_freq_f + 0.5); //DIRTY ROUNDL() EQUIVALENT
     fosc_freq = new_fosc_freq;
     if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
