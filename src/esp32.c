@@ -50,16 +50,21 @@ extern time_t utc;
 
 void esp_ntp_init(void)
 {
-    // Do something useful here
+    UART1_Initialize();
+    memset(uart1_string_buffer, 0, ESP_STRING_BUFFER_SIZE);
+    memset(uart1_check_buffer, 0, ESP_CHECK_BUFFER_SIZE);
+    UART1_SetRxInterruptHandler(esp_rx);
 }
 
-void esp_uart1_input(void)
+void esp_rx(void)
 {
-    while(U1STAbits.URXDA)
+    char rx_char = 0;
+    
+    while(UART1_IsRxReady())
     {
-        char c = UART1_Read();
+        rx_char = UART1_Read();
         
-        ui_uart1_input(c);
+        ui_uart1_input(rx_char);
     }
 }
 

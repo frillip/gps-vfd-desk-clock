@@ -59,7 +59,7 @@ typedef enum
 } ESP_MESSAGE_TYPE;
     
 void esp_ntp_init(void);
-void esp_uart1_input(void);
+void esp_rx(void);
 void esp_ntp_set_calendar(void);
 void esp_process_time(void);
 void esp_process_net(void);
