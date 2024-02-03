@@ -31,6 +31,7 @@ extern int32_t accumulated_clocks;
 extern time_t accumulation_start;
 extern time_t accumulation_delta;
 extern double accumulated_clocks_diff_avg;
+extern int32_t accumulated_clocks_diff[FCYCLE_ACC_AVG_PERIOD];
 
 extern time_t utc;
 time_t power_on_time = 0;
@@ -138,7 +139,10 @@ void pic_pps_print_stats(void)
     printf("SCH S: %i GNSS FIX: %i\r\n", scheduler_sync, gnss_fix);
     // Accumulated clock data
     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
-    printf("AVG D: %.1f\r\n", accumulated_clocks_diff_avg);
+    double accumulated_clocks_diff_total_avg = accumulated_clocks;
+    if(accumulation_delta) accumulated_clocks_diff_total_avg = accumulated_clocks_diff_total_avg / accumulation_delta;
+    else accumulated_clocks_diff_total_avg = 0;
+    printf("AVG D: %.1f AVG D10: %.1f\r\n", accumulated_clocks_diff_total_avg, accumulated_clocks_diff_avg);
     
     uint32_t run_time = utc - power_on_time;
     uint16_t days = (run_time/86400);
