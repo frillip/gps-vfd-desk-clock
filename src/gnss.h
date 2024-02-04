@@ -28,7 +28,7 @@ extern "C" {
 #define GNSS_CHECK_BUFFER_SIZE 6
     
 #define GNSS_DETECT_LIMIT 300
-#define GNSS_FIX_LIMIT 12000
+#define GNSS_FIX_LIMIT 3000
 
 typedef enum
 {
