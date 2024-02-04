@@ -22,6 +22,7 @@ extern "C" {
 #include"mcc_generated_files/system.h"
 #include"mcc_generated_files/clock.h"
 #include "ui.h"
+#include "ublox_ubx.h"
 
 #define ESP_UART_HEADER 0x83
 #define ESP_UART_TYPE_TX 0x65
@@ -45,7 +46,7 @@ extern "C" {
 #define ESP_RTC_LENGTH 7
 #define ESP_SENSOR_LENGTH 11
 #define ESP_DISPLAY_LENGTH 7
-#define ESP_USER_LENGTH 20
+#define ESP_USER_LENGTH 4
     
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500
@@ -85,7 +86,8 @@ void exp_tx_net(void);
 void esp_tx_rtc(void);
 void esp_tx_sensor(void);
 void esp_tx_display(void);
-void esp_tx_user(void);
+void esp_tx_user_start(void);
+void esp_tx_user_stop(void);
 
 #ifdef	__cplusplus
 }

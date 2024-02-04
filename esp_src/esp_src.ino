@@ -236,6 +236,16 @@ void loop()
     if(rtc.getEpoch()!=UTC.now()) rtc.setTime(UTC.now());
   }
 
+  if(Serial.available())
+  {
+    pic_uart_tx_userdata((char)Serial.read());
+  }
+
+  if(UARTPIC.available())
+  {
+    pic_uart_rx();
+  }
+
   wm.process();
   //events();
 

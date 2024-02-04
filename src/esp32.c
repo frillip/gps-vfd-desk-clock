@@ -52,7 +52,7 @@ uint16_t esp_brightness = 0;
 uint8_t esp_display_state = 0;
 uint8_t esp_menu_state = 0;
 
-char esp_user_buffer[ESP_DISPLAY_LENGTH] = {0};
+char esp_user_buffer[ESP_USER_LENGTH] = {0};
 bool esp_user_waiting = 0;
 char esp_user_string[ESP_CHECK_BUFFER_SIZE] = {ESP_UART_HEADER, ESP_UART_TYPE_TX, ESP_UART_DATATYPE_USERDATA};
 
@@ -108,7 +108,6 @@ void esp_rx(void)
             // Reset the message waiting flag
             esp_waiting=ESP_NONE;
         }
-        else ui_uart1_input(rx_char);
         
         ESP_MESSAGE_TYPE esp_check_res = esp_check_incoming();
         if(esp_check_res != ESP_NONE)
@@ -274,6 +273,7 @@ void esp_process_display(void)
 
 void esp_process_user(void)
 {
+    ui_uart1_input(esp_user_buffer[3]);
     esp_user_waiting = 0;
 }
 
@@ -312,9 +312,31 @@ void esp_tx_time(void)
     esp_tx(esp_tx_buffer,ESP_TIME_LENGTH);  
 }
 
+extern bool gnss_fix;
+extern uint8_t ubx_nav_status_gpsfix;
+extern bool ubx_nav_status_gpsfixok;
+extern bool ubx_nav_timeutc_valid;
+extern bool ubx_tim_tm2_valid;
+extern int32_t ubx_nav_posllh_lat;
+extern int32_t ubx_nav_posllh_lon;
+
+bool esp_gnss_data_updated = 0;
+
 void esp_tx_gnss(void)
 {
-    
+    char esp_tx_buffer[ESP_GNSS_LENGTH] = {0};
+    esp_tx_buffer[0] = ESP_UART_HEADER;
+    esp_tx_buffer[1] = ESP_UART_TYPE_RX;
+    esp_tx_buffer[2] = ESP_UART_DATATYPE_GNSSDATA;
+    if(gnss_fix) esp_tx_buffer[3] |= 0x1;
+    if(ubx_nav_status_gpsfixok) esp_tx_buffer[3] |= 0x02;
+    if(ubx_nav_timeutc_valid) esp_tx_buffer[3] |= 0x04;
+    if(ubx_tim_tm2_valid) esp_tx_buffer[3] |= 0x08;
+    esp_tx_buffer[3] |= (ubx_nav_status_gpsfix<<4);
+    memcpy(esp_tx_buffer+4, &ubx_nav_posllh_lat, 4);
+    memcpy(esp_tx_buffer+8, &ubx_nav_posllh_lon, 4);
+    esp_tx(esp_tx_buffer,ESP_GNSS_LENGTH);
+    esp_gnss_data_updated = 0;
 }
 
 void esp_tx_offset(void)
@@ -342,7 +364,14 @@ void esp_tx_display(void)
     
 }
 
-void esp_tx_user(void)
+void esp_tx_user_start(void)
 {
-    
+    char esp_tx_buffer[3] = { 0x83, 0x70, 0x80 };
+    esp_tx(esp_tx_buffer,3);
+}
+
+void esp_tx_user_stop(void)
+{
+    char esp_tx_buffer[3] = { 0x80, 0x70, 0x83 };
+    esp_tx(esp_tx_buffer,3);
 }

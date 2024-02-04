@@ -72,6 +72,8 @@ extern bool ic_event;
 extern bool pps_sync;
 extern bool gnss_fix;
 
+extern bool esp_gnss_data_updated;
+
 extern CLOCK_SYNC_STATUS clock_sync_state;
 extern CLOCK_SYNC_STATUS clock_sync_state_old;
 extern CLOCK_SYNC_STATUS clock_sync_state_last;
@@ -120,10 +122,17 @@ int main(void)
             }            
 
             // Run our UBX data task if we have GNSS module
-            if(gnss_detected) ubx_data_task();
+            if(gnss_detected) 
+            {
+                ubx_data_task();
+            }
             
             // Check for any bytes on UART1
-            if(esp_detected) esp_data_task();
+            if(esp_detected)
+            {
+                esp_data_task();
+                if(esp_gnss_data_updated) esp_tx_gnss();
+            }
 
             // Print some statistics if required
             if(print_data)

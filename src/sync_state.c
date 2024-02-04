@@ -71,9 +71,9 @@ void sync_state_machine(void)
     {
         ClrWdt();
         if(esp_detected) esp_tx_time();
-        printf("UTC: ");
-        ui_print_iso8601_string(utc);
-        printf("\r\n");
+        //printf("UTC: ");
+        //ui_print_iso8601_string(utc);
+        //printf("\r\n");
         state_new_oc = 1;
         ui_buzzer_interval_beep();
         oc_event=0;
@@ -101,7 +101,7 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_FREQ_ONLY:
             recalculate_fosc_freq_short();
-            printf("\r\nLarge short term Freq deviation\r\n");
+            printf("\r\nLarge short term freq deviation\r\n");
             printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
             sync_state_print_stats();
             pic_pps_resync_oc_only();
@@ -112,7 +112,7 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_FREQ:
             recalculate_fosc_freq_short();
-            printf("\r\nLarge short term Freq deviation\r\n");
+            printf("\r\nLarge short term freq deviation\r\n");
             printf("New Fosc freq: %luHz\r\n", fosc_freq);
             sync_state_print_stats();
             pic_pps_reset_sync();
@@ -303,35 +303,45 @@ void sync_state_machine(void)
         case SYNC_NTP_ONLY:
             if(state_new_oc)
             {
-                printf("Shouldn't be here yet...\r\n");
+                //printf("Shouldn't be here yet...\r\n");
+            }
+            if(gnss_detected)
+            {
+                if(ubx_gnss_time_valid())
+                {
+                    printf("GNSS FIX ACQUIRED\r\n");
+                    sync_state_machine_set_state(SYNC_STARTUP);
+                }
             }
             break;
         
         case SYNC_NTP_NO_NETWORK:
             if(state_new_oc)
             {
-                printf("Shouldn't be here yet...\r\n");
+                //printf("Shouldn't be here yet...\r\n");
+            }
+            if(gnss_detected)
+            {
+                if(ubx_gnss_time_valid())
+                {
+                    printf("GNSS FIX ACQUIRED\r\n");
+                    sync_state_machine_set_state(SYNC_STARTUP);
+                }
+            }
+            if(esp_ntp_valid)
+            {
+                printf("NTP SYNC ACQUIRED\r\n");
+                sync_state_machine_set_state(SYNC_NTP_ONLY);
             }
             break;
         
         case SYNC_RTC_ONLY:
             if(gnss_detected)
             {
-                if(ubx_gnss_available())
+                if(ubx_gnss_time_valid())
                 {
-                    ubx_update_gnss_time();
-                    if(ubx_gnss_time_valid())
-                    {
-                        printf("GNSS FIX ACQUIRED\r\n");
-                        if(!gnss_is_calendar_sync(utc))
-                        {
-                            gnss_reset_calendar_sync();
-                            rtc_reset_calendar_sync();
-                            gnss_sync_calendar();
-                            rtc_write_from_calendar(utc);
-                        }
-                        sync_state_machine_set_state(SYNC_STARTUP);
-                    }
+                    printf("GNSS FIX ACQUIRED\r\n");
+                    sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
             break;

@@ -328,6 +328,8 @@ void ubx_update_timemark(void)
     print_ubx_tim_tm2 = 1;
 }
 
+extern bool esp_gnss_data_updated;
+
 void ubx_data_task(void)
 {
     if(ubx_gnss_available())
@@ -353,6 +355,7 @@ void ubx_data_task(void)
                 }
             }
         }
+        esp_gnss_data_updated = 1;
     }
         
     // Is there new time mark data available

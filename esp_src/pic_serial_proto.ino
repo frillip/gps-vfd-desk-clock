@@ -11,9 +11,24 @@
 #define PIC_UART_DATATYPE_MISCDATA 0x70
 #define PIC_UART_DATATYPE_USERDATA 0x80
 
+uint8_t rx_stage = 0;
+uint16_t user_data_counter = 0;
+bool rx_ignore = 0;
+
 void pic_uart_rx()
 {
-
+  char c = UARTPIC.read();
+  if(c==PIC_UART_HEADER)
+  {
+    rx_ignore=1;
+    user_data_counter = 0;
+  }
+  if(rx_ignore)
+  {
+    user_data_counter++;
+    if(user_data_counter>11) rx_ignore=0;
+  }
+  else Serial.print(c);
 }
 
 #pragma pack(push, 1)
@@ -189,7 +204,28 @@ void pic_uart_tx_displaydata()
   size_t bytesSent = UARTPIC.write(display_data_tx.raw, sizeof(display_data_tx.raw));
 }
 
-void pic_uart_tx_userdata()
+#pragma pack(push, 1)
+union UserDataUnion
 {
-  
+  struct _struct
+  {
+    uint8_t header;
+    uint8_t type;
+    uint8_t datatype;
+    char c;
+  } fields;
+  uint8_t raw[sizeof(struct _struct)];
+};
+#pragma pack(pop)
+
+void pic_uart_tx_userdata(char c)
+{
+  UserDataUnion user_data_tx = {};
+  user_data_tx.fields.header = PIC_UART_HEADER;
+  user_data_tx.fields.type = PIC_UART_TYPE_TX;
+  user_data_tx.fields.datatype = PIC_UART_DATATYPE_USERDATA;
+
+  user_data_tx.fields.c = c;
+
+  size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx.raw));
 }
