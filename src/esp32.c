@@ -278,7 +278,7 @@ void esp_print_offset(void)
     if(gnss_detected && gnss_fix && pps_sync)
     {
         esp_time_offset_display += ntp -gnss;
-        printf("NTP %ims off GNSSr\\n", esp_time_offset_display);
+        printf("NTP %ims off GNSS\r\n", esp_time_offset_display);
     }
     else
     {
