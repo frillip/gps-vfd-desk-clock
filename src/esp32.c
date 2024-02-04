@@ -259,6 +259,9 @@ void esp_store_sync_timer(void)
     esp_time_offset = esp_time_offset_counter;
 }
 
+extern bool gnss_fix;
+extern bool pps_sync;
+
 void esp_print_offset(void)
 {
     int16_t esp_time_offset_display = esp_time_offset;
@@ -266,8 +269,15 @@ void esp_print_offset(void)
     {
         esp_time_offset_display -= 1000;
     }
-    esp_time_offset_display += ntp -gnss;
-    printf("NTP %ims off GNSS\r\n", esp_time_offset_display);
+    if(gnss_fix && pps_sync)
+    {
+        esp_time_offset_display += ntp -gnss;
+        printf("NTP %ims off GNSS\r\n", esp_time_offset_display);
+    }
+    else
+    {
+        printf("NTP %ims off OC\r\n", esp_time_offset_display);
+    }
 }
 
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
@@ -373,7 +383,6 @@ void esp_tx_time(void)
     esp_tx(esp_tx_buffer,ESP_TIME_LENGTH);  
 }
 
-extern bool gnss_fix;
 extern uint8_t ubx_nav_status_gpsfix;
 extern bool ubx_nav_status_gpsfixok;
 extern bool ubx_nav_timeutc_valid;
