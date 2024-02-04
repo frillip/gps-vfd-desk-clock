@@ -183,6 +183,23 @@ void pic_pps_resync(void)
     sync_events++;
 }
 
+bool oc_adjust_in_progress_ntp = 0;
+
+void pic_pps_resync_ntp(int16_t ntp_offset)
+{
+    int32_t ntp_offset_cycles = ntp_offset * (fosc_freq / 1000);
+    pic_pps_set_latch_cycles(fosc_freq + ntp_offset_cycles);
+    printf("OC %lu\r\n",fosc_freq + ntp_offset_cycles);
+    oc_adjust_in_progress_ntp = 1;
+    sync_events++;
+}
+
+void pic_pps_reset_sync_ntp(void)
+{
+    pps_sync = 0;
+    scheduler_sync = 0;
+}
+
 void pic_pps_resync_oc_only(void)
 {
     pic_pps_set_latch_cycles(fosc_freq);
@@ -210,7 +227,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
             if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
             if(oc_adjust_fudge)
             {
-                pic_pps_set_latch_cycles(fosc_freq + oc_offset); // Correct our fudge
+                pic_pps_set_latch_cycles(fosc_freq - 0x10000); // Correct our fudge
             }
             else
             {
@@ -218,6 +235,19 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
                 pps_sync = 1; // Indicate we are now sync'd with PPS
             }
             oc_adjust_in_progress = 0; // Clear the adjustment flag
+        }
+        else if(oc_adjust_in_progress_ntp)
+        {
+            if(oc_adjust_fudge)
+            {
+                pic_pps_set_latch_cycles(fosc_freq + oc_offset); // Correct our fudge
+            }
+            else
+            {
+                pic_pps_set_latch_cycles(fosc_freq);
+                pps_sync = 1;
+            }
+            oc_adjust_in_progress_ntp = 0;
         }
         else if(oc_adjust_fudge)
         {
@@ -227,6 +257,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
             oc_adjust_fudge = 0;
             pps_sync = 1; // Indicate we are now sync'd with PPS 
         }
+
         oc_event = 1; // Flag we've just had an OC event
         display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter

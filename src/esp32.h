@@ -51,6 +51,9 @@ extern "C" {
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500
     
+#define ESP_NTP_OFFSET_MAX_MS 30
+#define ESP_NTP_OFFSET_MIN_MS -30
+    
 typedef enum
 {
     ESP_NONE,
@@ -69,6 +72,7 @@ void esp_rx(void);
 void esp_copy_buffer(ESP_MESSAGE_TYPE esp_waiting);
 ESP_MESSAGE_TYPE esp_check_incoming(void);
 
+bool ntp_is_calendar_sync(time_t utc);
 void esp_ntp_set_calendar(void);
 void esp_start_sync_timer(void);
 void esp_stop_sync_timer(void);

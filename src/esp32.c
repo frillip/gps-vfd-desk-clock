@@ -209,13 +209,18 @@ ESP_MESSAGE_TYPE esp_check_incoming(void)
     return ESP_NONE;
 }
 
+bool ntp_is_calendar_sync(time_t utc)
+{
+    return (utc-1)==ntp;
+}
+
 void esp_ntp_set_calendar(void)
 {
     printf("NTP calendar sync\r\nTime is now: ");
     ui_print_iso8601_string(ntp);
     printf("\r\n");
     
-    utc = ntp;
+    utc = ntp+1;
     
     ntp_calendar_sync = 1;
 }
@@ -250,7 +255,7 @@ void esp_stop_sync_timer(void)
 
 void esp_reset_sync_timer(void)
 {
-    TMR3 = 0;
+    TMR3 = 0x00;
     esp_time_offset_counter = 0;
 }
 
@@ -259,6 +264,7 @@ void esp_store_sync_timer(void)
     esp_time_offset = esp_time_offset_counter;
 }
 
+extern bool gnss_detected;
 extern bool gnss_fix;
 extern bool pps_sync;
 
@@ -269,10 +275,10 @@ void esp_print_offset(void)
     {
         esp_time_offset_display -= 1000;
     }
-    if(gnss_fix && pps_sync)
+    if(gnss_detected && gnss_fix && pps_sync)
     {
         esp_time_offset_display += ntp -gnss;
-        printf("NTP %ims off GNSS\r\n", esp_time_offset_display);
+        printf("NTP %ims off GNSSr\\n", esp_time_offset_display);
     }
     else
     {

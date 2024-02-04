@@ -36,6 +36,8 @@ void pic_pps_calculate_oc_stats(void);
 bool pic_pps_manual_resync_available(void);
 bool pic_pps_resync_required(void);
 void pic_pps_resync(void);
+void pic_pps_resync_ntp(int16_t ntp_offset);
+void pic_pps_reset_sync_ntp(void);
 void pic_pps_resync_oc_only(void);
 
 void pic_pps_print_stats(void);

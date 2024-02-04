@@ -56,6 +56,9 @@ extern int32_t oc_offset;
 
 extern uint32_t fosc_freq;
 
+extern int16_t esp_time_offset;
+bool ntp_sync_progress = 0;
+
 CLOCK_SYNC_STATUS sync_check_result = SYNC_SYNC;
 CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
 
@@ -74,9 +77,9 @@ void sync_state_machine(void)
         {
             //esp_tx_time();
         }
-        //printf("UTC: ");
-        //ui_print_iso8601_string(utc);
-        //printf("\r\n");
+        printf("UTC: ");
+        ui_print_iso8601_string(utc);
+        printf("\r\n");
         state_new_oc = 1;
         ui_buzzer_interval_beep();
         oc_event=0;
@@ -306,13 +309,38 @@ void sync_state_machine(void)
         case SYNC_NTP_ONLY:
             if(state_new_oc)
             {
-                //printf("Shouldn't be here yet...\r\n");
+                int16_t esp_time_offset_adjust = esp_time_offset;
+                while(esp_time_offset_adjust>500) esp_time_offset_adjust -= 1000;
+                if(!ntp_sync_progress)
+                {
+                    if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
+                    {
+                        printf("Reset NTP sync\r\n");
+                        printf("%i ",esp_time_offset_adjust);
+                        pic_pps_reset_sync_ntp();
+                        if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
+                        pic_pps_resync_ntp(esp_time_offset_adjust);
+                        ntp_sync_progress = 1;
+                    }
+                }
+                else ntp_sync_progress = 0;
+                if(esp_ntp_valid)
+                {
+                    if(!ntp_is_calendar_sync(utc))
+                    {
+                        esp_ntp_set_calendar();
+                    }
+                }
+                printf("%lu ",fosc_freq);
+                state_new_oc = 0;
             }
             if(gnss_detected)
             {
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
+                    pic_pps_reset_sync();
+                    reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
@@ -322,12 +350,15 @@ void sync_state_machine(void)
             if(state_new_oc)
             {
                 //printf("Shouldn't be here yet...\r\n");
+                state_new_oc = 0;
             }
             if(gnss_detected)
             {
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
+                    pic_pps_reset_sync();
+                    reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
@@ -353,6 +384,7 @@ void sync_state_machine(void)
             if(state_new_oc)
             {
                 printf("NO CLOCK!\r\n");
+                state_new_oc = 0;
             }
             break;
         
