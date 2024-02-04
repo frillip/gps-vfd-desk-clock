@@ -6,6 +6,8 @@
 #include <Wire.h>
 #include <SparkFunBME280.h>
 #include <SparkFunTSL2561.h>
+#include <esp_task_wdt.h>
+#define WDT_TIMEOUT 10
 
 WiFiManager wm;
 ESP32Time rtc;
@@ -147,6 +149,9 @@ void fe_build_ntp_string(void)
 
 void setup()
 {
+  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL); //add current thread to WDT watch
+  
   uint32_t id = 0;
   for(int i=0; i<17; i=i+8) {
     id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
@@ -207,6 +212,7 @@ void loop()
 {
   if(secondChanged())
   {
+    esp_task_wdt_reset();
     if(!pps_sync)
     {
       if(timeStatus() == timeSet && !UTC.ms())
