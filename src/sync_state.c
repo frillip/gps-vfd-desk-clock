@@ -73,7 +73,6 @@ void sync_state_machine(void)
         if(esp_detected)
         {
             //esp_tx_time();
-            esp_reset_sync_timer();
         }
         //printf("UTC: ");
         //ui_print_iso8601_string(utc);

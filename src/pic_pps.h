@@ -22,6 +22,7 @@ extern "C" {
 #include "scheduler.h"
 #include "ui.h"
 #include "sync_state.h"
+#include "esp32.h"
     
 void pic_pps_init(void);
 void OC1_Initialize(void);

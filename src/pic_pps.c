@@ -43,6 +43,8 @@ extern bool scheduler_sync;
 extern bool gnss_calendar_sync;
 extern bool rtc_sync;
 
+extern bool esp_detected;
+
 extern bool display_update_pending;
 
 extern CLOCK_SYNC_STATUS clock_sync_state;
@@ -229,6 +231,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter
         gnss_rmc_waiting = 0; // Invalidate any GNSS data that's waiting
+        esp_reset_sync_timer(); // Reset our esp32 sync timer
         ic3_val = IC3BUF; // Read the IC3 timer
         IFS2bits.IC3IF = 0;
     }
