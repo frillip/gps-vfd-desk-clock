@@ -70,7 +70,11 @@ void sync_state_machine(void)
     if(oc_event)
     {
         ClrWdt();
-        if(esp_detected) esp_tx_time();
+        if(esp_detected)
+        {
+            //esp_tx_time();
+            esp_reset_sync_timer();
+        }
         //printf("UTC: ");
         //ui_print_iso8601_string(utc);
         //printf("\r\n");
@@ -450,7 +454,11 @@ void sync_state_machine(void)
             else
             {
                 if(esp_detected) printf("ESP DETECTED BUT NO NTP SYNC\r\n");
-                else printf("NO ESP DETECTED\r\n");
+                else
+                {
+                    printf("NO ESP DETECTED\r\n");
+                    esp_stop_sync_timer();
+                }
                 sync_state_machine_set_state(SYNC_GNSS_DETECT);
             }
             break;

@@ -59,6 +59,7 @@ char esp_user_string[ESP_CHECK_BUFFER_SIZE] = {ESP_UART_HEADER, ESP_UART_TYPE_TX
 time_t esp;
 time_t ntp;
 extern time_t utc;
+extern time_t gnss;
 
 bool ntp_calendar_sync = 0;
 
@@ -68,6 +69,7 @@ void esp_ntp_init(void)
     memset(esp_string_buffer, 0, ESP_STRING_BUFFER_SIZE);
     memset(esp_check_buffer, 0, ESP_CHECK_BUFFER_SIZE);
     UART1_SetRxInterruptHandler(esp_rx);
+    esp_start_sync_timer();
 }
 
 void esp_rx(void)
@@ -120,6 +122,8 @@ void esp_rx(void)
                 case ESP_TIME:
                     esp_bytes_remaining = ESP_TIME_LENGTH - ESP_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, ESP_CHECK_BUFFER_SIZE);
+                    esp_store_sync_timer();
+                    esp_print_offset();
                     break;
         
                 case ESP_NET:
@@ -214,6 +218,63 @@ void esp_ntp_set_calendar(void)
     utc = ntp;
     
     ntp_calendar_sync = 1;
+}
+
+int16_t esp_time_offset_counter = 0;
+int16_t esp_time_offset = 0;
+
+void esp_start_sync_timer(void)
+{
+    //TMR3 0; 
+    TMR3 = 0x00;
+    //Period = 0.001 s; Frequency = 40000000 Hz; PR2 4999; 
+    PR3 = 0x1387;
+    //TCKPS 1:8; T32 16 Bit; TON enabled; TSIDL disabled; TCS FOSC/2; TGATE disabled; 
+    T3CON = 0x8010;
+    // Clear T3 interrupt flag
+    IFS0bits.T3IF = false;
+    // Enable T2 interrupts
+    IEC0bits.T3IE = true;
+    // Set interrupt priority
+    IPC2bits.T3IP = 1;
+}
+
+void esp_stop_sync_timer(void)
+{
+    TMR3 = 0x00;
+    T3CON = 0x0010;
+    IFS0bits.T3IF = false;
+    IEC0bits.T3IE = false;
+    esp_time_offset_counter = 0;
+}
+
+void esp_reset_sync_timer(void)
+{
+    TMR3 = 0;
+    esp_time_offset_counter = 0;
+}
+
+void esp_store_sync_timer(void)
+{
+    esp_time_offset = esp_time_offset_counter;
+}
+
+void esp_print_offset(void)
+{
+    int16_t esp_time_offset_display = esp_time_offset;
+    while(esp_time_offset_display>500)
+    {
+        esp_time_offset_display -= 1000;
+    }
+    esp_time_offset_display += ntp -gnss;
+    printf("NTP %ims off GNSS\r\n", esp_time_offset_display);
+}
+
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
+{
+    IFS0bits.T3IF = false;
+    esp_time_offset_counter++;
+    if(esp_time_offset_counter>(ESP_DETECT_LIMIT*10)) esp_detected = 0;
 }
 
 void esp_process_time(void)
