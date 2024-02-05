@@ -52,6 +52,7 @@ bool gnss_is_calendar_sync(time_t utc);
 void gnss_reset_calendar_sync(void);
 
 time_t gnss_process_rmc(void);
+void gnss_invalidate_data(void);
 
 #ifdef	__cplusplus
 }

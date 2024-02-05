@@ -269,3 +269,9 @@ time_t gnss_process_rmc(void)
     utc = mktime(&gnss_time);
     return utc;
 }
+
+void gnss_invalidate_data(void)
+{
+    gnss_rmc_waiting = 0;
+    ubx_invalidate_data();
+}

@@ -361,3 +361,12 @@ void ubx_data_task(void)
     // Is there new time mark data available
     if(ubx_timemark_waiting()) ubx_update_timemark();
 }
+
+void ubx_invalidate_data(void)
+{
+    ubx_tim_tm2_waiting = 0; // Invalidate GNSS data
+    ubx_nav_timeutc_waiting = 0;
+    ubx_nav_clock_waiting = 0;
+    ubx_nav_status_waiting = 0;
+    ubx_nav_posllh_waiting = 0;
+}

@@ -60,6 +60,7 @@ bool ubx_timemark_waiting(void);
 void ubx_update_timemark(void);
 
 void ubx_data_task(void);
+void ubx_invalidate_data(void);
 
 #ifdef	__cplusplus
 }

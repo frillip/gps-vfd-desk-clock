@@ -433,9 +433,6 @@ void sync_state_machine(void)
                     gnss_init(); // Only do this the first loop
                 }
                 
-                // Run our UBX data task
-                ubx_data_task();
-                
                 if(gnss_detected)
                 {
                     printf("GNSS DETECTED\r\n");

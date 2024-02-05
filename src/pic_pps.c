@@ -18,7 +18,6 @@ bool pps_sync = 0;
 bool pps_done = 0;
 
 extern bool print_data;
-extern bool gnss_rmc_waiting;
 extern bool scheduler_sync;
 
 extern uint32_t fosc_freq;
@@ -261,7 +260,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         oc_event = 1; // Flag we've just had an OC event
         display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter
-        gnss_rmc_waiting = 0; // Invalidate any GNSS data that's waiting
+        gnss_invalidate_data();
         esp_reset_sync_timer(); // Reset our esp32 sync timer
         ic3_val = IC3BUF; // Read the IC3 timer
         IFS2bits.IC3IF = 0;
