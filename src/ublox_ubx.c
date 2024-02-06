@@ -223,14 +223,37 @@ void print_ubx_nav_status_data(void)
     printf("\r\n=== UBX-NAV-STATUS ===\r\n");
     if(print_ubx_nav_status)
     {
-        printf("Fix type: %i - ", ubx_nav_status_gpsfix);
-        if(ubx_nav_status_gpsfix==0x00) printf("no fix\r\n");
-        else if(ubx_nav_status_gpsfix==0x01) printf("dead reckoning only\r\n");
-        else if(ubx_nav_status_gpsfix==0x02) printf("2D-fix\r\n");
-        else if(ubx_nav_status_gpsfix==0x03) printf("3D-fix\r\n");
-        else if(ubx_nav_status_gpsfix==0x04) printf("GNSS + dead reckoning combined\r\n");
-        else if(ubx_nav_status_gpsfix==0x05) printf("time only fix\r\n");
-        else printf("unknown\r\n");
+        printf("Fix type: 0x%02X - ", ubx_nav_status_gpsfix);
+        switch (ubx_nav_status_gpsfix)
+        {
+            case 0x00:
+                printf("No fix\r\n");
+                break;
+                
+            case 0x01:
+                    printf("Dead reckoning only\r\n");
+                    break;
+
+            case 0x02:
+                    printf("2D-fix\r\n");
+                    break;
+
+            case 0x03:
+                    printf("3D-fix\r\n");
+                    break;
+
+            case 0x04:
+                    printf("GNSS + dead reckoning combined\r\n");
+                    break;
+
+            case 0x05:
+                    printf("Time only fix\r\n");
+                    break;
+                
+            default:
+                printf("Unknown\r\n");
+                break;
+        }
         printf("Fix ok: %i\r\n", ubx_nav_status_gpsfixok);
     }
     else
