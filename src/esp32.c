@@ -123,7 +123,6 @@ void esp_rx(void)
                     esp_bytes_remaining = ESP_TIME_LENGTH - ESP_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, ESP_CHECK_BUFFER_SIZE);
                     esp_store_sync_timer();
-                    esp_print_offset();
                     break;
         
                 case ESP_NET:
@@ -275,14 +274,22 @@ void esp_print_offset(void)
     {
         esp_time_offset_display -= 1000;
     }
-    if(gnss_detected && gnss_fix && pps_sync)
+    if(esp_ntp_valid && esp_pps_sync && esp_scheduler_sync)
     {
-        esp_time_offset_display += ntp -gnss;
-        printf("NTP %ims off GNSS\r\n", esp_time_offset_display);
+        printf("NTP ");
     }
     else
     {
-        printf("NTP %ims off OC\r\n", esp_time_offset_display);
+        printf("ESP ");
+    }
+    if(gnss_detected && gnss_fix && pps_sync)
+    {
+        esp_time_offset_display += ntp -gnss;
+        printf("%ims off GNSS\r\n", esp_time_offset_display);
+    }
+    else
+    {
+        printf("%ims off OC\r\n", esp_time_offset_display);
     }
 }
 
@@ -295,11 +302,10 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
 
 void esp_process_time(void)
 {
-    if(!esp_detected) esp_detected = 1;
     esp_wifi_status = esp_time_buffer[3]&0x01;
     esp_ntp_status = (esp_time_buffer[3]>>1)&0x01;
-    esp_pps_sync = (esp_net_buffer[3]>>2)&0x01;
-    esp_scheduler_sync = (esp_net_buffer[3]>>3)&0x01;
+    esp_pps_sync = (esp_time_buffer[3]>>2)&0x01;
+    esp_scheduler_sync = (esp_time_buffer[3]>>3)&0x01;
     memcpy(&esp_ntp_time, esp_time_buffer+4, 4);
     memcpy(&esp_ntp_milliseconds, esp_time_buffer+8, 2);
     esp_ntp_offset = esp_time_buffer[10];
@@ -309,6 +315,8 @@ void esp_process_time(void)
         ntp = esp_ntp_time;
         esp = ntp;
     }
+    esp_print_offset();
+    memset(esp_time_buffer, 0, ESP_TIME_LENGTH);
     esp_time_waiting = 0;
 }
 
@@ -321,6 +329,7 @@ void esp_process_net(void)
     memcpy(&esp_ntp_last_update, esp_net_buffer+4, 4);
     memcpy(&esp_ntp_interval_count, esp_net_buffer+8, 2);
     esp_dst_flags = esp_net_buffer[10];
+    memset(esp_net_buffer, 0, ESP_NET_LENGTH);
     esp_net_waiting = 0;
 }
 
@@ -328,6 +337,7 @@ void esp_process_rtc(void)
 {
     memcpy(&esp_rtc_time, esp_rtc_buffer+3, 4);
     if(!esp_ntp_valid) esp = esp_rtc_time;
+    memset(esp_rtc_buffer, 0, ESP_RTC_LENGTH);
     esp_rtc_waiting = 0;
 }
 
@@ -337,6 +347,7 @@ void esp_process_sensor(void)
     memcpy(&esp_sensor_pres, esp_sensor_buffer+5, 2);
     memcpy(&esp_sensor_hum, esp_sensor_buffer+7, 2);
     memcpy(&esp_sensor_lux, esp_sensor_buffer+9, 2);
+    memset(esp_sensor_buffer, 0, ESP_SENSOR_LENGTH);
     esp_sensor_waiting = 0;
 }
 
@@ -345,12 +356,14 @@ void esp_process_display(void)
     memcpy(&esp_brightness, esp_display_buffer+3, 2);
     esp_display_state = esp_display_buffer[5];
     esp_menu_state = esp_display_buffer[6];
+    memset(esp_display_buffer, 0, ESP_DISPLAY_LENGTH);
     esp_display_waiting = 0;
 }
 
 void esp_process_user(void)
 {
     ui_uart1_input(esp_user_buffer[3]);
+    memset(esp_user_buffer, 0, ESP_USER_LENGTH);
     esp_user_waiting = 0;
 }
 
