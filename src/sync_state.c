@@ -176,31 +176,35 @@ void sync_state_machine(void)
             {
                 pic_pps_calculate_oc_stats();
                 sync_check_result = pic_pps_evaluate_sync();
-                if(sync_check_result==SYNC_NOSYNC_FREQ_ONLY)
+                switch (sync_check_result)
                 {
-                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ_ONLY);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_FREQ)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_MAJOR_OC)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_MAJOR_OC);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_MAJOR)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_MAJOR);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_MINOR)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_MINOR_OC)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_MINOR_OC);
-                }
+                    case SYNC_NOSYNC_FREQ_ONLY:
+                        sync_state_machine_set_state(SYNC_NOSYNC_FREQ_ONLY);
+                        break;
+                        
+                    case SYNC_NOSYNC_FREQ:
+                        sync_state_machine_set_state(SYNC_NOSYNC_FREQ);
+                        break;
+                        
+                    case SYNC_NOSYNC_MAJOR_OC:
+                        sync_state_machine_set_state(SYNC_NOSYNC_MAJOR_OC);
+                        break;
+                        
+                    case SYNC_NOSYNC_MAJOR:
+                        sync_state_machine_set_state(SYNC_NOSYNC_MAJOR);
+                    break;
+                    
+                    case SYNC_NOSYNC_MINOR_OC:
+                        sync_state_machine_set_state(SYNC_NOSYNC_MINOR_OC);
+                        break;
+                        
+                    case SYNC_NOSYNC_MINOR:
+                        sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
+                    break;
 
+                    default:
+                        break;
+                }
                 struct tm *time_struct;
                 time_struct = gmtime(&utc);
                 if(time_struct->tm_sec==0)
@@ -216,21 +220,26 @@ void sync_state_machine(void)
             {
                 pic_pps_calculate_oc_stats();
                 sync_check_result = pic_pps_evaluate_sync();
-                if(sync_check_result==SYNC_NOSYNC_FREQ_ONLY)
+                switch (sync_check_result)
                 {
-                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ_ONLY);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_FREQ)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_FREQ);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_MAJOR_OC)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_MAJOR_OC);
-                }
-                else if(sync_check_result==SYNC_NOSYNC_MAJOR)
-                {
-                    sync_state_machine_set_state(SYNC_NOSYNC_MAJOR);
+                    case SYNC_NOSYNC_FREQ_ONLY:
+                        sync_state_machine_set_state(SYNC_NOSYNC_FREQ_ONLY);
+                        break;
+                        
+                    case SYNC_NOSYNC_FREQ:
+                        sync_state_machine_set_state(SYNC_NOSYNC_FREQ);
+                        break;
+                        
+                    case SYNC_NOSYNC_MAJOR_OC:
+                        sync_state_machine_set_state(SYNC_NOSYNC_MAJOR_OC);
+                        break;
+                        
+                    case SYNC_NOSYNC_MAJOR:
+                        sync_state_machine_set_state(SYNC_NOSYNC_MAJOR);
+                    break;
+
+                    default:
+                        break;
                 }
                 if(pps_seq_count > FCYCLE_ACC_INTERVAL_MIN)
                 {
