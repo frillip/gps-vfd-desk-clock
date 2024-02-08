@@ -56,6 +56,8 @@ extern int32_t oc_offset;
 
 extern uint32_t fosc_freq;
 
+extern uint32_t sync_events;
+
 extern int16_t esp_time_offset;
 bool ntp_sync_progress = 0;
 
@@ -713,6 +715,7 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
             }
             else
             {
+                if(sync_events==1) return SYNC_NOSYNC_FREQ; // Do full sync if it's the first sync
                 return SYNC_NOSYNC_FREQ_ONLY;
             }
         }
