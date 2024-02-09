@@ -1,10 +1,10 @@
-/src/nbproject/
-/src/dist/
-/src/build/
-/src/debug/
-/src/mcc_generated_files/docs/
-/src/.generated_files/
-/src/Makefile
+/dspic_src/nbproject/
+/dspic_src/dist/
+/dspic_src/build/
+/dspic_src/debug/
+/dspic_src/mcc_generated_files/docs/
+/dspic_src/.generated_files/
+/dspic_src/Makefile
 /nbproject/
 /dist/
 /build/
