@@ -51,7 +51,7 @@ extern "C" {
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500
     
-#define ESP_NTP_OFFSET_MAX_MS 30
+#define ESP_NTP_OFFSET_MAX_MS 30 // Achievable accuracy by NTP on ESP32 is usually around 30ms
 #define ESP_NTP_OFFSET_MIN_MS -30
     
 typedef enum

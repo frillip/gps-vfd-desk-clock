@@ -59,7 +59,6 @@ extern uint32_t fosc_freq;
 extern uint32_t sync_events;
 
 extern int16_t esp_time_offset;
-bool ntp_sync_progress = 0;
 
 CLOCK_SYNC_STATUS sync_check_result = SYNC_SYNC;
 CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
@@ -322,19 +321,15 @@ void sync_state_machine(void)
             {
                 int16_t esp_time_offset_adjust = esp_time_offset;
                 while(esp_time_offset_adjust>500) esp_time_offset_adjust -= 1000;
-                if(!ntp_sync_progress)
+                if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
                 {
-                    if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
-                    {
-                        printf("Reset NTP sync\r\n");
-                        printf("%i ",esp_time_offset_adjust);
-                        pic_pps_reset_sync_ntp();
-                        if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
-                        pic_pps_resync_ntp(esp_time_offset_adjust);
-                        ntp_sync_progress = 1;
-                    }
+                    printf("Reset NTP sync\r\n");
+                    printf("%i ",esp_time_offset_adjust);
+                    pic_pps_reset_sync_ntp();
+                    if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
+                    pic_pps_resync_ntp(esp_time_offset_adjust);
+                    sync_state_machine_set_state(SYNC_NTP_ONLY_ADJUST); // Move to different state whilst adjust in progress
                 }
-                else ntp_sync_progress = 0;
                 if(esp_ntp_valid)
                 {
                     if(!ntp_is_calendar_sync(utc))
@@ -342,7 +337,6 @@ void sync_state_machine(void)
                         esp_ntp_set_calendar();
                     }
                 }
-                printf("%lu ",fosc_freq);
                 state_new_oc = 0;
             }
             if(gnss_detected)
@@ -356,7 +350,22 @@ void sync_state_machine(void)
                 }
             }
             break;
-        
+            
+        case SYNC_NTP_ONLY_ADJUST:
+            if(state_new_oc)
+            {
+                if(esp_ntp_valid)
+                {
+                    if(!ntp_is_calendar_sync(utc))
+                    {
+                        esp_ntp_set_calendar();
+                    }
+                }
+                sync_state_machine_set_state(SYNC_NTP_ONLY);
+                state_new_oc = 0;
+            }
+            break;
+            
         case SYNC_NTP_NO_NETWORK:
             if(state_new_oc)
             {
@@ -664,6 +673,10 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
             printf("SYNC_NTP_ONLY");
             break;
 
+        case SYNC_NTP_ONLY_ADJUST:
+            printf("SYNC_NTP_ONLY_ADJUST");
+            break;
+            
         case SYNC_NTP_NO_NETWORK:
             printf("SYNC_NTP_NO_NETWORK");
             break;
