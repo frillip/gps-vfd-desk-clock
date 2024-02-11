@@ -329,6 +329,7 @@ void sync_state_machine(void)
                     if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
                     pic_pps_resync_ntp(esp_time_offset_adjust);
                     sync_state_machine_set_state(SYNC_NTP_ONLY_ADJUST); // Move to different state whilst adjust in progress
+                    break;
                 }
                 if(esp_ntp_valid)
                 {
@@ -395,6 +396,8 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
+                    pic_pps_reset_sync();
+                    reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
@@ -405,6 +408,16 @@ void sync_state_machine(void)
             {
                 printf("NO CLOCK!\r\n");
                 state_new_oc = 0;
+            }
+            if(gnss_detected)
+            {
+                if(ubx_gnss_time_valid())
+                {
+                    printf("GNSS FIX ACQUIRED\r\n");
+                    pic_pps_reset_sync();
+                    reset_pps_stats();
+                    sync_state_machine_set_state(SYNC_STARTUP);
+                }
             }
             break;
         
@@ -456,7 +469,27 @@ void sync_state_machine(void)
                 if(gnss_detected)
                 {
                     printf("GNSS DETECTED\r\n");
-                    sync_state_machine_set_state(SYNC_GNSS_WAIT_FOR_FIX);
+                    //sync_state_machine_set_state(SYNC_GNSS_WAIT_FOR_FIX);
+                    if(esp_ntp_valid)
+                    {
+                        printf("NTP ONLY MODE\r\n");
+                        sync_state_machine_set_state(SYNC_NTP_ONLY);
+                    }
+                    else if(esp_ntp_detected)
+                    {
+                        printf("NTP ONLY MODE - NO NETWORK\r\n");
+                        sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
+                    }
+                    else if(rtc_detected)
+                    {
+                        printf("RTC ONLY MODE\r\n");
+                        sync_state_machine_set_state(SYNC_RTC_ONLY);
+                    }
+                    else
+                    {
+                        printf("NO CLOCK DETECTED\r\n");
+                        sync_state_machine_set_state(SYNC_NO_CLOCK);
+                    }
                 }
             }
             else
