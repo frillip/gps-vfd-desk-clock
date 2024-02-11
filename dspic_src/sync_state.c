@@ -317,7 +317,7 @@ void sync_state_machine(void)
             }
             break;
         
-        case SYNC_NTP_ONLY:
+        case SYNC_NTP:
             if(state_new_oc)
             {
                 int16_t esp_time_offset_adjust = esp_time_offset;
@@ -329,7 +329,7 @@ void sync_state_machine(void)
                     pic_pps_reset_sync_ntp();
                     if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
                     pic_pps_resync_ntp(esp_time_offset_adjust);
-                    sync_state_machine_set_state(SYNC_NTP_ONLY_ADJUST); // Move to different state whilst adjust in progress
+                    sync_state_machine_set_state(SYNC_NTP_ADJUST); // Move to different state whilst adjust in progress
                 }
                 if(esp_ntp_valid)
                 {
@@ -353,7 +353,7 @@ void sync_state_machine(void)
             }
             break;
             
-        case SYNC_NTP_ONLY_ADJUST:
+        case SYNC_NTP_ADJUST:
             if(state_new_oc)
             {
                 if(esp_ntp_valid)
@@ -363,7 +363,7 @@ void sync_state_machine(void)
                         esp_ntp_set_calendar();
                     }
                 }
-                sync_state_machine_set_state(SYNC_NTP_ONLY);
+                sync_state_machine_set_state(SYNC_NTP);
                 state_new_oc = 0;
             }
             break;
@@ -387,11 +387,11 @@ void sync_state_machine(void)
             if(esp_ntp_valid)
             {
                 printf("NTP SYNC ACQUIRED\r\n");
-                sync_state_machine_set_state(SYNC_NTP_ONLY);
+                sync_state_machine_set_state(SYNC_NTP);
             }
             break;
         
-        case SYNC_RTC_ONLY:
+        case SYNC_RTC:
             if(gnss_detected)
             {
                 if(ubx_gnss_time_valid())
@@ -437,18 +437,18 @@ void sync_state_machine(void)
                 printf("NO GNSS FIX... ");
                 if(esp_ntp_valid)
                 {
-                    printf("NTP ONLY MODE\r\n");
-                    sync_state_machine_set_state(SYNC_NTP_ONLY);
+                    printf("NTP MODE\r\n");
+                    sync_state_machine_set_state(SYNC_NTP);
                 }
                 else if(esp_ntp_detected)
                 {
-                    printf("NTP ONLY MODE - NO NETWORK\r\n");
+                    printf("NTP MODE - NO NETWORK\r\n");
                     sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
                 }
                 else if(rtc_detected)
                 {
-                    printf("RTC ONLY MODE\r\n");
-                    sync_state_machine_set_state(SYNC_RTC_ONLY);
+                    printf("RTC MODE\r\n");
+                    sync_state_machine_set_state(SYNC_RTC);
                 }
                 else
                 {
@@ -473,18 +473,18 @@ void sync_state_machine(void)
                     //sync_state_machine_set_state(SYNC_GNSS_WAIT_FOR_FIX);
                     if(esp_ntp_valid)
                     {
-                        printf("NTP ONLY MODE\r\n");
-                        sync_state_machine_set_state(SYNC_NTP_ONLY);
+                        printf("NTP MODE\r\n");
+                        sync_state_machine_set_state(SYNC_NTP);
                     }
                     else if(esp_ntp_detected)
                     {
-                        printf("NTP ONLY MODE - NO NETWORK\r\n");
+                        printf("NTP MODE - NO NETWORK\r\n");
                         sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
                     }
                     else if(rtc_detected)
                     {
-                        printf("RTC ONLY MODE\r\n");
-                        sync_state_machine_set_state(SYNC_RTC_ONLY);
+                        printf("RTC MODE\r\n");
+                        sync_state_machine_set_state(SYNC_RTC);
                     }
                     else
                     {
@@ -498,18 +498,18 @@ void sync_state_machine(void)
                 printf("NO GNSS DETECTED... ");
                 if(esp_ntp_valid)
                 {
-                    printf("NTP ONLY MODE\r\n");
-                    sync_state_machine_set_state(SYNC_NTP_ONLY);
+                    printf("NTP MODE\r\n");
+                    sync_state_machine_set_state(SYNC_NTP);
                 }
                 else if(esp_ntp_detected)
                 {
-                    printf("NTP ONLY MODE - NO NETWORK\r\n");
+                    printf("NTP MODE - NO NETWORK\r\n");
                     sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
                 }
                 else if(rtc_detected)
                 {
-                    printf("RTC ONLY MODE\r\n");
-                    sync_state_machine_set_state(SYNC_RTC_ONLY);
+                    printf("RTC MODE\r\n");
+                    sync_state_machine_set_state(SYNC_RTC);
                 }
                 else
                 {
@@ -701,16 +701,16 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
             printf("SYNC_NO_CLOCK");
             break;
 
-        case SYNC_RTC_ONLY:
-            printf("SYNC_RTC_ONLY");
+        case SYNC_RTC:
+            printf("SYNC_RTC");
             break;
 
-        case SYNC_NTP_ONLY:
-            printf("SYNC_NTP_ONLY");
+        case SYNC_NTP:
+            printf("SYNC_NTP");
             break;
 
-        case SYNC_NTP_ONLY_ADJUST:
-            printf("SYNC_NTP_ONLY_ADJUST");
+        case SYNC_NTP_ADJUST:
+            printf("SYNC_NTP_ADJUST");
             break;
             
         case SYNC_NTP_NO_NETWORK:
