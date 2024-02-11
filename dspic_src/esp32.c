@@ -266,6 +266,7 @@ void esp_store_sync_timer(void)
 extern bool gnss_detected;
 extern bool gnss_fix;
 extern bool pps_sync;
+extern bool scheduler_sync;
 
 void esp_print_offset(void)
 {
@@ -282,9 +283,9 @@ void esp_print_offset(void)
     {
         printf("ESP ");
     }
-    if(gnss_detected && gnss_fix && pps_sync)
+    if(gnss_detected && gnss_fix && scheduler_sync)
     {
-        esp_time_offset_display += ntp -gnss;
+        esp_time_offset_display += ((ntp - gnss)*1000);
         printf("%ims off GNSS\r\n", esp_time_offset_display);
     }
     else
@@ -315,7 +316,6 @@ void esp_process_time(void)
         ntp = esp_ntp_time;
         esp = ntp;
     }
-    esp_print_offset();
     memset(esp_time_buffer, 0, ESP_TIME_LENGTH);
     esp_time_waiting = 0;
 }

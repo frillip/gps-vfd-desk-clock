@@ -81,6 +81,7 @@ void sync_state_machine(void)
         printf("UTC: ");
         ui_print_iso8601_string(utc);
         printf("\r\n");
+        if(esp_detected) esp_print_offset();
         state_new_oc = 1;
         ui_buzzer_interval_beep();
         oc_event=0;
@@ -329,7 +330,6 @@ void sync_state_machine(void)
                     if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
                     pic_pps_resync_ntp(esp_time_offset_adjust);
                     sync_state_machine_set_state(SYNC_NTP_ONLY_ADJUST); // Move to different state whilst adjust in progress
-                    break;
                 }
                 if(esp_ntp_valid)
                 {
@@ -339,6 +339,7 @@ void sync_state_machine(void)
                     }
                 }
                 state_new_oc = 0;
+                break;
             }
             if(gnss_detected)
             {
@@ -574,6 +575,8 @@ void sync_state_machine(void)
             // I have no idea what to do if we end up here...
             break;
     }
+    
+    state_new_oc = 0;
     clock_sync_state_old2 = clock_sync_state_old;
     clock_sync_state_old = clock_sync_state;
 }

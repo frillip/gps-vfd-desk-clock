@@ -20,6 +20,7 @@ time_t accumulation_delta = 0;
 bool ic_event = 0;
 
 extern time_t utc;
+extern time_t gnss;
 extern uint16_t counter;
 extern uint32_t fosc_freq;
 
@@ -116,6 +117,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC1Interrupt( void )
     if(IFS0bits.IC1IF)
     {
         pps_seq_count++; // Increment our PPS counter
+        gnss++;
         ic_event = 1;    // Flag we've had an IC event on GNSS
         ic1_val = IC1BUF; // Read the IC1 timer
         IFS0bits.IC1IF = 0; // Clear the interrupt flag
