@@ -76,6 +76,7 @@ typedef enum
 void sync_state_machine(void);
 void sync_state_machine_set_state(CLOCK_SYNC_STATUS state);
 void print_sync_state_machine(void);
+CLOCK_SYNC_STATUS sync_select_best_clock(void);
 void sync_state_print(CLOCK_SYNC_STATUS sync_state);
 CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void);
 void sync_state_print_stats(void);

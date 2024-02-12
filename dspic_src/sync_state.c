@@ -231,6 +231,7 @@ void sync_state_machine(void)
                 }
                 state_new_oc = 0;
             }
+            if(!ubx_gnss_time_valid())
             break;
         
         case SYNC_INTERVAL:
@@ -264,6 +265,10 @@ void sync_state_machine(void)
                     sync_state_machine_set_state(SYNC_SYNC);
                 }
                 state_new_oc = 0;
+            }
+            if(!ubx_gnss_time_valid())
+            {
+                sync_state_machine_set_state(sync_select_best_clock());
             }
             break;
         
@@ -451,26 +456,7 @@ void sync_state_machine(void)
             else
             {
                 printf("NO GNSS FIX... ");
-                if(esp_ntp_valid)
-                {
-                    printf("NTP MODE\r\n");
-                    sync_state_machine_set_state(SYNC_NTP);
-                }
-                else if(esp_ntp_detected)
-                {
-                    printf("NTP MODE - NO NETWORK\r\n");
-                    sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
-                }
-                else if(rtc_detected)
-                {
-                    printf("RTC MODE\r\n");
-                    sync_state_machine_set_state(SYNC_RTC);
-                }
-                else
-                {
-                    printf("NO CLOCK DETECTED\r\n");
-                    sync_state_machine_set_state(SYNC_NO_CLOCK);
-                }
+                
             }
             break;
         
@@ -486,52 +472,13 @@ void sync_state_machine(void)
                 if(gnss_detected)
                 {
                     printf("GNSS DETECTED\r\n");
-                    //sync_state_machine_set_state(SYNC_GNSS_WAIT_FOR_FIX);
-                    if(esp_ntp_valid)
-                    {
-                        printf("NTP MODE\r\n");
-                        sync_state_machine_set_state(SYNC_NTP);
-                    }
-                    else if(esp_ntp_detected)
-                    {
-                        printf("NTP MODE - NO NETWORK\r\n");
-                        sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
-                    }
-                    else if(rtc_detected)
-                    {
-                        printf("RTC MODE\r\n");
-                        sync_state_machine_set_state(SYNC_RTC);
-                    }
-                    else
-                    {
-                        printf("NO CLOCK DETECTED\r\n");
-                        sync_state_machine_set_state(SYNC_NO_CLOCK);
-                    }
+                    sync_state_machine_set_state(sync_select_best_clock());
                 }
             }
             else
             {
                 printf("NO GNSS DETECTED... ");
-                if(esp_ntp_valid)
-                {
-                    printf("NTP MODE\r\n");
-                    sync_state_machine_set_state(SYNC_NTP);
-                }
-                else if(esp_ntp_detected)
-                {
-                    printf("NTP MODE - NO NETWORK\r\n");
-                    sync_state_machine_set_state(SYNC_NTP_NO_NETWORK);
-                }
-                else if(rtc_detected)
-                {
-                    printf("RTC MODE\r\n");
-                    sync_state_machine_set_state(SYNC_RTC);
-                }
-                else
-                {
-                    printf("NO CLOCK DETECTED\r\n");
-                    sync_state_machine_set_state(SYNC_NO_CLOCK);
-                }
+                sync_state_machine_set_state(sync_select_best_clock());
             }
             break;
         
@@ -619,6 +566,30 @@ void print_sync_state_machine(void)
     printf("\r\nLAST SYNC CAUSE: ");
     sync_state_print(last_sync_cause);
     printf("\r\n");
+}
+
+CLOCK_SYNC_STATUS sync_select_best_clock(void)
+{
+    if(esp_ntp_valid)
+    {
+        printf("NTP MODE\r\n");
+        return SYNC_NTP;
+    }
+    else if(esp_ntp_detected)
+    {
+        printf("NTP MODE - NO NETWORK\r\n");
+        return SYNC_NTP_NO_NETWORK;
+    }
+    else if(rtc_detected)
+    {
+        printf("RTC MODE\r\n");
+        return SYNC_RTC;
+    }
+    else
+    {
+        printf("NO CLOCK DETECTED\r\n");
+        return SYNC_NO_CLOCK;
+    }
 }
 
 void sync_state_print(CLOCK_SYNC_STATUS sync_state)
