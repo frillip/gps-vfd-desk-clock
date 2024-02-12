@@ -8,6 +8,7 @@ CLOCK_SYNC_STATUS clock_sync_state_last = SYNC_POWER_ON;
 uint32_t sync_state_detect_timeout = 0;
 
 extern time_t rtc;
+extern time_t ntp;
 extern time_t gnss;
 extern time_t utc;
 extern time_t local;
@@ -26,6 +27,7 @@ extern bool ic_event;
 
 bool state_new_oc = 0;
 bool state_new_ic = 0;
+uint8_t state_print_time_ticker = 0;
 
 extern bool print_data;
 extern bool gnss_rmc_waiting;
@@ -58,7 +60,7 @@ extern uint32_t fosc_freq;
 
 extern uint32_t sync_events;
 
-extern int16_t esp_time_offset;
+extern int32_t esp_time_offset;
 
 CLOCK_SYNC_STATUS sync_check_result = SYNC_SYNC;
 CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
@@ -78,13 +80,27 @@ void sync_state_machine(void)
         {
             //esp_tx_time();
         }
-        printf("UTC: ");
-        ui_print_iso8601_string(utc);
-        printf("\r\n");
-        if(esp_detected) esp_print_offset();
+        state_print_time_ticker = 5;
         state_new_oc = 1;
         ui_buzzer_interval_beep();
         oc_event=0;
+    }
+    if(state_print_time_ticker)
+    {
+        state_print_time_ticker--;
+        if(state_print_time_ticker==0)
+        {
+            printf("UTC: ");
+            ui_print_iso8601_string(utc);
+            printf("\r\n");
+            if(esp_detected)
+            {
+                printf("NTP: ");
+                ui_print_iso8601_string(ntp);
+                printf("\r\n");
+                esp_print_offset();
+            }
+        }
     }
     switch(clock_sync_state)
     {
@@ -320,7 +336,7 @@ void sync_state_machine(void)
         case SYNC_NTP:
             if(state_new_oc)
             {
-                int16_t esp_time_offset_adjust = esp_time_offset;
+                int32_t esp_time_offset_adjust = esp_time_offset;
                 while(esp_time_offset_adjust>500) esp_time_offset_adjust -= 1000;
                 if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
                 {
@@ -588,7 +604,7 @@ void sync_state_machine_set_state(CLOCK_SYNC_STATUS state)
     sync_state_detect_timeout = 0;
     printf("\r\n");
     sync_state_print(clock_sync_state);
-    printf("\r\n");
+    printf("\r\n\r\n");
 }
 
 void print_sync_state_machine(void)

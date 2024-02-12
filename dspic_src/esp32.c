@@ -61,6 +61,15 @@ time_t ntp;
 extern time_t utc;
 extern time_t gnss;
 
+int32_t esp_time_offset_counter = 0;
+int32_t esp_time_offset = 0;
+bool esp_time_offset_stale = 0;
+
+extern bool gnss_detected;
+extern bool gnss_fix;
+extern bool pps_sync;
+extern bool scheduler_sync;
+
 bool ntp_calendar_sync = 0;
 
 void esp_ntp_init(void)
@@ -85,6 +94,7 @@ void esp_rx(void)
         
         if(esp_incoming!=ESP_NONE)
         {
+            if(!esp_detected) esp_time_offset_counter = 0; // Reset this if redetecting
             esp_detected = 1;
             esp_string_buffer[esp_offset] = rx_char;
             esp_offset++;
@@ -224,9 +234,6 @@ void esp_ntp_set_calendar(void)
     ntp_calendar_sync = 1;
 }
 
-int16_t esp_time_offset_counter = 0;
-int16_t esp_time_offset = 0;
-
 void esp_start_sync_timer(void)
 {
     //TMR3 0; 
@@ -252,25 +259,26 @@ void esp_stop_sync_timer(void)
     esp_time_offset_counter = 0;
 }
 
+time_t ntp_old = 0;
+
 void esp_reset_sync_timer(void)
 {
     TMR3 = 0x00;
-    esp_time_offset_counter = 0;
+    if(ntp!=ntp_old) esp_time_offset_counter = 0;
+    else esp_time_offset_stale = 1;
+    ntp_old = ntp;
 }
 
 void esp_store_sync_timer(void)
 {
     esp_time_offset = esp_time_offset_counter;
+    esp_time_offset_stale = 0;
 }
-
-extern bool gnss_detected;
-extern bool gnss_fix;
-extern bool pps_sync;
-extern bool scheduler_sync;
 
 void esp_print_offset(void)
 {
-    int16_t esp_time_offset_display = esp_time_offset;
+    if(esp_time_waiting) esp_process_time();
+    int32_t esp_time_offset_display = esp_time_offset;
     while(esp_time_offset_display>500)
     {
         esp_time_offset_display -= 1000;
@@ -286,12 +294,14 @@ void esp_print_offset(void)
     if(gnss_detected && gnss_fix && scheduler_sync)
     {
         esp_time_offset_display += ((ntp - gnss)*1000);
-        printf("%ims off GNSS\r\n", esp_time_offset_display);
+        printf("%lims off GNSS", esp_time_offset_display);
     }
     else
     {
-        printf("%ims off OC\r\n", esp_time_offset_display);
+        printf("%lims off OC", esp_time_offset_display);
     }
+    if(esp_time_offset_stale) printf(" - stale");
+    printf("\r\n");
 }
 
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
