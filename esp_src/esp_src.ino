@@ -262,7 +262,7 @@ void loop()
     t1ms0=0;
     if(digitalRead(PPS_OUT_PIN))
     {
-      if(UTC.ms()>=100) 
+      if(UTC.ms()) 
       {
         digitalWrite(PPS_OUT_PIN, 0);
       }
