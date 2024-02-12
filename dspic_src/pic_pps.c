@@ -188,7 +188,6 @@ void pic_pps_resync_ntp(int16_t ntp_offset)
 {
     int32_t ntp_offset_cycles = ntp_offset * (fosc_freq / 1000);
     pic_pps_set_latch_cycles(fosc_freq + ntp_offset_cycles);
-    printf("OC %lu\r\n",fosc_freq + ntp_offset_cycles);
     oc_adjust_in_progress_ntp = 1;
     sync_events++;
 }

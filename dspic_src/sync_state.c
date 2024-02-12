@@ -325,7 +325,6 @@ void sync_state_machine(void)
                 if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
                 {
                     printf("Reset NTP sync\r\n");
-                    printf("%i ",esp_time_offset_adjust);
                     pic_pps_reset_sync_ntp();
                     if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
                     pic_pps_resync_ntp(esp_time_offset_adjust);
