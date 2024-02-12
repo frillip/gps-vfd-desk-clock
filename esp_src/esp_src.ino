@@ -232,6 +232,7 @@ void loop()
       }
     }
     pic_uart_tx_timedata();
+    /*
     Serial.print("NTP: ");
     Serial.println(UTC.dateTime("Y-m-d~TH:i:s.v"));
     Serial.print(ntp_resync_count);
@@ -239,6 +240,7 @@ void loop()
     Serial.print(ntp_interval_count);
     Serial.print("/");
     Serial.println(NTP_INTERVAL);
+    */
     if(rtc.getEpoch()!=UTC.now()) rtc.setTime(UTC.now());
   }
 
@@ -309,6 +311,7 @@ void loop()
       env_pres_f = env_sensor.readFloatPressure();
       env_hum_f = env_sensor.readFloatHumidity();
 
+      /*
       Serial.print("T: ");
       Serial.print(env_temp_f, 2);
       Serial.print("C P: ");
@@ -316,6 +319,7 @@ void loop()
       Serial.print("mb H: ");
       Serial.print(env_hum_f, 1);
       Serial.println("%");
+      */
     }
     if(light_sensor_detected)
     {
@@ -323,11 +327,12 @@ void loop()
       if(light_sensor.getData(light_sensor_data0,light_sensor_data1))
       {
         light_sensor_unsaturated = light_sensor.getLux(light_sensor_gain,light_sensor_int_time_ms,light_sensor_data0,light_sensor_data1,light_sensor_lux);
+        /*
         Serial.print("L: ");
         Serial.print(light_sensor_lux);
         Serial.println("lx");
+        */
       }
     }
-    Serial.println("");
   }
 }
