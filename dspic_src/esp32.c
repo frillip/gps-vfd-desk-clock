@@ -60,6 +60,8 @@ time_t esp;
 time_t ntp;
 extern time_t utc;
 extern time_t gnss;
+extern time_t power_on_time;
+extern uint32_t total_oc_seq_count;
 
 int32_t esp_time_offset_counter = 0;
 int32_t esp_time_offset = 0;
@@ -230,7 +232,7 @@ void esp_ntp_set_calendar(void)
     printf("\r\n");
     
     utc = ntp+1;
-    
+    if(!power_on_time) power_on_time = utc - total_oc_seq_count;
     ntp_calendar_sync = 1;
 }
 

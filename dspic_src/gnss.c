@@ -1,6 +1,7 @@
 #include "gnss.h"
 
-time_t gnss;
+time_t gnss = 0;
+extern time_t utc;
 extern time_t power_on_time;
 extern uint32_t total_oc_seq_count;
 
@@ -194,7 +195,6 @@ GNSS_MESSAGE_TYPE gnss_check_incoming(void)
     return GNSS_NONE;
 }
 
-extern time_t utc;
 void gnss_sync_calendar(void)
 {
     printf("GNSS calendar sync\r\nTime is now: ");
