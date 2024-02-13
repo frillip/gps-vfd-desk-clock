@@ -82,6 +82,8 @@ void sync_state_machine(void)
         }
         state_print_time_ticker = 5;
         state_new_oc = 1;
+        pic_pps_calculate_oc_stats();
+        esp_tx_offset();
         ui_buzzer_interval_beep();
         oc_event=0;
     }
@@ -192,7 +194,6 @@ void sync_state_machine(void)
         case SYNC_SYNC:
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 sync_check_result = pic_pps_evaluate_sync();
                 switch (sync_check_result)
                 {
@@ -237,7 +238,6 @@ void sync_state_machine(void)
         case SYNC_INTERVAL:
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 sync_check_result = pic_pps_evaluate_sync();
                 switch (sync_check_result)
                 {
@@ -276,7 +276,6 @@ void sync_state_machine(void)
             if(clock_sync_state!=clock_sync_state_old2) reset_pps_stats();
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 if(pps_seq_count > PPS_SEQ_COUNT_MIN)
                 {
                     sync_state_machine_set_state(SYNC_INTERVAL);
@@ -288,7 +287,6 @@ void sync_state_machine(void)
         case SYNC_SCHED_SYNC:
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 if(scheduler_sync) sync_state_machine_set_state(SYNC_MIN_INTERVAL);
                 state_new_oc = 0;
             }
@@ -297,7 +295,6 @@ void sync_state_machine(void)
         case SYNC_PPS_SYNC:
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 if(pps_sync) 
                 {
                     rtc_write_from_calendar(utc);
@@ -310,7 +307,6 @@ void sync_state_machine(void)
         case SYNC_ADJUST_STAGE_2:
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 if(!oc_adjust_fudge) sync_state_machine_set_state(SYNC_PPS_SYNC);
                 state_new_oc = 0;
             }
@@ -319,7 +315,6 @@ void sync_state_machine(void)
         case SYNC_ADJUST_STAGE_1:
             if(state_new_oc)
             {
-                pic_pps_calculate_oc_stats();
                 pic_pps_resync();
                 if(oc_adjust_fudge) sync_state_machine_set_state(SYNC_ADJUST_STAGE_2);
                 else sync_state_machine_set_state(SYNC_PPS_SYNC);
