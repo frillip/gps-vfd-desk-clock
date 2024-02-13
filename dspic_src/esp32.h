@@ -17,10 +17,13 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include "gnss_pps.h"
 #include "mcc_generated_files/uart2.h"
 #include "mcc_generated_files/uart1.h"
-#include"mcc_generated_files/system.h"
-#include"mcc_generated_files/clock.h"
+#include "mcc_generated_files/system.h"
+#include "mcc_generated_files/clock.h"
+#include "pic_pps.h"
+#include "sync_state.h"
 #include "ui.h"
 #include "ublox_ubx.h"
 
@@ -41,7 +44,7 @@ extern "C" {
 #define ESP_CHECK_BUFFER_SIZE 3
 #define ESP_TIME_LENGTH 11
 #define ESP_GNSS_LENGTH 12
-#define ESP_OFFSET_LENGTH 16
+#define ESP_OFFSET_LENGTH 20
 #define ESP_NET_LENGTH 11
 #define ESP_RTC_LENGTH 7
 #define ESP_SENSOR_LENGTH 11

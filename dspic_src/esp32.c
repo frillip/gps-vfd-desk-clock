@@ -440,9 +440,25 @@ void esp_tx_gnss(void)
     esp_gnss_data_updated = 0;
 }
 
+extern CLOCK_SYNC_STATUS clock_sync_state;
+extern CLOCK_SYNC_STATUS clock_sync_state_last;
+extern int32_t oc_offset;
+extern int32_t accumulated_clocks;
+extern time_t accumulation_delta;
+extern uint32_t fosc_freq;
+
 void esp_tx_offset(void)
 {
-    
+    char esp_tx_buffer[ESP_OFFSET_LENGTH] = {0};
+    esp_tx_buffer[0] = ESP_UART_HEADER;
+    esp_tx_buffer[1] = ESP_UART_TYPE_RX;
+    esp_tx_buffer[2] = ESP_UART_DATATYPE_OFFSETDATA;
+    esp_tx_buffer[3] = (uint8_t)clock_sync_state;
+    memcpy(esp_tx_buffer+4, &fosc_freq, 4);
+    memcpy(esp_tx_buffer+8, &oc_offset, 4);
+    memcpy(esp_tx_buffer+12, &accumulated_clocks, 4);
+    memcpy(esp_tx_buffer+16, &accumulation_delta, 4);
+    esp_tx(esp_tx_buffer,ESP_OFFSET_LENGTH);
 }
 
 void exp_tx_net(void)
