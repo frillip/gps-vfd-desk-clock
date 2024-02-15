@@ -49,6 +49,7 @@ char esp_display_buffer[ESP_DISPLAY_LENGTH] = {0};
 bool esp_display_waiting = 0;
 char esp_display_string[ESP_CHECK_BUFFER_SIZE] = {ESP_UART_HEADER, ESP_UART_TYPE_TX, ESP_UART_DATATYPE_DISPLAYDATA};
 uint16_t esp_brightness = 0;
+bool esp_brightness_updated = 0;
 uint8_t esp_display_state = 0;
 uint8_t esp_menu_state = 0;
 
@@ -366,6 +367,7 @@ void esp_process_sensor(void)
 void esp_process_display(void)
 {
     memcpy(&esp_brightness, esp_display_buffer+3, 2);
+    esp_brightness_updated = 1;
     esp_display_state = esp_display_buffer[5];
     esp_menu_state = esp_display_buffer[6];
     memset(esp_display_buffer, 0, ESP_DISPLAY_LENGTH);

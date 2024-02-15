@@ -87,12 +87,13 @@ extern "C" {
 #define MIDDLE_SEPARATOR_LINE       0x1000
 #define MIDDLE_SEPARATOR_BOTH       ( MIDDLE_SEPARATOR_DOT | MIDDLE_SEPARATOR_LINE )
     
-#define DISPLAY_BRIGHTNESS_HZ       10000
-#define DISPLAY_BRIGHTNESS_PR       3999    // OC3RS = (40000000/10000) - 1
-#define DISPLAY_BRIGHTNESS_MAX      3800    // OC3R must be less than OC3RS
-#define DISPLAY_BRIGHTNESS_DEFAULT  2000
-#define DISPLAY_BRIGHTNESS_MIN      200
-#define DISPLAY_BRIGHTNESS_STEP     200
+#define DISPLAY_BRIGHTNESS_HZ           10000
+#define DISPLAY_BRIGHTNESS_PR           3999    // OC3RS = (40000000/10000) - 1
+#define DISPLAY_BRIGHTNESS_MAX          3800    // OC3R must be less than OC3RS
+#define DISPLAY_BRIGHTNESS_DEFAULT      2000
+#define DISPLAY_BRIGHTNESS_MIN          200
+#define DISPLAY_BRIGHTNESS_STEP         200
+#define DISPLAY_BRIGHTNESS_TARGET_STEP  20
 
 void spi2_dma_init(void);
 void OC3_Initialize(void);
@@ -101,7 +102,13 @@ void display_brightness_off(void);
 void display_brightness_min(void);
 void display_brightness_max(void);
 void display_brightness_set(uint16_t brightness);
+void display_brightness_set_target(uint16_t target);
+void display_brightness_up_step(void);
+void display_brightness_down_step(void);
+void display_brightness_up(uint16_t brightness_up);
+void display_brightness_down(uint16_t brightness_down);
 void display_brightness_on(void);
+void display_brightness_update(void);
 void display_count(uint16_t count);
 uint64_t display_generate_buffer(uint16_t digits);
 void display_send_buffer(uint64_t buffer);

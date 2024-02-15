@@ -18,6 +18,7 @@ bool rx_ignore = 0;
 void pic_uart_rx()
 {
   char c = UARTPIC.read();
+  /*
   if(c==PIC_UART_HEADER)
   {
     rx_ignore=1;
@@ -29,6 +30,8 @@ void pic_uart_rx()
     if(user_data_counter>11) rx_ignore=0;
   }
   else Serial.print(c);
+  */
+  Serial.print(c);
 }
 
 #pragma pack(push, 1)
@@ -197,7 +200,11 @@ void pic_uart_tx_displaydata()
   display_data_tx.fields.type = PIC_UART_TYPE_TX;
   display_data_tx.fields.datatype = PIC_UART_DATATYPE_DISPLAYDATA;
 
-  display_data_tx.fields.brightness = 2000;
+  if(light_sensor_detected)
+  {
+    display_data_tx.fields.brightness = light_sensor_lux * 35;
+  }
+  else display_data_tx.fields.brightness = 2000;
   display_data_tx.fields.display_state = 0;
   display_data_tx.fields.menu_state = 0;
 

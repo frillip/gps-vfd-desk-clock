@@ -73,6 +73,8 @@ extern bool pps_sync;
 extern bool gnss_fix;
 
 extern bool esp_gnss_data_updated;
+extern bool esp_brightness_updated;
+extern uint16_t esp_brightness;
 
 extern CLOCK_SYNC_STATUS clock_sync_state;
 extern CLOCK_SYNC_STATUS clock_sync_state_old;
@@ -132,7 +134,13 @@ int main(void)
             {
                 esp_data_task();
                 if(esp_gnss_data_updated) esp_tx_gnss();
+                if(esp_brightness_updated)
+                {
+                    display_brightness_set_target(esp_brightness);
+                    esp_brightness_updated = 0;
+                }
             }
+            display_brightness_update();
 
             // Print some statistics if required
             if(print_data)

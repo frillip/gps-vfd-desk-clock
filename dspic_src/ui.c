@@ -255,13 +255,13 @@ void ui_uart1_input(char c)
 
         // Brightness up on 'B'
         case 0x42:
-            display_brightness_set(display_brightness+DISPLAY_BRIGHTNESS_STEP);
+            display_brightness_up(DISPLAY_BRIGHTNESS_STEP);
             printf("BRI: %u\r\n", display_brightness);
             break;
 
         // Brightness down on 'b'
         case 0x62:
-            display_brightness_set(display_brightness-DISPLAY_BRIGHTNESS_STEP);
+            display_brightness_down(DISPLAY_BRIGHTNESS_STEP);
             printf("BRI: %u\r\n", display_brightness);
             break;
 

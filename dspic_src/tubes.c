@@ -5,6 +5,7 @@ bool dash_display = 0;
 bool display_blinking = 0;
 bool display_update_pending = 0;
 uint16_t display_brightness = DISPLAY_BRIGHTNESS_DEFAULT;
+uint16_t display_brightness_target = DISPLAY_BRIGHTNESS_DEFAULT;
 bool display_brightness_oc_running = 0;
 
 extern bool pps_sync;
@@ -91,17 +92,20 @@ void display_brightness_off(void)
     OC3CON1bits.OCM = 0b000;
     BLANK_SetHigh();
     display_brightness = 0;
+    display_brightness_target = 0;
     display_brightness_oc_running = 0;
 }
 
 void display_brightness_min(void)
 {
     display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
+    display_brightness_set_target(DISPLAY_BRIGHTNESS_MIN);
 }
 
 void display_brightness_max(void)
 {
     display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
+    display_brightness_set_target(DISPLAY_BRIGHTNESS_MAX);
 }
 
 void display_brightness_set(uint16_t brightness)
@@ -113,12 +117,54 @@ void display_brightness_set(uint16_t brightness)
     if(!display_brightness_oc_running) OC3_Initialize();
 }
 
+void display_brightness_set_target(uint16_t target)
+{
+    display_brightness_target = target+(DISPLAY_BRIGHTNESS_TARGET_STEP/2);
+    display_brightness_target /= DISPLAY_BRIGHTNESS_TARGET_STEP;
+    display_brightness_target *= DISPLAY_BRIGHTNESS_TARGET_STEP;
+    if(display_brightness_target>DISPLAY_BRIGHTNESS_MAX) display_brightness_target = DISPLAY_BRIGHTNESS_MAX;
+    if(display_brightness_target<DISPLAY_BRIGHTNESS_MIN) display_brightness_target = DISPLAY_BRIGHTNESS_MIN;
+}
+
+void display_brightness_up_step(void)
+{
+    display_brightness_set(display_brightness + DISPLAY_BRIGHTNESS_TARGET_STEP);
+}
+
+void display_brightness_down_step(void)
+{
+    display_brightness_set(display_brightness - DISPLAY_BRIGHTNESS_TARGET_STEP);
+}
+
+void display_brightness_up(uint16_t brightness_up)
+{
+    display_brightness_set(display_brightness + brightness_up);
+}
+
+void display_brightness_down(uint16_t brightness_down)
+{
+    display_brightness_set(display_brightness - brightness_down);
+}
+
 void display_brightness_on(void)
 {
     OC3CON1bits.OCM = 0b000;
     BLANK_SetLow();
     display_brightness = 4000;
+    display_brightness_target = 4000;
     display_brightness_oc_running = 0;
+}
+
+void display_brightness_update(void)
+{
+    if(display_brightness_target > display_brightness)
+    {
+        display_brightness_up_step();
+    }
+    else if(display_brightness_target < display_brightness)
+    {
+        display_brightness_down_step();
+    }
 }
 
 // Show a counter on the display
