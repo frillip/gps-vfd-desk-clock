@@ -4,9 +4,12 @@ uint32_t characters[] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, D
 bool dash_display = 0;
 bool display_blinking = 0;
 bool display_update_pending = 0;
+bool display_brightness_manual = 0;
 uint16_t display_brightness = DISPLAY_BRIGHTNESS_DEFAULT;
 uint16_t display_brightness_target = DISPLAY_BRIGHTNESS_DEFAULT;
 bool display_brightness_oc_running = 0;
+
+extern uint16_t esp_brightness;
 
 extern bool pps_sync;
 
@@ -117,6 +120,21 @@ void display_brightness_set(uint16_t brightness)
     if(!display_brightness_oc_running) OC3_Initialize();
 }
 
+void display_brightness_set_manual(void)
+{
+    display_brightness_manual = 1;
+    display_brightness = display_brightness+(DISPLAY_BRIGHTNESS_STEP/2);
+    display_brightness /= DISPLAY_BRIGHTNESS_STEP;
+    display_brightness *= DISPLAY_BRIGHTNESS_STEP;
+    display_brightness_set(display_brightness);
+}
+
+void display_brightness_set_auto(void)
+{
+    display_brightness_manual = 0;
+    display_brightness_set_target(esp_brightness);
+}
+
 void display_brightness_set_target(uint16_t target)
 {
     display_brightness_target = target+(DISPLAY_BRIGHTNESS_TARGET_STEP/2);
@@ -157,13 +175,16 @@ void display_brightness_on(void)
 
 void display_brightness_update(void)
 {
-    if(display_brightness_target > display_brightness)
+    if(!display_brightness_manual)
     {
-        display_brightness_up_step();
-    }
-    else if(display_brightness_target < display_brightness)
-    {
-        display_brightness_down_step();
+        if(display_brightness_target > display_brightness)
+        {
+            display_brightness_up_step();
+        }
+        else if(display_brightness_target < display_brightness)
+        {
+            display_brightness_down_step();
+        }
     }
 }
 

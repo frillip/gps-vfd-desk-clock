@@ -102,6 +102,8 @@ void display_brightness_off(void);
 void display_brightness_min(void);
 void display_brightness_max(void);
 void display_brightness_set(uint16_t brightness);
+void display_brightness_set_manual(void);
+void display_brightness_set_auto(void);
 void display_brightness_set_target(uint16_t target);
 void display_brightness_up_step(void);
 void display_brightness_down_step(void);

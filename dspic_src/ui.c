@@ -255,39 +255,50 @@ void ui_uart1_input(char c)
 
         // Brightness up on 'B'
         case 0x42:
+            display_brightness_set_manual();
             display_brightness_up(DISPLAY_BRIGHTNESS_STEP);
             printf("BRI: %u\r\n", display_brightness);
             break;
 
         // Brightness down on 'b'
         case 0x62:
+            display_brightness_set_manual();
             display_brightness_down(DISPLAY_BRIGHTNESS_STEP);
             printf("BRI: %u\r\n", display_brightness);
             break;
 
         // Max brightness on 'M'
         case 0x4D:
+            display_brightness_set_manual();
             display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
             printf("BRI: %u\r\n", display_brightness);
             break;
 
         // Min brightness on 'm'
         case 0x6D:
-
+            display_brightness_set_manual();
             display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
             printf("BRI: %u\r\n", display_brightness);
             break;
 
         // Full brightness
         case 0x4F:
+            display_brightness_set_manual();
             display_brightness_on();
             printf("BRI: %u\r\n", display_brightness);
             break;
 
         // Display off
         case 0x6F:
+            display_brightness_set_manual();
             display_brightness_off();
             printf("BRI: %u\r\n", display_brightness);
+            break;
+            
+        // Auto brightness down on 'a'
+        case 0x61:
+            display_brightness_set_auto();
+            printf("BRI: AUTO\r\n");
             break;
 
         default:
