@@ -121,8 +121,8 @@ int main(void)
             if(sync_state_machine_run)
             {
                 sync_state_machine();
-            }            
-
+            }
+            
             // Run our UBX data task if we have GNSS module
             if(gnss_detected) 
             {

@@ -473,6 +473,12 @@ void display_dashes(void)
     display_send_buffer(driver_buffer);
 }
 
+void display_all(void)
+{
+    uint64_t driver_buffer = 0xFFFFFFFF; // Start with an empty buffer
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
 void display_blank(void)
 {
     uint64_t driver_buffer = 0x00000000; // Start with an empty buffer

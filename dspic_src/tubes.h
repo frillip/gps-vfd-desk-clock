@@ -118,6 +118,7 @@ void display_time(const time_t *tod);
 void display_mmss(const time_t *tod);
 void display_menu(void);
 void display_dashes(void);
+void display_all(void);
 void display_blank(void);
 void display_latch(void);
 bool isDST(const time_t *tod);
