@@ -529,7 +529,7 @@ void display_buffer(uint64_t buffer)
 void display_latch(void)
 {
     LATCH_GPIO_SetHigh();
-    DELAY_microseconds(5);
+    DELAY_microseconds(1);
     LATCH_GPIO_SetLow();
     display_update_pending = 0;
 }
