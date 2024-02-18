@@ -475,7 +475,13 @@ void display_dashes(void)
 
 void display_all(void)
 {
-    uint64_t driver_buffer = 0xFFFFFFFF; // Start with an empty buffer
+    uint64_t driver_buffer = 0ULL; // Start with an empty buffer
+    driver_buffer |= (DIGIT_ALL << TUBE_4_OFFSET);
+    driver_buffer |= (DIGIT_ALL << TUBE_3_OFFSET);
+    driver_buffer |= (DIGIT_ALL << TUBE_2_OFFSET);
+    driver_buffer |= (DIGIT_ALL << TUBE_1_OFFSET);
+    driver_buffer |= START_SEPARATOR_BOTH;
+    driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
