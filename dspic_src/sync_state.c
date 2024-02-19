@@ -211,7 +211,7 @@ void sync_state_machine(void)
                         
                     case SYNC_NOSYNC_MAJOR:
                         sync_state_machine_set_state(SYNC_NOSYNC_MAJOR);
-                    break;
+                        break;
                     
                     case SYNC_NOSYNC_MINOR_OC:
                         sync_state_machine_set_state(SYNC_NOSYNC_MINOR_OC);
@@ -219,7 +219,7 @@ void sync_state_machine(void)
                         
                     case SYNC_NOSYNC_MINOR:
                         sync_state_machine_set_state(SYNC_NOSYNC_MINOR);
-                    break;
+                        break;
 
                     default:
                         break;
@@ -255,7 +255,7 @@ void sync_state_machine(void)
                         
                     case SYNC_NOSYNC_MAJOR:
                         sync_state_machine_set_state(SYNC_NOSYNC_MAJOR);
-                    break;
+                        break;
 
                     default:
                         break;

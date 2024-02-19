@@ -231,24 +231,24 @@ void print_ubx_nav_status_data(void)
                 break;
                 
             case 0x01:
-                    printf("Dead reckoning only\r\n");
-                    break;
+                printf("Dead reckoning only\r\n");
+                break;
 
             case 0x02:
-                    printf("2D-fix\r\n");
-                    break;
+                printf("2D-fix\r\n");
+                break;
 
             case 0x03:
-                    printf("3D-fix\r\n");
-                    break;
+                printf("3D-fix\r\n");
+                break;
 
             case 0x04:
-                    printf("GNSS + dead reckoning combined\r\n");
-                    break;
+                printf("GNSS + dead reckoning combined\r\n");
+                break;
 
             case 0x05:
-                    printf("Time only fix\r\n");
-                    break;
+                printf("Time only fix\r\n");
+                break;
                 
             default:
                 printf("Unknown\r\n");
