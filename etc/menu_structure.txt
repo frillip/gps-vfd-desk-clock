@@ -1,0 +1,22 @@
+hold
+	tz
+		auto/manual
+		set
+			hh
+			mm
+		back
+	dst
+		auto/manual
+		set
+			on/off
+		back
+	alarm
+		on/off
+		set
+			hh
+			mm
+		back
+	beeps
+		on/off
+		back
+	exit
