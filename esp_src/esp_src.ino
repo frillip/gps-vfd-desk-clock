@@ -272,9 +272,22 @@ void loop()
   {
     t10ms0=0;
   }
-  if(t100ms0>=3)
+  if(t100ms0>=1)
   {
-    t100ms0=-7;
+    t100ms0=-4;
+    if(light_sensor_detected)
+    {
+      unsigned int light_sensor_data0, light_sensor_data1;
+      if(light_sensor.getData(light_sensor_data0,light_sensor_data1))
+      {
+        light_sensor_unsaturated = light_sensor.getLux(light_sensor_gain,light_sensor_int_time_ms,light_sensor_data0,light_sensor_data1,light_sensor_lux);
+        /*
+        Serial.print("L: ");
+        Serial.print(light_sensor_lux);
+        Serial.println("lx");
+        */
+      }
+    }
     pic_uart_tx_sensordata();
   }
   if(t100ms1>=2)
@@ -320,19 +333,6 @@ void loop()
       Serial.print(env_hum_f, 1);
       Serial.println("%");
       */
-    }
-    if(light_sensor_detected)
-    {
-      unsigned int light_sensor_data0, light_sensor_data1;
-      if(light_sensor.getData(light_sensor_data0,light_sensor_data1))
-      {
-        light_sensor_unsaturated = light_sensor.getLux(light_sensor_gain,light_sensor_int_time_ms,light_sensor_data0,light_sensor_data1,light_sensor_lux);
-        /*
-        Serial.print("L: ");
-        Serial.print(light_sensor_lux);
-        Serial.println("lx");
-        */
-      }
     }
   }
 }
