@@ -43,8 +43,8 @@ uint32_t ntp_resync_count = 0;
 
 #define GNSS_UART    1
 #define GNSS_BAUD    115200
-#define GNSS_RXD     12
-#define GNSS_TXD     13
+#define GNSS_RXD     17
+#define GNSS_TXD     16
 HardwareSerial UARTGNSS(GNSS_UART);  //using UART1
 
 bool gnss_detected = 0;
@@ -54,8 +54,8 @@ bool gnss_fix_valid = 0;
 
 #define PIC_UART    2
 #define PIC_BAUD    115200
-#define PIC_RXD     16
-#define PIC_TXD     17
+#define PIC_RXD     13
+#define PIC_TXD     12
 HardwareSerial UARTPIC(PIC_UART);  //using UART2
 
 #define PPS_OUT_PIN 23
