@@ -10,6 +10,7 @@ uint16_t display_brightness_target = DISPLAY_BRIGHTNESS_DEFAULT;
 bool display_brightness_oc_running = 0;
 
 extern uint16_t esp_brightness;
+extern bool esp_detected;
 
 extern bool pps_sync;
 
@@ -177,6 +178,10 @@ void display_brightness_update(void)
 {
     if(!display_brightness_manual)
     {
+        if(!esp_detected)
+        {
+            display_brightness_set_target(DISPLAY_BRIGHTNESS_DEFAULT);
+        }
         if(display_brightness_target > display_brightness)
         {
             display_brightness_up_step();
