@@ -5,7 +5,6 @@
 #include <WiFiManager.h>
 #include <Wire.h>
 #include <SparkFunBME280.h>
-#include <SparkFunTSL2561.h>
 #include <esp_task_wdt.h>
 #define WDT_TIMEOUT 10
 
@@ -16,15 +15,14 @@ ESP32Time rtc;
 #define I2C_SCL_PIN 22
 #define I2C_FREQ 100000UL
 
-#define ENV_SENSOR_ID 0x76
-BME280 env_sensor;
 bool env_sensor_detected = 0;
 float env_temp_f = 0;
 float env_pres_f = 0;
 float env_hum_f = 0;
+/*#define ENV_SENSOR_ID 0x76
+BME280 env_sensor;
+*/
 
-#define LIGHT_SENSOR_ID 0x39
-SFE_TSL2561 light_sensor;
 bool light_sensor_detected = 0;
 bool light_sensor_gain = 0;         // x1
 uint8_t light_sensor_id;
@@ -32,6 +30,10 @@ uint8_t light_sensor_int_time = 2;
 unsigned int light_sensor_int_time_ms;
 bool light_sensor_unsaturated;
 double light_sensor_lux = 0;
+/*
+#define LIGHT_SENSOR_ID 0x39
+SFE_TSL2561 light_sensor;
+*/
 
 #define NTP_SERVER "rubidium.darksky.io"
 #define NTP_INTERVAL 1800
@@ -149,7 +151,7 @@ void fe_build_ntp_string(void)
 
 void setup()
 {
-  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
   esp_task_wdt_add(NULL); //add current thread to WDT watch
   
   uint32_t id = 0;
@@ -162,7 +164,7 @@ void setup()
   UARTPIC.begin(PIC_BAUD, SERIAL_8N1, PIC_RXD, PIC_TXD);
 
   UTC.setTime(rtc.getEpoch());
-
+  /*
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);
 
   env_sensor.setI2CAddress(ENV_SENSOR_ID);
@@ -174,7 +176,7 @@ void setup()
     light_sensor_detected = 1;
     light_sensor.setTiming(light_sensor_gain,light_sensor_int_time,light_sensor_int_time_ms);
     light_sensor.setPowerUp();
-  }
+  }*/
 
   setServer(NTP_SERVER);
   setInterval(NTP_INTERVAL);
@@ -257,7 +259,7 @@ void loop()
     t1ms0=0;
     if(digitalRead(PPS_OUT_PIN))
     {
-      if(UTC.ms()) 
+      if(UTC.ms()>=100) 
       {
         digitalWrite(PPS_OUT_PIN, 0);
       }
@@ -270,14 +272,14 @@ void loop()
   if(t100ms0>=1)
   {
     t100ms0=-4;
-    if(light_sensor_detected)
+    /*if(light_sensor_detected)
     {
       unsigned int light_sensor_data0, light_sensor_data1;
       if(light_sensor.getData(light_sensor_data0,light_sensor_data1))
       {
         light_sensor_unsaturated = light_sensor.getLux(light_sensor_gain,light_sensor_int_time_ms,light_sensor_data0,light_sensor_data1,light_sensor_lux);
       }
-    }
+    }*/
     pic_uart_tx_sensordata();
   }
   if(t100ms1>=2)
@@ -308,11 +310,13 @@ void loop()
       scheduler_sync = 0;
       pps_sync = 0;
     }
+    /*
     if(env_sensor_detected)
     {
       env_temp_f = env_sensor.readTempC();
       env_pres_f = env_sensor.readFloatPressure();
       env_hum_f = env_sensor.readFloatHumidity();
     }
+    */
   }
 }
