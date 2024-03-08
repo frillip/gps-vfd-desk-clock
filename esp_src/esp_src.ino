@@ -55,7 +55,7 @@ float gnss_long = 0.0;
 bool gnss_fix_valid = 0;
 
 #define PIC_UART    2
-#define PIC_BAUD    460800
+#define PIC_BAUD    115200
 #define PIC_RXD     13
 #define PIC_TXD     12
 HardwareSerial UARTPIC(PIC_UART);  //using UART2
@@ -252,14 +252,14 @@ void loop()
   }
 
   wm.process();
-  //events();
+  events();
 
   if(t1ms0)
   {
     t1ms0=0;
     if(digitalRead(PPS_OUT_PIN))
     {
-      if(UTC.ms()>=100) 
+      if(UTC.ms()) 
       {
         digitalWrite(PPS_OUT_PIN, 0);
       }
