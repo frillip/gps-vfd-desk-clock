@@ -419,6 +419,16 @@ void sync_state_machine(void)
                     pic_pps_reset_sync();
                     reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
+                    break;
+                }
+            }
+            if(esp_detected)
+            {
+                if(esp_ntp_valid)
+                {
+                    printf("NTP SYNC ACQUIRED\r\n");
+                    sync_state_machine_set_state(SYNC_NTP);
+                    break;
                 }
             }
             break;
