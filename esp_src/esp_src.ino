@@ -154,12 +154,19 @@ void setup()
   //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
   esp_task_wdt_add(NULL); //add current thread to WDT watch
   
+  Serial.begin(DEBUG_BAUD);
   uint32_t id = 0;
   for(int i=0; i<17; i=i+8) {
     id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
   }
-  Serial.printf("%08X\n", id);
-  Serial.begin(DEBUG_BAUD);
+  id &= 0xFFFFFF;
+  char id_buf[6] = {0};
+  sprintf(id_buf,"%06X", id);
+  String wifi_id = id_buf;
+  String wifi_hostname  = String("SMOL_CLOCK_" + wifi_id);
+  WiFi.setHostname(wifi_hostname.c_str());
+  Serial.println(wifi_hostname);
+
   UARTGNSS.begin(GNSS_BAUD, SERIAL_8N1, GNSS_RXD, GNSS_TXD);
   UARTPIC.begin(PIC_BAUD, SERIAL_8N1, PIC_RXD, PIC_TXD);
 
@@ -184,7 +191,7 @@ void setup()
   WiFi.mode(WIFI_STA);
   wm.setConfigPortalBlocking(false);
   wm.setConfigPortalTimeout(900);
-  if(wm.autoConnect("SMOL_CLOCK_F8C23A"))
+  if(wm.autoConnect(wifi_hostname.c_str()))
   {
     Serial.println(WiFi.localIP());
     startNTPqueries();
