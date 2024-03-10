@@ -1,6 +1,5 @@
 #include "ui.h"
 
-extern time_t local;
 extern uint32_t fosc_freq;
 extern int32_t accumulated_clocks;
 extern time_t accumulation_start;
@@ -24,8 +23,8 @@ bool disable_manual_print = 0;
 extern uint16_t display_brightness;
 
 extern bool display_update_pending;
-extern time_t local;
-extern time_t previous_local;
+extern time_t display;
+extern time_t previous_display_time;
 
 bool update_display = 0;
 
@@ -100,11 +99,11 @@ void ui_buzzer_task(void)
 
 void ui_buzzer_interval_beep(void)
 {
-    struct tm *local_tm;
-    local_tm = gmtime(&local);
-    uint8_t second = local_tm->tm_sec;
-    uint8_t minute = local_tm->tm_min;
-    uint8_t hour = local_tm->tm_hour;
+    struct tm *display_tm;
+    display_tm = gmtime(&display);
+    uint8_t second = display_tm->tm_sec;
+    uint8_t minute = display_tm->tm_min;
+    uint8_t hour = display_tm->tm_hour;
 
     if(ui_switch_state())
     {
@@ -191,13 +190,13 @@ void ui_display_task(void)
         {
             if(display_update_pending)
             {
-                display_time(&previous_local);
+                display_time(&previous_display_time);
                 display_latch();
-                display_time(&local);
+                display_time(&display);
             }
             else
             {
-                display_time(&local);
+                display_time(&display);
                 display_latch();
             }
         }
@@ -205,13 +204,13 @@ void ui_display_task(void)
         {
             if(display_update_pending)
             {
-                display_mmss(&previous_local);
+                display_mmss(&previous_display_time);
                 display_latch();
-                display_mmss(&local);
+                display_mmss(&display);
             }
             else
             {
-                display_mmss(&local);
+                display_mmss(&display);
                 display_latch();
             }
         }

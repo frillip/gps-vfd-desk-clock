@@ -257,6 +257,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         }
 
         oc_event = 1; // Flag we've just had an OC event
+        utc++; // Increment our internal UTC timebase
         display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter
         gnss_invalidate_data();

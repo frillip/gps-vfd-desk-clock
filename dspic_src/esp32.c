@@ -223,7 +223,7 @@ ESP_MESSAGE_TYPE esp_check_incoming(void)
 
 bool ntp_is_calendar_sync(time_t utc)
 {
-    return (utc-1)==ntp;
+    return utc==ntp;
 }
 
 void esp_ntp_set_calendar(void)
@@ -232,7 +232,7 @@ void esp_ntp_set_calendar(void)
     ui_print_iso8601_string(ntp);
     printf("\r\n");
     
-    utc = ntp+1;
+    utc = ntp;
     if(!power_on_time) power_on_time = utc - total_oc_seq_count;
     ntp_calendar_sync = 1;
 }

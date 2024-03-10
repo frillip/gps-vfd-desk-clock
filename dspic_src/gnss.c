@@ -195,7 +195,7 @@ GNSS_MESSAGE_TYPE gnss_check_incoming(void)
     return GNSS_NONE;
 }
 
-void gnss_sync_calendar(void)
+void gnss_set_calendar(void)
 {
     printf("GNSS calendar sync\r\nTime is now: ");
     ui_print_iso8601_string(gnss);

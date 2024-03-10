@@ -44,8 +44,8 @@ bool sync_state_machine_run = 0;
 
 // time_t to store UTC, GNSS, RTC and local time
 time_t utc;
-time_t local;
-time_t previous_local;
+time_t display;
+time_t previous_display_time;
 extern time_t rtc;
 extern bool rtc_detected;
 
@@ -180,14 +180,14 @@ int main(void)
         if(t100ms1==9)
         {
             t100ms1 = -1;
-            utc++;
+            display = utc+1;
             
-            previous_local = local;
-            local = utc + tz_offset;
-            if(isDST(&utc)) local = local+dst_offset; 
+            previous_display_time = display;
+            display = display + tz_offset;
+            if(isDST(&utc)) display = display+dst_offset; 
             
-            if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&local);
-            else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&local);
+            if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
+            else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
             
             // Re-enable manual printing
             disable_manual_print = 0;

@@ -47,7 +47,7 @@ void gnss_rx(void);
 void gnss_copy_buffer(GNSS_MESSAGE_TYPE gnss_waiting);
 GNSS_MESSAGE_TYPE gnss_check_incoming(void);
 
-void gnss_sync_calendar(void);
+void gnss_set_calendar(void);
 bool gnss_is_calendar_sync(time_t utc);
 void gnss_reset_calendar_sync(void);
 

@@ -41,9 +41,9 @@ void rtc_write_from_calendar(time_t utc)
     rtc_sync = 1; 
 }
 
-bool rtc_is_calendar_sync(void)
+bool rtc_is_calendar_sync(time_t utc)
 {
-    return rtc_sync;
+    return utc==rtc;;
 }
 
 void rtc_reset_calendar_sync(void)

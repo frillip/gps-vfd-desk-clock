@@ -80,6 +80,8 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void);
 void sync_state_print(CLOCK_SYNC_STATUS sync_state);
 CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void);
 void sync_state_print_stats(void);
+#define EVAL_TIME_DELAY_INTERVAL    5
+void sync_state_eval_time(void);
 
 
 #ifdef	__cplusplus

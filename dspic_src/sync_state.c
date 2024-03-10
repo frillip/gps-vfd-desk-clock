@@ -11,7 +11,7 @@ extern time_t rtc;
 extern time_t ntp;
 extern time_t gnss;
 extern time_t utc;
-extern time_t local;
+extern time_t display;
 extern int32_t tz_offset;
 extern int32_t dst_offset;
 
@@ -27,7 +27,7 @@ extern bool ic_event;
 
 bool state_new_oc = 0;
 bool state_new_ic = 0;
-uint8_t state_print_time_ticker = 0;
+uint8_t sync_state_eval_time_counter = 0;
 
 extern bool print_data;
 extern bool gnss_rmc_waiting;
@@ -80,26 +80,21 @@ void sync_state_machine(void)
         {
             //esp_tx_time();
         }
-        state_print_time_ticker = 5;
+        sync_state_eval_time_counter = EVAL_TIME_DELAY_INTERVAL;
         state_new_oc = 1;
         pic_pps_calculate_oc_stats();
         esp_tx_offset();
         ui_buzzer_interval_beep();
         oc_event=0;
     }
-    if(state_print_time_ticker)
+    if(sync_state_eval_time_counter)
     {
-        state_print_time_ticker--;
-        if(state_print_time_ticker==0)
+        sync_state_eval_time_counter--;
+        if(sync_state_eval_time_counter==0)
         {
-            printf("UTC: ");
-            ui_print_iso8601_string(utc);
-            printf("\r\n");
-            if(esp_detected)
+            sync_state_eval_time();
+            if(esp_ntp_valid)
             {
-                printf("NTP: ");
-                ui_print_iso8601_string(ntp);
-                printf("\r\n");
                 esp_print_offset();
             }
         }
@@ -233,6 +228,9 @@ void sync_state_machine(void)
                 state_new_oc = 0;
             }
             if(!ubx_gnss_time_valid())
+            {
+                sync_state_machine_set_state(sync_select_best_clock());
+            }
             break;
         
         case SYNC_INTERVAL:
@@ -346,13 +344,6 @@ void sync_state_machine(void)
                     pic_pps_resync_ntp(esp_time_offset_adjust);
                     sync_state_machine_set_state(SYNC_NTP_ADJUST); // Move to different state whilst adjust in progress
                 }
-                if(esp_ntp_valid)
-                {
-                    if(!ntp_is_calendar_sync(utc))
-                    {
-                        esp_ntp_set_calendar();
-                    }
-                }
                 state_new_oc = 0;
                 break;
             }
@@ -361,7 +352,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    gnss_sync_calendar();
+                    gnss_set_calendar();
                     pic_pps_reset_sync();
                     reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
@@ -372,13 +363,6 @@ void sync_state_machine(void)
         case SYNC_NTP_ADJUST:
             if(state_new_oc)
             {
-                if(esp_ntp_valid)
-                {
-                    if(!ntp_is_calendar_sync(utc))
-                    {
-                        esp_ntp_set_calendar();
-                    }
-                }
                 sync_state_machine_set_state(SYNC_NTP);
                 state_new_oc = 0;
             }
@@ -395,7 +379,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    gnss_sync_calendar();
+                    gnss_set_calendar();
                     pic_pps_reset_sync();
                     reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
@@ -415,7 +399,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    gnss_sync_calendar();
+                    gnss_set_calendar();
                     pic_pps_reset_sync();
                     reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
@@ -772,4 +756,54 @@ void sync_state_print_stats(void)
     printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
     printf("PPS D:%lu OC D:%li\r\n\r\n", pps_count_diff, oc_offset);
     printf("AVG D: %.1f\r\n", accumulated_clocks_diff_avg);
+}
+
+void sync_state_eval_time(void)
+{
+    if(ubx_gnss_time_valid())
+    {
+        //Check that UTC and GNSS time match
+        if(!gnss_is_calendar_sync(utc))
+        {
+            gnss_set_calendar();
+            rtc_write_from_calendar(utc);
+        }
+    }
+    else if(esp_ntp_valid)
+    {
+        if(!ntp_is_calendar_sync(utc))
+        {
+            esp_ntp_set_calendar();
+            rtc_write_from_calendar(utc);
+        }
+    }
+    else if(rtc_detected)
+    {
+        if(!rtc_is_calendar_sync(utc))
+        {
+            rtc_set_calendar();
+        }
+    }
+    
+    printf("\r\nUTC:  ");
+    ui_print_iso8601_string(utc);
+    printf("\r\n");
+    if(gnss_detected)
+    {
+        printf("GNSS: ");
+        ui_print_iso8601_string(gnss);
+        printf("\r\n");
+    }
+    if(esp_detected)
+    {
+        printf("NTP:  ");
+        ui_print_iso8601_string(ntp);
+        printf("\r\n");
+    }
+    if(rtc_detected)
+    {
+        printf("RTC:  ");
+        ui_print_iso8601_string(rtc);
+        printf("\r\n");
+    }
 }

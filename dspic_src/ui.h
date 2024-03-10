@@ -109,10 +109,10 @@ void ui_print_clear_window(void);
 #define ui_buzzer_state()   _RB7
 
 // Button pulls RA7 to ground
-#define ui_button_input_state()   !_RA7
+#define ui_button_input_state()   (!_RA7)
 
 // Switch pulls RA0 to ground
-#define ui_switch_input_state()   !_RA0
+#define ui_switch_input_state()   (!_RA0)
 
 #ifdef	__cplusplus
 }

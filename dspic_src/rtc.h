@@ -34,7 +34,7 @@ extern "C" {
 void rtc_get_calendar(void);
 void rtc_set_calendar(void);
 void rtc_write_from_calendar(time_t utc);
-bool rtc_is_calendar_sync(void);
+bool rtc_is_calendar_sync(time_t utc);
 void rtc_reset_calendar_sync(void);
 
 #ifdef	__cplusplus
