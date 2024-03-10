@@ -125,7 +125,8 @@ void PIN_MANAGER_Initialize (void)
     /****************************************************************************
      * Interrupt On Change: any
      ***************************************************************************/
-    CNENAbits.CNIEA8 = 1;    //Pin : RA8
+    //CNENAbits.CNIEA8 = 0;    //Pin : RA8/GNSS_PPS
+    CNENBbits.CNIEB15 = 1;    //Pin : RB15/ESP_PPS
     
     /* Initialize IOC Interrupt Handler*/
     CN_SetInterruptHandler(&CN_CallBack);

@@ -60,7 +60,8 @@ bool gnss_fix_valid = 0;
 #define PIC_TXD     12
 HardwareSerial UARTPIC(PIC_UART);  //using UART2
 
-#define PPS_OUT_PIN 23
+#define PPS_OUT_PIN 5
+#define STATUS_LED_PIN 23
 
 bool pic_gnss_sync = 0;
 bool pic_ntp_sync = 0;
@@ -211,6 +212,9 @@ void setup()
   pinMode(PPS_OUT_PIN, OUTPUT);
   digitalWrite(PPS_OUT_PIN, 0);
 
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  digitalWrite(STATUS_LED_PIN, 0);
+
   pps_timer = timerBegin(PPS_HW_TIMER, 80, true);
   timerAttachInterrupt(pps_timer, &pps_out, true);
   timerAlarmWrite(pps_timer, 1000000, true);
@@ -240,6 +244,7 @@ void loop()
         scheduler_sync = 1;
       }
     }
+    digitalWrite(STATUS_LED_PIN, 1);
     pic_uart_tx_timedata();
     /*
     Serial.print("NTP: ");
@@ -269,6 +274,13 @@ void loop()
       if(UTC.ms()) 
       {
         digitalWrite(PPS_OUT_PIN, 0);
+      }
+    }
+    if(digitalRead(STATUS_LED_PIN))
+    {
+      if(UTC.ms()>=100) 
+      {
+        digitalWrite(STATUS_LED_PIN, 0);
       }
     }
   }

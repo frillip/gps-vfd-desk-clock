@@ -1370,6 +1370,298 @@
 #define LATCH_GPIO_SetDigitalOutput() (_TRISB12 = 0)
 /**
   @Summary
+    Sets the GPIO pin, RB14, high using LATB14.
+
+  @Description
+    Sets the GPIO pin, RB14, high using LATB14.
+
+  @Preconditions
+    The RB14 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RB14 high (1)
+    PWR_STAT_SetHigh();
+    </code>
+
+*/
+#define PWR_STAT_SetHigh()          (_LATB14 = 1)
+/**
+  @Summary
+    Sets the GPIO pin, RB14, low using LATB14.
+
+  @Description
+    Sets the GPIO pin, RB14, low using LATB14.
+
+  @Preconditions
+    The RB14 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RB14 low (0)
+    PWR_STAT_SetLow();
+    </code>
+
+*/
+#define PWR_STAT_SetLow()           (_LATB14 = 0)
+/**
+  @Summary
+    Toggles the GPIO pin, RB14, using LATB14.
+
+  @Description
+    Toggles the GPIO pin, RB14, using LATB14.
+
+  @Preconditions
+    The RB14 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Toggle RB14
+    PWR_STAT_Toggle();
+    </code>
+
+*/
+#define PWR_STAT_Toggle()           (_LATB14 ^= 1)
+/**
+  @Summary
+    Reads the value of the GPIO pin, RB14.
+
+  @Description
+    Reads the value of the GPIO pin, RB14.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    uint16_t portValue;
+
+    // Read RB14
+    postValue = PWR_STAT_GetValue();
+    </code>
+
+*/
+#define PWR_STAT_GetValue()         _RB14
+/**
+  @Summary
+    Configures the GPIO pin, RB14, as an input.
+
+  @Description
+    Configures the GPIO pin, RB14, as an input.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RB14 as an input
+    PWR_STAT_SetDigitalInput();
+    </code>
+
+*/
+#define PWR_STAT_SetDigitalInput()  (_TRISB14 = 1)
+/**
+  @Summary
+    Configures the GPIO pin, RB14, as an output.
+
+  @Description
+    Configures the GPIO pin, RB14, as an output.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RB14 as an output
+    PWR_STAT_SetDigitalOutput();
+    </code>
+
+*/
+#define PWR_STAT_SetDigitalOutput() (_TRISB14 = 0)
+/**
+  @Summary
+    Sets the GPIO pin, RB15, high using LATB15.
+
+  @Description
+    Sets the GPIO pin, RB15, high using LATB15.
+
+  @Preconditions
+    The RB15 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RB15 high (1)
+    ESP_PPS_SetHigh();
+    </code>
+
+*/
+#define ESP_PPS_SetHigh()          (_LATB15 = 1)
+/**
+  @Summary
+    Sets the GPIO pin, RB15, low using LATB15.
+
+  @Description
+    Sets the GPIO pin, RB15, low using LATB15.
+
+  @Preconditions
+    The RB15 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Set RB15 low (0)
+    ESP_PPS_SetLow();
+    </code>
+
+*/
+#define ESP_PPS_SetLow()           (_LATB15 = 0)
+/**
+  @Summary
+    Toggles the GPIO pin, RB15, using LATB15.
+
+  @Description
+    Toggles the GPIO pin, RB15, using LATB15.
+
+  @Preconditions
+    The RB15 must be set to an output.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Toggle RB15
+    ESP_PPS_Toggle();
+    </code>
+
+*/
+#define ESP_PPS_Toggle()           (_LATB15 ^= 1)
+/**
+  @Summary
+    Reads the value of the GPIO pin, RB15.
+
+  @Description
+    Reads the value of the GPIO pin, RB15.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    uint16_t portValue;
+
+    // Read RB15
+    postValue = ESP_PPS_GetValue();
+    </code>
+
+*/
+#define ESP_PPS_GetValue()         _RB15
+/**
+  @Summary
+    Configures the GPIO pin, RB15, as an input.
+
+  @Description
+    Configures the GPIO pin, RB15, as an input.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RB15 as an input
+    ESP_PPS_SetDigitalInput();
+    </code>
+
+*/
+#define ESP_PPS_SetDigitalInput()  (_TRISB15 = 1)
+/**
+  @Summary
+    Configures the GPIO pin, RB15, as an output.
+
+  @Description
+    Configures the GPIO pin, RB15, as an output.
+
+  @Preconditions
+    None.
+
+  @Returns
+    None.
+
+  @Param
+    None.
+
+  @Example
+    <code>
+    // Sets the RB15 as an output
+    ESP_PPS_SetDigitalOutput();
+    </code>
+
+*/
+#define ESP_PPS_SetDigitalOutput() (_TRISB15 = 0)
+/**
+  @Summary
     Sets the GPIO pin, RB7, high using LATB7.
 
   @Description

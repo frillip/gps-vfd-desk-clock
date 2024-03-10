@@ -81,6 +81,7 @@ void esp_ntp_init(void)
     memset(esp_string_buffer, 0, ESP_STRING_BUFFER_SIZE);
     memset(esp_check_buffer, 0, ESP_CHECK_BUFFER_SIZE);
     UART1_SetRxInterruptHandler(esp_rx);
+    CN_SetInterruptHandler(esp_ioc_handler);
     esp_start_sync_timer();
 }
 
@@ -135,7 +136,6 @@ void esp_rx(void)
                 case ESP_TIME:
                     esp_bytes_remaining = ESP_TIME_LENGTH - ESP_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, ESP_CHECK_BUFFER_SIZE);
-                    esp_store_sync_timer();
                     break;
         
                 case ESP_NET:
@@ -276,6 +276,14 @@ void esp_store_sync_timer(void)
 {
     esp_time_offset = esp_time_offset_counter;
     esp_time_offset_stale = 0;
+}
+
+void esp_ioc_handler(void)
+{
+    if(esp_pps_input())
+    {
+        esp_store_sync_timer();
+    }
 }
 
 void esp_print_offset(void)
