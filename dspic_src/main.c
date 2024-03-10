@@ -97,7 +97,8 @@ int main(void)
 
     printf("\033[2J\033[1;1H"); // Clear the terminal window
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
-    printf("Running @ 80MHz on 10.000000MHz XTAL\r\n");
+    double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
+    printf("Running @ 80MHz on %.06fMHz XTAL\r\n", fosc_freq_f);
     DELAY_microseconds(10000);
     
     scheduler_init();

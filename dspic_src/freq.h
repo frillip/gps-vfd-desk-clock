@@ -12,6 +12,8 @@
 extern "C" {
 #endif
 
+#define XTAL_FREQ (40000000UL)
+#define XTAL_FREQ_MHZ (40UL)
 #define FCYCLE (40000000UL)
 #define FCYCLE_LOWER_LIM (36000000UL)
 #define FCYCLE_UPPER_LIM (44000000UL)

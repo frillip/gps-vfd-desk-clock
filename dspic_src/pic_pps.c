@@ -129,7 +129,7 @@ void pic_pps_print_stats(void)
 {
     printf("\r\n=== Clock and PPS stats ===\r\n");
     // Cycles between current and last PPS, and the OC offset from this
-    double fosc_freq_f = ((float)fosc_freq * 10)/FCYCLE;
+    double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
     printf("Crystal freq: %.06fMHz\r\n", fosc_freq_f);
     printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
     // Raw timer values for both PPS and OC
