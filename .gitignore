@@ -5,10 +5,4 @@
 /dspic_src/mcc_generated_files/docs/
 /dspic_src/.generated_files/
 /dspic_src/Makefile
-/nbproject/
-/dist/
-/build/
-/debug/
-/mcc_generated_files/docs/
-/.generated_files/
-/Makefile
+/dspic_src/mcc-manifest*
