@@ -8,6 +8,7 @@ CLOCK_SYNC_STATUS clock_sync_state_last = SYNC_POWER_ON;
 uint32_t sync_state_detect_timeout = 0;
 
 extern time_t rtc;
+extern time_t esp;
 extern time_t ntp;
 extern time_t gnss;
 extern time_t utc;
@@ -431,6 +432,16 @@ void sync_state_machine(void)
                     pic_pps_reset_sync();
                     reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
+                    break;
+                }
+            }
+            if(esp_detected)
+            {
+                if(esp_ntp_valid)
+                {
+                    printf("NTP SYNC ACQUIRED\r\n");
+                    sync_state_machine_set_state(SYNC_NTP);
+                    break;
                 }
             }
             break;
@@ -798,6 +809,9 @@ void sync_state_eval_time(void)
     {
         printf("NTP:  ");
         ui_print_iso8601_string(ntp);
+        printf("\r\n");
+        printf("ESP:  ");
+        ui_print_iso8601_string(esp);
         printf("\r\n");
     }
     if(rtc_detected)

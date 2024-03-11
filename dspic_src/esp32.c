@@ -283,6 +283,7 @@ void esp_ioc_handler(void)
     if(esp_pps_input())
     {
         esp_store_sync_timer();
+        esp++;
     }
 }
 
@@ -329,6 +330,7 @@ void esp_process_time(void)
     esp_pps_sync = (esp_time_buffer[3]>>2)&0x01;
     esp_scheduler_sync = (esp_time_buffer[3]>>3)&0x01;
     memcpy(&esp_ntp_time, esp_time_buffer+4, 4);
+    esp = esp_ntp_time;
     memcpy(&esp_ntp_milliseconds, esp_time_buffer+8, 2);
     esp_ntp_offset = esp_time_buffer[10];
     if(esp_wifi_status && esp_ntp_status && esp_ntp_time)
