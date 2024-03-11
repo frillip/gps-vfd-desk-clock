@@ -12,6 +12,10 @@ bool display_brightness_oc_running = 0;
 extern uint16_t esp_brightness;
 extern bool esp_detected;
 
+extern bool veml6040_detected;
+extern double veml_ambient_light;
+extern uint16_t veml_brightness;
+
 extern bool pps_sync;
 
 extern UI_DISPLAY_STATE ui_state_current;
@@ -133,7 +137,15 @@ void display_brightness_set_manual(void)
 void display_brightness_set_auto(void)
 {
     display_brightness_manual = 0;
-    display_brightness_set_target(esp_brightness);
+    if(veml6040_detected)
+    {
+        display_brightness_set_target(veml_brightness);
+    }
+    else if(esp_detected)
+    {
+        display_brightness_set_target(esp_brightness);
+    }
+    else display_brightness_set_target(DISPLAY_BRIGHTNESS_DEFAULT);
 }
 
 void display_brightness_set_target(uint16_t target)
@@ -178,7 +190,7 @@ void display_brightness_update(void)
 {
     if(!display_brightness_manual)
     {
-        if(!esp_detected)
+        if(!veml6040_detected && !esp_detected)
         {
             display_brightness_set_target(DISPLAY_BRIGHTNESS_DEFAULT);
         }

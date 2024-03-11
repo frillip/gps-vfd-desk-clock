@@ -9,6 +9,7 @@ uint8_t t10ms1=0;
 uint8_t t100ms=0;
 uint8_t t100ms0=0;
 uint8_t t100ms1=0;
+uint8_t t100ms2=0;
 uint8_t t1s0=0;
 uint8_t t1s1=0;
 
@@ -48,6 +49,7 @@ void scheduler_align(uint32_t fosc)
     t100ms=0;
     t100ms0=0;
     t100ms1=0;
+    t100ms2=0;
     t1s0=0;
     t1s1=0; // Reset the scheduler variables
     scheduler_sync = 1; // Say that we're done
@@ -71,6 +73,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _T2Interrupt (  )
             t100ms++;
             t100ms0++;
             t100ms1++;
+            t100ms2++;
             if(t100ms==10)
             {
                 t100ms=0;

@@ -27,6 +27,7 @@
 #include "tubes.h"
 #include "ublox_ubx.h"
 #include "ui.h"
+#include "veml6040.h"
 
 extern bool print_data;
 extern bool disable_manual_print;
@@ -39,6 +40,7 @@ extern uint8_t t10ms0;
 extern uint8_t t10ms1;
 extern uint8_t t100ms0;
 extern uint8_t t100ms1;
+extern uint8_t t100ms2;
 
 bool sync_state_machine_run = 0;
 
@@ -82,6 +84,10 @@ extern CLOCK_SYNC_STATUS clock_sync_state_last;
 
 extern UI_DISPLAY_STATE ui_state_current;
 
+extern bool veml6040_detected;
+extern double veml_ambient_light;
+extern uint16_t veml_brightness;
+
 int main(void)
 {
     // initialize the device
@@ -105,6 +111,8 @@ int main(void)
     sync_state_machine_run = 1;
     
     ui_init();
+    
+    veml6040_detected = VEML6040_init();
 
     // Enable WDT (set to 32s timeout non-windowed mode)
     RCONbits.SWDTEN = 1;
@@ -135,12 +143,8 @@ int main(void)
             {
                 esp_data_task();
                 if(esp_gnss_data_updated) esp_tx_gnss();
-                if(esp_brightness_updated)
-                {
-                    display_brightness_set_target(esp_brightness);
-                    esp_brightness_updated = 0;
-                }
             }
+            
             display_brightness_update();
 
             // Print some statistics if required
@@ -159,6 +163,7 @@ int main(void)
                 {
                     printf("\r\n=== NO GNSS DETECTED ===\r\n");
                 }
+                print_veml_data();
                 print_sync_state_machine();
                 printf("\r\n");
                 print_data = 0;
@@ -176,6 +181,22 @@ int main(void)
         {
             t100ms0 = 0;
             STATUS_LED_Toggle();
+        }
+        
+        if(t100ms2==3)
+        {
+            t100ms2 = -2;
+            if(veml6040_detected)
+            {
+                veml_ambient_light = VEML6040_get_lux();
+                veml_brightness = VEML_calc_brightness(veml_ambient_light);
+                display_brightness_set_target(veml_brightness);
+            }
+            else if(esp_detected && esp_brightness_updated)
+            {
+                display_brightness_set_target(esp_brightness);
+                esp_brightness_updated = 0;
+            }
         }
         
         if(t100ms1==9)
