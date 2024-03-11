@@ -29,13 +29,14 @@ time_t PCF8563_read(void)
         }
     }
     
-    rtc_time.tm_sec = PCF8563_bcd2bin(pdata_read[0])&0x7F;
-    rtc_time.tm_min = PCF8563_bcd2bin(pdata_read[1]);
-    rtc_time.tm_hour = PCF8563_bcd2bin(pdata_read[2]);
-    rtc_time.tm_mday = PCF8563_bcd2bin(pdata_read[3]);
-    rtc_time.tm_mon = PCF8563_bcd2bin(pdata_read[5]) - 1;
+    rtc_time.tm_sec = PCF8563_bcd2bin(pdata_read[0]&0x7F);
+    rtc_time.tm_min = PCF8563_bcd2bin(pdata_read[1]&0x7F);
+    rtc_time.tm_hour = PCF8563_bcd2bin(pdata_read[2]&0x3F);
+    rtc_time.tm_mday = PCF8563_bcd2bin(pdata_read[3]&0x3F);
+    rtc_time.tm_mon = PCF8563_bcd2bin(pdata_read[5]&0x1F) - 1;
     rtc_time.tm_year = PCF8563_bcd2bin(pdata_read[6]) + 100;
     rtc = mktime(&rtc_time);
+    
     return rtc;
 }
 

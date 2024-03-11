@@ -15,13 +15,14 @@ void rtc_get_calendar(void)
     #endif
 #endif
     if(rtc) rtc_detected = 1;
-    printf("RTC time is: ");
-    ui_print_iso8601_string(rtc);
-    printf("\r\n");
 }
 
 void rtc_set_calendar(void)
 {
+    printf("RTC calendar sync\r\nTime is now: ");
+    ui_print_iso8601_string(rtc);
+    printf("\r\n");
+    
     utc = rtc;
 }
 
