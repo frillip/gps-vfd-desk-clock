@@ -33,6 +33,7 @@ extern double accumulated_clocks_diff_avg;
 extern int32_t accumulated_clocks_diff[FCYCLE_ACC_AVG_PERIOD];
 
 extern time_t utc;
+extern time_t rtc;
 time_t power_on_time = 0;
 
 extern bool gnss_fix;
@@ -258,6 +259,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
 
         oc_event = 1; // Flag we've just had an OC event
         utc++; // Increment our internal UTC timebase
+        rtc++; // Increment RTC timebase
         display_update_pending = 0; // display update no longer pending
         total_oc_seq_count++; // Increment oc event counter
         gnss_invalidate_data();
