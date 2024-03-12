@@ -283,7 +283,14 @@ void esp_ioc_handler(void)
     if(esp_pps_input())
     {
         esp_store_sync_timer();
-        esp++;
+        if(esp_detected)
+        {
+            esp++;
+            if(esp_ntp_valid)
+            {
+                ntp++;
+            }
+        }
     }
 }
 
