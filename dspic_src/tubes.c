@@ -253,7 +253,15 @@ void display_time(const time_t *time)
 
     // Toggle the middle dots/dashes based on if the seconds are even or odd
     // but only if we have PPS sync
-    if(!(disp_time->tm_sec%2) && pps_sync)
+    // otherwise separator on permanently
+    if(pps_sync)
+    {
+        if(!(disp_time->tm_sec%2))
+        {
+            driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+        }
+    }
+    else
     {
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
