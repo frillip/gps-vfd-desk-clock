@@ -1,5 +1,8 @@
 #include "pcf8563.h"
 
+extern bool rtc_detected;
+extern bool rtc_valid;
+
 time_t PCF8563_read(void)
 {
     time_t rtc;
@@ -21,22 +24,28 @@ time_t PCF8563_read(void)
             if(i2c_timeout>40000)
             {
                 status = I2C1_MESSAGE_FAIL;
+                rtc_detected = 0;
+                rtc_valid = 0;
+                rtc = 0;
                 break;
             }
         }
-        if (status == I2C1_MESSAGE_COMPLETE) {
+        if (status == I2C1_MESSAGE_COMPLETE)
+        {
             // pdata_read should now be the number of seconds (in binary-coded decimal)
+            rtc_time.tm_sec = PCF8563_bcd2bin(pdata_read[0]&0x7F);
+            rtc_time.tm_min = PCF8563_bcd2bin(pdata_read[1]&0x7F);
+            rtc_time.tm_hour = PCF8563_bcd2bin(pdata_read[2]&0x3F);
+            rtc_time.tm_mday = PCF8563_bcd2bin(pdata_read[3]&0x3F);
+            rtc_time.tm_mon = PCF8563_bcd2bin(pdata_read[5]&0x1F) - 1;
+            rtc_time.tm_year = PCF8563_bcd2bin(pdata_read[6]) + 100;
+            rtc = mktime(&rtc_time);
+
+            if(!PCF8563_bcd2bin(pdata_read[0]&0x80)) rtc_valid = 1;
+            else rtc_valid = 0;
         }
     }
-    
-    rtc_time.tm_sec = PCF8563_bcd2bin(pdata_read[0]&0x7F);
-    rtc_time.tm_min = PCF8563_bcd2bin(pdata_read[1]&0x7F);
-    rtc_time.tm_hour = PCF8563_bcd2bin(pdata_read[2]&0x3F);
-    rtc_time.tm_mday = PCF8563_bcd2bin(pdata_read[3]&0x3F);
-    rtc_time.tm_mon = PCF8563_bcd2bin(pdata_read[5]&0x1F) - 1;
-    rtc_time.tm_year = PCF8563_bcd2bin(pdata_read[6]) + 100;
-    rtc = mktime(&rtc_time);
-    
+
     return rtc;
 }
 

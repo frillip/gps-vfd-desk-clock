@@ -4,6 +4,7 @@ time_t rtc;
 extern time_t utc;
 bool rtc_sync = 0;
 bool rtc_detected = 0;
+bool rtc_valid = 0;
 
 void rtc_get_calendar(void)
 {
