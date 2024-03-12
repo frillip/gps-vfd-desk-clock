@@ -105,14 +105,21 @@ int main(void)
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
     double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
     printf("Running @ 80MHz on %.06fMHz XTAL\r\n", fosc_freq_f);
+    
+    veml6040_detected = VEML6040_init();
+    if(veml6040_detected)
+    {
+        veml_ambient_light = VEML6040_get_lux();
+        veml_brightness = VEML_calc_brightness(veml_ambient_light);
+        display_brightness_set_target(veml_brightness);
+    }
+        
     DELAY_microseconds(10000);
     
     scheduler_init();
     sync_state_machine_run = 1;
     
     ui_init();
-    
-    veml6040_detected = VEML6040_init();
 
     // Enable WDT (set to 32s timeout non-windowed mode)
     RCONbits.SWDTEN = 1;
