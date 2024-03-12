@@ -46,8 +46,6 @@ bool sync_state_machine_run = 0;
 
 // time_t to store UTC, GNSS, RTC and local time
 time_t utc;
-time_t display;
-time_t previous_display_time;
 extern time_t rtc;
 extern bool rtc_detected;
 
@@ -57,8 +55,8 @@ extern bool gnss_detected;
 extern time_t ntp;
 extern bool esp_detected;
 
-int32_t tz_offset = 0;
-int32_t dst_offset = 3600;
+extern int32_t tz_offset;
+extern int32_t dst_offset;
 
 uint32_t fosc_freq = FCYCLE;
 
@@ -209,15 +207,7 @@ int main(void)
         if(t100ms1==9)
         {
             t100ms1 = -1;
-            display = utc+1;
-            
-            previous_display_time = display;
-            display = display + tz_offset;
-            if(isDST(&utc)) display = display+dst_offset; 
-            
-            if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
-            else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
-            
+            display_local_time(utc+1);
             // Re-enable manual printing
             disable_manual_print = 0;
             

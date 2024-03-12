@@ -121,6 +121,7 @@ void display_dashes(void);
 void display_all(void);
 void display_blank(void);
 void display_latch(void);
+void display_local_time(time_t time);
 bool isDST(const time_t *tod);
 
 #ifdef	__cplusplus

@@ -24,7 +24,7 @@ extern uint16_t display_brightness;
 
 extern bool display_update_pending;
 extern time_t display;
-extern time_t previous_display_time;
+extern time_t previous_display;
 
 bool update_display = 0;
 
@@ -36,9 +36,12 @@ UI_MENU_STATE ui_menu_current = UI_MENU_STATE_ROOT;
 UI_BUTTON_STATE ui_button_action = UI_BUTTON_STATE_NO_PRESS;
 uint16_t ui_button_counter = 0;
 
+extern CLOCK_SOURCE utc_source;
+extern time_t utc;
+
 void ui_init(void)
 {
-    ui_state_current = UI_DISPLAY_STATE_CLOCK_HHMM;
+    ui_state_current = UI_DISPLAY_STATE_INIT;
 }
 
 void ui_tasks(void)
@@ -156,6 +159,15 @@ void ui_buzzer_sounder(void)
 
 void ui_display_task(void)
 {
+    if(utc_source!=CLOCK_SOURCE_NONE)
+    {
+        if(ui_state_current==UI_DISPLAY_STATE_INIT || ui_state_current==UI_DISPLAY_STATE_DASHES)
+        {
+            ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+            display_local_time(utc);
+            display_latch();
+        }
+    }
     if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM && !ui_switch_input_state())
     {
         ui_display_timeout++;
@@ -186,41 +198,91 @@ void ui_display_task(void)
     if(update_display)
     {
         ui_display_timeout=0;
-        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM)
-        {
-            if(display_update_pending)
-            {
-                display_time(&previous_display_time);
-                display_latch();
-                display_time(&display);
-            }
-            else
-            {
-                display_time(&display);
-                display_latch();
-            }
-        }
-        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS)
-        {
-            if(display_update_pending)
-            {
-                display_mmss(&previous_display_time);
-                display_latch();
-                display_mmss(&display);
-            }
-            else
-            {
-                display_mmss(&display);
-                display_latch();
-            }
-        }
-        if(ui_state_current==UI_DISPLAY_STATE_MENU)
-        {
-            display_menu();
-            display_latch();
-        }
+        ui_update_display();
         update_display=0;
     }
+}
+
+void ui_update_display(void)
+{
+    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM)
+    {
+        if(display_update_pending)
+        {
+            display_time(&previous_display);
+            display_latch();
+            display_time(&display);
+        }
+        else
+        {
+            display_time(&display);
+            display_latch();
+        }
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS)
+    {
+        if(display_update_pending)
+        {
+            display_mmss(&previous_display);
+            display_latch();
+            display_mmss(&display);
+        }
+        else
+        {
+            display_mmss(&display);
+            display_latch();
+        }
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_MENU)
+    {
+        display_menu();
+        display_latch();
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_DASHES)
+    {
+        display_dashes();
+        display_latch();
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_INIT)
+    {
+        display_blank();
+        display_latch();
+    }
+}
+
+void ui_set_display_off(void)
+{
+    ui_state_current=UI_DISPLAY_STATE_INIT;
+    ui_update_display();
+}
+
+void ui_set_display_hhmm(void)
+{
+    ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+    ui_update_display();
+}
+
+void ui_set_display_mmss(void)
+{
+    ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+    ui_update_display();
+}
+
+void ui_set_display_ssmm(void)
+{
+    ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
+    ui_update_display();
+}
+
+void ui_set_display_dashes(void)
+{
+    ui_state_current=UI_DISPLAY_STATE_DASHES;
+    ui_update_display();
+}
+void ui_set_display_menu(void)
+{
+    ui_state_current=UI_DISPLAY_STATE_MENU;
+    ui_update_display();
 }
 
 void ui_uart1_input(char c)

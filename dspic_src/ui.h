@@ -30,6 +30,7 @@ typedef enum
     UI_DISPLAY_STATE_CLOCK_HHMM,
     UI_DISPLAY_STATE_CLOCK_MMSS,
     UI_DISPLAY_STATE_CLOCK_SSMM,
+    UI_DISPLAY_STATE_DASHES,
     UI_DISPLAY_STATE_MENU,
 } UI_DISPLAY_STATE;
 
@@ -87,6 +88,13 @@ void ui_buzzer_interval_beep(void);
 void ui_buzzer_sounder(void);
 
 void ui_display_task(void);
+void ui_update_display(void);
+void ui_set_display_off(void);
+void ui_set_display_hhmm(void);
+void ui_set_display_mmss(void);
+void ui_set_display_ssmm(void);
+void ui_set_display_dashes(void);
+void ui_set_display_menu(void);
 
 void ui_uart1_input(char c);
 void ui_print_iso8601_string(time_t iso);

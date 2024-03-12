@@ -22,6 +22,11 @@ extern UI_DISPLAY_STATE ui_state_current;
 
 extern UI_MENU_STATE ui_menu_current;
 
+time_t display;
+time_t previous_display;
+int32_t tz_offset = 0;
+int32_t dst_offset = 3600;
+
 #define SPI2_DMA_BUFFER_LENGTH 4
 uint16_t spi2_dma_buffer[SPI2_DMA_BUFFER_LENGTH];
 
@@ -563,6 +568,19 @@ void display_latch(void)
     DELAY_microseconds(1);
     LATCH_GPIO_SetLow();
     display_update_pending = 0;
+}
+
+void display_local_time(time_t time)
+{
+    display = time;
+    previous_display = display;
+    display = display + tz_offset;
+    if(isDST(&display)) display = display+dst_offset; 
+
+    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
+    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
+    else if(ui_state_current==UI_DISPLAY_STATE_DASHES) display_dashes();
+    else if(ui_state_current==UI_DISPLAY_STATE_INIT) display_blank();
 }
 
 // DST is stupid

@@ -64,6 +64,7 @@ uint16_t VEML6040_get_white(void);
 uint16_t VEML_get_data(uint8_t reg);
 double VEML6040_get_lux(void);
 uint16_t VEML_calc_brightness(double lux);
+void print_veml_data(void);
 
 #ifdef	__cplusplus
 }

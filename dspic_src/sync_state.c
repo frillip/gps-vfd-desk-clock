@@ -17,7 +17,8 @@ extern int32_t tz_offset;
 extern int32_t dst_offset;
 
 extern bool rtc_detected;
-//extern bool esp_ntp_detected;
+extern bool rtc_valid;
+
 bool esp_ntp_detected = 0;
 extern bool gnss_detected;
 
@@ -65,6 +66,10 @@ extern int32_t esp_time_offset;
 
 CLOCK_SYNC_STATUS sync_check_result = SYNC_SYNC;
 CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
+
+CLOCK_SOURCE utc_source = CLOCK_SOURCE_NONE;
+
+bool no_clock_blink = 0;
 
 void sync_state_machine(void)
 {
@@ -354,6 +359,7 @@ void sync_state_machine(void)
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
                     gnss_set_calendar();
+                    utc_source = CLOCK_SOURCE_GNSS;
                     pic_pps_reset_sync();
                     reset_pps_stats();
                     sync_state_machine_set_state(SYNC_STARTUP);
@@ -383,6 +389,7 @@ void sync_state_machine(void)
                     gnss_set_calendar();
                     pic_pps_reset_sync();
                     reset_pps_stats();
+                    utc_source = CLOCK_SOURCE_GNSS;
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
                 }
@@ -390,6 +397,7 @@ void sync_state_machine(void)
             if(esp_ntp_valid)
             {
                 printf("NTP SYNC ACQUIRED\r\n");
+                utc_source = CLOCK_SOURCE_NTP;
                 sync_state_machine_set_state(SYNC_NTP);
             }
             break;
@@ -403,6 +411,7 @@ void sync_state_machine(void)
                     gnss_set_calendar();
                     pic_pps_reset_sync();
                     reset_pps_stats();
+                    utc_source = CLOCK_SOURCE_GNSS;
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
                 }
@@ -412,6 +421,7 @@ void sync_state_machine(void)
                 if(esp_ntp_valid)
                 {
                     printf("NTP SYNC ACQUIRED\r\n");
+                    utc_source = CLOCK_SOURCE_NTP;
                     sync_state_machine_set_state(SYNC_NTP);
                     break;
                 }
@@ -422,6 +432,15 @@ void sync_state_machine(void)
             if(state_new_oc)
             {
                 printf("NO CLOCK!\r\n");
+                if(no_clock_blink)
+                {
+                    ui_set_display_dashes();
+                }
+                else
+                {
+                    ui_set_display_off();
+                }
+                no_clock_blink = !no_clock_blink;
                 state_new_oc = 0;
             }
             if(gnss_detected)
@@ -431,6 +450,7 @@ void sync_state_machine(void)
                     printf("GNSS FIX ACQUIRED\r\n");
                     pic_pps_reset_sync();
                     reset_pps_stats();
+                    utc_source = CLOCK_SOURCE_GNSS;
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
                 }
@@ -440,6 +460,7 @@ void sync_state_machine(void)
                 if(esp_ntp_valid)
                 {
                     printf("NTP SYNC ACQUIRED\r\n");
+                    utc_source = CLOCK_SOURCE_NTP;
                     sync_state_machine_set_state(SYNC_NTP);
                     break;
                 }
@@ -496,6 +517,7 @@ void sync_state_machine(void)
                 if(esp_ntp_valid)
                 {
                     esp_ntp_set_calendar();
+                    utc_source = CLOCK_SOURCE_NTP;
                     sync_state_machine_set_state(SYNC_GNSS_DETECT);
                 }
             }
@@ -518,8 +540,12 @@ void sync_state_machine(void)
                 rtc_get_calendar();
                 if(rtc_detected)
                 {
-                    rtc_set_calendar();
-                    printf("RTC DETECTED\r\n");
+                    if(rtc_valid)
+                    {
+                        rtc_set_calendar();
+                        utc_source = CLOCK_SOURCE_RTC;
+                        printf("RTC DETECTED\r\n");
+                    }
                     sync_state_machine_set_state(SYNC_NTP_DETECT);
                 }
             }
@@ -573,9 +599,16 @@ void print_sync_state_machine(void)
 
 CLOCK_SYNC_STATUS sync_select_best_clock(void)
 {
+    if(ubx_gnss_time_valid())
+    {
+        printf("GNSS MODE\r\n");
+        utc_source = CLOCK_SOURCE_GNSS;
+        return SYNC_STARTUP;
+    }
     if(esp_ntp_valid)
     {
         printf("NTP MODE\r\n");
+        utc_source = CLOCK_SOURCE_NTP;
         return SYNC_NTP;
     }
     else if(esp_ntp_detected)
@@ -586,11 +619,13 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
     else if(rtc_detected)
     {
         printf("RTC MODE\r\n");
+        utc_source = CLOCK_SOURCE_RTC;
         return SYNC_RTC;
     }
     else
     {
         printf("NO CLOCK DETECTED\r\n");
+        utc_source = CLOCK_SOURCE_NONE;
         return SYNC_NO_CLOCK;
     }
 }
@@ -819,5 +854,38 @@ void sync_state_eval_time(void)
         printf("RTC:  ");
         ui_print_iso8601_string(rtc);
         printf("\r\n");
+    }
+    printf("UTC source: ");
+    print_clock_source(utc_source);
+    printf("\r\n");
+}
+
+void print_clock_source(CLOCK_SOURCE source)
+{
+    switch(source)
+    {
+        case CLOCK_SOURCE_NONE:
+            printf("NONE");
+            break;
+            
+        case CLOCK_SOURCE_RTC:
+            printf("RTCE_RTC");
+            break;
+            
+        case CLOCK_SOURCE_ESP:
+            printf("ESP");
+            break;
+            
+        case CLOCK_SOURCE_NTP:
+            printf("NTP");
+            break;
+            
+        case CLOCK_SOURCE_GNSS:
+            printf("GNSS");
+            break;
+            
+        default:
+            printf("UNKNOWN SOURCE!");
+            break;
     }
 }

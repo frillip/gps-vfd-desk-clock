@@ -73,6 +73,15 @@ typedef enum
     SYNC_NTP_NO_NETWORK,
 } CLOCK_SYNC_STATUS;
 
+typedef enum
+{
+    CLOCK_SOURCE_NONE,
+    CLOCK_SOURCE_RTC,
+    CLOCK_SOURCE_ESP,
+    CLOCK_SOURCE_NTP,
+    CLOCK_SOURCE_GNSS,
+} CLOCK_SOURCE;
+
 void sync_state_machine(void);
 void sync_state_machine_set_state(CLOCK_SYNC_STATUS state);
 void print_sync_state_machine(void);
@@ -82,6 +91,7 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void);
 void sync_state_print_stats(void);
 #define EVAL_TIME_DELAY_INTERVAL    5
 void sync_state_eval_time(void);
+void print_clock_source(CLOCK_SOURCE source);
 
 
 #ifdef	__cplusplus
