@@ -869,7 +869,7 @@ void print_clock_source(CLOCK_SOURCE source)
             break;
             
         case CLOCK_SOURCE_RTC:
-            printf("RTCE_RTC");
+            printf("RTC");
             break;
             
         case CLOCK_SOURCE_ESP:
