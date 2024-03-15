@@ -171,7 +171,7 @@ void setup()
   UARTGNSS.begin(GNSS_BAUD, SERIAL_8N1, GNSS_RXD, GNSS_TXD);
   UARTPIC.begin(PIC_BAUD, SERIAL_8N1, PIC_RXD, PIC_TXD);
 
-  UTC.setTime(rtc.getEpoch());
+  //UTC.setTime(rtc.getEpoch());
   /*
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);
 
@@ -244,7 +244,10 @@ void loop()
         scheduler_sync = 1;
       }
     }
-    digitalWrite(STATUS_LED_PIN, 1);
+    if(timeStatus() == timeSet) 
+    {
+      digitalWrite(STATUS_LED_PIN, 1);
+    }
     pic_uart_tx_timedata();
     /*
     Serial.print("NTP: ");
