@@ -47,8 +47,10 @@ uint32_t ntp_resync_count = 0;
 #define GNSS_BAUD    115200
 #define GNSS_RXD     17
 #define GNSS_TXD     16
+#define GNSS_PPS_PIN 18
 HardwareSerial UARTGNSS(GNSS_UART);  //using UART1
 
+uint16_t gnss_pps_offset_ms = 0;
 bool gnss_detected = 0;
 float gnss_lat = 0.0;
 float gnss_long = 0.0;
@@ -150,6 +152,11 @@ void fe_build_ntp_string(void)
   
 }
 
+void IRAM_ATTR gnss_pps_in(void)
+{
+  gnss_pps_offset_ms = UTC.ms();
+}
+
 void setup()
 {
   //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
@@ -214,6 +221,9 @@ void setup()
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   digitalWrite(STATUS_LED_PIN, 0);
+
+  pinMode(GNSS_PPS_PIN,INPUT);
+  attachInterrupt(GNSS_PPS_PIN, gnss_pps_in, RISING);
 
   pps_timer = timerBegin(PPS_HW_TIMER, 80, true);
   timerAttachInterrupt(pps_timer, &pps_out, true);
@@ -313,6 +323,10 @@ void loop()
   {
     t100ms2=-9;
     pic_uart_tx_netdata();
+    int32_t gnss_offset_ms = gnss_pps_offset_ms;
+    Serial.print("NTP offset: ");
+    Serial.print(gnss_offset_ms);
+    Serial.println("ms");
   }
   if(t100ms3>=87)
   {
