@@ -152,9 +152,12 @@ void fe_build_ntp_string(void)
   
 }
 
+uint32_t gnss_pps_micros = 0;
+
 void IRAM_ATTR gnss_pps_in(void)
 {
   gnss_pps_offset_ms = UTC.ms();
+  gnss_pps_micros = micros();
 }
 
 void setup()
@@ -231,11 +234,14 @@ void setup()
   timerAlarmEnable(pps_timer);
 }
 
+uint32_t esp_micros = 0;
+
 void loop()
 {
   if(secondChanged())
   {
     esp_task_wdt_reset();
+    esp_micros = micros();
     if(!pps_sync)
     {
       if(timeStatus() == timeSet && !UTC.ms())
@@ -277,7 +283,7 @@ void loop()
   }
 
   wm.process();
-  events();
+  //events();
 
   if(t1ms0)
   {
@@ -324,8 +330,9 @@ void loop()
     t100ms2=-9;
     pic_uart_tx_netdata();
     int32_t gnss_offset_ms = gnss_pps_offset_ms;
+    int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
     Serial.print("NTP offset: ");
-    Serial.print(gnss_offset_ms);
+    Serial.print((float)(gnss_offset_micros)/1000);
     Serial.println("ms");
   }
   if(t100ms3>=87)
