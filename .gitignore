@@ -6,3 +6,4 @@
 /dspic_src/.generated_files/
 /dspic_src/Makefile
 /dspic_src/mcc-manifest*
+/dspic_src/defmplabxtrace*
