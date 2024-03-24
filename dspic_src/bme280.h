@@ -12,6 +12,16 @@
 extern "C" {
 #endif
 
+    
+#include "mcc_generated_files/system.h"
+#include "mcc_generated_files/pin_manager.h"    
+#include "mcc_generated_files/spi2.h"
+#include "mcc_generated_files/delay.h"
+#include <time.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+
 #define BME280_ADDR             (0x76)
     
 #define BME280_REG_CAL_00_25    (0x88)
