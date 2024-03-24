@@ -280,13 +280,13 @@ void display_time(const time_t *time)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
-void display_mmss(const time_t *mmss)
+void display_mmss(const time_t *time)
 {
     uint16_t display_digits = 0;
     struct tm *disp_time;
     
     // Convert our time_t into a time struct
-    disp_time = gmtime(mmss);
+    disp_time = gmtime(time);
     
     // Construct our BCD time
     display_digits |= (disp_time->tm_min / 10)<<12;
@@ -588,12 +588,12 @@ void display_local_time(time_t time)
 // DST starts on the last Sunday of March
 // and ends on the last Sunday of October
 // at 0100 UTC
-bool isDST(const time_t *tod)
+bool isDST(const time_t *time)
 {
     struct tm *disp_time;
     
     // Convert our time_t into a time struct
-    disp_time = gmtime(tod);
+    disp_time = gmtime(time);
     uint8_t last_sunday = 0;
     bool dst = 0;
 
@@ -605,16 +605,17 @@ bool isDST(const time_t *tod)
     // If we're in March/October
     if(disp_time->tm_mon == 2 || disp_time->tm_mon == 9)
     {
-        // Calculate when the last Sunday is
+        // Calculate when the next Sunday is
         last_sunday = disp_time->tm_mday + disp_time->tm_wday;
-        // Are we already past the last sunday
+        // Is that Sunday in the next month?
         if(last_sunday > 31)
         {
             dst = 1;
         }
         else
         {
-            while((last_sunday + 7) < 31) last_sunday += 7;
+            // Calculate which mday the last sunday is on
+            while((last_sunday + 7) <= 31) last_sunday += 7;
             // If we're past that mday, we're in DST
             if(disp_time->tm_mday > last_sunday)
             {
