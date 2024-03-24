@@ -9,7 +9,7 @@ void sht30_start_meas(void)
     uint16_t i2c_timeout = 0;
     uint8_t pdata_write[2] = {0x24, 0x00}; // no clock stretching, high repeatability
 
-    I2C1_MasterWrite(&pdata_write, 2, SHT30_ADDRESS, &status);
+    I2C1_MasterWrite(pdata_write, 2, SHT30_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING) // wait for status to to change
     {
@@ -27,8 +27,8 @@ void sht30_read_data(void)
 {
     I2C1_MESSAGE_STATUS status;
     uint16_t i2c_timeout = 0;
-    uint8_t pdata_read[6] = {0};// will hold 'seconds'
-    I2C1_MasterRead(&pdata_read, 6, SHT30_ADDRESS, &status);
+    uint8_t pdata_read[6] = {0};
+    I2C1_MasterRead(pdata_read, 6, SHT30_ADDRESS, &status);
     while (status == I2C1_MESSAGE_PENDING)
     {
         i2c_timeout++;
@@ -53,7 +53,7 @@ void sht30_start_periodic_meas(void)
     uint16_t i2c_timeout = 0;
     uint8_t pdata_write[2] = {0x22, 0x36}; // 2mps, high repeatability
 
-    I2C1_MasterWrite(&pdata_write, 2, SHT30_ADDRESS, &status);
+    I2C1_MasterWrite(pdata_write, 2, SHT30_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING) // wait for status to to change
     {
@@ -74,12 +74,12 @@ void sht30_read_periodic_data(void)
     uint8_t pdata_write[2] = {0xE0, 0x00}; // 0 to 'seconds' register
     uint8_t pdata_read[6] = {0}; // will hold 'seconds'
 
-    I2C1_MasterWrite(&pdata_write, 2, SHT30_ADDRESS, &status);
+    I2C1_MasterWrite(pdata_write, 2, SHT30_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING); // wait for status to to change
     printf("2 %u %u",status,i2c_timeout);
     if (status == I2C1_MESSAGE_COMPLETE) {
-        I2C1_MasterRead(&pdata_read, 6, SHT30_ADDRESS, &status);
+        I2C1_MasterRead(pdata_read, 6, SHT30_ADDRESS, &status);
         while (status == I2C1_MESSAGE_PENDING)
         {
             i2c_timeout++;

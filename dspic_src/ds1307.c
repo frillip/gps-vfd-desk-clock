@@ -7,14 +7,14 @@ time_t DS1307_read(void)
     rtc_time.tm_isdst = 0;
     I2C1_MESSAGE_STATUS status;
     uint16_t i2c_timeout = 0;
-    uint8_t pdata_write = DS1307_TIME; // 0 to 'seconds' register
+    uint8_t pdata_write[] = {DS1307_TIME}; // 0 to 'seconds' register
     uint8_t pdata_read[7]; // will hold 'seconds'
 
-    I2C1_MasterWrite(&pdata_write, 1, DS1307_ADDRESS, &status);
+    I2C1_MasterWrite(pdata_write, 1, DS1307_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING); // wait for status to to change
     if (status == I2C1_MESSAGE_COMPLETE) {
-        I2C1_MasterRead(&pdata_read, 7, DS1307_ADDRESS, &status);
+        I2C1_MasterRead(pdata_read, 7, DS1307_ADDRESS, &status);
         while (status == I2C1_MESSAGE_PENDING)
         {
             i2c_timeout++;
@@ -55,7 +55,7 @@ bool DS1307_write(time_t rtc)
     pdata_write[6] = DS1307_bin2bcd(rtc_time->tm_mon + 1);
     pdata_write[7] = DS1307_bin2bcd(rtc_time->tm_year - 100);
 
-    I2C1_MasterWrite(&pdata_write, 8, DS1307_ADDRESS, &status);
+    I2C1_MasterWrite(pdata_write, 8, DS1307_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING)
     {

@@ -23,7 +23,7 @@ bool VEML6040_init(void)
     // second byte of 16-bit write should be empty
     //sensor_conf[2] = 0;
     
-    I2C1_MasterWrite(&sensor_conf, 2, VEML6040_ADDR, &status);
+    I2C1_MasterWrite(sensor_conf, 2, VEML6040_ADDR, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING)
     {
@@ -65,13 +65,13 @@ uint16_t VEML_get_data(uint8_t reg)
 {
     I2C1_MESSAGE_STATUS status;
     uint16_t i2c_timeout = 0;
-    uint8_t pdata_write = reg; // the register we want
+    uint8_t pdata_write[] = {reg}; // the register we want
     uint8_t pdata_read[2];     // return 16 bits of data
-    I2C1_MasterWrite(&pdata_write, 1, VEML6040_ADDR, &status);
+    I2C1_MasterWrite(pdata_write, 1, VEML6040_ADDR, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
     while (status == I2C1_MESSAGE_PENDING); // wait for status to to change
     if (status == I2C1_MESSAGE_COMPLETE) {
-        I2C1_MasterRead(&pdata_read, 2, VEML6040_ADDR, &status);
+        I2C1_MasterRead(pdata_read, 2, VEML6040_ADDR, &status);
         while (status == I2C1_MESSAGE_PENDING)
         {
             i2c_timeout++;
