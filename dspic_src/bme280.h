@@ -22,6 +22,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#define BME280_TEMP_OFFSET      (-1280L)    // How much warming does the board add in 0.01C
+
 #define BME280_ADDR             (0x76)
 #define BME280_CHIP_ID          (0x60)
     

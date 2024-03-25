@@ -202,7 +202,7 @@ void BME280_read_all(void)
             data_xlsb = (uint32_t)pdata_read[5] >> 4;
             bme280_uncomp_data.temperature = data_msb | data_lsb | data_xlsb;
             bme280_data.temperature = BME280_comp_temp(bme280_uncomp_data.temperature);
-            bme280_temperature = bme280_data.temperature;
+            bme280_temperature = bme280_data.temperature + BME280_TEMP_OFFSET;
             printf("%li.%lidegC\r\n", bme280_temperature/100, bme280_temperature%100);
             
             /* Store the parsed register values for pressure data */
