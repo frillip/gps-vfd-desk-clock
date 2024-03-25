@@ -275,7 +275,9 @@ void loop()
 
   if(Serial.available())
   {
-    pic_uart_tx_userdata((char)Serial.read());
+    char c = Serial.read();
+    if(c==0x45) ESP.restart();
+    pic_uart_tx_userdata(c);
   }
 
   if(UARTPIC.available())
