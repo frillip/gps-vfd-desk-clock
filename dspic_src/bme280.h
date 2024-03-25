@@ -15,7 +15,7 @@ extern "C" {
     
 #include "mcc_generated_files/system.h"
 #include "mcc_generated_files/pin_manager.h"    
-#include "mcc_generated_files/spi2.h"
+#include "mcc_generated_files/i2c1.h"
 #include "mcc_generated_files/delay.h"
 #include <time.h>
 #include <stdio.h>
@@ -23,6 +23,7 @@ extern "C" {
 #include <stdbool.h>
 
 #define BME280_ADDR             (0x76)
+#define BME280_CHIP_ID          (0x60)
     
 #define BME280_REG_CAL_00_25    (0x88)
 #define BME280_REG_ID           (0xD0)
@@ -35,6 +36,21 @@ extern "C" {
 #define BME280_REG_PRES         (0xF7)
 #define BME280_REG_TEMP         (0xFA)
 #define BME280_REG_HUM          (0xFD)
+    
+#define BME280_LEN_CMD          1
+#define BME280_LEN_CAL_00_25    26
+#define BME280_LEN_ID           1
+#define BME280_LEN_RESET        1
+#define BME280_LEN_CAL_26_41    7
+#define BME280_LEN_CTRL_HUM     1
+#define BME280_LEN_STATUS       1
+#define BME280_LEN_CTRL_MEAS    1
+#define BME280_LEN_CONFIG       1
+#define BME280_LEN_ALL_CONFIG   4
+#define BME280_LEN_P_T_H_DATA   8
+#define BME280_LEN_P_DATA       3
+#define BME280_LEN_T_DATA       3
+#define BME280_LEN_H_DATA       2
     
 #define BME280_CMD_RESET        (0xB6)
 
@@ -64,7 +80,7 @@ extern "C" {
 #define BME280_STANDBY_500MS    (0x04)
 #define BME280_STANDBY_1000MS   (0x05)
     
-struct bme280_calib_data
+struct bme280_cal_data
 {
     uint16_t dig_t1;
     int16_t dig_t2;
@@ -110,14 +126,22 @@ struct bme280_settings
     uint8_t standby_time;
 };
     
-void bme280_init(void);
-void bme280_read_temp(void);
-void bme280_read_pres(void);
-void bme280_read_hum(void);
-void bme280_read_settings(void);
-void bme280_read_cal(void);
-void bme280_write_settings(void);
-void bme280_reset(void);
+bool BME280_init(void);
+uint8_t BME280_read_id(void);
+void BME280_read_temp(void);
+int32_t BME280_comp_temp(uint32_t uncomp_temp);
+void BME280_read_pres(void);
+uint32_t BME280_comp_pres(uint32_t uncomp_pres);
+void BME280_read_hum(void);
+uint32_t BME280_comp_hum(uint32_t uncomp_hum);
+void BME280_read_all(void);
+void BME280_read_settings(void);
+bool BME280_read_cal(void);
+bool BME280_read_cal_00(void);
+bool BME280_read_cal_26(void);
+void BME280_write_settings(void);
+bool BME280_reset(void);
+#define BME280_make16le(msb, lsb)         (((uint16_t)msb << 8) | (uint16_t)lsb)
 
 #ifdef	__cplusplus
 }
