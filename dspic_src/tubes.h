@@ -112,6 +112,7 @@ void display_brightness_down(uint16_t brightness_down);
 void display_brightness_on(void);
 void display_brightness_update(void);
 void display_count(int16_t count);
+void display_temp(int32_t temp);
 uint64_t display_generate_buffer(uint16_t digits);
 void display_send_buffer(uint64_t buffer);
 void display_time(const time_t *tod);

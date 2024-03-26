@@ -27,6 +27,8 @@ time_t previous_display;
 int32_t tz_offset = 0;
 int32_t dst_offset = 3600;
 
+extern int32_t bme280_temperature;
+
 #define SPI2_DMA_BUFFER_LENGTH 4
 uint16_t spi2_dma_buffer[SPI2_DMA_BUFFER_LENGTH];
 
@@ -208,6 +210,34 @@ void display_brightness_update(void)
             display_brightness_down_step();
         }
     }
+}
+
+void display_temp(int32_t temp)
+{
+    uint16_t display_digits = 0;
+    bool temp_negative = 0;
+    
+    if(temp<0)
+    {
+        temp_negative =  1;
+        temp = (temp ^ 0xFFFF) +1; // Make positive
+    }
+    
+    // Construct the counter in BCD
+    display_digits |= (temp / 1000)<<12;
+    display_digits |= ((temp%1000) / 100)<<8;
+    display_digits |= ((temp%100) / 10)<<4;
+    display_digits |= (temp%10); // Break the counter down into individual digits
+    
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Add decimal point
+    driver_buffer |= MIDDLE_SEPARATOR_DOT;
+    // Add minus if negative
+    if(temp_negative) driver_buffer |= START_SEPARATOR_LINE;
+    
+    display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
 // Show a counter on the display
@@ -587,6 +617,7 @@ void display_local_time(time_t time)
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_DASHES) display_dashes();
+    else if(ui_state_current==UI_DISPLAY_STATE_TEMP) display_temp(bme280_temperature);
     else if(ui_state_current==UI_DISPLAY_STATE_INIT) display_blank();
 }
 

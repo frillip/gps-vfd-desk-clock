@@ -180,8 +180,9 @@ void ui_display_task(void)
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
-        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM && ui_switch_input_state()) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM && !ui_switch_input_state()) ui_state_current=UI_DISPLAY_STATE_TEMP;
+        else if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         update_display = 1;
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
