@@ -52,6 +52,8 @@ void print_ubx_nav_status_data(void);
 void process_ubx_nav_posllh(void);
 void print_ubx_nav_posllh_data(void);
 
+void print_ubx_data(void);
+
 bool ubx_gnss_available(void);
 void ubx_update_gnss_time(void);
 bool ubx_gnss_time_valid(void);

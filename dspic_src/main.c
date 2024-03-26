@@ -168,18 +168,7 @@ int main(void)
             if(print_data)
             {
                 pic_pps_print_stats();
-                if(gnss_detected)
-                {
-                    print_ubx_tim_tm2_data();
-                    print_ubx_nav_timeutc_data();
-                    print_ubx_nav_clock_data();
-                    print_ubx_nav_status_data();
-                    print_ubx_nav_posllh_data();
-                }
-                else
-                {
-                    printf("\r\n=== NO GNSS DETECTED ===\r\n");
-                }
+                print_ubx_data();
                 print_veml_data();
                 print_bme280_data();
                 print_sync_state_machine();

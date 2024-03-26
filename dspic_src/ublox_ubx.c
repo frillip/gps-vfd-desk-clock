@@ -3,6 +3,8 @@
 extern time_t utc;
 extern time_t gnss;
 
+extern bool gnss_detected;
+
 char ubx_tim_tm2_buffer[UBX_TIM_TM2_LENGTH] = {0};
 char ubx_tim_tm2_string[GNSS_CHECK_BUFFER_SIZE] = {0xB5, 0x62, 0x0D, 0x03, 0x1C, 0x00};
 bool ubx_tim_tm2_waiting = 0;
@@ -305,6 +307,22 @@ void print_ubx_nav_posllh_data(void)
     else
     {
         printf("No new data\r\n");
+    }
+}
+
+void print_ubx_data(void)
+{
+    if(gnss_detected)
+    {
+        print_ubx_tim_tm2_data();
+        print_ubx_nav_timeutc_data();
+        print_ubx_nav_clock_data();
+        print_ubx_nav_status_data();
+        print_ubx_nav_posllh_data();
+    }
+    else
+    {
+        printf("\r\n=== NO GNSS DETECTED ===\r\n");
     }
 }
 
