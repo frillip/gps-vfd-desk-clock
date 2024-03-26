@@ -91,6 +91,8 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void);
 void sync_state_print_stats(void);
 #define EVAL_TIME_DELAY_INTERVAL    5
 void sync_state_eval_time(void);
+void print_clocks(void);
+void sync_set_clock_source(CLOCK_SOURCE source);
 void print_clock_source(CLOCK_SOURCE source);
 
 

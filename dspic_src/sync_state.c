@@ -358,10 +358,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    gnss_set_calendar();
-                    utc_source = CLOCK_SOURCE_GNSS;
-                    pic_pps_reset_sync();
-                    reset_pps_stats();
+                    sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
@@ -378,7 +375,6 @@ void sync_state_machine(void)
         case SYNC_NTP_NO_NETWORK:
             if(state_new_oc)
             {
-                //printf("Shouldn't be here yet...\r\n");
                 state_new_oc = 0;
             }
             if(gnss_detected)
@@ -386,10 +382,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    gnss_set_calendar();
-                    pic_pps_reset_sync();
-                    reset_pps_stats();
-                    utc_source = CLOCK_SOURCE_GNSS;
+                    sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
                 }
@@ -397,7 +390,7 @@ void sync_state_machine(void)
             if(esp_ntp_valid)
             {
                 printf("NTP SYNC ACQUIRED\r\n");
-                utc_source = CLOCK_SOURCE_NTP;
+                sync_set_clock_source(CLOCK_SOURCE_NTP);
                 sync_state_machine_set_state(SYNC_NTP);
             }
             break;
@@ -408,10 +401,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    gnss_set_calendar();
-                    pic_pps_reset_sync();
-                    reset_pps_stats();
-                    utc_source = CLOCK_SOURCE_GNSS;
+                    sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
                 }
@@ -421,7 +411,7 @@ void sync_state_machine(void)
                 if(esp_ntp_valid)
                 {
                     printf("NTP SYNC ACQUIRED\r\n");
-                    utc_source = CLOCK_SOURCE_NTP;
+                    sync_set_clock_source(CLOCK_SOURCE_NTP);
                     sync_state_machine_set_state(SYNC_NTP);
                     break;
                 }
@@ -448,9 +438,7 @@ void sync_state_machine(void)
                 if(ubx_gnss_time_valid())
                 {
                     printf("GNSS FIX ACQUIRED\r\n");
-                    pic_pps_reset_sync();
-                    reset_pps_stats();
-                    utc_source = CLOCK_SOURCE_GNSS;
+                    sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
                 }
@@ -460,7 +448,7 @@ void sync_state_machine(void)
                 if(esp_ntp_valid)
                 {
                     printf("NTP SYNC ACQUIRED\r\n");
-                    utc_source = CLOCK_SOURCE_NTP;
+                    sync_set_clock_source(CLOCK_SOURCE_NTP);
                     sync_state_machine_set_state(SYNC_NTP);
                     break;
                 }
@@ -516,8 +504,7 @@ void sync_state_machine(void)
                 }
                 if(esp_ntp_valid)
                 {
-                    esp_ntp_set_calendar();
-                    utc_source = CLOCK_SOURCE_NTP;
+                    sync_set_clock_source(CLOCK_SOURCE_NTP);
                     sync_state_machine_set_state(SYNC_GNSS_DETECT);
                 }
             }
@@ -542,9 +529,8 @@ void sync_state_machine(void)
                 {
                     if(rtc_valid)
                     {
-                        rtc_set_calendar();
-                        utc_source = CLOCK_SOURCE_RTC;
                         printf("RTC DETECTED\r\n");
+                        sync_set_clock_source(CLOCK_SOURCE_RTC);
                     }
                     sync_state_machine_set_state(SYNC_NTP_DETECT);
                 }
@@ -602,13 +588,13 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
     if(ubx_gnss_time_valid())
     {
         printf("GNSS MODE\r\n");
-        utc_source = CLOCK_SOURCE_GNSS;
+        sync_set_clock_source(CLOCK_SOURCE_GNSS);
         return SYNC_STARTUP;
     }
     if(esp_ntp_valid)
     {
         printf("NTP MODE\r\n");
-        utc_source = CLOCK_SOURCE_NTP;
+        sync_set_clock_source(CLOCK_SOURCE_NTP);
         return SYNC_NTP;
     }
     else if(esp_ntp_detected)
@@ -619,13 +605,13 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
     else if(rtc_valid)
     {
         printf("RTC MODE\r\n");
-        utc_source = CLOCK_SOURCE_RTC;
+        sync_set_clock_source(CLOCK_SOURCE_RTC);
         return SYNC_RTC;
     }
     else
     {
         printf("NO CLOCK DETECTED\r\n");
-        utc_source = CLOCK_SOURCE_NONE;
+        sync_set_clock_source(CLOCK_SOURCE_NONE);
         return SYNC_NO_CLOCK;
     }
 }
@@ -831,6 +817,11 @@ void sync_state_eval_time(void)
         }
     }
     
+    print_clocks();
+}
+
+void print_clocks(void)
+{
     printf("\r\nUTC:  ");
     ui_print_iso8601_string(utc);
     printf("\r\n");
@@ -858,6 +849,45 @@ void sync_state_eval_time(void)
     printf("UTC source: ");
     print_clock_source(utc_source);
     printf("\r\n");
+}
+
+void sync_set_clock_source(CLOCK_SOURCE source)
+{
+    printf("Switching to ");
+    print_clock_source(source);
+    printf("\r\n");
+    switch(source)
+    {
+        case CLOCK_SOURCE_NONE:
+            utc_source = CLOCK_SOURCE_NONE;
+            break;
+            
+        case CLOCK_SOURCE_RTC:
+            rtc_set_calendar();
+            utc_source = CLOCK_SOURCE_RTC;
+            break;
+            
+        case CLOCK_SOURCE_ESP:
+            break;
+            
+        case CLOCK_SOURCE_NTP:
+            esp_ntp_set_calendar();
+            utc_source = CLOCK_SOURCE_NTP;
+            break;
+            
+        case CLOCK_SOURCE_GNSS:
+            gnss_set_calendar();
+            utc_source = CLOCK_SOURCE_GNSS;
+            pic_pps_reset_sync();
+            reset_pps_stats();
+            break;
+            
+        default:
+            print_clock_source(source);
+            break;
+    }
+
+    ui_display_task();
 }
 
 void print_clock_source(CLOCK_SOURCE source)
