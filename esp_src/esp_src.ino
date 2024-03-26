@@ -152,13 +152,16 @@ void fe_build_ntp_string(void)
   
 }
 
+#define GNSS_TIMEOUT_LIMIT 300 // in 0.01s counts
 uint32_t gnss_pps_micros = 0;
+uint16_t gnss_timeout = 0;
 
 void IRAM_ATTR gnss_pps_in(void)
 {
   if(!gnss_detected) gnss_detected = 1;
   gnss_pps_offset_ms = UTC.ms();
   gnss_pps_micros = micros();
+  gnss_timeout = 0;
 }
 
 void setup()
@@ -309,6 +312,17 @@ void loop()
   if(t10ms0)
   {
     t10ms0=0;
+    if(gnss_detected)
+    {
+      if(gnss_timeout<GNSS_TIMEOUT_LIMIT)
+      {
+        gnss_timeout++;
+      }
+      else
+      {
+        gnss_detected = 0;
+      }
+    }
   }
   if(t100ms0>=1)
   {
