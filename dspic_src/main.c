@@ -181,6 +181,7 @@ int main(void)
                     printf("\r\n=== NO GNSS DETECTED ===\r\n");
                 }
                 print_veml_data();
+                print_bme280_data();
                 print_sync_state_machine();
                 printf("\r\n");
                 print_data = 0;

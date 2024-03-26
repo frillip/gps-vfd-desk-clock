@@ -137,6 +137,7 @@ uint32_t BME280_comp_pres(uint32_t uncomp_pres);
 void BME280_read_hum(void);
 uint32_t BME280_comp_hum(uint32_t uncomp_hum);
 void BME280_read_all(void);
+void print_bme280_data(void);
 void BME280_read_settings(void);
 bool BME280_read_cal(void);
 bool BME280_read_cal_00(void);

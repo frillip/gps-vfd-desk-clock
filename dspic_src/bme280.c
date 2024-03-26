@@ -203,7 +203,6 @@ void BME280_read_all(void)
             bme280_uncomp_data.temperature = data_msb | data_lsb | data_xlsb;
             bme280_data.temperature = BME280_comp_temp(bme280_uncomp_data.temperature);
             bme280_temperature = bme280_data.temperature + BME280_TEMP_OFFSET;
-            printf("%li.%lidegC\r\n", bme280_temperature/100, bme280_temperature%100);
             
             /* Store the parsed register values for pressure data */
             data_msb = (uint32_t)pdata_read[0] << 12;
@@ -212,7 +211,6 @@ void BME280_read_all(void)
             bme280_uncomp_data.pressure = data_msb | data_lsb | data_xlsb;
             bme280_data.pressure = BME280_comp_pres(bme280_uncomp_data.pressure);
             bme280_pressure = bme280_data.pressure / 100;
-            printf("%lu.%lumBar\r\n", bme280_pressure/100, bme280_pressure%100);
 
             /* Store the parsed register values for humidity data */
             data_msb = (uint32_t)pdata_read[6] << 8;
@@ -221,8 +219,24 @@ void BME280_read_all(void)
             bme280_data.humidity = BME280_comp_hum(bme280_uncomp_data.humidity);
             bme280_humidity = (bme280_data.humidity>>10)*100;
             bme280_humidity += ((bme280_data.humidity&0x3FF)*100)>>10;
-            printf("%lu.%lu%%\r\n", bme280_humidity/100, bme280_humidity%100);
         }
+    }
+}
+
+void print_bme280_data(void)
+{
+    if(bme280_detected)
+    {
+        int32_t bme280_temp_uncomp = bme280_temperature - BME280_TEMP_OFFSET;
+        printf("\r\n=== BME280 env data ===\r\n");
+        printf("T: %4li.%02liC ",  bme280_temperature/100, bme280_temperature%100);
+        printf("(%li.%02liC board)\r\n", bme280_temp_uncomp/100, bme280_temp_uncomp%100);
+        printf("P: %4lu.%02lumB\r\n", bme280_pressure/100, bme280_pressure%100);
+        printf("H: %4lu.%02lu%%\r\n", bme280_humidity/100, bme280_humidity%100);
+    }
+    else
+    {
+        printf("\r\n=== NO BME280 DETECTED ===\r\n");
     }
 }
 
