@@ -616,7 +616,7 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
         printf("NTP MODE - NO NETWORK\r\n");
         return SYNC_NTP_NO_NETWORK;
     }
-    else if(rtc_detected)
+    else if(rtc_valid)
     {
         printf("RTC MODE\r\n");
         utc_source = CLOCK_SOURCE_RTC;
@@ -823,7 +823,7 @@ void sync_state_eval_time(void)
             rtc_write_from_calendar(utc);
         }
     }
-    else if(rtc_detected)
+    else if(rtc_valid)
     {
         if(!rtc_is_calendar_sync(utc))
         {
