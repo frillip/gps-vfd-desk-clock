@@ -14,6 +14,7 @@
 #include <time.h>
 #include <xc.h>
 
+#include "bme280.h"
 #include "esp32.h"
 #include "freq.h"
 #include "gnss.h"
@@ -86,6 +87,11 @@ extern bool veml6040_detected;
 extern double veml_ambient_light;
 extern uint16_t veml_brightness;
 
+extern bool bme280_detected;
+extern int32_t bme280_temperature;
+extern uint32_t bme280_pressure;
+extern int32_t bme280_humidity;
+
 int main(void)
 {
     // initialize the device
@@ -110,6 +116,12 @@ int main(void)
         veml_ambient_light = VEML6040_get_lux();
         veml_brightness = VEML_calc_brightness(veml_ambient_light);
         display_brightness_set_target(veml_brightness);
+    }
+    
+    bme280_detected = BME280_init();
+    if(bme280_detected)
+    {
+        BME280_write_settings();
     }
         
     DELAY_microseconds(10000);
@@ -208,6 +220,7 @@ int main(void)
         {
             t100ms1 = -1;
             display_local_time(utc+1);
+            BME280_read_all();
             // Re-enable manual printing
             disable_manual_print = 0;
             
