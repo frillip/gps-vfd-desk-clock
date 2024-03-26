@@ -211,9 +211,16 @@ void display_brightness_update(void)
 }
 
 // Show a counter on the display
-void display_count(uint16_t count)
+void display_count(int16_t count)
 {
     uint16_t display_digits = 0;
+    bool count_negative = 0;
+    
+    if(count<0)
+    {
+        count_negative =  1;
+        count = (count ^ 0xFFFF) +1; // Make positive
+    }
     
     // Construct the counter in BCD
     display_digits |= (count / 1000)<<12;
@@ -227,14 +234,14 @@ void display_count(uint16_t count)
     // Toggle both the dots/dashes based on if the counter is even or odd
     if(!(count&0x01))
     {
-        driver_buffer |= START_SEPARATOR_DOT;
         driver_buffer |= MIDDLE_SEPARATOR_DOT;
     }
     else
     {
-        driver_buffer |= START_SEPARATOR_LINE;
         driver_buffer |= MIDDLE_SEPARATOR_LINE;
     }
+    
+    if(count_negative) driver_buffer |= START_SEPARATOR_LINE;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
