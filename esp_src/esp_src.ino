@@ -289,7 +289,7 @@ void loop()
   }
 
   wm.process();
-  //events();
+  events();
 
   if(t1ms0)
   {
