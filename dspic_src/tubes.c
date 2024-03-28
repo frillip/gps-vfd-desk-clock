@@ -632,40 +632,73 @@ bool isDST(const time_t *time)
     
     // Convert our time_t into a time struct
     disp_time = gmtime(time);
+    uint8_t next_sunday = 0;
     uint8_t last_sunday = 0;
     bool dst = 0;
 
-    // April to October is DST
-    if(disp_time->tm_mon > 2 && disp_time->tm_mon <9)
+    // Are we in the DST danger zone?
+    if(disp_time->tm_mon >= 2 && disp_time->tm_mon <= 9)
     {
-        dst = 1;
-    }
-    // If we're in March/October
-    if(disp_time->tm_mon == 2 || disp_time->tm_mon == 9)
-    {
-        // Calculate when the next Sunday is
-        last_sunday = disp_time->tm_mday + disp_time->tm_wday;
-        // Is that Sunday in the next month?
-        if(last_sunday > 31)
+        // If we're in April to September is always DST
+        if(disp_time->tm_mon > 2 && disp_time->tm_mon < 9)
         {
             dst = 1;
         }
-        else
+        
+        // Are we in either March or October?
+        else if(disp_time->tm_mon == 2 || disp_time->tm_mon == 9)
         {
-            // Calculate which mday the last sunday is on
-            while((last_sunday + 7) <= 31) last_sunday += 7;
-            // If we're past that mday, we're in DST
-            if(disp_time->tm_mday > last_sunday)
+            // Calculate next Sunday
+            next_sunday = disp_time->tm_mday + (7 - disp_time->tm_wday);
+            
+            // And then the last Sunday of the month
+            last_sunday = next_sunday;
+            if(last_sunday > 31) 
             {
-                dst = 1;
+                last_sunday -= 7;
             }
-            // If today is the day
-            if(disp_time->tm_mday == last_sunday)
+            else
             {
-                // Apply DST after 0100 UTC
-                if(disp_time->tm_hour >= 1)
+                while((last_sunday + 7) <= 31)
+                {
+                    last_sunday += 7;
+                }
+            }
+            
+            // If we are in March
+            if(disp_time->tm_mon == 2)
+            {
+                // Are we past the last Sunday?
+                if(disp_time->tm_mday > last_sunday)
                 {
                     dst = 1;
+                }
+                // Is this the last Sunday in the month?
+                else if(disp_time->tm_mday == last_sunday)
+                {
+                    // Apply DST if it's after 0100 UTC
+                    if(disp_time->tm_hour >= 1)
+                    {
+                        dst = 1;
+                    }
+                }
+            }
+            //If we are in October
+            else if(disp_time->tm_mon == 9)
+            {
+                // Are we still before the last Sunday?
+                if(disp_time->tm_mday < last_sunday)
+                {
+                    dst = 1;
+                }
+                // Is this the last Sunday in the month?
+                if(disp_time->tm_mday == last_sunday)
+                {
+                    // Apply DST if it's before 0100 UTC
+                    if(disp_time->tm_hour < 1)
+                    {
+                        dst = 1;
+                    }
                 }
             }
         }
