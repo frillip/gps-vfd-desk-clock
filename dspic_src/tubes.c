@@ -612,7 +612,7 @@ void display_local_time(time_t time)
     display = time;
     previous_display = display;
     display = display + tz_offset;
-    if(isDST(&display)) display = display+dst_offset; 
+    if(isDST(&time)) display = display+dst_offset; 
 
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
