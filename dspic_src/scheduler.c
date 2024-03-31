@@ -4,6 +4,7 @@ uint8_t t1ms=0;
 uint8_t t1ms0=0;
 uint8_t t1ms1=0;
 uint8_t t10ms=0;
+uint16_t t10ms_display=0;
 uint8_t t10ms0=0;
 uint8_t t10ms1=0;
 uint8_t t100ms=0;
@@ -44,6 +45,7 @@ void scheduler_align(uint32_t fosc)
     t1ms0=0;
     t1ms1=0;
     t10ms=0;
+    t10ms_display=0;
     t10ms0=0;
     t10ms1=0;
     t100ms=0;
@@ -65,6 +67,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _T2Interrupt (  )
     {
         t1ms=0;
         t10ms++;
+        t10ms_display++;
         t10ms0++;
         t10ms1++;
         if(t10ms==10)

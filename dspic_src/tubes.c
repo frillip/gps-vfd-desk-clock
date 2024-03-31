@@ -27,7 +27,11 @@ time_t previous_display;
 int32_t tz_offset = 0;
 int32_t dst_offset = 3600;
 
+extern time_t utc;
+
 extern int32_t bme280_temperature;
+
+extern uint16_t t10ms_display;
 
 #define SPI2_DMA_BUFFER_LENGTH 4
 uint16_t spi2_dma_buffer[SPI2_DMA_BUFFER_LENGTH];
@@ -349,6 +353,50 @@ void display_mmss(const time_t *time)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
+void display_ssmm(const time_t *time)
+{
+    uint16_t display_digits = 0;
+    struct tm *disp_time;
+    static uint8_t old_second = 0;;
+    
+    // Convert our time_t into a time struct
+    disp_time = gmtime(time);
+    
+    // Sometimes we end up with 100 counts due to various uncertainties
+    if(t10ms_display>=100 && disp_time->tm_sec == old_second)
+    {
+        // So bodge it
+        disp_time->tm_sec++;
+        t10ms_display = 0;
+    }
+    
+    // Store old second value for reference
+    old_second = disp_time->tm_sec;
+    
+    // Construct our BCD time
+    display_digits |= (disp_time->tm_sec / 10)<<12;
+    display_digits |= (disp_time->tm_sec % 10)<<8;
+    display_digits |= (t10ms_display / 10)<<4;
+    display_digits |= (t10ms_display % 10);
+
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Toggle the middle dots/dashes based on if the seconds are even or odd
+    // but only if we have PPS sync
+    if(!(disp_time->tm_sec%2) && pps_sync)
+    {
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+    }
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    // Show the left hand dot if button is pressed
+    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
 void display_menu(void)
 {
     uint64_t driver_buffer = 0ULL;
@@ -616,8 +664,9 @@ void display_local_time(time_t time)
 
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
-    else if(ui_state_current==UI_DISPLAY_STATE_DASHES) display_dashes();
+    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) display_ssmm(&utc);
     else if(ui_state_current==UI_DISPLAY_STATE_TEMP) display_temp(bme280_temperature);
+    else if(ui_state_current==UI_DISPLAY_STATE_DASHES) display_dashes();
     else if(ui_state_current==UI_DISPLAY_STATE_INIT) display_blank();
 }
 

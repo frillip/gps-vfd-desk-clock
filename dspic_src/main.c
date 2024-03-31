@@ -56,6 +56,8 @@ extern bool gnss_detected;
 extern time_t ntp;
 extern bool esp_detected;
 
+extern time_t display;
+
 extern int32_t tz_offset;
 extern int32_t dst_offset;
 
@@ -144,11 +146,18 @@ int main(void)
         if(t10ms0)
         {
             t10ms0=0;
+            
+            if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM)
+            {
+                display_ssmm(&utc);
+                display_latch();
+            }
+            
             if(sync_state_machine_run)
             {
                 sync_state_machine();
             }
-            
+
             // Run our UBX data task if we have GNSS module
             if(gnss_detected) 
             {

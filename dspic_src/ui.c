@@ -38,6 +38,7 @@ uint16_t ui_button_counter = 0;
 
 extern CLOCK_SOURCE utc_source;
 extern time_t utc;
+extern int32_t bme280_temperature;
 
 void ui_init(void)
 {
@@ -180,9 +181,10 @@ void ui_display_task(void)
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
-        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM && ui_switch_input_state()) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM && !ui_switch_input_state()) ui_state_current=UI_DISPLAY_STATE_TEMP;
-        else if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) ui_state_current=UI_DISPLAY_STATE_TEMP;
+        else if(ui_state_current==UI_DISPLAY_STATE_TEMP) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         update_display = 1;
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
@@ -233,6 +235,16 @@ void ui_update_display(void)
             display_mmss(&display);
             display_latch();
         }
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM)
+    {
+        display_ssmm(&utc);
+        display_latch();
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_TEMP)
+    {
+        display_temp(bme280_temperature);
+        display_latch();
     }
     if(ui_state_current==UI_DISPLAY_STATE_MENU)
     {
