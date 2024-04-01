@@ -6,7 +6,7 @@
 #include <Wire.h>
 #include <SparkFunBME280.h>
 #include <esp_task_wdt.h>
-#define WDT_TIMEOUT 10
+#define WDT_TIMEOUT 15
 
 WiFiManager wm;
 ESP32Time rtc;
@@ -166,7 +166,7 @@ void IRAM_ATTR gnss_pps_in(void)
 
 void setup()
 {
-  //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
   esp_task_wdt_add(NULL); //add current thread to WDT watch
   
   Serial.begin(DEBUG_BAUD);
@@ -206,6 +206,7 @@ void setup()
   WiFi.mode(WIFI_STA);
   wm.setConfigPortalBlocking(false);
   wm.setConfigPortalTimeout(900);
+  wm.setConnectTimeout(5);
   if(wm.autoConnect(wifi_hostname.c_str()))
   {
     Serial.println(WiFi.localIP());
