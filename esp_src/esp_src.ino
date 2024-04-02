@@ -282,7 +282,12 @@ void loop()
   if(Serial.available())
   {
     char c = Serial.read();
-    if(c==0x45) ESP.restart();
+    if(c==0x45) ESP.restart(); // Reset ESP on 'E'
+    else if(c==0x57) // on 'W'...
+    {
+      wm.resetSettings(); // Delete WiFi credentials
+      ESP.restart(); // And reset
+    }
     pic_uart_tx_userdata(c);
   }
 
