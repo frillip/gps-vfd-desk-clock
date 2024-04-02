@@ -178,6 +178,7 @@ int main(void)
             {
                 pic_pps_print_stats();
                 print_ubx_data();
+                print_esp_data();
                 print_veml_data();
                 print_bme280_data();
                 print_sync_state_machine();

@@ -511,3 +511,18 @@ void esp_tx_user_stop(void)
     char esp_tx_buffer[3] = { 0x80, 0x70, 0x83 };
     esp_tx(esp_tx_buffer,3);
 }
+
+void print_esp_data(void)
+{
+    if(esp_detected)
+    {
+        printf("\r\n=== ESP32 ===\r\n");
+        printf("UTC: ");
+        ui_print_iso8601_string(ntp);
+        printf("\r\nWiFi: %01u Sync: %01u\r\n", esp_wifi_status, esp_ntp_status);
+    }
+    else
+    {
+        printf("\r\n=== NO ESP32 DETECTED ===\r\n");
+    }
+}
