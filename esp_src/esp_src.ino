@@ -157,6 +157,7 @@ void fe_build_ntp_string(void)
 #define GNSS_TIMEOUT_LIMIT 300 // in 0.01s counts
 uint32_t gnss_pps_micros = 0;
 uint16_t gnss_timeout = 0;
+uint32_t esp_micros = 0;
 
 void IRAM_ATTR gnss_pps_in(void)
 {
@@ -240,8 +241,6 @@ void setup()
   timerAlarmWrite(pps_timer, 1000000, true);
   timerAlarmEnable(pps_timer);
 }
-
-uint32_t esp_micros = 0;
 
 void loop()
 {
