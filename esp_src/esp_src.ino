@@ -3,8 +3,10 @@
 #include <HardwareSerial.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
+/*
 #include <Wire.h>
 #include <SparkFunBME280.h>
+*/
 #include <esp_task_wdt.h>
 #define WDT_TIMEOUT 15
 
