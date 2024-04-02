@@ -362,6 +362,11 @@ void sync_state_machine(void)
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
+            if(!esp_detected || !esp_ntp_valid)
+            {
+                printf("LOST NTP SYNC\r\n");
+                sync_state_machine_set_state(sync_select_best_clock());
+            }
             break;
             
         case SYNC_NTP_ADJUST:
@@ -597,11 +602,13 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
         sync_set_clock_source(CLOCK_SOURCE_NTP);
         return SYNC_NTP;
     }
+    /* Not actually used yet
     else if(esp_ntp_detected)
     {
         printf("NTP MODE - NO NETWORK\r\n");
         return SYNC_NTP_NO_NETWORK;
     }
+    */
     else if(rtc_valid)
     {
         printf("RTC MODE\r\n");

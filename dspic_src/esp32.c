@@ -346,6 +346,10 @@ void esp_process_time(void)
         ntp = esp_ntp_time;
         esp = ntp;
     }
+    else
+    {
+        esp_ntp_valid = 0;
+    }
     memset(esp_time_buffer, 0, ESP_TIME_LENGTH);
     esp_time_waiting = 0;
 }
