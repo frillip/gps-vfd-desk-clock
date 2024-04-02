@@ -154,6 +154,17 @@ void fe_build_ntp_string(void)
   
 }
 
+uint32_t wifi_disconnect_millis = 0;
+uint32_t wifi_disconnect_last_millis = 0;
+#define WIFI_RECONNECT_INTERVAL_MILLIS 30000
+
+void reconnect_wifi(void)
+{
+  Serial.println("Reconnecting to WiFi...");
+  WiFi.disconnect();
+  WiFi.reconnect();
+}
+
 #define GNSS_TIMEOUT_LIMIT 300 // in 0.01s counts
 uint32_t gnss_pps_micros = 0;
 uint16_t gnss_timeout = 0;
@@ -297,6 +308,16 @@ void loop()
 
   wm.process();
   events();
+
+  wifi_disconnect_millis = millis();
+  if(WiFi.status() != WL_CONNECTED)
+  {
+    if(wifi_disconnect_millis - wifi_disconnect_last_millis > WIFI_RECONNECT_INTERVAL_MILLIS)
+    {
+      wifi_disconnect_last_millis = wifi_disconnect_millis;
+      reconnect_wifi();
+    }
+  }
 
   if(t1ms0)
   {
