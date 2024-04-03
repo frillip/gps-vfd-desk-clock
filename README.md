@@ -62,6 +62,26 @@ As the clock runs, it counts the number of clock cycles between each GPS PPS eve
 
 By default, the clock maintains an accuracy of within around 25us of UTC.
 
+# Serial Commands
+
+It is possible to send commands over the ESP UART to perform some actions, or print some debug information that may or may not be useful:
+
+| Command | Description |
+| --- | --- |
+| `\r` | Print debug information to the terminal |
+| `R` | Reset the dsPIC |
+| `E` | Reset the ESP |
+| `W` | Clear saved WiFi credentials and reset the ESP |
+| `r` | If GNSS module is present, manually resync PPS |
+| `B` | Increase display brightness |
+| `b` | Decrease display brightness |
+| `M` | Maximum display brightness |
+| `m` | Minimum display brightness |
+| `O` | Set display to overdrive brightness |
+| `o` | Turn display off entirely |
+| `a` | Automatic brightness |
+
+
 # Improvements
 
 We could do a lot of things to improve this, like watching the trend of slipped clock cycles to get better short term accuracy, rather than just synchronising every 2000 slipped cycles. We could also look at the SHT30 sensor to temperature compensate. However, the single biggest improvement would be to increase the quality of the crystal on the board, either to an OCXO or TCXO or similar. With some additional circuitry we could also employ a VCXO/VCTCXO or even a DCTCXO. However the 'real' limit of displayed accuracy here is the persistent afterglow of the VFD tubes, hence why [really fancy clocks use Nixie tubes](https://www.daliborfarny.com/project/calibration-display-for-nasa/).
