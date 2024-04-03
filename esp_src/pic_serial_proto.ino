@@ -126,7 +126,8 @@ void pic_uart_tx_rtcdata()
   rtc_data_tx.fields.type = PIC_UART_TYPE_TX;
   rtc_data_tx.fields.datatype = PIC_UART_DATATYPE_RTCDATA;
 
-  rtc_data_tx.fields.rtc = rtc.getEpoch();
+  //rtc_data_tx.fields.rtc = rtc.getEpoch();
+  rtc_data_tx.fields.rtc = 0; 
 
   size_t bytesSent = UARTPIC.write(rtc_data_tx.raw, sizeof(rtc_data_tx.raw));
 }

@@ -1,17 +1,15 @@
-#include <ESP32Time.h>
+//#include <ESP32Time.h>
 #include <ezTime.h>
 #include <HardwareSerial.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
-/*
-#include <Wire.h>
-#include <SparkFunBME280.h>
-*/
+//#include <Wire.h>
+//#include <SparkFunBME280.h>
 #include <esp_task_wdt.h>
 #define WDT_TIMEOUT 15
 
 WiFiManager wm;
-ESP32Time rtc;
+//ESP32Time rtc;
 
 #define I2C_SDA_PIN 21
 #define I2C_SCL_PIN 22
@@ -21,9 +19,9 @@ bool env_sensor_detected = 0;
 float env_temp_f = 0;
 float env_pres_f = 0;
 float env_hum_f = 0;
-/*#define ENV_SENSOR_ID 0x76
-BME280 env_sensor;
-*/
+#define ENV_SENSOR_ID 0x76
+//BME280 env_sensor;
+
 
 bool light_sensor_detected = 0;
 bool light_sensor_gain = 0;         // x1
@@ -32,10 +30,8 @@ uint8_t light_sensor_int_time = 2;
 unsigned int light_sensor_int_time_ms;
 bool light_sensor_unsaturated;
 double light_sensor_lux = 0;
-/*
 #define LIGHT_SENSOR_ID 0x39
-SFE_TSL2561 light_sensor;
-*/
+//SFE_TSL2561 light_sensor;
 
 #define NTP_SERVER "rubidium.darksky.io"
 #define NTP_INTERVAL 1800
@@ -285,8 +281,8 @@ void loop()
     /*
     Serial.print("NTP: ");
     Serial.println(UTC.dateTime("Y-m-d~TH:i:s.v"));
-    */
     if(rtc.getEpoch()!=UTC.now()) rtc.setTime(UTC.now());
+    */
   }
 
   if(Serial.available())
@@ -309,9 +305,9 @@ void loop()
   wm.process();
   events();
 
-  wifi_disconnect_millis = millis();
   if(WiFi.status() != WL_CONNECTED)
   {
+    wifi_disconnect_millis = millis();
     if(wifi_disconnect_millis - wifi_disconnect_last_millis > WIFI_RECONNECT_INTERVAL_MILLIS)
     {
       wifi_disconnect_last_millis = wifi_disconnect_millis;
@@ -363,12 +359,12 @@ void loop()
         light_sensor_unsaturated = light_sensor.getLux(light_sensor_gain,light_sensor_int_time_ms,light_sensor_data0,light_sensor_data1,light_sensor_lux);
       }
     }*/
-    pic_uart_tx_sensordata();
+    //pic_uart_tx_sensordata();
   }
   if(t100ms1>=2)
   {
     t100ms1=-8;
-    pic_uart_tx_displaydata();
+    //pic_uart_tx_displaydata();
   }
   if(t100ms2>=1)
   {
@@ -386,7 +382,7 @@ void loop()
   if(t100ms3>=87)
   {
     t100ms3=-13;
-    pic_uart_tx_rtcdata();
+    //pic_uart_tx_rtcdata();
   }
   if(t1s0)
   {
