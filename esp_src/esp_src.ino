@@ -370,7 +370,7 @@ void loop()
   {
     t100ms2=-9;
     pic_uart_tx_netdata();
-    if(gnss_detected)
+    if(gnss_detected && timeStatus() == timeSet)
     {
       int32_t gnss_offset_ms = gnss_pps_offset_ms;
       int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
