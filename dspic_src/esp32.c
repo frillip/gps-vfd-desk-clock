@@ -483,7 +483,7 @@ void esp_tx_time(void)
     
     esp_tx_buffer[8] = tz_offset / 900;
     
-    esp_tx_buffer[9] = ((uint8_t)dst_active << 8) | (dst_offset / 900);
+    esp_tx_buffer[9] = ((uint8_t)dst_active << 7) | (dst_offset / 900);
     
     esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_TIME_LENGTH);  
 }
@@ -541,9 +541,9 @@ void esp_tx_offset(void)
     
     memcpy(esp_tx_buffer+16, &accumulation_delta, 4);
     
-    memcpy(esp_tx_buffer+16, &total_oc_seq_count, 4);
+    memcpy(esp_tx_buffer+20, &total_oc_seq_count, 4);
     
-    memcpy(esp_tx_buffer+16, &sync_events, 4);
+    memcpy(esp_tx_buffer+24, &sync_events, 4);
     
     esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_OFFSET_LENGTH);
 }
