@@ -58,7 +58,11 @@ bool gnss_fix_valid = 0;
 #define PIC_BAUD    115200
 #define PIC_RXD     13
 #define PIC_TXD     12
+#define PIC_PPS_PIN 27
 HardwareSerial UARTPIC(PIC_UART);  //using UART2
+
+bool pic_detected = 0;
+uint16_t pic_pps_offset_ms = 0;
 
 #define PPS_OUT_PIN 5
 #define STATUS_LED_PIN 23
@@ -174,6 +178,18 @@ void IRAM_ATTR gnss_pps_in(void)
   gnss_timeout = 0;
 }
 
+#define PIC_TIMEOUT_LIMIT 300 // in 0.01s counts
+uint32_t pic_pps_micros = 0;
+uint16_t pic_timeout = 0;
+
+void IRAM_ATTR pic_pps_in(void)
+{
+  if(!pic_detected) pic_detected = 1;
+  pic_pps_offset_ms = UTC.ms();
+  pic_pps_micros = micros();
+  pic_timeout = 0;
+}
+
 void setup()
 {
   esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
@@ -242,6 +258,9 @@ void setup()
 
   pinMode(GNSS_PPS_PIN,INPUT);
   attachInterrupt(GNSS_PPS_PIN, gnss_pps_in, RISING);
+
+  pinMode(PIC_PPS_PIN,INPUT);
+  attachInterrupt(PIC_PPS_PIN, pic_pps_in, RISING);
 
   pps_timer = timerBegin(PPS_HW_TIMER, 80, true);
   timerAttachInterrupt(pps_timer, &pps_out, true);
@@ -347,6 +366,17 @@ void loop()
         gnss_detected = 0;
       }
     }
+    if(pic_detected)
+    {
+      if(pic_timeout<PIC_TIMEOUT_LIMIT)
+      {
+        pic_timeout++;
+      }
+      else
+      {
+        pic_detected = 0;
+      }
+    }
   }
   if(t100ms0>=1)
   {
@@ -374,8 +404,16 @@ void loop()
     {
       int32_t gnss_offset_ms = gnss_pps_offset_ms;
       int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
-      Serial.print("NTP offset: ");
+      Serial.print("GNSS offset: ");
       Serial.print((float)(gnss_offset_micros)/1000);
+      Serial.println("ms");
+    }
+    if(pic_detected && timeStatus() == timeSet)
+    {
+      int32_t pic_offset_ms = pic_pps_offset_ms;
+      int32_t pic_offset_micros = esp_micros - pic_pps_micros;
+      Serial.print("PIC offset: ");
+      Serial.print((float)(pic_offset_micros)/1000);
       Serial.println("ms");
     }
   }
