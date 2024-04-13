@@ -71,6 +71,8 @@ CLOCK_SOURCE utc_source = CLOCK_SOURCE_NONE;
 
 bool no_clock_blink = 0;
 
+extern uint8_t esp_data_task_cycle;
+
 void sync_state_machine(void)
 {
     if(ic_event && ubx_gnss_time_valid())
@@ -82,14 +84,10 @@ void sync_state_machine(void)
     if(oc_event)
     {
         ClrWdt();
-        if(esp_detected)
-        {
-            //esp_tx_time();
-        }
         sync_state_eval_time_counter = EVAL_TIME_DELAY_INTERVAL;
         state_new_oc = 1;
+        esp_data_task_cycle = 0;
         pic_pps_calculate_oc_stats();
-        esp_tx_offset();
         ui_buzzer_interval_beep();
         oc_event=0;
     }

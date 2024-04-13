@@ -8,11 +8,11 @@
 0x83 0x65 0x80 - user 		string
 
 
-0x83 0x70 0x00 - time		uint8_t struct(wifi_stat,ntp_stat,pps, sched) time_t utc uint16_t millis int8_t offset
+0x83 0x70 0x00 - time		uint8_t utc_source time_t utc int8_t tz_offset int8_t ((dst_active << 8) | dst_offset)
 0x83 0x70 0x10 - gps		uint8_t struct(ubx_nav_status_gpsfix,ubx_nav_status_gpsfixok,ubx_nav_timeutc_valid) int32_t lat_e-7 int32_t lon_e-7
-0x83 0x70 0x20 - sync		uint8_t state_machine_state
+0x83 0x70 0x20 - sync		uint8_t state_machine_state, uint32_t fosc_freq, int32_t oc_offset, int32_t accumulated_clocks, time_t accumulation_delta, uint32_t total_seq_count, uint32_t sync_events
 0x83 0x70 0x30 - net		uint8_t struct(reset<<7)
-0x83 0x70 0x40 - rtc		time_t utc
-0x83 0x70 0x50 - sensor		int16_t temp*100 uint16_t mb*10 uint16_t %*10 uint16_t lux*10
-0x83 0x65 0x60 - display	uint16_t brightness_set uint8_t display_state uint8_t menu_state
+0x83 0x70 0x40 - rtc		uint8_t struct(detected,valid) time_t utc
+0x83 0x70 0x50 - sensor		uint16_t lux*10 int16_t temp*100 uint16_t mb*10 uint16_t 100/51200 
+0x83 0x65 0x60 - display	uint8_t struct(update_pending,brightness_manual,oc_running,pwr_stat,switch_state,button_state) uint16_t brightness uint16_t brightness_target uint8_t display_state uint8_t menu_state
 0x83 0x70 0x80 - user		string

@@ -24,22 +24,13 @@ extern "C" {
 #include "ui.h"
 #include "ublox_ubx.h"
     
+#include "../common/enums.h"
+    
 #define GNSS_STRING_BUFFER_SIZE 100
 #define GNSS_CHECK_BUFFER_SIZE 6
     
 #define GNSS_DETECT_LIMIT 300
 #define GNSS_FIX_LIMIT 3000
-
-typedef enum
-{
-    GNSS_NONE,
-    GNSS_UBX_TIM_TM2,
-    GNSS_UBX_NAV_TIMEUTC,
-    GNSS_UBX_NAV_CLOCK,
-    GNSS_UBX_NAV_STATUS,
-    GNSS_UBX_NAV_POSLLH,
-    GNSS_GNRMC,
-} GNSS_MESSAGE_TYPE;
 
 void gnss_init(void);
 

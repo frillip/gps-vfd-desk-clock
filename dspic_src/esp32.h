@@ -18,6 +18,7 @@ extern "C" {
 #include <stdbool.h>
 #include <time.h>
 #include "gnss_pps.h"
+#include "mcc_generated_files/pin_manager.h"
 #include "mcc_generated_files/uart2.h"
 #include "mcc_generated_files/uart1.h"
 #include "mcc_generated_files/system.h"
@@ -26,30 +27,8 @@ extern "C" {
 #include "sync_state.h"
 #include "ui.h"
 #include "ublox_ubx.h"
-
-#define ESP_UART_HEADER 0x83
-#define ESP_UART_TYPE_TX 0x65
-#define ESP_UART_TYPE_RX 0x70
-#define ESP_UART_DATATYPE_TIMEDATA 0x00
-#define ESP_UART_DATATYPE_GNSSDATA 0x10
-#define ESP_UART_DATATYPE_OFFSETDATA 0x20
-#define ESP_UART_DATATYPE_NETDATA 0x30
-#define ESP_UART_DATATYPE_RTCDATA 0x40
-#define ESP_UART_DATATYPE_SENSORDATA 0x50
-#define ESP_UART_DATATYPE_DISPLAYDATA 0x60
-#define ESP_UART_DATATYPE_MISCDATA 0x70
-#define ESP_UART_DATATYPE_USERDATA 0x80
-
-#define ESP_STRING_BUFFER_SIZE 100
-#define ESP_CHECK_BUFFER_SIZE 3
-#define ESP_TIME_LENGTH 11
-#define ESP_GNSS_LENGTH 12
-#define ESP_OFFSET_LENGTH 20
-#define ESP_NET_LENGTH 11
-#define ESP_RTC_LENGTH 7
-#define ESP_SENSOR_LENGTH 11
-#define ESP_DISPLAY_LENGTH 7
-#define ESP_USER_LENGTH 4
+#include "../common/enums.h"
+#include "../common/serial_proto.h"
     
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500
@@ -58,19 +37,6 @@ extern "C" {
 #define ESP_NTP_OFFSET_MIN_MS -30
     
 #define esp_pps_input() (_RB15)
-    
-typedef enum
-{
-    ESP_NONE,
-    ESP_TIME,
-    ESP_GNSS,
-    ESP_OFFSET,
-    ESP_NET,
-    ESP_RTC,
-    ESP_SENSOR,
-    ESP_DISPLAY,
-    ESP_USER,
-} ESP_MESSAGE_TYPE;
     
 void esp_ntp_init(void);
 void esp_rx(void);
@@ -98,7 +64,7 @@ void esp_tx(void *buffer, uint16_t len);
 void esp_tx_time(void);
 void esp_tx_gnss(void);
 void esp_tx_offset(void);
-void exp_tx_net(void);
+void esp_tx_net(void);
 void esp_tx_rtc(void);
 void esp_tx_sensor(void);
 void esp_tx_display(void);

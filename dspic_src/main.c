@@ -172,7 +172,6 @@ int main(void)
             if(esp_detected)
             {
                 esp_data_task();
-                if(esp_gnss_data_updated) esp_tx_gnss();
             }
             
             display_brightness_update();

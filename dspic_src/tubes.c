@@ -26,6 +26,7 @@ time_t display;
 time_t previous_display;
 int32_t tz_offset = 0;
 int32_t dst_offset = 3600;
+bool dst_active = 0;
 
 extern time_t utc;
 
@@ -752,6 +753,8 @@ bool isDST(const time_t *time)
             }
         }
     }
+    
+    dst_active = dst;
     // Return DST status
     return dst;
 }
