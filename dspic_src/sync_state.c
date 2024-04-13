@@ -99,18 +99,22 @@ void sync_state_machine(void)
         if(sync_state_eval_time_counter==0)
         {
             sync_state_eval_time();
+#ifdef DEBUG_MESSAGES
             if(esp_ntp_valid)
             {
                 esp_print_offset();
             }
+#endif
         }
     }
     switch(clock_sync_state)
     {
         case SYNC_NOSYNC_MANUAL:
             recalculate_fosc_freq();
+#ifdef DEBUG_MESSAGES
             printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
             printf("CLK D: %li CLK T: %li\r\n\r\n",accumulated_clocks, accumulation_delta);
+#endif
             pic_pps_reset_sync();
             reset_pps_stats();
             sync_state_machine_set_state(SYNC_NOSYNC);
@@ -119,7 +123,9 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_GNSS:
             recalculate_fosc_freq();
+#ifdef DEBUG_MESSAGES
             printf("\r\nGNSS sync loss\r\n");
+#endif
             pic_pps_reset_sync();
             reset_pps_stats();
             sync_state_machine_set_state(SYNC_NOSYNC);
@@ -128,8 +134,10 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_FREQ_ONLY:
             recalculate_fosc_freq_short();
+#ifdef DEBUG_MESSAGES
             printf("\r\nLarge short term freq deviation\r\n");
             printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+#endif
             sync_state_print_stats();
             pic_pps_resync_oc_only();
             reset_pps_stats();
@@ -139,8 +147,10 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_FREQ:
             recalculate_fosc_freq_short();
+#ifdef DEBUG_MESSAGES
             printf("\r\nLarge short term freq deviation\r\n");
             printf("New Fosc freq: %luHz\r\n", fosc_freq);
+#endif
             sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
@@ -149,11 +159,15 @@ void sync_state_machine(void)
             break;
 
         case SYNC_NOSYNC_MAJOR_OC:
+#ifdef DEBUG_MESSAGES
             printf("\r\nOC unsynchronised... resetting\r\n");
+#endif
             if((accumulation_delta > PPS_SEQ_COUNT_MIN) && scheduler_sync)
             {
                 recalculate_fosc_freq();
+#ifdef DEBUG_MESSAGES
                 printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+#endif
             }
             sync_state_print_stats();
             pic_pps_reset_sync();
@@ -164,8 +178,10 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_MAJOR:
             recalculate_fosc_freq();
+#ifdef DEBUG_MESSAGES
             printf("\r\nMajor frequency excursion...\r\n");
             printf("New Fosc freq: %luHz\r\n", fosc_freq);
+#endif
             sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
@@ -174,7 +190,9 @@ void sync_state_machine(void)
             break;
         
         case SYNC_NOSYNC_MINOR_OC:
+#ifdef DEBUG_MESSAGES
             printf("\r\nOC unsynchronised... resetting\r\n");
+#endif
             sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
@@ -184,7 +202,9 @@ void sync_state_machine(void)
         
         case SYNC_NOSYNC_MINOR:
             recalculate_fosc_freq();
+#ifdef DEBUG_MESSAGES
             printf("\r\nNew Fosc freq: %luHz\r\n", fosc_freq);
+#endif
             sync_state_print_stats();
             pic_pps_reset_sync();
             reset_pps_stats();
@@ -344,7 +364,9 @@ void sync_state_machine(void)
                 while(esp_time_offset_adjust>500) esp_time_offset_adjust -= 1000;
                 if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
                 {
+#ifdef DEBUG_MESSAGES
                     printf("Reset NTP sync\r\n");
+#endif
                     pic_pps_reset_sync_ntp();
                     if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
                     pic_pps_resync_ntp(esp_time_offset_adjust);
@@ -357,14 +379,18 @@ void sync_state_machine(void)
             {
                 if(ubx_gnss_time_valid())
                 {
+#ifdef DEBUG_MESSAGES
                     printf("GNSS FIX ACQUIRED\r\n");
+#endif
                     sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
             if(!esp_detected || !esp_ntp_valid)
             {
+#ifdef DEBUG_MESSAGES
                 printf("LOST NTP SYNC\r\n");
+#endif
                 sync_state_machine_set_state(sync_select_best_clock());
             }
             break;
@@ -386,7 +412,9 @@ void sync_state_machine(void)
             {
                 if(ubx_gnss_time_valid())
                 {
+#ifdef DEBUG_MESSAGES
                     printf("GNSS FIX ACQUIRED\r\n");
+#endif
                     sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
@@ -394,7 +422,9 @@ void sync_state_machine(void)
             }
             if(esp_ntp_valid)
             {
+#ifdef DEBUG_MESSAGES
                 printf("NTP SYNC ACQUIRED\r\n");
+#endif
                 sync_set_clock_source(CLOCK_SOURCE_NTP);
                 sync_state_machine_set_state(SYNC_NTP);
             }
@@ -405,7 +435,9 @@ void sync_state_machine(void)
             {
                 if(ubx_gnss_time_valid())
                 {
+#ifdef DEBUG_MESSAGES
                     printf("GNSS FIX ACQUIRED\r\n");
+#endif
                     sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
@@ -415,7 +447,9 @@ void sync_state_machine(void)
             {
                 if(esp_ntp_valid)
                 {
+#ifdef DEBUG_MESSAGES
                     printf("NTP SYNC ACQUIRED\r\n");
+#endif
                     sync_set_clock_source(CLOCK_SOURCE_NTP);
                     sync_state_machine_set_state(SYNC_NTP);
                     break;
@@ -426,7 +460,9 @@ void sync_state_machine(void)
         case SYNC_NO_CLOCK:
             if(state_new_oc)
             {
+#ifdef DEBUG_MESSAGES
                 printf("NO CLOCK!\r\n");
+#endif
                 if(no_clock_blink)
                 {
                     ui_set_display_dashes();
@@ -442,7 +478,9 @@ void sync_state_machine(void)
             {
                 if(ubx_gnss_time_valid())
                 {
+#ifdef DEBUG_MESSAGES
                     printf("GNSS FIX ACQUIRED\r\n");
+#endif
                     sync_set_clock_source(CLOCK_SOURCE_GNSS);
                     sync_state_machine_set_state(SYNC_STARTUP);
                     break;
@@ -452,7 +490,9 @@ void sync_state_machine(void)
             {
                 if(esp_ntp_valid)
                 {
+#ifdef DEBUG_MESSAGES
                     printf("NTP SYNC ACQUIRED\r\n");
+#endif
                     sync_set_clock_source(CLOCK_SOURCE_NTP);
                     sync_state_machine_set_state(SYNC_NTP);
                     break;
@@ -466,14 +506,17 @@ void sync_state_machine(void)
                 sync_state_detect_timeout++;
                 if(ubx_gnss_time_valid())
                 {
+#ifdef DEBUG_MESSAGES
                     printf("GNSS FIX ACQUIRED\r\n");
+#endif
                     sync_state_machine_set_state(SYNC_STARTUP);
                 }
             }
             else
             {
+#ifdef DEBUG_MESSAGES
                 printf("NO GNSS FIX... ");
-                
+#endif
             }
             break;
         
@@ -488,13 +531,17 @@ void sync_state_machine(void)
                 
                 if(gnss_detected)
                 {
+#ifdef DEBUG_MESSAGES
                     printf("GNSS DETECTED\r\n");
+#endif
                     sync_state_machine_set_state(sync_select_best_clock());
                 }
             }
             else
             {
+#ifdef DEBUG_MESSAGES
                 printf("NO GNSS DETECTED... ");
+#endif
                 sync_state_machine_set_state(sync_select_best_clock());
             }
             break;
@@ -515,10 +562,17 @@ void sync_state_machine(void)
             }
             else
             {
-                if(esp_detected) printf("ESP DETECTED BUT NO NTP SYNC\r\n");
+                if(esp_detected) 
+                {
+#ifdef DEBUG_MESSAGES
+                    printf("ESP DETECTED BUT NO NTP SYNC\r\n");
+#endif
+                }
                 else
                 {
+#ifdef DEBUG_MESSAGES
                     printf("NO ESP DETECTED\r\n");
+#endif
                     esp_stop_sync_timer();
                 }
                 sync_state_machine_set_state(SYNC_GNSS_DETECT);
@@ -534,7 +588,9 @@ void sync_state_machine(void)
                 {
                     if(rtc_valid)
                     {
+#ifdef DEBUG_MESSAGES
                         printf("RTC DETECTED\r\n");
+#endif
                         sync_set_clock_source(CLOCK_SOURCE_RTC);
                     }
                     sync_state_machine_set_state(SYNC_NTP_DETECT);
@@ -542,7 +598,9 @@ void sync_state_machine(void)
             }
             else
             {
+#ifdef DEBUG_MESSAGES
                 printf("NO RTC DETECTED\r\n");
+#endif
                 sync_state_machine_set_state(SYNC_NTP_DETECT);
             }
             break;
@@ -569,9 +627,11 @@ void sync_state_machine_set_state(CLOCK_SYNC_STATUS state)
     clock_sync_state_last = clock_sync_state;
     clock_sync_state = state;
     sync_state_detect_timeout = 0;
+#ifdef DEBUG_MESSAGES
     printf("\r\n");
     sync_state_print(clock_sync_state);
     printf("\r\n\r\n");
+#endif
 }
 
 void print_sync_state_machine(void)
@@ -592,13 +652,17 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
 {
     if(ubx_gnss_time_valid())
     {
+#ifdef DEBUG_MESSAGES
         printf("GNSS MODE\r\n");
+#endif
         sync_set_clock_source(CLOCK_SOURCE_GNSS);
         return SYNC_STARTUP;
     }
     if(esp_ntp_valid)
     {
+#ifdef DEBUG_MESSAGES
         printf("NTP MODE\r\n");
+#endif
         sync_set_clock_source(CLOCK_SOURCE_NTP);
         return SYNC_NTP;
     }
@@ -611,13 +675,17 @@ CLOCK_SYNC_STATUS sync_select_best_clock(void)
     */
     else if(rtc_valid)
     {
+#ifdef DEBUG_MESSAGES
         printf("RTC MODE\r\n");
+#endif
         sync_set_clock_source(CLOCK_SOURCE_RTC);
         return SYNC_RTC;
     }
     else
     {
+#ifdef DEBUG_MESSAGES
         printf("NO CLOCK DETECTED\r\n");
+#endif
         sync_set_clock_source(CLOCK_SOURCE_NONE);
         return SYNC_NO_CLOCK;
     }
@@ -823,8 +891,9 @@ void sync_state_eval_time(void)
             rtc_set_calendar();
         }
     }
-    
+#ifdef DEBUG_MESSAGES    
     print_clocks();
+#endif
 }
 
 void print_clocks(void)
@@ -860,9 +929,11 @@ void print_clocks(void)
 
 void sync_set_clock_source(CLOCK_SOURCE source)
 {
+#ifdef DEBUG_MESSAGES
     printf("Switching to ");
     print_clock_source(source);
     printf("\r\n");
+#endif
     switch(source)
     {
         case CLOCK_SOURCE_NONE:

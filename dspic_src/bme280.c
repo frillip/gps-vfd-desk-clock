@@ -271,11 +271,7 @@ bool BME280_read_cal(void)
     bool res = 0;
     res = BME280_read_cal_00();
     if(res) res = BME280_read_cal_26();
-    if(res)
-    {
-        printf("read BME cal data\r\n");
-        return 1;
-    }
+    if(res) return 1;
     return 0;
 }
 

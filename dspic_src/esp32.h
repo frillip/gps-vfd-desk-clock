@@ -84,7 +84,7 @@ void esp_stop_sync_timer(void);
 void esp_reset_sync_timer(void);
 void esp_store_sync_timer(void);
 void esp_ioc_handler(void);
-void esp_print_offset(void);
+void print_esp_offset(void);
 
 void esp_process_time(void);
 void esp_process_net(void);

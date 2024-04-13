@@ -197,10 +197,12 @@ GNSS_MESSAGE_TYPE gnss_check_incoming(void)
 
 void gnss_set_calendar(void)
 {
+#ifdef DEBUG_MESSAGES
     printf("GNSS calendar sync\r\nTime is now: ");
     ui_print_iso8601_string(gnss);
     printf("\r\n");
-    
+#endif
+
     utc = gnss;
     if(!power_on_time) power_on_time = utc - total_oc_seq_count;
     gnss_calendar_sync = 1;

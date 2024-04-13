@@ -30,6 +30,8 @@
 #include "ui.h"
 #include "veml6040.h"
 
+//#define DEBUG_MESSAGES
+
 extern bool print_data;
 extern bool disable_manual_print;
 extern uint8_t resync_interval;
@@ -107,10 +109,12 @@ int main(void)
     INTERRUPT_GlobalEnable();
     SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
 
+#ifdef DEBUG_MESSAGES
     printf("\033[2J\033[1;1H"); // Clear the terminal window
     printf("\r\nHELLO!\r\n\r\n"); // And say hello!
     double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
     printf("Running @ 80MHz on %.06fMHz XTAL\r\n", fosc_freq_f);
+#endif
     
     veml6040_detected = VEML6040_init();
     if(veml6040_detected)
@@ -176,6 +180,7 @@ int main(void)
             // Print some statistics if required
             if(print_data)
             {
+                print_clocks();
                 pic_pps_print_stats();
                 print_ubx_data();
                 print_esp_data();

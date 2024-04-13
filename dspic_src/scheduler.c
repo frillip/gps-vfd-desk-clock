@@ -55,7 +55,9 @@ void scheduler_align(uint32_t fosc)
     t1s0=0;
     t1s1=0; // Reset the scheduler variables
     scheduler_sync = 1; // Say that we're done
+#ifdef DEBUG_MESSAGES
     print_data = 1;
+#endif
 }
 
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _T2Interrupt (  )

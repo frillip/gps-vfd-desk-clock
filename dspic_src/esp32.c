@@ -228,9 +228,11 @@ bool ntp_is_calendar_sync(time_t utc)
 
 void esp_ntp_set_calendar(void)
 {
+#ifdef DEBUG_MESSAGES
     printf("NTP calendar sync\r\nTime is now: ");
     ui_print_iso8601_string(ntp);
     printf("\r\n");
+#endif
     
     utc = ntp;
     if(!power_on_time) power_on_time = utc - total_oc_seq_count;
@@ -294,7 +296,7 @@ void esp_ioc_handler(void)
     }
 }
 
-void esp_print_offset(void)
+void print_esp_offset(void)
 {
     if(esp_time_waiting) esp_process_time();
     int32_t esp_time_offset_display = esp_time_offset;
@@ -524,6 +526,7 @@ void print_esp_data(void)
         printf("UTC: ");
         ui_print_iso8601_string(ntp);
         printf("\r\nWiFi: %01u Sync: %01u\r\n", esp_wifi_status, esp_ntp_status);
+        print_esp_offset();
     }
     else
     {
