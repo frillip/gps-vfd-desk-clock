@@ -10,7 +10,7 @@ ESP_MESSAGE_TYPE esp_incoming = ESP_NONE;
 ESP_MESSAGE_TYPE esp_waiting = ESP_NONE;
 uint8_t esp_bytes_remaining = 0;
 
-ESP_DATA_TIME esp_time_buffer;
+SERIAL_PROTO_DATA_ESP_TIME esp_time_buffer;
 bool esp_time_waiting = 0;
 char esp_time_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_TIMEDATA};
 bool esp_wifi_status = 0;
@@ -21,7 +21,7 @@ time_t esp_ntp_time = 0;
 uint16_t esp_ntp_milliseconds = 0;
 int8_t esp_ntp_offset = 0;
 
-ESP_DATA_NET esp_net_buffer;
+SERIAL_PROTO_DATA_ESP_NET esp_net_buffer;
 bool esp_net_waiting = 0;
 char esp_net_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_NETDATA};
 //bool esp_wifi_status = 0;
@@ -32,12 +32,12 @@ time_t esp_ntp_last_update = 0;
 uint16_t esp_ntp_interval_count = 0;
 uint8_t esp_dst_flags = 0;
 
-ESP_DATA_RTC esp_rtc_buffer;
+SERIAL_PROTO_DATA_ESP_RTC esp_rtc_buffer;
 bool esp_rtc_waiting = 0;
 char esp_rtc_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_RTCDATA};
 time_t esp_rtc_time = 0;
 
-ESP_DATA_SENSOR esp_sensor_buffer;
+SERIAL_PROTO_DATA_ESP_SENSOR esp_sensor_buffer;
 bool esp_sensor_waiting = 0;
 char esp_sensor_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_SENSORDATA};
 uint16_t esp_sensor_lux = 0;
@@ -45,7 +45,7 @@ uint16_t esp_sensor_temp = 0;
 uint16_t esp_sensor_pres = 0;
 uint16_t esp_sensor_hum = 0;
 
-ESP_DATA_DISPLAY esp_display_buffer;
+SERIAL_PROTO_DATA_ESP_DISPLAY esp_display_buffer;
 bool esp_display_waiting = 0;
 char esp_display_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_DISPLAYDATA};
 uint16_t esp_brightness = 0;
@@ -53,7 +53,7 @@ bool esp_brightness_updated = 0;
 uint8_t esp_display_state = 0;
 uint8_t esp_menu_state = 0;
 
-ESP_DATA_USER esp_user_buffer;
+SERIAL_PROTO_DATA_ESP_USER esp_user_buffer;
 bool esp_user_waiting = 0;
 char esp_user_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_USERDATA};
 
@@ -136,32 +136,32 @@ void esp_rx(void)
             switch (esp_incoming)
             {
                 case ESP_TIME:
-                    esp_bytes_remaining = SERIAL_PROTO_ESP_TIME_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_TIME) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
         
                 case ESP_NET:
-                    esp_bytes_remaining = SERIAL_PROTO_ESP_NET_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
 
                 case ESP_RTC:
-                    esp_bytes_remaining = SERIAL_PROTO_ESP_RTC_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_RTC) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
         
                 case ESP_SENSOR:
-                    esp_bytes_remaining = SERIAL_PROTO_ESP_SENSOR_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_SENSOR) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
         
                 case ESP_DISPLAY:
-                    esp_bytes_remaining = SERIAL_PROTO_ESP_DISPLAY_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_DISPLAY) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
 
                 case ESP_USER:
-                    esp_bytes_remaining = SERIAL_PROTO_ESP_USER_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_USER) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
         

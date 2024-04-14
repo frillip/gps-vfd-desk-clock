@@ -28,24 +28,6 @@ extern "C" {
 #define SERIAL_PROTO_DATATYPE_MISCDATA 0x70
 #define SERIAL_PROTO_DATATYPE_USERDATA 0x80
 
-#define SERIAL_PROTO_ESP_TIME_LENGTH 11
-#define SERIAL_PROTO_ESP_GNSS_LENGTH 12
-#define SERIAL_PROTO_ESP_OFFSET_LENGTH 20
-#define SERIAL_PROTO_ESP_NET_LENGTH 11
-#define SERIAL_PROTO_ESP_RTC_LENGTH 7
-#define SERIAL_PROTO_ESP_SENSOR_LENGTH 11
-#define SERIAL_PROTO_ESP_DISPLAY_LENGTH 7
-#define SERIAL_PROTO_ESP_USER_LENGTH 4
-
-#define SERIAL_PROTO_PIC_TIME_LENGTH 10
-#define SERIAL_PROTO_PIC_GNSS_LENGTH 12
-#define SERIAL_PROTO_PIC_OFFSET_LENGTH 28
-#define SERIAL_PROTO_PIC_NET_LENGTH 11
-#define SERIAL_PROTO_PIC_RTC_LENGTH 8
-#define SERIAL_PROTO_PIC_SENSOR_LENGTH 12
-#define SERIAL_PROTO_PIC_DISPLAY_LENGTH 10
-#define SERIAL_PROTO_PIC_USER_LENGTH 4
-
 #pragma pack(push, 1)
 
 // Structs for PIC data
@@ -77,6 +59,7 @@ typedef union
   uint8_t raw[sizeof(struct _pic_time_struct)];
 } SERIAL_PROTO_DATA_PIC_TIME;
 
+
 typedef union
 {
   struct __attribute__ ((packed)) _pic_gnss_struct
@@ -101,6 +84,7 @@ typedef union
   uint8_t raw[sizeof(struct _pic_gnss_struct)];
 } SERIAL_PROTO_DATA_PIC_GNSS;
 
+
 typedef union
 {
   struct __attribute__ ((packed)) _pic_offset_struct
@@ -124,6 +108,7 @@ typedef union
   uint8_t raw[sizeof(struct _pic_offset_struct)];
 } SERIAL_PROTO_DATA_PIC_OFFSET;
 
+
 typedef union
 {
   struct __attribute__ ((packed)) _pic_rtc_struct
@@ -145,6 +130,7 @@ typedef union
   uint8_t raw[sizeof(struct _pic_rtc_struct)];
 } SERIAL_PROTO_DATA_PIC_RTC;
 
+
 typedef union
 {
   struct __attribute__ ((packed)) _pic_net_struct
@@ -162,6 +148,7 @@ typedef union
   } fields;
   uint8_t raw[sizeof(struct _pic_net_struct)];
 } SERIAL_PROTO_DATA_PIC_NET;
+
 
 typedef union
 {
@@ -185,6 +172,7 @@ typedef union
   } fields;
   uint8_t raw[sizeof(struct _pic_sensor_struct)];
 } SERIAL_PROTO_DATA_PIC_SENSOR;
+
 
 typedef union
 {
@@ -213,6 +201,7 @@ typedef union
   uint8_t raw[sizeof(struct _pic_display_struct)];
 } SERIAL_PROTO_DATA_PIC_DISPLAY;
 
+
 typedef union
 {
   struct __attribute__ ((packed)) _pic_user_struct
@@ -226,7 +215,9 @@ typedef union
     char c;
   } fields;
   uint8_t raw[sizeof(struct _pic_user_struct)];
-} PIC_DATA_USER;
+} SERIAL_PROTO_DATA_PIC_USER;
+
+
 
 // Structs for ESP data
 
@@ -261,7 +252,8 @@ typedef union
     } dst_flags;
   } fields;
   uint8_t raw[sizeof(struct _esp_time_struct)];
-} ESP_DATA_TIME;
+} SERIAL_PROTO_DATA_ESP_TIME;
+
 
 typedef union
 {
@@ -285,7 +277,8 @@ typedef union
     uint8_t dstFlags;
   } fields;
   uint8_t raw[sizeof(struct _esp_net_struct)];
-} ESP_DATA_NET;
+} SERIAL_PROTO_DATA_ESP_NET;
+
 
 typedef union
 {
@@ -306,7 +299,8 @@ typedef union
     time_t rtc;
   } fields;
   uint8_t raw[sizeof(struct _esp_rtc_struct)];
-} ESP_DATA_RTC;
+} SERIAL_PROTO_DATA_ESP_RTC;
+
 
 typedef union
 {
@@ -329,7 +323,8 @@ typedef union
     uint16_t hum;
   } fields;
   uint8_t raw[sizeof(struct _esp_sensor_struct)];
-} ESP_DATA_SENSOR;
+} SERIAL_PROTO_DATA_ESP_SENSOR;
+
 
 typedef union
 {
@@ -356,7 +351,8 @@ typedef union
     UI_MENU_STATE menu_state : 8;
   } fields;
   uint8_t raw[sizeof(struct _esp_display_struct)];
-} ESP_DATA_DISPLAY;
+} SERIAL_PROTO_DATA_ESP_DISPLAY;
+
 
 typedef union
 {
@@ -371,7 +367,7 @@ typedef union
     char c;
   } fields;
   uint8_t raw[sizeof(struct _esp_user_struct)];
-} ESP_DATA_USER;
+} SERIAL_PROTO_DATA_ESP_USER;
 
 #pragma pack(pop)
 
