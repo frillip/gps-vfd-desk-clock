@@ -10,7 +10,7 @@ ESP_MESSAGE_TYPE esp_incoming = ESP_NONE;
 ESP_MESSAGE_TYPE esp_waiting = ESP_NONE;
 uint8_t esp_bytes_remaining = 0;
 
-char esp_time_buffer[SERIAL_PROTO_ESP_TIME_LENGTH] = {0};
+ESP_DATA_TIME esp_time_buffer;
 bool esp_time_waiting = 0;
 char esp_time_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_TIMEDATA};
 bool esp_wifi_status = 0;
@@ -21,7 +21,7 @@ time_t esp_ntp_time = 0;
 uint16_t esp_ntp_milliseconds = 0;
 int8_t esp_ntp_offset = 0;
 
-char esp_net_buffer[SERIAL_PROTO_ESP_NET_LENGTH] = {0};
+ESP_DATA_NET esp_net_buffer;
 bool esp_net_waiting = 0;
 char esp_net_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_NETDATA};
 //bool esp_wifi_status = 0;
@@ -32,20 +32,20 @@ time_t esp_ntp_last_update = 0;
 uint16_t esp_ntp_interval_count = 0;
 uint8_t esp_dst_flags = 0;
 
-char esp_rtc_buffer[SERIAL_PROTO_ESP_RTC_LENGTH] = {0};
+ESP_DATA_RTC esp_rtc_buffer;
 bool esp_rtc_waiting = 0;
 char esp_rtc_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_RTCDATA};
 time_t esp_rtc_time = 0;
 
-char esp_sensor_buffer[SERIAL_PROTO_ESP_SENSOR_LENGTH] = {0};
+ESP_DATA_SENSOR esp_sensor_buffer;
 bool esp_sensor_waiting = 0;
 char esp_sensor_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_SENSORDATA};
+uint16_t esp_sensor_lux = 0;
 uint16_t esp_sensor_temp = 0;
 uint16_t esp_sensor_pres = 0;
 uint16_t esp_sensor_hum = 0;
-uint16_t esp_sensor_lux = 0;
 
-char esp_display_buffer[SERIAL_PROTO_ESP_DISPLAY_LENGTH] = {0};
+ESP_DATA_DISPLAY esp_display_buffer;
 bool esp_display_waiting = 0;
 char esp_display_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_DISPLAYDATA};
 uint16_t esp_brightness = 0;
@@ -53,7 +53,7 @@ bool esp_brightness_updated = 0;
 uint8_t esp_display_state = 0;
 uint8_t esp_menu_state = 0;
 
-char esp_user_buffer[SERIAL_PROTO_ESP_USER_LENGTH] = {0};
+ESP_DATA_USER esp_user_buffer;
 bool esp_user_waiting = 0;
 char esp_user_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_USERDATA};
 
@@ -144,7 +144,7 @@ void esp_rx(void)
                     esp_bytes_remaining = SERIAL_PROTO_ESP_NET_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
-        
+
                 case ESP_RTC:
                     esp_bytes_remaining = SERIAL_PROTO_ESP_RTC_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
@@ -159,7 +159,7 @@ void esp_rx(void)
                     esp_bytes_remaining = SERIAL_PROTO_ESP_DISPLAY_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
                     break;
-        
+
                 case ESP_USER:
                     esp_bytes_remaining = SERIAL_PROTO_ESP_USER_LENGTH - SERIAL_PROTO_CHECK_BUFFER_SIZE;
                     memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
@@ -177,32 +177,32 @@ void esp_copy_buffer(ESP_MESSAGE_TYPE message)
     switch (message)
     {
         case ESP_TIME:
-            memcpy(esp_time_buffer, esp_string_buffer, SERIAL_PROTO_ESP_TIME_LENGTH);
+            memcpy(esp_time_buffer.raw, esp_string_buffer, sizeof(esp_time_buffer));
             esp_time_waiting=1;
             break;
 
         case ESP_NET:
-            memcpy(esp_net_buffer, esp_string_buffer, SERIAL_PROTO_ESP_NET_LENGTH);
+            memcpy(esp_net_buffer.raw, esp_string_buffer, sizeof(esp_net_buffer));
             esp_net_waiting=1;
             break;
 
         case ESP_RTC:
-            memcpy(esp_rtc_buffer, esp_string_buffer, SERIAL_PROTO_ESP_RTC_LENGTH);
+            memcpy(esp_rtc_buffer.raw, esp_string_buffer, sizeof(esp_rtc_buffer));
             esp_rtc_waiting=1;
             break;
 
         case ESP_SENSOR:
-            memcpy(esp_sensor_buffer, esp_string_buffer, SERIAL_PROTO_ESP_SENSOR_LENGTH);
+            memcpy(esp_sensor_buffer.raw, esp_string_buffer, sizeof(esp_sensor_buffer));
             esp_sensor_waiting=1;
             break;
 
         case ESP_DISPLAY:
-            memcpy(esp_display_buffer, esp_string_buffer, SERIAL_PROTO_ESP_DISPLAY_LENGTH);
+            memcpy(esp_display_buffer.raw, esp_string_buffer, sizeof(esp_display_buffer));
             esp_display_waiting=1;
             break;
 
         case ESP_USER:
-            memcpy(esp_user_buffer, esp_string_buffer, SERIAL_PROTO_ESP_USER_LENGTH);
+            memcpy(esp_user_buffer.raw, esp_string_buffer, sizeof(esp_user_buffer));
             esp_user_waiting=1;
             break;
 
@@ -336,14 +336,17 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
 
 void esp_process_time(void)
 {
-    esp_wifi_status = esp_time_buffer[3]&0x01;
-    esp_ntp_status = (esp_time_buffer[3]>>1)&0x01;
-    esp_pps_sync = (esp_time_buffer[3]>>2)&0x01;
-    esp_scheduler_sync = (esp_time_buffer[3]>>3)&0x01;
-    memcpy(&esp_ntp_time, esp_time_buffer+4, 4);
+    esp_wifi_status = esp_time_buffer.fields.flags.wifi_status;
+    esp_ntp_status = esp_time_buffer.fields.flags.ntp_status;
+    esp_pps_sync = esp_time_buffer.fields.flags.pps_sync;
+    esp_scheduler_sync = esp_time_buffer.fields.flags.scheduler_sync;
+    
+    esp_ntp_time = esp_time_buffer.fields.utc;
     esp = esp_ntp_time;
-    memcpy(&esp_ntp_milliseconds, esp_time_buffer+8, 2);
-    esp_ntp_offset = esp_time_buffer[10];
+    
+    //esp_ntp_milliseconds = esp_time_buffer.fields.milliseconds;
+    //esp_ntp_offset = esp_time_buffer.fields.offset;
+    
     if(esp_wifi_status && esp_ntp_status && esp_ntp_time)
     {
         esp_ntp_valid = 1;
@@ -354,55 +357,59 @@ void esp_process_time(void)
     {
         esp_ntp_valid = 0;
     }
-    memset(esp_time_buffer, 0, SERIAL_PROTO_ESP_TIME_LENGTH);
+    
+    memset(esp_time_buffer.raw, 0, sizeof(esp_time_buffer));
     esp_time_waiting = 0;
 }
 
 void esp_process_net(void)
 {
-    //esp_wifi_status = esp_net_buffer[3]&0x01;
-    //esp_ntp_status = (esp_net_buffer[3]>>1)&0x01;
-    //esp_pps_sync = (esp_net_buffer[3]>>2)&0x01;
-    //esp_scheduler_sync = (esp_net_buffer[3]>>3)&0x01;
-    memcpy(&esp_ntp_last_update, esp_net_buffer+4, 4);
-    memcpy(&esp_ntp_interval_count, esp_net_buffer+8, 2);
-    esp_dst_flags = esp_net_buffer[10];
-    memset(esp_net_buffer, 0, SERIAL_PROTO_ESP_NET_LENGTH);
+    /*
+    esp_wifi_status = esp_net_buffer.fields.flags.wifi_status;
+    esp_ntp_status = esp_net_buffer.fields.flags.ntp_status;
+    esp_pps_sync = esp_net_buffer.fields.flags.pps_sync;
+    esp_scheduler_sync = esp_net_buffer.fields.flags.scheduler_sync;
+    */
+    esp_ntp_last_update = esp_net_buffer.fields.lastUpdate;
+    esp_ntp_interval_count = esp_net_buffer.fields.ntpInterval;
+    esp_dst_flags = esp_net_buffer.fields.dstFlags;
+    memset(esp_net_buffer.raw, 0, sizeof(esp_net_buffer));
     esp_net_waiting = 0;
 }
 
 void esp_process_rtc(void)
 {
-    memcpy(&esp_rtc_time, esp_rtc_buffer+3, 4);
+    esp_rtc_time = esp_rtc_buffer.fields.rtc;
     if(!esp_ntp_valid) esp = esp_rtc_time;
-    memset(esp_rtc_buffer, 0, SERIAL_PROTO_ESP_RTC_LENGTH);
+    memset(esp_rtc_buffer.raw, 0, sizeof(esp_rtc_buffer));
     esp_rtc_waiting = 0;
 }
 
 void esp_process_sensor(void)
 {
-    memcpy(&esp_sensor_temp, esp_sensor_buffer+3, 2);
-    memcpy(&esp_sensor_pres, esp_sensor_buffer+5, 2);
-    memcpy(&esp_sensor_hum, esp_sensor_buffer+7, 2);
-    memcpy(&esp_sensor_lux, esp_sensor_buffer+9, 2);
-    memset(esp_sensor_buffer, 0, SERIAL_PROTO_ESP_SENSOR_LENGTH);
+    esp_sensor_lux = esp_sensor_buffer.fields.lux;
+    esp_sensor_temp = esp_sensor_buffer.fields.temp;
+    esp_sensor_pres = esp_sensor_buffer.fields.pres;
+    esp_sensor_hum = esp_sensor_buffer.fields.hum;
+    memset(esp_sensor_buffer.raw, 0, sizeof(esp_sensor_buffer));
     esp_sensor_waiting = 0;
 }
 
 void esp_process_display(void)
 {
-    memcpy(&esp_brightness, esp_display_buffer+3, 2);
+    esp_brightness = esp_display_buffer.fields.brightness;
     esp_brightness_updated = 1;
-    esp_display_state = esp_display_buffer[5];
-    esp_menu_state = esp_display_buffer[6];
-    memset(esp_display_buffer, 0, SERIAL_PROTO_ESP_DISPLAY_LENGTH);
+    esp_display_state = esp_display_buffer.fields.display_state;
+    esp_menu_state = esp_display_buffer.fields.menu_state;
+    memset(esp_display_buffer.raw, 0, sizeof(esp_display_buffer));
     esp_display_waiting = 0;
 }
 
 void esp_process_user(void)
 {
-    ui_uart1_input(esp_user_buffer[3]);
-    memset(esp_user_buffer, 0, SERIAL_PROTO_ESP_USER_LENGTH);
+    char user_cmd = esp_user_buffer.fields.c;
+    ui_uart1_input(user_cmd);
+    memset(esp_user_buffer.raw, 0, sizeof(esp_user_buffer));
     esp_user_waiting = 0;
 }
 
@@ -472,20 +479,23 @@ extern bool dst_active;
 
 void esp_tx_time(void)
 {
-    char esp_tx_buffer[SERIAL_PROTO_PIC_TIME_LENGTH] = {0};
-    esp_tx_buffer[0] = SERIAL_PROTO_HEADER;
-    esp_tx_buffer[1] = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer[2] = SERIAL_PROTO_DATATYPE_TIMEDATA;
+    SERIAL_PROTO_DATA_PIC_TIME esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
+
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_TIMEDATA;
     
-    esp_tx_buffer[3] = (uint8_t)utc_source;
+    esp_tx_buffer.fields.utc_source = utc_source;
+    esp_tx_buffer.fields.utc = utc;
+    esp_tx_buffer.fields.tz_flags.tz_set = 0; // Unused
+    esp_tx_buffer.fields.tz_flags.tz_offset = tz_offset / 900;
     
-    memcpy(esp_tx_buffer+4, &utc, 4);
+    esp_tx_buffer.fields.dst_flags.dst_set = 0;
+    esp_tx_buffer.fields.dst_flags.dst_active = dst_active;
+    esp_tx_buffer.fields.dst_flags.dst_offset = (dst_offset / 900);
     
-    esp_tx_buffer[8] = tz_offset / 900;
-    
-    esp_tx_buffer[9] = ((uint8_t)dst_active << 7) | (dst_offset / 900);
-    
-    esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_TIME_LENGTH);  
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));  
 }
 
 extern uint8_t ubx_nav_status_gpsfix;
@@ -497,27 +507,29 @@ extern int32_t ubx_nav_posllh_lon;
 
 void esp_tx_gnss(void)
 {
-    char esp_tx_buffer[SERIAL_PROTO_PIC_GNSS_LENGTH] = {0};
-    esp_tx_buffer[0] = SERIAL_PROTO_HEADER;
-    esp_tx_buffer[1] = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer[2] = SERIAL_PROTO_DATATYPE_GNSSDATA;
+    SERIAL_PROTO_DATA_PIC_GNSS esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
+
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_GNSSDATA;
     
-    if(gnss_fix) esp_tx_buffer[3] |= 0x1;
-    if(ubx_nav_status_gpsfixok) esp_tx_buffer[3] |= 0x02;
-    if(ubx_nav_timeutc_valid) esp_tx_buffer[3] |= 0x04;
-    if(ubx_tim_tm2_valid) esp_tx_buffer[3] |= 0x08;
-    esp_tx_buffer[3] |= (ubx_nav_status_gpsfix<<4);
+    esp_tx_buffer.fields.flags.gnss_fix = gnss_fix;
+    esp_tx_buffer.fields.flags.fix_ok = ubx_nav_status_gpsfixok;
+    esp_tx_buffer.fields.flags.utc_valid = ubx_nav_timeutc_valid;
+    esp_tx_buffer.fields.flags.timemark_valid = ubx_tim_tm2_valid;
+    esp_tx_buffer.fields.flags.fix_status = ubx_nav_status_gpsfix;
     
-    memcpy(esp_tx_buffer+4, &ubx_nav_posllh_lat, 4);
+    esp_tx_buffer.fields.posllh_lat = ubx_nav_posllh_lat;
+    esp_tx_buffer.fields.posllh_lon = ubx_nav_posllh_lon;
     
-    memcpy(esp_tx_buffer+8, &ubx_nav_posllh_lon, 4);
-    
-    esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_GNSS_LENGTH);
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
     esp_gnss_data_updated = 0;
 }
 
 extern CLOCK_SYNC_STATUS clock_sync_state;
 extern CLOCK_SYNC_STATUS clock_sync_state_last;
+extern CLOCK_SYNC_STATUS last_sync_cause;
 extern int32_t oc_offset;
 extern int32_t accumulated_clocks;
 extern time_t accumulation_delta;
@@ -527,48 +539,62 @@ extern uint32_t sync_events;
 
 void esp_tx_offset(void)
 {
-    char esp_tx_buffer[SERIAL_PROTO_PIC_OFFSET_LENGTH] = {0};
-    esp_tx_buffer[0] = SERIAL_PROTO_HEADER;
-    esp_tx_buffer[1] = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer[2] = SERIAL_PROTO_DATATYPE_OFFSETDATA;
-    esp_tx_buffer[3] = (uint8_t)clock_sync_state;
+    SERIAL_PROTO_DATA_PIC_OFFSET esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
+
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_OFFSETDATA;
     
-    memcpy(esp_tx_buffer+4, &fosc_freq, 4);
+    esp_tx_buffer.fields.sync_state = clock_sync_state;
+    esp_tx_buffer.fields.sync_state_last = clock_sync_state_last;
+    esp_tx_buffer.fields.last_sync_cause = last_sync_cause;
     
-    memcpy(esp_tx_buffer+8, &oc_offset, 4);
+    esp_tx_buffer.fields.fosc_freq = fosc_freq;
+    esp_tx_buffer.fields.oc_offset = oc_offset;
+    esp_tx_buffer.fields.accumulated_clocks = accumulated_clocks;
+    esp_tx_buffer.fields.accumulation_delta = accumulation_delta;
+    esp_tx_buffer.fields.total_oc_seq_count = total_oc_seq_count;
+    esp_tx_buffer.fields.sync_events = sync_events;
     
-    memcpy(esp_tx_buffer+12, &accumulated_clocks, 4);
-    
-    memcpy(esp_tx_buffer+16, &accumulation_delta, 4);
-    
-    memcpy(esp_tx_buffer+20, &total_oc_seq_count, 4);
-    
-    memcpy(esp_tx_buffer+24, &sync_events, 4);
-    
-    esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_OFFSET_LENGTH);
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
 void esp_tx_net(void)
 {
+    SERIAL_PROTO_DATA_PIC_NET esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
+    
+    esp_tx_buffer.fields.flags.reset_config = 0;
+    
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
 extern time_t rtc;
 extern bool rtc_detected;
 extern bool rtc_valid;
+extern bool rtc_sync;
 
 void esp_tx_rtc(void)
 {
-    char esp_tx_buffer[SERIAL_PROTO_PIC_RTC_LENGTH] = {0};
-    esp_tx_buffer[0] = SERIAL_PROTO_HEADER;
-    esp_tx_buffer[1] = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer[2] = SERIAL_PROTO_DATATYPE_RTCDATA;
+    SERIAL_PROTO_DATA_PIC_RTC esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
-    if(rtc_detected) esp_tx_buffer[3] |= 0x01;
-    if(rtc_valid) esp_tx_buffer[3] |= 0x02;
-    memcpy(esp_tx_buffer+4, &rtc, 4);
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
     
-    esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_RTC_LENGTH);  
+    esp_tx_buffer.fields.flags.rtc_detected = rtc_detected;
+    esp_tx_buffer.fields.flags.rtc_valid = rtc_detected;
+    esp_tx_buffer.fields.flags.rtc_sync = rtc_sync;
+    
+    esp_tx_buffer.fields.rtc = rtc;
+    
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
 extern bool veml6040_detected;
@@ -580,26 +606,23 @@ extern uint32_t bme280_humidity;
 
 void esp_tx_sensor(void)
 {
-    char esp_tx_buffer[SERIAL_PROTO_PIC_SENSOR_LENGTH] = {0};
-    esp_tx_buffer[0] = SERIAL_PROTO_HEADER;
-    esp_tx_buffer[1] = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer[2] = SERIAL_PROTO_DATATYPE_SENSORDATA;
+    SERIAL_PROTO_DATA_PIC_SENSOR esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
-    esp_tx_buffer[3] = ((uint8_t)bme280_detected<<1) | veml6040_detected;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_SENSORDATA;
     
-    uint16_t veml_lx_10 = (veml_ambient_light * 10);
-    memcpy(esp_tx_buffer+4, &veml_lx_10, 2);
+    esp_tx_buffer.fields.flags.veml6040_detected = veml6040_detected;
+    esp_tx_buffer.fields.flags.bme280_detected = bme280_detected;
     
-    int16_t bme280_temp_16 = bme280_temperature;
-    memcpy(esp_tx_buffer+6, &bme280_temp_16, 2);
+    esp_tx_buffer.fields.lux = (veml_ambient_light * 10);
     
-    uint16_t bme280_pres_16 = (bme280_pressure / 1000);
-    memcpy(esp_tx_buffer+8, &bme280_pres_16, 2);
+    esp_tx_buffer.fields.temp = bme280_temperature;
+    esp_tx_buffer.fields.pres = (bme280_pressure / 1000);
+    esp_tx_buffer.fields.hum = (bme280_humidity / 2);
     
-    uint16_t bme280_hum_16 = (bme280_humidity / 2);
-    memcpy(esp_tx_buffer+10, &bme280_hum_16, 2);
-    
-    esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_SENSOR_LENGTH);
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
 extern bool display_update_pending;
@@ -612,24 +635,27 @@ extern UI_MENU_STATE ui_menu_current;
 
 void esp_tx_display(void)
 {
-    char esp_tx_buffer[SERIAL_PROTO_PIC_DISPLAY_LENGTH] = {0};
-    esp_tx_buffer[0] = SERIAL_PROTO_HEADER;
-    esp_tx_buffer[1] = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer[2] = SERIAL_PROTO_DATATYPE_DISPLAYDATA;
+    SERIAL_PROTO_DATA_PIC_DISPLAY esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
+    
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA;
 
-    if(display_update_pending) esp_tx_buffer[3] |= 0x01;
-    if(display_brightness_manual) esp_tx_buffer[3] |= 0x02;
-    if(display_brightness_oc_running) esp_tx_buffer[3] |= 0x04;
-    if(PWR_STAT_GetValue()) esp_tx_buffer[3] |= 0x08;
-    if(ui_switch_input_state()) esp_tx_buffer[3] |= 0x10;
-    if(ui_button_input_state()) esp_tx_buffer[3] |= 0x20;
+    esp_tx_buffer.fields.flags.update_pending = display_update_pending;
+    esp_tx_buffer.fields.flags.brightness_manual = display_brightness_manual;
+    esp_tx_buffer.fields.flags.oc_running = display_brightness_oc_running;
+    esp_tx_buffer.fields.flags.pwr_stat = PWR_STAT_GetValue();
+    esp_tx_buffer.fields.flags.switch_state = ui_switch_input_state();
+    esp_tx_buffer.fields.flags.button_state = ui_button_input_state();
     
-    memcpy(esp_tx_buffer+4, &display_brightness, 2);
-    memcpy(esp_tx_buffer+6, &display_brightness_target, 2);
+    esp_tx_buffer.fields.brightness = display_brightness;
+    esp_tx_buffer.fields.brightness_target = display_brightness_target;
     
-    esp_tx_buffer[8] = (uint8_t)ui_state_current;
-    esp_tx_buffer[9] = (uint8_t)ui_menu_current;
-    esp_tx(esp_tx_buffer,SERIAL_PROTO_PIC_DISPLAY_LENGTH);
+    esp_tx_buffer.fields.display_state = ui_state_current;
+    esp_tx_buffer.fields.menu_state = ui_menu_current;
+    
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
 void esp_tx_user_start(void)
