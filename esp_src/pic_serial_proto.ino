@@ -8,28 +8,290 @@ bool rx_ignore = 0;
 uint8_t pic_char_offset = 0;
 char pic_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {0};
 char pic_string_buffer[SERIAL_PROTO_STRING_BUFFER_SIZE] = {0};
-PIC_MESSAGE_TYPE PIC_incoming = PIC_NONE;
-PIC_MESSAGE_TYPE PIC_waiting = PIC_NONE;
-uint8_t PIC_bytes_remaining = 0;
+PIC_MESSAGE_TYPE pic_incoming = PIC_NONE;
+PIC_MESSAGE_TYPE pic_waiting = PIC_NONE;
+uint8_t pic_bytes_remaining = 0;
+
+char pic_time_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_TIMEDATA};
+bool pic_time_waiting = 0;
+SERIAL_PROTO_DATA_PIC_TIME pic_time_buffer;
+time_t pic = 0;
+CLOCK_SOURCE pic_utc_source = CLOCK_SOURCE_NONE;
+bool pic_tz_set = 0;
+int32_t pic_tz_offset = 0;
+bool pic_dst_set;
+bool pic_dst_active;
+int32_t pic_dst_offset;
+
+
+char pic_gnss_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_GNSSDATA};
+bool pic_gnss_waiting = 0;
+SERIAL_PROTO_DATA_PIC_GNSS pic_gnss_buffer;
+extern bool pic_gnss_fix = 0;
+extern bool pic_fix_ok = 0;
+extern bool pic_utc_valid = 0;
+extern bool pic_timemark_valid = 0;
+extern uint8_t pic_fix_status = 0;
+extern int32_t pic_posllh_lat = 0;
+extern int32_t pic_posllh_lon = 0;
+
+char pic_offset_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_OFFSETDATA};
+bool pic_offset_waiting = 0;
+SERIAL_PROTO_DATA_PIC_OFFSET pic_offset_buffer;
+CLOCK_SYNC_STATUS pic_clock_sync_state;
+CLOCK_SYNC_STATUS pic_clock_sync_state_last;
+CLOCK_SYNC_STATUS pic_last_sync_cause;
+uint32_t pic_fosc_freq = 0;
+int32_t pic_oc_offset = 0;
+int32_t pic_accumulated_clocks = 0;
+time_t pic_accumulation_delta = 0;
+uint32_t pic_total_oc_seq_count = 0;
+uint32_t pic_sync_events = 0;
+
+char pic_net_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_NETDATA};
+bool pic_net_waiting = 0;
+SERIAL_PROTO_DATA_PIC_NET pic_net_buffer;
+
+char pic_rtc_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_RTCDATA};
+bool pic_rtc_waiting = 0;
+SERIAL_PROTO_DATA_PIC_RTC pic_rtc_buffer;
+
+char pic_sensor_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_SENSORDATA};
+bool pic_sensor_waiting = 0;
+SERIAL_PROTO_DATA_PIC_SENSOR pic_sensor_buffer;
+
+char pic_display_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_DISPLAYDATA};
+bool pic_display_waiting = 0;
+SERIAL_PROTO_DATA_PIC_DISPLAY pic_display_buffer;
+
+char pic_user_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_USERDATA};
+bool pic_user_waiting = 0;
+SERIAL_PROTO_DATA_PIC_USER pic_user_buffer;
+
+void pic_copy_buffer(PIC_MESSAGE_TYPE message);
+PIC_MESSAGE_TYPE pic_check_incoming(void);
 
 void pic_uart_rx()
 {
-  char c = UARTPIC.read();
-  /*
-  if(c==SERIAL_PROTO_HEADER)
+  while(UARTPIC.available())
   {
-    rx_ignore=1;
-    user_data_counter = 0;
+    char rx_char = UARTPIC.read();
+    
+    memmove(pic_check_buffer, pic_check_buffer+1, SERIAL_PROTO_CHECK_BUFFER_SIZE-1);
+    pic_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE-1] = rx_char;
+    
+    if(pic_incoming!=PIC_NONE)
+    {
+      pic_detected = 1;
+      pic_string_buffer[pic_char_offset] = rx_char;
+      pic_char_offset++;
+      pic_bytes_remaining--;
+      // If we've reached the end of our buffer
+      // then we're getting unknown messages
+      // Discard anything that doesn't fit
+      // and flag the incoming message as waiting
+      if(pic_char_offset>=SERIAL_PROTO_STRING_BUFFER_SIZE-1 || pic_bytes_remaining==0)
+      {
+        pic_waiting = pic_incoming;
+        pic_incoming = PIC_NONE;
+      }
+    }
+    
+    // Do we have a message that's finished coming in?
+    if(pic_waiting!=PIC_NONE)
+    {
+      // if so, copy it to the right buffer
+      pic_copy_buffer(pic_waiting);
+      // Then reset the message buffer
+      memset(pic_string_buffer, 0, SERIAL_PROTO_STRING_BUFFER_SIZE);
+      // Reset the message waiting flag
+      pic_waiting=PIC_NONE;
+    }
+    
+    PIC_MESSAGE_TYPE pic_check_res = pic_check_incoming();
+    if(pic_check_res != PIC_NONE)
+    {
+      pic_waiting = pic_incoming;
+      pic_incoming = pic_check_res;
+      pic_char_offset = SERIAL_PROTO_CHECK_BUFFER_SIZE;
+      switch (pic_incoming)
+      {
+        case PIC_TIME:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_TIME) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_GNSS:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_OFFSET:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_NET:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_RTC:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_RTC) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_SENSOR:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_SENSOR) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_DISPLAY:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_DISPLAY) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        case PIC_USER:
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_USER) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          break;
+
+        default:
+          break;
+      }
+    }
+    Serial.print(rx_char);
   }
-  if(rx_ignore)
-  {
-    user_data_counter++;
-    if(user_data_counter>11) rx_ignore=0;
-  }
-  else Serial.print(c);
-  */
-  Serial.print(c);
 }
+
+void pic_copy_buffer(PIC_MESSAGE_TYPE message)
+{
+  switch (message)
+  {
+    case PIC_TIME:
+      memcpy(pic_time_buffer.raw, pic_string_buffer, sizeof(pic_time_buffer));
+      Serial.println("PIC_TIME");
+      pic_time_waiting=1;
+      break;
+
+    case PIC_GNSS:
+      memcpy(pic_gnss_buffer.raw, pic_string_buffer, sizeof(pic_gnss_buffer));
+      Serial.println("PIC_GNSS");
+      pic_gnss_waiting=1;
+      break;
+
+    case PIC_OFFSET:
+      memcpy(pic_offset_buffer.raw, pic_string_buffer, sizeof(pic_offset_buffer));
+      Serial.println("PIC_OFFSET");
+      pic_offset_waiting=1;
+      break;
+
+    case PIC_NET:
+      memcpy(pic_net_buffer.raw, pic_string_buffer, sizeof(pic_net_buffer));
+      Serial.println("PIC_NET");
+      pic_net_waiting=1;
+      break;
+
+    case PIC_RTC:
+      memcpy(pic_rtc_buffer.raw, pic_string_buffer, sizeof(pic_rtc_buffer));
+      Serial.println("PIC_RTC");
+      pic_rtc_waiting=1;
+      break;
+
+    case PIC_SENSOR:
+      memcpy(pic_sensor_buffer.raw, pic_string_buffer, sizeof(pic_sensor_buffer));
+      Serial.println("PIC_SENSOR");
+      pic_sensor_waiting=1;
+      break;
+
+    case PIC_DISPLAY:
+      memcpy(pic_display_buffer.raw, pic_string_buffer, sizeof(pic_display_buffer));
+      Serial.println("PIC_DISPLAY");
+      pic_display_waiting=1;
+      break;
+
+    case PIC_USER:
+      memcpy(pic_user_buffer.raw, pic_string_buffer, sizeof(pic_user_buffer));
+      Serial.println("PIC_USER");
+      pic_user_waiting=1;
+      break;
+
+    default:
+      pic_waiting=PIC_NONE;
+      break;
+  }
+}
+
+PIC_MESSAGE_TYPE pic_check_incoming(void)
+{
+  if(memcmp(pic_check_buffer, pic_time_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_TIME;
+  if(memcmp(pic_check_buffer, pic_gnss_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_GNSS;
+  if(memcmp(pic_check_buffer, pic_offset_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_OFFSET;
+  if(memcmp(pic_check_buffer, pic_net_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_NET;
+  if(memcmp(pic_check_buffer, pic_rtc_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_RTC;
+  if(memcmp(pic_check_buffer, pic_sensor_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_SENSOR;
+  if(memcmp(pic_check_buffer, pic_display_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_DISPLAY;
+  if(memcmp(pic_check_buffer, pic_user_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_USER;
+  return PIC_NONE;
+}
+
+
+uint8_t pic_data_task_cycle = 0;
+
+void pic_data_task(void)
+{
+    if(pic_time_waiting) pic_process_time();
+    if(pic_gnss_waiting) pic_process_gnss();
+    if(pic_offset_waiting) pic_process_offset();
+    //if(pic_net_waiting) pic_process_net();
+    //if(pic_rtc_waiting) pic_process_rtc();
+    //if(pic_sensor_waiting) pic_process_sensor();
+    //if(pic_display_waiting) pic_process_display();
+    //if(pic_user_waiting) pic_process_user();
+}
+
+void pic_process_time()
+{
+  pic_utc_source = pic_time_buffer.fields.utc_source;
+  pic = pic_time_buffer.fields.utc;
+  pic_tz_set = pic_time_buffer.fields.tz_flags.tz_set; // Unused
+  pic_tz_offset = pic_time_buffer.fields.tz_flags.tz_offset * 900;
+  
+  pic_dst_set = pic_time_buffer.fields.dst_flags.dst_set;
+  pic_dst_active = pic_time_buffer.fields.dst_flags.dst_active;
+  pic_dst_offset = pic_time_buffer.fields.dst_flags.dst_offset * 900;
+}
+
+
+void pic_process_gnss(void)
+{
+    pic_gnss_fix = pic_gnss_buffer.fields.flags.gnss_fix;
+    pic_fix_ok = pic_gnss_buffer.fields.flags.fix_ok;
+    pic_utc_valid = pic_gnss_buffer.fields.flags.utc_valid;
+    pic_timemark_valid = pic_gnss_buffer.fields.flags.timemark_valid;
+    pic_fix_status = pic_gnss_buffer.fields.flags.fix_status;
+    
+    pic_posllh_lat = pic_gnss_buffer.fields.posllh_lat;
+    pic_posllh_lon = pic_gnss_buffer.fields.posllh_lon;
+}
+
+
+void pic_process_offset(void)
+{
+    pic_clock_sync_state = pic_offset_buffer.fields.sync_state;
+    pic_clock_sync_state_last = pic_offset_buffer.fields.sync_state_last;
+    pic_last_sync_cause = pic_offset_buffer.fields.last_sync_cause;
+    
+    pic_fosc_freq = pic_offset_buffer.fields.fosc_freq;
+    pic_oc_offset = pic_offset_buffer.fields.oc_offset;
+    pic_accumulated_clocks = pic_offset_buffer.fields.accumulated_clocks;
+    pic_accumulation_delta = pic_offset_buffer.fields.accumulation_delta;
+    pic_total_oc_seq_count = pic_offset_buffer.fields.total_oc_seq_count;
+    pic_sync_events = pic_offset_buffer.fields.sync_events;
+}
+
+
+
 
 void pic_uart_tx_timedata()
 {
@@ -57,6 +319,7 @@ void pic_uart_tx_timedata()
 
   size_t bytesSent = UARTPIC.write(time_data_tx.raw, sizeof(time_data_tx));
 }
+
 
 void pic_uart_tx_netdata()
 {
