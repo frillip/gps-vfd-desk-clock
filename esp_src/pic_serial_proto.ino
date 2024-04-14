@@ -1,25 +1,22 @@
-#define PIC_UART_HEADER 0x83
-#define PIC_UART_TYPE_TX 0x65
-#define PIC_UART_TYPE_RX 0x70
-#define PIC_UART_DATATYPE_TIMEDATA 0x00
-#define PIC_UART_DATATYPE_GNSSDATA 0x10
-#define PIC_UART_DATATYPE_OFFSETDATA 0x20
-#define PIC_UART_DATATYPE_NETDATA 0x30
-#define PIC_UART_DATATYPE_RTCDATA 0x40
-#define PIC_UART_DATATYPE_SENSORDATA 0x50
-#define PIC_UART_DATATYPE_DISPLAYDATA 0x60
-#define PIC_UART_DATATYPE_MISCDATA 0x70
-#define PIC_UART_DATATYPE_USERDATA 0x80
+#include "enums.h"
+#include "serial_proto.h"
 
 uint8_t rx_stage = 0;
 uint16_t user_data_counter = 0;
 bool rx_ignore = 0;
 
+uint8_t pic_char_offset = 0;
+char pic_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {0};
+char pic_string_buffer[SERIAL_PROTO_STRING_BUFFER_SIZE] = {0};
+PIC_MESSAGE_TYPE PIC_incoming = PIC_NONE;
+PIC_MESSAGE_TYPE PIC_waiting = PIC_NONE;
+uint8_t PIC_bytes_remaining = 0;
+
 void pic_uart_rx()
 {
   char c = UARTPIC.read();
   /*
-  if(c==PIC_UART_HEADER)
+  if(c==SERIAL_PROTO_HEADER)
   {
     rx_ignore=1;
     user_data_counter = 0;
@@ -34,129 +31,91 @@ void pic_uart_rx()
   Serial.print(c);
 }
 
-#pragma pack(push, 1)
-union TimeDataUnion
-{
-  struct _struct
-  {
-    uint8_t header;
-    uint8_t type;
-    uint8_t datatype;
-    uint8_t flags;
-    time_t utc;
-    uint16_t milliseconds;
-    int8_t offset;
-  } fields;
-  uint8_t raw[sizeof(struct _struct)];
-};
-#pragma pack(pop)
-
 void pic_uart_tx_timedata()
 {
-  TimeDataUnion time_data_tx = {};
-  time_data_tx.fields.header = PIC_UART_HEADER;
-  time_data_tx.fields.type = PIC_UART_TYPE_TX;
-  time_data_tx.fields.datatype = PIC_UART_DATATYPE_TIMEDATA;
+  SERIAL_PROTO_DATA_ESP_TIME time_data_tx = {};
+  memset(time_data_tx.raw, 0, sizeof(time_data_tx));
 
-  if(WiFi.status() == WL_CONNECTED) time_data_tx.fields.flags |= 0x01;
-  if(timeStatus() == timeSet) time_data_tx.fields.flags |= 0x02;
-  if(pps_sync) time_data_tx.fields.flags |= 0x04;
-  if(scheduler_sync) time_data_tx.fields.flags |= 0x08;
+  time_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  time_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  time_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_TIMEDATA;
+
+
+  if(WiFi.status() == WL_CONNECTED) time_data_tx.fields.flags.wifi_status = 1;
+  if(timeStatus() == timeSet) time_data_tx.fields.flags.ntp_status = 1;
+  if(pps_sync) time_data_tx.fields.flags.pps_sync = 1;
+  if(scheduler_sync) time_data_tx.fields.flags.scheduler_sync = 1;
+
   time_data_tx.fields.utc = UTC.now();
-  time_data_tx.fields.milliseconds = UTC.ms();
-  time_data_tx.fields.offset = 0;
 
-  size_t bytesSent = UARTPIC.write(time_data_tx.raw, sizeof(time_data_tx.raw));
+  time_data_tx.fields.tz_flags.tz_set = 0;
+  time_data_tx.fields.tz_flags.tz_offset = 0;
+
+  time_data_tx.fields.dst_flags.dst_set = 0;
+  time_data_tx.fields.dst_flags.dst_active = 0;
+  time_data_tx.fields.dst_flags.dst_offset = 3600/900;
+
+  size_t bytesSent = UARTPIC.write(time_data_tx.raw, sizeof(time_data_tx));
 }
-
-#pragma pack(push, 1)
-union NetDataUnion
-{
-  struct _struct
-  {
-    uint8_t header;
-    uint8_t type;
-    uint8_t datatype;
-    uint8_t flags;
-    time_t lastUpdate;
-    uint16_t ntpInterval;
-    uint8_t dstFlags;
-  } fields;
-  uint8_t raw[sizeof(struct _struct)];
-};
-#pragma pack(pop)
 
 void pic_uart_tx_netdata()
 {
-  NetDataUnion net_data_tx = {};
-  net_data_tx.fields.header = PIC_UART_HEADER;
-  net_data_tx.fields.type = PIC_UART_TYPE_TX;
-  net_data_tx.fields.datatype = PIC_UART_DATATYPE_NETDATA;
+  SERIAL_PROTO_DATA_ESP_NET net_data_tx = {};
+  memset(net_data_tx.raw, 0, sizeof(net_data_tx));
 
-  if(WiFi.status() == WL_CONNECTED) net_data_tx.fields.flags |= 0x01;
-  if(timeStatus() == timeSet) net_data_tx.fields.flags |= 0x02;
-  if(pps_sync) net_data_tx.fields.flags |= 0x04;
-  if(scheduler_sync) net_data_tx.fields.flags |= 0x08;
+  net_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  net_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  net_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_NETDATA;
+
+  if(WiFi.status() == WL_CONNECTED) net_data_tx.fields.flags.wifi_status = 1;
+  if(timeStatus() == timeSet) net_data_tx.fields.flags.ntp_status = 1;
+  if(pps_sync) net_data_tx.fields.flags.pps_sync = 1;
+  if(scheduler_sync) net_data_tx.fields.flags.scheduler_sync = 1;
 
   net_data_tx.fields.lastUpdate = lastNtpUpdateTime();
   net_data_tx.fields.ntpInterval = ntp_interval_count;
   net_data_tx.fields.dstFlags = 0;
 
-  size_t bytesSent = UARTPIC.write(net_data_tx.raw, sizeof(net_data_tx.raw));
+  size_t bytesSent = UARTPIC.write(net_data_tx.raw, sizeof(net_data_tx));
 }
-
-#pragma pack(push, 1)
-union RTCDataUnion
-{
-  struct _struct
-  {
-    uint8_t header;
-    uint8_t type;
-    uint8_t datatype;
-    time_t rtc;
-  } fields;
-  uint8_t raw[sizeof(struct _struct)];
-};
-#pragma pack(pop)
 
 void pic_uart_tx_rtcdata()
 {
-  RTCDataUnion rtc_data_tx = {};
-  rtc_data_tx.fields.header = PIC_UART_HEADER;
-  rtc_data_tx.fields.type = PIC_UART_TYPE_TX;
-  rtc_data_tx.fields.datatype = PIC_UART_DATATYPE_RTCDATA;
+  SERIAL_PROTO_DATA_ESP_RTC rtc_data_tx = {};
+  memset(rtc_data_tx.raw, 0, sizeof(rtc_data_tx));
+
+  rtc_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  rtc_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  rtc_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
+  
+  rtc_data_tx.fields.flags.rtc_detected = 0;
+  rtc_data_tx.fields.flags.rtc_valid = 0;
+  rtc_data_tx.fields.flags.rtc_sync = 0;
 
   //rtc_data_tx.fields.rtc = rtc.getEpoch();
   rtc_data_tx.fields.rtc = 0; 
 
-  size_t bytesSent = UARTPIC.write(rtc_data_tx.raw, sizeof(rtc_data_tx.raw));
+  size_t bytesSent = UARTPIC.write(rtc_data_tx.raw, sizeof(rtc_data_tx));
 }
-
-#pragma pack(push, 1)
-union SensorDataUnion
-{
-  struct _struct
-  {
-    uint8_t header;
-    uint8_t type;
-    uint8_t datatype;
-    uint16_t temp;
-    uint16_t pres;
-    uint16_t hum;
-    uint16_t lux;
-  } fields;
-  uint8_t raw[sizeof(struct _struct)];
-};
-#pragma pack(pop)
 
 void pic_uart_tx_sensordata()
 {
-  SensorDataUnion sensor_data_tx = {};
-  sensor_data_tx.fields.header = PIC_UART_HEADER;
-  sensor_data_tx.fields.type = PIC_UART_TYPE_TX;
-  sensor_data_tx.fields.datatype = PIC_UART_DATATYPE_SENSORDATA;
+  SERIAL_PROTO_DATA_ESP_SENSOR sensor_data_tx = {};
+  memset(sensor_data_tx.raw, 0, sizeof(sensor_data_tx));
 
-  
+  sensor_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  sensor_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  sensor_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_SENSORDATA;
+
+  sensor_data_tx.fields.flags.veml6040_detected = light_sensor_detected;
+  sensor_data_tx.fields.flags.bme280_detected = env_sensor_detected;
+
+  if(light_sensor_detected)
+  {
+    sensor_data_tx.fields.lux = light_sensor_lux * 10;
+  }
+  else sensor_data_tx.fields.lux = 0xFFFF;
+
   if(env_sensor_detected)
   {
     sensor_data_tx.fields.temp =  env_temp_f * 100;
@@ -169,71 +128,53 @@ void pic_uart_tx_sensordata()
     sensor_data_tx.fields.pres = 0xFFFF;
     sensor_data_tx.fields.hum = 0xFFFF;
   }
-  if(light_sensor_detected)
-  {
-    sensor_data_tx.fields.lux = light_sensor_lux * 10;
-  }
-  else sensor_data_tx.fields.lux = 0xFFFF;
 
-  size_t bytesSent = UARTPIC.write(sensor_data_tx.raw, sizeof(sensor_data_tx.raw));
+  size_t bytesSent = UARTPIC.write(sensor_data_tx.raw, sizeof(sensor_data_tx));
 }
-
-#pragma pack(push, 1)
-union DisplayDataUnion
-{
-  struct _struct
-  {
-    uint8_t header;
-    uint8_t type;
-    uint8_t datatype;
-    uint16_t brightness;
-    uint8_t display_state;
-    uint8_t menu_state;
-  } fields;
-  uint8_t raw[sizeof(struct _struct)];
-};
-#pragma pack(pop)
 
 void pic_uart_tx_displaydata()
 {
-  DisplayDataUnion display_data_tx = {};
-  display_data_tx.fields.header = PIC_UART_HEADER;
-  display_data_tx.fields.type = PIC_UART_TYPE_TX;
-  display_data_tx.fields.datatype = PIC_UART_DATATYPE_DISPLAYDATA;
+  SERIAL_PROTO_DATA_ESP_DISPLAY display_data_tx = {};
+  memset(display_data_tx.raw, 0, sizeof(display_data_tx));
+
+  display_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  display_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  display_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA;
+
+  display_data_tx.fields.flags.update_pending = 0;
+  display_data_tx.fields.flags.brightness_manual = 0;
+  display_data_tx.fields.flags.oc_running = 0;
+  display_data_tx.fields.flags.pwr_stat = 0;
+  display_data_tx.fields.flags.switch_state = 0;
+  display_data_tx.fields.flags.button_state = 0;
 
   if(light_sensor_detected)
   {
     display_data_tx.fields.brightness = light_sensor_lux * 35;
+    display_data_tx.fields.brightness_target = light_sensor_lux * 35;
   }
-  else display_data_tx.fields.brightness = 2000;
-  display_data_tx.fields.display_state = 0;
-  display_data_tx.fields.menu_state = 0;
-
-  size_t bytesSent = UARTPIC.write(display_data_tx.raw, sizeof(display_data_tx.raw));
-}
-
-#pragma pack(push, 1)
-union UserDataUnion
-{
-  struct _struct
+  else
   {
-    uint8_t header;
-    uint8_t type;
-    uint8_t datatype;
-    char c;
-  } fields;
-  uint8_t raw[sizeof(struct _struct)];
-};
-#pragma pack(pop)
+    display_data_tx.fields.brightness = 2000;
+    display_data_tx.fields.brightness_target = 2000;
+  }
+
+  display_data_tx.fields.display_state = UI_DISPLAY_STATE_CLOCK_HHMM;
+  display_data_tx.fields.menu_state = UI_MENU_STATE_ROOT;
+
+  size_t bytesSent = UARTPIC.write(display_data_tx.raw, sizeof(display_data_tx));
+}
 
 void pic_uart_tx_userdata(char c)
 {
-  UserDataUnion user_data_tx = {};
-  user_data_tx.fields.header = PIC_UART_HEADER;
-  user_data_tx.fields.type = PIC_UART_TYPE_TX;
-  user_data_tx.fields.datatype = PIC_UART_DATATYPE_USERDATA;
+  SERIAL_PROTO_DATA_ESP_USER user_data_tx = {};
+  memset(user_data_tx.raw, 0, sizeof(user_data_tx));
+
+  user_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  user_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  user_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_USERDATA;
 
   user_data_tx.fields.c = c;
 
-  size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx.raw));
+  size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx));
 }
