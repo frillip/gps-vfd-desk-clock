@@ -122,12 +122,12 @@ void pic_uart_rx()
           break;
 
         case PIC_GNSS:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_GNSS) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
           memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
           break;
 
         case PIC_OFFSET:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_OFFSET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
           memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
           break;
 
