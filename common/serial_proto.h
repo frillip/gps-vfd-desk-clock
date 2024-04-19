@@ -72,14 +72,18 @@ typedef union
     } header;
     struct __attribute__ ((packed))
     {
+        uint8_t gnss_detected : 1;
         uint8_t gnss_fix : 1;
         uint8_t fix_ok : 1;
         uint8_t utc_valid : 1;
         uint8_t timemark_valid : 1;
         uint8_t fix_status : 4;
     } flags;
+    time_t gnss;
     int32_t posllh_lat;
     int32_t posllh_lon;
+    int16_t posllh_height;
+    int16_t posllh_hmsl;
   } fields;
   uint8_t raw[sizeof(struct _pic_gnss_struct)];
 } SERIAL_PROTO_DATA_PIC_GNSS;
@@ -167,6 +171,7 @@ typedef union
     } flags;
     uint16_t lux;
     uint16_t temp;
+    uint16_t temp_raw;
     uint16_t pres;
     uint16_t hum;
   } fields;
