@@ -433,7 +433,7 @@ void esp_data_task(void)
             break;
             
         case 10:
-            if(esp_gnss_data_updated) esp_tx_gnss();
+            esp_tx_gnss();
             break;
             
         case 20:
@@ -504,6 +504,8 @@ extern bool ubx_nav_timeutc_valid;
 extern bool ubx_tim_tm2_valid;
 extern int32_t ubx_nav_posllh_lat;
 extern int32_t ubx_nav_posllh_lon;
+extern int32_t ubx_nav_posllh_height;
+extern int32_t ubx_nav_posllh_hmsl;
 
 void esp_tx_gnss(void)
 {
@@ -514,14 +516,19 @@ void esp_tx_gnss(void)
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_GNSSDATA;
     
+    esp_tx_buffer.fields.flags.gnss_detected = gnss_detected;
     esp_tx_buffer.fields.flags.gnss_fix = gnss_fix;
     esp_tx_buffer.fields.flags.fix_ok = ubx_nav_status_gpsfixok;
     esp_tx_buffer.fields.flags.utc_valid = ubx_nav_timeutc_valid;
     esp_tx_buffer.fields.flags.timemark_valid = ubx_tim_tm2_valid;
     esp_tx_buffer.fields.flags.fix_status = ubx_nav_status_gpsfix;
     
+    esp_tx_buffer.fields.gnss = gnss;
+    
     esp_tx_buffer.fields.posllh_lat = ubx_nav_posllh_lat;
     esp_tx_buffer.fields.posllh_lon = ubx_nav_posllh_lon;
+    esp_tx_buffer.fields.posllh_height = ubx_nav_posllh_height / 1000;
+    esp_tx_buffer.fields.posllh_hmsl = ubx_nav_posllh_hmsl / 1000;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
     esp_gnss_data_updated = 0;
@@ -619,8 +626,9 @@ void esp_tx_sensor(void)
     esp_tx_buffer.fields.lux = (veml_ambient_light * 10);
     
     esp_tx_buffer.fields.temp = bme280_temperature;
-    esp_tx_buffer.fields.pres = (bme280_pressure / 1000);
-    esp_tx_buffer.fields.hum = (bme280_humidity / 2);
+    esp_tx_buffer.fields.temp_raw = bme280_temperature - BME280_TEMP_OFFSET;
+    esp_tx_buffer.fields.pres = (bme280_pressure / 10);
+    esp_tx_buffer.fields.hum = bme280_humidity;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
