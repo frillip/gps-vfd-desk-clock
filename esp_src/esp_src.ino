@@ -317,6 +317,7 @@ void loop()
     }
     else if(c==0x5A) // on 'Z'
     {
+      Serial.println("");
       print_pic_time();
       /*
       if(gnss_detected && timeStatus() == timeSet)

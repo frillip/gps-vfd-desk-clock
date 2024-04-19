@@ -455,6 +455,17 @@ void pic_process_time()
   pic_dst_active = pic_time_buffer.fields.dst_flags.dst_active;
   pic_dst_offset = pic_time_buffer.fields.dst_flags.dst_offset * 900;
 
+  if(WiFi.status() != WL_CONNECTED)
+  {
+    if(timeStatus() == timeNotSet)
+    {
+      if(pic_utc_source != CLOCK_SOURCE_NONE)
+      {
+        UTC.setTime(pic);
+      }
+    }
+  }
+
   pic_time_waiting = 0;
 }
 
