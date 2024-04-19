@@ -27,13 +27,17 @@ int32_t pic_dst_offset;
 char pic_gnss_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_GNSSDATA};
 bool pic_gnss_waiting = 0;
 SERIAL_PROTO_DATA_PIC_GNSS pic_gnss_buffer;
-extern bool pic_gnss_fix = 0;
-extern bool pic_fix_ok = 0;
-extern bool pic_utc_valid = 0;
-extern bool pic_timemark_valid = 0;
-extern uint8_t pic_fix_status = 0;
-extern int32_t pic_posllh_lat = 0;
-extern int32_t pic_posllh_lon = 0;
+bool pic_gnss_detected = 0;
+bool pic_gnss_fix = 0;
+bool pic_fix_ok = 0;
+bool pic_utc_valid = 0;
+bool pic_timemark_valid = 0;
+uint8_t pic_fix_status = 0;
+time_t gnss = 0;
+int32_t pic_posllh_lat = 0;
+int32_t pic_posllh_lon = 0;
+int16_t pic_posllh_height = 0;
+int16_t pic_posllh_hmsl = 0;
 
 char pic_offset_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_OFFSETDATA};
 bool pic_offset_waiting = 0;
@@ -58,6 +62,7 @@ SERIAL_PROTO_DATA_PIC_RTC pic_rtc_buffer;
 bool pic_rtc_detected = 0;
 bool pic_rtc_valid = 0;
 bool pic_rtc_sync = 0;
+time_t pic_rtc = 0;
 
 
 char pic_sensor_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_SENSORDATA};
@@ -67,6 +72,7 @@ bool pic_veml6040_detected = 0;
 bool pic_bme280_detected = 0;
 float pic_lux = 0;
 float pic_temp = 0;
+float pic_temp_raw = 0;
 float pic_pres = 0;
 float pic_hum = 0;
 
@@ -122,6 +128,7 @@ void print_clock_source(CLOCK_SOURCE source)
             break;
     }
 }
+
 
 void sync_state_print(CLOCK_SYNC_STATUS sync_state);
 void sync_state_print(CLOCK_SYNC_STATUS sync_state)
@@ -242,34 +249,16 @@ void sync_state_print(CLOCK_SYNC_STATUS sync_state)
     }
 }
 
-void print_sync_state_machine(void)
+
+void print_iso8601_string(time_t time)
 {
-    Serial.print("\r\n=== STATE MACHINE ===\r\n");
-    Serial.print("STATE: ");
-    sync_state_print(pic_clock_sync_state);
-    Serial.print(" LAST: ");
-    sync_state_print(pic_clock_sync_state_last);
-    Serial.print("\r\nLAST SYNC CAUSE: ");
-    sync_state_print(pic_last_sync_cause);
-    Serial.print("\r\n");
+  char buf[32] = {0}; // Allocate buffer
+  struct tm *iso_time; // Allocate buffer
+  iso_time = gmtime(&time);
+  strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", iso_time);
+  Serial.print(buf);
 }
 
-void print_veml_data(void)
-{
-    if(pic_veml6040_detected)
-    {
-        Serial.print("\r\n=== VEML6040 LUX DATA ===\r\n");
-        Serial.print("LUX: ");
-        Serial.print(pic_lux,1);
-        Serial.print(" BRI: ");
-        Serial.print(pic_brightness);
-        Serial.print("/4000\r\n");
-    }
-    else
-    {
-        Serial.print("\r\n=== NO VEML6040 DETECTED ===\r\n");
-    }
-}
 
 void pic_uart_rx()
 {
@@ -425,6 +414,7 @@ void pic_copy_buffer(PIC_MESSAGE_TYPE message)
   }
 }
 
+
 PIC_MESSAGE_TYPE pic_check_incoming(void)
 {
   if(memcmp(pic_check_buffer, pic_time_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_TIME;
@@ -453,6 +443,7 @@ void pic_data_task(void)
     //if(pic_user_waiting) pic_process_user();
 }
 
+
 void pic_process_time()
 {
   pic_utc_source = pic_time_buffer.fields.utc_source;
@@ -468,18 +459,135 @@ void pic_process_time()
 }
 
 
+void print_pic_time(void)
+{
+  Serial.print("UTC:   ");
+  print_iso8601_string(pic);
+
+  Serial.print("\r\nGNSS:  ");
+  print_iso8601_string(gnss);
+
+  Serial.print("\r\nNTP:   ");
+  time_t now = UTC.now();
+  print_iso8601_string(now);
+
+  Serial.print("\r\nRTC:   ");
+  print_iso8601_string(pic_rtc);
+
+  Serial.print("\r\nLocal: ");
+  time_t local = pic;
+  local += pic_tz_offset;
+  if(pic_dst_active) local += pic_dst_offset;
+  char buf[32] = {0}; // Allocate buffer
+  struct tm *iso_time; // Allocate buffer
+  iso_time = gmtime(&local);
+  strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", iso_time);
+  Serial.print(buf);
+  int32_t total_offset = pic_tz_offset+pic_dst_offset;
+  if((total_offset)>=0)
+  {
+    Serial.print("+"); 
+  }
+  else
+  {
+    Serial.print("-"); 
+    total_offset = total_offset*-1;
+  }
+  uint32_t total_offset_hours = total_offset/3600;
+  uint32_t total_offset_minutes = (total_offset-(total_offset_hours*3600))/60;
+
+  sprintf(buf,"%02lu:%02lu",total_offset_hours,total_offset_minutes);
+  Serial.print(buf);
+
+  Serial.print("\r\nUTC source: ");
+  print_clock_source(pic_utc_source);
+  Serial.println("");
+}
+
+
 void pic_process_gnss(void)
 {
+  pic_gnss_detected = pic_gnss_buffer.fields.flags.gnss_detected;
   pic_gnss_fix = pic_gnss_buffer.fields.flags.gnss_fix;
   pic_fix_ok = pic_gnss_buffer.fields.flags.fix_ok;
   pic_utc_valid = pic_gnss_buffer.fields.flags.utc_valid;
   pic_timemark_valid = pic_gnss_buffer.fields.flags.timemark_valid;
   pic_fix_status = pic_gnss_buffer.fields.flags.fix_status;
   
+  gnss = pic_gnss_buffer.fields.gnss;
+
   pic_posllh_lat = pic_gnss_buffer.fields.posllh_lat;
   pic_posllh_lon = pic_gnss_buffer.fields.posllh_lon;
+  pic_posllh_height = pic_gnss_buffer.fields.posllh_height;
+  pic_posllh_hmsl = pic_gnss_buffer.fields.posllh_hmsl;
 
   pic_gnss_waiting = 0;
+}
+
+
+void print_gnss_data(void)
+{
+  if(pic_gnss_detected)
+  {
+    Serial.print("\r\n=== GNSS ===\r\n");
+    Serial.print("Fix: ");
+    Serial.print(pic_gnss_fix);
+    Serial.print("  OK: ");
+    Serial.print(pic_fix_ok);
+    Serial.print("  UTC: ");
+    Serial.print(pic_utc_valid);
+    Serial.print("  TM: ");
+    Serial.println(pic_timemark_valid);
+    Serial.print("Fix type: ");
+    Serial.print(pic_fix_status,HEX);
+    Serial.print(" - ");
+    switch (pic_fix_status)
+          {
+              case 0x00:
+                  Serial.println("No fix");
+                  break;
+                  
+              case 0x01:
+                  Serial.println("Dead reckoning only");
+                  break;
+
+              case 0x02:
+                  Serial.println("2D-fix");
+                  break;
+
+              case 0x03:
+                  Serial.println("3D-fix");
+                  break;
+
+              case 0x04:
+                  Serial.println("GNSS + dead reckoning combined");
+                  break;
+
+              case 0x05:
+                  Serial.println("Time only fix");
+                  break;
+                  
+              default:
+                  Serial.println("Unknown");
+                  break;
+          }
+
+    Serial.print("LAT: ");
+    Serial.println((float)pic_posllh_lat/10000000,7);
+
+    Serial.print("LON: ");
+    Serial.println((float)pic_posllh_lon/10000000,7);
+
+    Serial.print("Height: ");
+    Serial.print((float)pic_posllh_height,0);
+    Serial.print("m  mASL:");
+    Serial.print((float)pic_posllh_hmsl,0);
+    Serial.println("m");
+  }
+  else
+  {
+    Serial.print("\r\n=== NO GNSS DETECTED ===\r\n");
+  }
 }
 
 
@@ -499,6 +607,24 @@ void pic_process_offset(void)
   pic_offset_waiting = 0;
 }
 
+void print_offset_data(void)
+{
+  Serial.print("\r\n=== Clock and PPS stats ===\r\n");
+  Serial.print("Crystal freq: ");
+  Serial.print((float)pic_fosc_freq / 1000000,6);
+  Serial.print("MHz\r\nOC D: ");
+  Serial.print(pic_oc_offset);
+  Serial.print(" CLK D: ");
+  Serial.print(pic_accumulation_delta);
+  Serial.print(" CLK T: ");
+  Serial.print(pic_accumulated_clocks);
+  Serial.print("\r\nOC events: ");
+  Serial.print(pic_total_oc_seq_count);
+  Serial.print(" Resync events: ");
+  Serial.println(pic_sync_events);
+}
+
+
 void pic_process_rtc(void)
 {
   pic_rtc_detected = pic_rtc_buffer.fields.flags.rtc_detected;
@@ -509,6 +635,26 @@ void pic_process_rtc(void)
   pic_rtc_waiting = 0;
 }
 
+
+void pic_print_rtc(void)
+{
+  if(pic_rtc_detected)
+  {
+    Serial.print("\r\n=== RTC ===\r\n");
+    Serial.print("D: ");
+    Serial.print(pic_rtc_detected);
+    Serial.print("  V: ");
+    Serial.print(pic_rtc_valid);
+    Serial.print("  S: ");
+    Serial.println(pic_rtc_sync);
+  }
+  else
+  {
+    Serial.print("\r\n=== NO RTC DETECTED ===\r\n");
+  }
+}
+
+
 void pic_process_sensor(void)
 {
   pic_veml6040_detected = pic_sensor_buffer.fields.flags.veml6040_detected;
@@ -516,11 +662,53 @@ void pic_process_sensor(void)
 
   pic_lux = (float)pic_sensor_buffer.fields.lux / 10;
   pic_temp = (float)pic_sensor_buffer.fields.temp / 100;
+  pic_temp_raw = (float)pic_sensor_buffer.fields.temp_raw / 100;
   pic_pres = (float)pic_sensor_buffer.fields.pres / 10;
-  pic_hum = (float)pic_sensor_buffer.fields.hum / 512;
+  pic_hum = ((float)pic_sensor_buffer.fields.hum) / 100;
 
   pic_sensor_waiting = 0;
 }
+
+
+void print_veml_data(void)
+{
+    if(pic_veml6040_detected)
+    {
+        Serial.print("\r\n=== VEML6040 LUX DATA ===\r\n");
+        Serial.print("LUX: ");
+        Serial.print(pic_lux,1);
+        Serial.print(" BRI: ");
+        Serial.print(pic_brightness);
+        Serial.print("/4000\r\n");
+    }
+    else
+    {
+        Serial.print("\r\n=== NO VEML6040 DETECTED ===\r\n");
+    }
+}
+
+
+void print_bme_data()
+{
+  if(pic_bme280_detected)
+  {
+    Serial.print("\r\n=== BME280 env data ===\r\n");
+    Serial.print("T: ");
+    Serial.print(pic_temp,2);
+    Serial.print("C (");
+    Serial.print(pic_temp_raw,2);
+    Serial.print("C board)\r\nP: ");
+    Serial.print(pic_pres,1);
+    Serial.print("mB\r\nH: ");
+    Serial.print(pic_hum,2);
+    Serial.println("%");
+  }
+  else
+  {
+    Serial.print("\r\n=== NO BME280 DETECTED ===\r\n");
+  }
+}
+
 
 void pic_process_display(void)
 {
@@ -538,6 +726,19 @@ void pic_process_display(void)
   UI_MENU_STATE pic_menu_state = pic_display_buffer.fields.menu_state;
 
   pic_display_waiting = 0;
+}
+
+
+void print_sync_state_machine(void)
+{
+    Serial.print("\r\n=== STATE MACHINE ===\r\n");
+    Serial.print("STATE: ");
+    sync_state_print(pic_clock_sync_state);
+    Serial.print(" LAST: ");
+    sync_state_print(pic_clock_sync_state_last);
+    Serial.print("\r\nLAST SYNC CAUSE: ");
+    sync_state_print(pic_last_sync_cause);
+    Serial.print("\r\n");
 }
 
 
@@ -642,6 +843,7 @@ void pic_uart_tx_sensordata()
 
   size_t bytesSent = UARTPIC.write(sensor_data_tx.raw, sizeof(sensor_data_tx));
 }
+
 
 void pic_uart_tx_displaydata()
 {

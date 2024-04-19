@@ -1,5 +1,3 @@
-time_t pic_rtc = 0;
-
 //#include <ESP32Time.h>
 #include <ezTime.h>
 #include <HardwareSerial.h>
@@ -156,15 +154,6 @@ void fe_build_ntp_string(void)
   
 }
 
-void print_iso8601_string(time_t time)
-{
-  char buf[32] = {0}; // Allocate buffer
-  struct tm *iso_time; // Allocate buffer
-  iso_time = gmtime(&time);
-  strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", iso_time);
-  Serial.print(buf);
-}
-
 uint32_t wifi_disconnect_millis = 0;
 uint32_t wifi_disconnect_last_millis = 0;
 #define WIFI_RECONNECT_INTERVAL_MILLIS 30000
@@ -308,11 +297,13 @@ void loop()
       digitalWrite(STATUS_LED_PIN, 1);
     }
     pic_uart_tx_timedata();
-
+    
+    /*
     time_t now = UTC.now();
     Serial.print("UTC: ");
     print_iso8601_string(now);
     Serial.println("");
+    */
   }
 
   if(Serial.available())
@@ -326,8 +317,31 @@ void loop()
     }
     else if(c==0x5A) // on 'Z'
     {
-      print_sync_state_machine();
+      print_pic_time();
+      /*
+      if(gnss_detected && timeStatus() == timeSet)
+      {
+        int32_t gnss_offset_ms = gnss_pps_offset_ms;
+        int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
+        Serial.print("GNSS offset: ");
+        Serial.print((float)(gnss_offset_micros)/1000);
+        Serial.println("ms");
+      }
+      if(pic_detected && timeStatus() == timeSet)
+      {
+        int32_t pic_offset_ms = pic_pps_offset_ms;
+        int32_t pic_offset_micros = esp_micros - pic_pps_micros;
+        Serial.print("PIC offset: ");
+        Serial.print((float)(pic_offset_micros)/1000);
+        Serial.println("ms");
+      }
+      */
+      print_offset_data();
+      print_gnss_data();
+      pic_print_rtc();
       print_veml_data();
+      print_bme_data();
+      print_sync_state_machine();
     }
     pic_uart_tx_userdata(c);
   }
@@ -408,31 +422,15 @@ void loop()
     }*/
     //pic_uart_tx_sensordata();
   }
-  if(t100ms1>=2)
+  if(t100ms1>=1)
   {
-    t100ms1=-8;
+    t100ms1=-9;
     //pic_uart_tx_displaydata();
   }
   if(t100ms2>=1)
   {
     t100ms2=-9;
     pic_uart_tx_netdata();
-    if(gnss_detected && timeStatus() == timeSet)
-    {
-      int32_t gnss_offset_ms = gnss_pps_offset_ms;
-      int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
-      //Serial.print("GNSS offset: ");
-      //Serial.print((float)(gnss_offset_micros)/1000);
-      //Serial.println("ms");
-    }
-    if(pic_detected && timeStatus() == timeSet)
-    {
-      int32_t pic_offset_ms = pic_pps_offset_ms;
-      int32_t pic_offset_micros = esp_micros - pic_pps_micros;
-      //Serial.print("PIC offset: ");
-      //Serial.print((float)(pic_offset_micros)/1000);
-      //Serial.println("ms");
-    }
   }
   if(t100ms3>=87)
   {
