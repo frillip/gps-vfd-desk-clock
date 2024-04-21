@@ -10,7 +10,7 @@ Apparently some people don't have access to a Rubidium frequency standard? Who k
 
 ## Overall design
 
-The last PCB and associated components were somewhat sprawling for a layout that favoured debugging. This design is an evolution based on things learned from the last clock, and significantly reduces the footprint by stacking boards on top of each other. The bottom board holds most of the electronics, the top board holds the tubes and the drivers, connected via a 4x2 2.54mm header. The top board is also supported by a series of 20mm M3 standoffs.
+The last PCB and associated components were somewhat sprawling for a layout that favoured debugging. This design is an evolution based on things learned from the last clock, and significantly reduces the footprint by stacking boards on top of each other. The bottom board holds most of the electronics, the top board holds the tubes and the drivers, connected via a 4x2 2.54mm header. The top board is also supported by a series of 20mm M3 standoffs. The clock is designed to function with or without a GNSS module populated on the board, as this represents a significant cost, and also many people do not want to have GNSS antennas strung around their house (what?).
 
 ## Tubes
 
@@ -18,49 +18,61 @@ Much like [the big one](https://github.com/frillip/gpsdo), we have IV-12 VFD 7 s
 
 ## Tube drivers
 
-I've gone for a very similar Microchip offering in 2x HV5812WG-G, this gives us 40 HV outputs which we can control via the SPI peripheral and latch with our output compare module. Looking at moving to HV5308PG for 32 outputs on a single chip in TQFP package.
+I've gone for a very similar Microchip offering in 2x HV5812WG-G, this gives us 40 HV outputs which we can control via the SPI peripheral and latch with our output compare module.
 
 ## Microcontroller
 
-A dsPIC33EP256GP504 runs the show with 4x input capture modules, 2x output compare modules, an i2c peripheral, an SPI peripheral and 2 UARTs. This is run off a relatively cheap 10MHz crystal, but could be easily swapped out for something fancier like an OCXO or TCXO, but for the purposes of this project we use GPS to more accurately characterise our frequency source.
+A dsPIC33EP256GP504 runs the show with 4x input capture modules, 3x output compare modules, an I2C peripheral, an SPI peripheral and 2 UARTs. This is run off a relatively cheap 40MHz osciillator, but could be easily swapped out for something fancier like an OCXO or TCXO, but for the purposes of this project we can use GPS to more accurately characterise our frequency source.
 
-## GPS
+## ESP32
 
-Again we're using the u-blox NEO M9N. The plan is to integrate this directly onto the board, rather than use the (excellent and highly recommended) Sparkfun breakout.
+An ESP32 allows us to connect to the internet to obtain time from NTP servers. It is connected to the PIC via UART for data transfer, and also has access to the PPS signals from both the PIC OC module and GNSS module (if populated). It is also connected to the I2C bus (though I2C is not enabled in software), the GNSS UART via unpopulated solder jumpers, and some other IO. There is also a PPS signal from the ESP module to the PIC for sub-second accuracy. Typical achievable accuracy for NTP mode is within ~20ms of UTC. A programming and communication interface is provided on UART0 by a CP2102N USB to UART bridge. As the ESP32 is NRND, the next revision will swap the ESP32 module for an ESP32-S3 which supports USB direct and I can remove the CP2102N from the board.
+
+## GNSS
+
+Again we're using the u-blox NEO M9N. This is directly integrated onto the board with an SMT SMA connector for an antenna. Both active and passive antennas are supported. There is also a second USB port connected to the GNSS module for power/configuration of the module via u-center.
 
 ## RTC
 
-There is code for both a DS1307 RTC or a PCF8563 RTC, which seems to be more popular these days. This is battery backed with a 1215 cell.
+There is code for both a DS1307 RTC or a PCF8563 RTC, which seems to be more popular these days. This is battery backed with a 1215 cell and connected via I2C to both the PIC and ESP.
 
 ## Environment sensors
 
-A SHT30 temperature/pressure/humidity sensor is on the board, but code needs development. It may be possible to more accurately estimate the crystal temperature characteristics at startup with this sensor, but for now it is mostly decorative.
+A BME280 temperature/pressure/humidity sensor is on the board, but code needs development. It may be possible to more accurately estimate the crystal temperature characteristics at startup with this sensor, but for now it is mostly decorative, as there is significant heating of the board from the power supply modules that render it somewhat useless as an environment sensor!
 
-A BH1730 is available for ambient light sensing, but again, needs development.
+A VEML6040 is used for ambient light sensing. The output of which goes through a very basic scaling to give a target brightness for the tubes out of 4000. The PIC then drives a third OC module using this value to get flicker-free brightness control over the tubes. The resulting PWM frequency is 10kHz, however even if you were to record the tubes with a camera capable of siignificantly more than 10,000fps, you would not see any flickering as there is a persistent glow on the VFD tubes that smooths the brightness.
 
 ## Inputs
 
-There is a single push button and a toggle switch. I've yet to code any sort of UI, and am not sure I even need one, so for now these are just for debugging purposes.
+There is a single push button and a toggle switch. Holding the push button switched between a few different display modes:
+ - Hours and minutes
+ - Minutes and seconds
+ - Seconds and 100ths of seconds
+ - Estimated room temperature
+ 
+After a number of seconds, the clock will time out, and revert to hours and minutes display. The toggle switch is used for enabling/disabling the buzzer, and will also disable the display mode timeout.
 
 ## Buzzer
 
-A self oscillating 5V buzzer beeps at semi-regular intervals. This could be potentially used for an alarm feature in the future.
+A self oscillating 5V buzzer beeps at semi-regular intervals. If enabled, every hour it beeps 1-12 times, corresponding to the hour, in groupds of 4. It also beeps once at 15, 30 and 45 minutes past the hour. This could also be potentially used for an alarm feature in the future.
 
 ## Power
 
-Currently using the same STUSB4500 to supply 20V to several DCDC modules, but as we do not need the full 100W available from a USB-PD source, the plan is to use a plain 5V USB-C supply with a LDO to 3.3V for the microcontroller + GPS, a buck to 1.5V for the tube filaments, and a boost to 35V for the tube grid and segment voltages.
+Power is provided through either the USB-C port connected to the ESP or the USB-C connected to the GNSS module. This goes through a TPS2113A power mux chip that provides current limiting, inrush current control, and power selection/prioritization. It also prevents backfeeding from one USB source to the other if both are connected. A LM3671MFX based buck converter provides 3.3V for the GNSS module, PIC, and ESP32. Tube voltages are generated using a TPS55340 boost converter IC to give 34V for the grid voltage, and a LM2831Z based buck converter provides the lower 1.65V filament voltage.
 
 # How?
 
 After start up the microcontroller gets the stored time from the RTC and loads it into the display driver via SPI. It then sets up the output compare (OC) module to output a 1.25us pulse every 1 second to the display driver latch input. A 1kHz scheduler loop is set up and increments the internal calendar every 1s and pushes this new data to the display driver 100ms before the OC pulse goes out. When the OC triggers, the latch pin of the display driver is driven high, and the previously pushed data appears on the outputs, and in turn the tubes. This allows for very precise updating of the display.
 
-The microcontroller then waits for GPS to obtain a fix and begin outputting a PPS signal. The PPS signal is fed into one of the pairs of input capture (IC) modules operating in 32-bit mode. This is compared with the other IC module pair that captures the timestamp of the OC pin. Once the difference between the two has been calculated, the OC module has a one-off adjustment applied to it to bring it in sync with the GPS PPS pin.
+The microcontroller also listens for a time signal over the UART from the ESP32 module. Based on WiFi status, NTP sync status, it may choose to ignore the data being sent and rely solely on the RTC if the ESP is without a network connection for instance. 
+
+The microcontroller then waits for GNSS (if present) to obtain a fix and begin outputting a PPS signal. The PPS signal is fed into one of the pairs of input capture (IC) modules operating in 32-bit mode. This is compared with the other IC module pair that captures the timestamp of the OC pin. Once the difference between the two has been calculated, the OC module has a one-off adjustment applied to it to bring it in sync with GNSS PPS.
 
 As a final step, the scheduler loop is then aligned to the OC signal so that it ticks 500us ahead of the PPS.
 
-As the clock runs, it counts the number of clock cycles between each GPS PPS event, and uses this to more accurately calculate the true frequency of the 10MHz crystal. Once a number of 'slipped' cycles has accumulated, the microcontroller performs a calculation to determine its running frequency, updates the OC parameters to match, and resynchronises with the GPS PPS signal.
+As the clock runs, it counts the number of clock cycles between each GPS PPS event, and uses this to more accurately calculate the true frequency of the 40MHz osciillator. Once a number of 'slipped' cycles has accumulated, the microcontroller performs a calculation to determine its running frequency, updates the OC parameters to match, and resynchronises with the GPS PPS signal. The microcontroller also determines the short term frequency deviation of from UTC. If it is found to have suddenly changed (due to room temperature, or as would be the case at initial startup), the OC values are updated to reflect the new frequency, and if required, PPS signals resynchronised.
 
-By default, the clock maintains an accuracy of within around 25us of UTC.
+By default, the clock maintains an accuracy of within around 25us of UTC in GNSS mode.
 
 # Serial Commands
 
@@ -72,6 +84,7 @@ It is possible to send commands over the ESP UART to perform some actions, or pr
 | `R` | Reset the dsPIC |
 | `E` | Reset the ESP |
 | `W` | Clear saved WiFi credentials and reset the ESP |
+| `Z` | Print the debug information available to the ESP |
 | `r` | If GNSS module is present, manually resync PPS |
 | `B` | Increase display brightness |
 | `b` | Decrease display brightness |
