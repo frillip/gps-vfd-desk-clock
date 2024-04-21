@@ -86,7 +86,6 @@ void sync_state_machine(void)
         ClrWdt();
         sync_state_eval_time_counter = EVAL_TIME_DELAY_INTERVAL;
         state_new_oc = 1;
-        esp_data_task_cycle = 0;
         pic_pps_calculate_oc_stats();
         ui_buzzer_interval_beep();
         oc_event=0;
@@ -97,6 +96,8 @@ void sync_state_machine(void)
         if(sync_state_eval_time_counter==0)
         {
             sync_state_eval_time();
+            esp_data_task_reset_cycle();
+            esp_data_task();
 #ifdef DEBUG_MESSAGES
             if(esp_ntp_valid)
             {

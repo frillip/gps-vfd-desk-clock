@@ -60,6 +60,7 @@ void esp_process_sensor(void);
 void esp_process_display(void);
 void esp_process_user(void);
 void esp_data_task(void);
+void esp_data_task_reset_cycle(void);
 
 void esp_tx(void *buffer, uint16_t len);
 void esp_tx_time(void);

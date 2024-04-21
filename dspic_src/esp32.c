@@ -424,36 +424,34 @@ void esp_data_task(void)
     if(esp_display_waiting) esp_process_display();
     if(esp_user_waiting) esp_process_user();
     
-    
     switch(esp_data_task_cycle)
     {
         case 0:
             esp_tx_time();
+            esp_tx_gnss();
+            esp_tx_rtc();
             esp_tx_offset();
             break;
             
         case 10:
-            esp_tx_gnss();
-            break;
-            
-        case 20:
             esp_tx_sensor();
             break;
                   
-        case 30:
+        case 20:
             esp_tx_display();
             break;
-            
-        case 40:
-            esp_tx_rtc();
-            break;
-            
+
         default:
             break;
     }
     
     esp_data_task_cycle++;
     if(esp_data_task_cycle>120) esp_data_task_cycle = 0;
+}
+
+void esp_data_task_reset_cycle(void)
+{
+    esp_data_task_cycle = 0;
 }
 
 void esp_tx(void *buffer, uint16_t len) 
