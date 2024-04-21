@@ -37,6 +37,7 @@ extern bool scheduler_sync;
 
 extern bool esp_detected;
 extern bool esp_ntp_valid;
+extern bool esp_wifi_status;
 
 extern uint32_t fosc_freq;
 
@@ -897,30 +898,54 @@ void sync_state_eval_time(void)
 
 void print_clocks(void)
 {
-    printf("\r\nUTC:  ");
+    printf("\r\nUTC:   ");
     ui_print_iso8601_string(utc);
     printf("\r\n");
-    if(gnss_detected)
+    
+    printf("GNSS:  ");
+    ui_print_iso8601_string(gnss);
+    if(!gnss_detected)
     {
-        printf("GNSS: ");
-        ui_print_iso8601_string(gnss);
-        printf("\r\n");
+        printf(" - MISSING");
     }
-    if(esp_detected)
+    printf("\r\n");
+    
+    printf("NTP:   ");
+    ui_print_iso8601_string(ntp);
+    if(!esp_detected)
     {
-        printf("NTP:  ");
-        ui_print_iso8601_string(ntp);
-        printf("\r\n");
-        printf("ESP:  ");
-        ui_print_iso8601_string(esp);
-        printf("\r\n");
+        printf(" - MISSING");
     }
-    if(rtc_detected)
+    else if(!esp_wifi_status)
     {
-        printf("RTC:  ");
-        ui_print_iso8601_string(rtc);
-        printf("\r\n");
+        printf(" - NO WIFI");
     }
+    else if(!esp_ntp_valid)
+    {
+        printf(" - NO NTP SYNC");
+    }
+    printf("\r\n");
+
+    printf("ESP:   ");
+    ui_print_iso8601_string(esp);
+    if(!esp_detected)
+    {
+        printf(" - MISSING");
+    }
+    printf("\r\n");
+    
+    printf("RTC:   ");
+    ui_print_iso8601_string(rtc);
+    if(!rtc_detected)
+    {
+        printf(" - MISSING");
+    }
+    printf("\r\n");
+    
+    printf("Local: ");
+    ui_print_iso8601_string_local(utc);
+    printf("\r\n");
+    
     printf("UTC source: ");
     print_clock_source(utc_source);
     printf("\r\n");
