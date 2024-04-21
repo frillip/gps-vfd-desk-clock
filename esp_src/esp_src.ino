@@ -324,7 +324,7 @@ void loop()
       Serial.println("");
       print_pic_time();
       
-      if(gnss_detected && timeStatus() == timeSet)
+      if(gnss_detected && timeStatus() != timeNotSet)
       {
         int32_t gnss_offset_ms = gnss_pps_offset_ms;
         int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
@@ -332,7 +332,7 @@ void loop()
         Serial.print((float)(gnss_offset_micros)/1000);
         Serial.println("ms");
       }
-      if(pic_detected && timeStatus() == timeSet)
+      if(pic_detected && timeStatus() != timeNotSet)
       {
         int32_t pic_offset_ms = pic_pps_offset_ms;
         int32_t pic_offset_micros = esp_micros - pic_pps_micros;
