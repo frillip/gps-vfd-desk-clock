@@ -170,10 +170,12 @@ uint32_t gnss_pps_micros = 0;
 uint16_t gnss_timeout = 0;
 bool gnss_new_pps = 0;
 uint32_t esp_micros = 0;
+extern time_t gnss;
 
 void IRAM_ATTR gnss_pps_in(void)
 {
   if(!gnss_detected) gnss_detected = 1;
+  gnss++;
   gnss_pps_offset_ms = UTC.ms();
   gnss_pps_micros = micros();
   gnss_new_pps = 1;
@@ -184,10 +186,12 @@ void IRAM_ATTR gnss_pps_in(void)
 uint32_t pic_pps_micros = 0;
 uint16_t pic_timeout = 0;
 bool pic_new_pps = 0;
+extern time_t pic;
 
 void IRAM_ATTR pic_pps_in(void)
 {
   if(!pic_detected) pic_detected = 1;
+  pic++;
   pic_pps_offset_ms = UTC.ms();
   pic_pps_micros = micros();
   pic_new_pps = 1;
@@ -280,7 +284,7 @@ void loop()
     esp_micros = micros();
     if(!pps_sync)
     {
-      if(timeStatus() == timeSync && !UTC.ms())
+      if(timeStatus() != timeNotSet && !UTC.ms())
       {
         timerRestart(pps_timer);
         pps_out();
@@ -289,7 +293,7 @@ void loop()
     }
     if(!scheduler_sync)
     {
-      if(timeStatus() == timeSync && !UTC.ms())
+      if(timeStatus() != timeNotSet && !UTC.ms())
       {
         timerRestart(scheduler_timer);
         scheduler_reset();
