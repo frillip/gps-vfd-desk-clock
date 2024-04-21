@@ -38,6 +38,8 @@ uint16_t ui_button_counter = 0;
 
 extern CLOCK_SOURCE utc_source;
 extern time_t utc;
+extern int32_t tz_offset;
+extern int32_t dst_offset;
 extern int32_t bme280_temperature;
 
 void ui_init(void)
@@ -387,6 +389,36 @@ void ui_print_iso8601_string(time_t iso)
     iso_time = gmtime(&iso);
     strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", iso_time);
     printf(buf);
+}
+
+void ui_print_iso8601_string_local(time_t local)
+{
+    local += tz_offset;
+    
+    if(isDST(&local))
+    {
+        local += dst_offset; 
+    }
+    
+    char buf[32] = {0}; // Allocate buffer
+    struct tm *local_time; // Allocate buffer
+    local_time = gmtime(&local);
+    strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", local_time);
+    printf(buf);
+    
+    int32_t total_offset = local - utc;
+    if((total_offset)>=0)
+    {
+        printf("+"); 
+    }
+    else
+    {
+        printf("-"); 
+        total_offset = total_offset*-1;
+    }
+    uint32_t total_offset_hours = total_offset/3600;
+    uint32_t total_offset_minutes = (total_offset-(total_offset_hours*3600))/60;
+    printf("%02lu:%02lu",total_offset_hours,total_offset_minutes);
 }
 
 void ui_print_clear_window(void)
