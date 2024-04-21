@@ -461,7 +461,19 @@ void pic_process_time()
     {
       if(pic_utc_source != CLOCK_SOURCE_NONE)
       {
-        UTC.setTime(pic);
+        if(pic_new_pps)
+        {
+          if((pic_pps_offset_ms > 50) && (pic_pps_offset_ms < 950) && (timeStatus() != timeSync))
+          {
+            uint16_t pic_ms_offset = (micros() - pic_pps_micros) / 1000;
+            UTC.setTime(pic,pic_ms_offset);
+          }
+          else
+          {
+            UTC.setTime(pic);
+          }
+          pic_new_pps = 0;
+        }
       }
     }
   }
@@ -477,13 +489,32 @@ void print_pic_time(void)
 
   Serial.print("\r\nGNSS:  ");
   print_iso8601_string(gnss);
+  if(!pic_gnss_detected)
+  {
+    Serial.print(" - MISSING");
+  }
 
-  Serial.print("\r\nNTP:   ");
+  Serial.print("\r\nESP:   ");
   time_t now = UTC.now();
   print_iso8601_string(now);
 
+  Serial.print("\r\nNTP:   ");
+  print_iso8601_string(now);
+  if(WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(" - NO WIFI");
+  }
+  else if(timeStatus() != timeSync)
+  {
+    Serial.print(" - NO NTP SYNC");
+  }
+
   Serial.print("\r\nRTC:   ");
   print_iso8601_string(pic_rtc);
+  if(!pic_rtc_detected)
+  {
+    Serial.print(" - MISSING");
+  }
 
   Serial.print("\r\nLocal: ");
   time_t local = pic;
@@ -531,6 +562,16 @@ void pic_process_gnss(void)
   pic_posllh_lon = pic_gnss_buffer.fields.posllh_lon;
   pic_posllh_height = pic_gnss_buffer.fields.posllh_height;
   pic_posllh_hmsl = pic_gnss_buffer.fields.posllh_hmsl;
+
+  if(pic_gnss_detected && gnss_new_pps)
+  {
+    if((gnss_pps_offset_ms > 50) && (gnss_pps_offset_ms < 950) && (timeStatus() != timeSync))
+    {
+      uint16_t gnss_ms_offset = (micros() - gnss_pps_micros) / 1000;
+      UTC.setTime(gnss,gnss_ms_offset);
+    }
+    gnss_new_pps = 0;
+  }
 
   pic_gnss_waiting = 0;
 }
@@ -764,7 +805,7 @@ void pic_uart_tx_timedata()
 
 
   if(WiFi.status() == WL_CONNECTED) time_data_tx.fields.flags.wifi_status = 1;
-  if(timeStatus() == timeSet) time_data_tx.fields.flags.ntp_status = 1;
+  if(timeStatus() == timeSync) time_data_tx.fields.flags.ntp_status = 1;
   if(pps_sync) time_data_tx.fields.flags.pps_sync = 1;
   if(scheduler_sync) time_data_tx.fields.flags.scheduler_sync = 1;
 
@@ -791,7 +832,7 @@ void pic_uart_tx_netdata()
   net_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_NETDATA;
 
   if(WiFi.status() == WL_CONNECTED) net_data_tx.fields.flags.wifi_status = 1;
-  if(timeStatus() == timeSet) net_data_tx.fields.flags.ntp_status = 1;
+  if(timeStatus() == timeSync) net_data_tx.fields.flags.ntp_status = 1;
   if(pps_sync) net_data_tx.fields.flags.pps_sync = 1;
   if(scheduler_sync) net_data_tx.fields.flags.scheduler_sync = 1;
 

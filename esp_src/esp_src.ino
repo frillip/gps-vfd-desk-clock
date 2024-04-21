@@ -168,6 +168,7 @@ void reconnect_wifi(void)
 #define GNSS_TIMEOUT_LIMIT 300 // in 0.01s counts
 uint32_t gnss_pps_micros = 0;
 uint16_t gnss_timeout = 0;
+bool gnss_new_pps = 0;
 uint32_t esp_micros = 0;
 
 void IRAM_ATTR gnss_pps_in(void)
@@ -175,18 +176,21 @@ void IRAM_ATTR gnss_pps_in(void)
   if(!gnss_detected) gnss_detected = 1;
   gnss_pps_offset_ms = UTC.ms();
   gnss_pps_micros = micros();
+  gnss_new_pps = 1;
   gnss_timeout = 0;
 }
 
 #define PIC_TIMEOUT_LIMIT 300 // in 0.01s counts
 uint32_t pic_pps_micros = 0;
 uint16_t pic_timeout = 0;
+bool pic_new_pps = 0;
 
 void IRAM_ATTR pic_pps_in(void)
 {
   if(!pic_detected) pic_detected = 1;
   pic_pps_offset_ms = UTC.ms();
   pic_pps_micros = micros();
+  pic_new_pps = 1;
   pic_timeout = 0;
 }
 
@@ -276,7 +280,7 @@ void loop()
     esp_micros = micros();
     if(!pps_sync)
     {
-      if(timeStatus() == timeSet && !UTC.ms())
+      if(timeStatus() == timeSync && !UTC.ms())
       {
         timerRestart(pps_timer);
         pps_out();
@@ -285,14 +289,14 @@ void loop()
     }
     if(!scheduler_sync)
     {
-      if(timeStatus() == timeSet && !UTC.ms())
+      if(timeStatus() == timeSync && !UTC.ms())
       {
         timerRestart(scheduler_timer);
         scheduler_reset();
         scheduler_sync = 1;
       }
     }
-    if(timeStatus() == timeSet) 
+    if(timeStatus() == timeSync) 
     {
       digitalWrite(STATUS_LED_PIN, 1);
     }
@@ -319,7 +323,7 @@ void loop()
     {
       Serial.println("");
       print_pic_time();
-      /*
+      
       if(gnss_detected && timeStatus() == timeSet)
       {
         int32_t gnss_offset_ms = gnss_pps_offset_ms;
@@ -336,7 +340,7 @@ void loop()
         Serial.print((float)(pic_offset_micros)/1000);
         Serial.println("ms");
       }
-      */
+      
       print_offset_data();
       print_gnss_data();
       pic_print_rtc();
