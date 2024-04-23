@@ -45,15 +45,16 @@ extern "C" {
 #define VEML6040_CONF_IT_640MS      0x40
 #define VEML6040_CONF_IT_1280MS     0x50
     
-#define VEML6040_SENS_40MS          0.25168
-#define VEML6040_SENS_80MS          0.12584
-#define VEML6040_SENS_160MS         0.06292
-#define VEML6040_SENS_320MS         0.03146
-#define VEML6040_SENS_640MS         0.01573
-#define VEML6040_SENS_1280MS        0.007865
+#define VEML6040_SENS_40MS          25168UL
+#define VEML6040_SENS_80MS          12584UL
+#define VEML6040_SENS_160MS         06292UL
+#define VEML6040_SENS_320MS         03146UL
+#define VEML6040_SENS_640MS         01573UL
+#define VEML6040_SENS_1280MS        00787UL // 0.007865 in datasheet
+#define VEML6040_SENS_SCALAR       100000UL
     
 #define VEML_DISPLAY_BRIGHTNESS_CONST       (0)
-#define VEML_DISPLAY_BRIGHTNESS_FIRST       (30)
+#define VEML_DISPLAY_BRIGHTNESS_FIRST       (3)
 #define VEML_DISPLAY_BRIGHTNESS_SECOND      (0)
     
 bool VEML6040_init(void);
@@ -62,8 +63,8 @@ uint16_t VEML6040_get_green(void);
 uint16_t VEML6040_get_blue(void);
 uint16_t VEML6040_get_white(void);
 uint16_t VEML_get_data(uint8_t reg);
-double VEML6040_get_lux(void);
-uint16_t VEML_calc_brightness(double lux);
+uint16_t VEML6040_get_lux(void);
+uint16_t VEML_calc_brightness(uint16_t lux);
 void print_veml_data(void);
 
 #ifdef	__cplusplus

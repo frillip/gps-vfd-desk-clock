@@ -88,7 +88,7 @@ extern CLOCK_SYNC_STATUS clock_sync_state_last;
 extern UI_DISPLAY_STATE ui_state_current;
 
 extern bool veml6040_detected;
-extern double veml_ambient_light;
+extern uint16_t veml_ambient_light;
 extern uint16_t veml_brightness;
 
 extern bool bme280_detected;
@@ -198,26 +198,21 @@ int main(void)
             ui_button_task();
             ui_display_task();
         }
-        if(t100ms0==1)
+        if(t100ms0)
         {
             t100ms0 = 0;
             STATUS_LED_Toggle();
-        }
-        
-        if(t100ms2==3)
-        {
-            t100ms2 = -2;
             if(veml6040_detected)
             {
                 veml_ambient_light = VEML6040_get_lux();
                 veml_brightness = VEML_calc_brightness(veml_ambient_light);
                 display_brightness_set_target(veml_brightness);
             }
-            else if(esp_detected && esp_brightness_updated)
-            {
-                display_brightness_set_target(esp_brightness);
-                esp_brightness_updated = 0;
-            }
+        }
+        
+        if(t100ms2==3)
+        {
+            t100ms2 = -2;
         }
         
         if(t100ms1==9)

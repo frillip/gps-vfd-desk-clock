@@ -13,7 +13,7 @@ extern uint16_t esp_brightness;
 extern bool esp_detected;
 
 extern bool veml6040_detected;
-extern double veml_ambient_light;
+extern uint16_t veml_ambient_light;
 extern uint16_t veml_brightness;
 
 extern bool pps_sync;
@@ -152,10 +152,6 @@ void display_brightness_set_auto(void)
     if(veml6040_detected)
     {
         display_brightness_set_target(veml_brightness);
-    }
-    else if(esp_detected)
-    {
-        display_brightness_set_target(esp_brightness);
     }
     else display_brightness_set_target(DISPLAY_BRIGHTNESS_DEFAULT);
 }

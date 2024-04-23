@@ -603,7 +603,7 @@ void esp_tx_rtc(void)
 }
 
 extern bool veml6040_detected;
-extern double veml_ambient_light;
+extern uint16_t veml_ambient_light;
 extern bool bme280_detected;
 extern int32_t bme280_temperature;
 extern uint32_t bme280_pressure;
@@ -621,7 +621,7 @@ void esp_tx_sensor(void)
     esp_tx_buffer.fields.flags.veml6040_detected = veml6040_detected;
     esp_tx_buffer.fields.flags.bme280_detected = bme280_detected;
     
-    esp_tx_buffer.fields.lux = (veml_ambient_light * 10);
+    esp_tx_buffer.fields.lux = veml_ambient_light;
     
     esp_tx_buffer.fields.temp = bme280_temperature;
     esp_tx_buffer.fields.temp_raw = bme280_temperature - BME280_TEMP_OFFSET;

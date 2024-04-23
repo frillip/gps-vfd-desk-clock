@@ -1,7 +1,7 @@
 #include "veml6040.h"
 
 bool veml6040_detected = 0;
-double veml_ambient_light = 0;
+uint16_t veml_ambient_light = 0;
 uint16_t veml_brightness = 0;
 
 bool VEML6040_init(void)
@@ -92,12 +92,16 @@ uint16_t VEML_get_data(uint8_t reg)
     return res;
 }
 
-double VEML6040_get_lux(void)
+uint16_t VEML6040_get_lux(void)
 {
-    return VEML6040_get_green() * VEML6040_SENS_320MS;
+    uint32_t lux = VEML6040_get_green();
+    lux =  lux * VEML6040_SENS_320MS;
+    lux = (lux * 10) / VEML6040_SENS_SCALAR;
+    if(lux > 65535) lux = 65535;
+    return (uint16_t)lux ;
 }
 
-uint16_t VEML_calc_brightness(double lux)
+uint16_t VEML_calc_brightness(uint16_t lux)
 {
     uint16_t brightness = VEML_DISPLAY_BRIGHTNESS_CONST;
     brightness += (VEML_DISPLAY_BRIGHTNESS_FIRST * lux);
@@ -110,7 +114,7 @@ void print_veml_data(void)
     if(veml6040_detected)
     {
         printf("\r\n=== VEML6040 LUX DATA ===\r\n");
-        printf("LUX: %6.1f", veml_ambient_light);
+        printf("LUX: %4u.%01u", veml_ambient_light/10, veml_ambient_light%10);
         printf(" BRI: %4u/4000\r\n", veml_brightness);
     }
     else
