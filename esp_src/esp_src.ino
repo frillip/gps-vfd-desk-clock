@@ -305,6 +305,9 @@ void loop()
       digitalWrite(STATUS_LED_PIN, 1);
     }
     pic_uart_tx_timedata();
+
+    print_pic_local_time();
+    Serial.println("");
     
     /*
     time_t now = UTC.now();
