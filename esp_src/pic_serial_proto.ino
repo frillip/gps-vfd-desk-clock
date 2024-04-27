@@ -465,8 +465,8 @@ void pic_process_time()
         {
           if((pic_pps_offset_ms > 50) && (pic_pps_offset_ms < 950) && (timeStatus() != timeSync))
           {
-            uint16_t pic_ms_offset = (micros() - pic_pps_micros) / 1000;
-            UTC.setTime(pic,pic_ms_offset);
+            uint32_t pic_us_offset = micros() - pic_pps_micros;
+            UTC.setTimeus(pic,pic_us_offset);
             pps_sync = 0;
             scheduler_sync = 0;
           }
@@ -569,8 +569,8 @@ void pic_process_gnss(void)
   {
     if((gnss_pps_offset_ms > 50) && (gnss_pps_offset_ms < 950) && (timeStatus() != timeSync))
     {
-      uint16_t gnss_ms_offset = (micros() - gnss_pps_micros) / 1000;
-      UTC.setTime(gnss,gnss_ms_offset);
+      uint16_t gnss_us_offset = micros() - gnss_pps_micros;
+      UTC.setTimeus(gnss,gnss_us_offset);
       pps_sync = 0;
       scheduler_sync = 0;
     }
