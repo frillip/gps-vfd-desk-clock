@@ -450,10 +450,15 @@ void pic_process_time()
   pic = pic_time_buffer.fields.utc;
   pic_tz_set = pic_time_buffer.fields.tz_flags.tz_set; // Unused
   pic_tz_offset = pic_time_buffer.fields.tz_flags.tz_offset * 900;
+
+  tz_offset = pic_tz_offset;
   
   pic_dst_set = pic_time_buffer.fields.dst_flags.dst_set;
   pic_dst_active = pic_time_buffer.fields.dst_flags.dst_active;
   pic_dst_offset = pic_time_buffer.fields.dst_flags.dst_offset * 900;
+
+  dst_active = pic_dst_active;
+  dst_offset = pic_dst_offset;
 
   if(WiFi.status() != WL_CONNECTED)
   {
@@ -484,17 +489,17 @@ void pic_process_time()
 }
 
 
-void print_pic_local_time(void)
+void print_local_time(time_t now)
 {
-  time_t local = pic;
-  local += pic_tz_offset;
-  if(pic_dst_active) local += pic_dst_offset;
+  time_t local = now;
+  local += tz_offset;
+  if(dst_active) local += dst_offset;
   char buf[32] = {0}; // Allocate buffer
   struct tm *iso_time; // Allocate buffer
   iso_time = gmtime(&local);
   strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", iso_time);
   Serial.print(buf);
-  int32_t total_offset = pic_tz_offset+pic_dst_offset;
+  int32_t total_offset = local - now;
   if((total_offset)>=0)
   {
     Serial.print("+"); 
@@ -546,7 +551,7 @@ void print_pic_time(void)
   }
 
   Serial.print("\r\nLocal: ");
-  print_pic_local_time();
+  print_local_time(pic);
 
   Serial.print("\r\nUTC source: ");
   print_clock_source(pic_utc_source);

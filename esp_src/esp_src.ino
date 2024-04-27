@@ -38,6 +38,12 @@ double light_sensor_lux = 0;
 uint16_t ntp_interval_count = 0;
 uint32_t ntp_resync_count = 0;
 
+int32_t tz_offset = 0;
+bool dst_active = 0;
+int32_t dst_offset = 0;
+#define LOCAL_TIME_PRINT_DELAY 50
+uint32_t local_print_millis = 0;
+
 #define DEBUG_UART  0
 #define DEBUG_BAUD  115200
 
@@ -306,8 +312,7 @@ void loop()
     }
     pic_uart_tx_timedata();
 
-    print_pic_local_time();
-    Serial.println("");
+    local_print_millis = millis();
     
     /*
     time_t now = UTC.now();
@@ -397,6 +402,15 @@ void loop()
       if(UTC.ms()>=100) 
       {
         digitalWrite(STATUS_LED_PIN, 0);
+      }
+    }
+    if(local_print_millis)
+    {
+      if(millis() > (local_print_millis + LOCAL_TIME_PRINT_DELAY))
+      {
+        print_local_time(pic);
+        Serial.println("");
+        local_print_millis = 0;
       }
     }
   }
