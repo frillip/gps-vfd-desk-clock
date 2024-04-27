@@ -484,6 +484,33 @@ void pic_process_time()
 }
 
 
+void print_pic_local_time(void)
+{
+  time_t local = pic;
+  local += pic_tz_offset;
+  if(pic_dst_active) local += pic_dst_offset;
+  char buf[32] = {0}; // Allocate buffer
+  struct tm *iso_time; // Allocate buffer
+  iso_time = gmtime(&local);
+  strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", iso_time);
+  Serial.print(buf);
+  int32_t total_offset = pic_tz_offset+pic_dst_offset;
+  if((total_offset)>=0)
+  {
+    Serial.print("+"); 
+  }
+  else
+  {
+    Serial.print("-"); 
+    total_offset = total_offset*-1;
+  }
+  uint32_t total_offset_hours = total_offset/3600;
+  uint32_t total_offset_minutes = (total_offset-(total_offset_hours*3600))/60;
+
+  sprintf(buf,"%02lu:%02lu",total_offset_hours,total_offset_minutes);
+  Serial.print(buf);
+}
+
 void print_pic_time(void)
 {
   Serial.print("UTC:   ");
@@ -519,29 +546,7 @@ void print_pic_time(void)
   }
 
   Serial.print("\r\nLocal: ");
-  time_t local = pic;
-  local += pic_tz_offset;
-  if(pic_dst_active) local += pic_dst_offset;
-  char buf[32] = {0}; // Allocate buffer
-  struct tm *iso_time; // Allocate buffer
-  iso_time = gmtime(&local);
-  strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", iso_time);
-  Serial.print(buf);
-  int32_t total_offset = pic_tz_offset+pic_dst_offset;
-  if((total_offset)>=0)
-  {
-    Serial.print("+"); 
-  }
-  else
-  {
-    Serial.print("-"); 
-    total_offset = total_offset*-1;
-  }
-  uint32_t total_offset_hours = total_offset/3600;
-  uint32_t total_offset_minutes = (total_offset-(total_offset_hours*3600))/60;
-
-  sprintf(buf,"%02lu:%02lu",total_offset_hours,total_offset_minutes);
-  Serial.print(buf);
+  print_pic_local_time();
 
   Serial.print("\r\nUTC source: ");
   print_clock_source(pic_utc_source);
