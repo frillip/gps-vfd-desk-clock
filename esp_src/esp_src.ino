@@ -174,10 +174,10 @@ extern time_t gnss;
 
 void IRAM_ATTR gnss_pps_in(void)
 {
+  gnss_pps_micros = micros();
+  gnss_pps_offset_ms = UTC.ms();
   if(!gnss_detected) gnss_detected = 1;
   gnss++;
-  gnss_pps_offset_ms = UTC.ms();
-  gnss_pps_micros = micros();
   gnss_new_pps = 1;
   gnss_timeout = 0;
 }
@@ -190,10 +190,10 @@ extern time_t pic;
 
 void IRAM_ATTR pic_pps_in(void)
 {
+  pic_pps_micros = micros();
+  pic_pps_offset_ms = UTC.ms();
   if(!pic_detected) pic_detected = 1;
   pic++;
-  pic_pps_offset_ms = UTC.ms();
-  pic_pps_micros = micros();
   pic_new_pps = 1;
   pic_timeout = 0;
 }
