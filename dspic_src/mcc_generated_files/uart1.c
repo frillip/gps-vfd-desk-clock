@@ -424,8 +424,8 @@ unsigned int __attribute__((deprecated)) UART1_WriteBuffer( uint8_t *buffer , un
 UART1_TRANSFER_STATUS __attribute__((deprecated)) UART1_TransferStatusGet (void )
 {
     UART1_TRANSFER_STATUS status = 0;
-    uint8_t rx_count = UART1_RxDataAvailable();
-    uint8_t tx_count = UART1_TxDataAvailable();
+    uint16_t rx_count = UART1_RxDataAvailable();
+    uint16_t tx_count = UART1_TxDataAvailable();
     
     switch(rx_count)
     {
