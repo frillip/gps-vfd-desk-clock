@@ -496,7 +496,7 @@ void esp_tx_time(void)
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));  
 }
 
-extern uint8_t ubx_nav_status_gpsfix;
+extern UBX_NAV_STATUS_GPSFIX ubx_nav_status_gpsfix;
 extern bool ubx_nav_status_gpsfixok;
 extern bool ubx_nav_timeutc_valid;
 extern bool ubx_tim_tm2_valid;

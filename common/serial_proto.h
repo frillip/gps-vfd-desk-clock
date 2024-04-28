@@ -76,7 +76,7 @@ typedef union
         uint8_t fix_ok : 1;
         uint8_t utc_valid : 1;
         uint8_t timemark_valid : 1;
-        uint8_t fix_status : 4;
+        UBX_NAV_STATUS_GPSFIX fix_status : 4;
     } flags;
     time_t gnss;
     int32_t posllh_lat;

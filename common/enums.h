@@ -25,6 +25,37 @@ typedef enum
 
 typedef enum
 {
+    GPSFIX_NO_FIX = 0,
+    GPSFIX_DR_ONLY = 1,
+    GPSFIX_2D = 2,
+    GPSFIX_3D = 3,
+    GPSFIX_GPS_DR = 4,
+    GPSFIX_TIME_ONLY = 5,
+} UBX_NAV_STATUS_GPSFIX;
+
+typedef enum
+{
+    UTC_INA = 0,
+    UTC_CRL = 1,
+    UTC_NIST = 2,
+    UTC_USNO = 3,
+    UTC_BIPM = 4,
+    UTC_EL = 5,
+    UTC_SU = 6,
+    UTC_NTSC = 7,
+    UTC_NPLI = 8,
+    UTC_UNKNOWN = 15,
+} UBX_NAV_TIMEUTC_VALID_UTCSTANDARD;
+
+typedef enum
+{
+    TIMEBASE_RECV = 0,
+    TIMEBASE_GNSS = 1,
+    TIMEBASE_UTC = 2,
+} UBX_TIM_TM2_FLAGS_TIMEBASE;
+
+typedef enum
+{
     SYNC_POWER_ON = 0,
     SYNC_RTC_DETECT,
     SYNC_NTP_DETECT,

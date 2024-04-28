@@ -14,25 +14,25 @@ char gnss_check_buffer[GNSS_CHECK_BUFFER_SIZE] = {0};
 GNSS_MESSAGE_TYPE gnss_incoming = GNSS_NONE;
 GNSS_MESSAGE_TYPE gnss_waiting = GNSS_NONE;
 
-extern char ubx_tim_tm2_buffer[UBX_TIM_TM2_LENGTH];
-extern char ubx_tim_tm2_string[GNSS_CHECK_BUFFER_SIZE];
-extern bool ubx_tim_tm2_waiting;
-
-extern char ubx_nav_timeutc_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_timeutc_string[GNSS_CHECK_BUFFER_SIZE];
-extern bool ubx_nav_timeutc_waiting;
-
-extern char ubx_nav_clock_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_clock_string[GNSS_CHECK_BUFFER_SIZE];
+extern UBX_NAV_CLOCK ubx_nav_clock_buffer;
+extern UBX_HEADER ubx_nav_clock_string;
 extern bool ubx_nav_clock_waiting;
 
-extern char ubx_nav_status_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_status_string[GNSS_CHECK_BUFFER_SIZE];
+extern UBX_NAV_POSLLH ubx_nav_posllh_buffer;
+extern UBX_HEADER ubx_nav_posllh_string;
+extern bool ubx_nav_posllh_waiting;
+
+extern UBX_NAV_STATUS ubx_nav_status_buffer;
+extern UBX_HEADER ubx_nav_status_string;
 extern bool ubx_nav_status_waiting;
 
-extern char ubx_nav_posllh_buffer[UBX_NAV_TIMEUTC_LENGTH];
-extern char ubx_nav_posllh_string[GNSS_CHECK_BUFFER_SIZE];
-extern bool ubx_nav_posllh_waiting;
+extern UBX_NAV_TIMEUTC ubx_nav_timeutc_buffer;
+extern UBX_HEADER ubx_nav_timeutc_string;
+extern bool ubx_nav_timeutc_waiting;
+
+extern UBX_TIM_TM2 ubx_tim_tm2_buffer;
+extern UBX_HEADER ubx_tim_tm2_string;
+extern bool ubx_tim_tm2_waiting;
 
 char gnss_rmc_buffer[GNSS_STRING_BUFFER_SIZE] = {0};
 char gnss_rmc_string[GNSS_CHECK_BUFFER_SIZE] = "$GNRMC";
@@ -104,36 +104,41 @@ void gnss_rx(void)
         {
             gnss_waiting = gnss_incoming;
             gnss_incoming = gnss_check_res;
-            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
             switch (gnss_incoming)
             {
-                case GNSS_UBX_TIM_TM2:
-                    gnss_bytes_remaining = UBX_TIM_TM2_LENGTH - GNSS_CHECK_BUFFER_SIZE;
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-        
-                case GNSS_UBX_NAV_TIMEUTC:
-                    gnss_bytes_remaining = UBX_NAV_TIMEUTC_LENGTH - GNSS_CHECK_BUFFER_SIZE;
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-        
                 case GNSS_UBX_NAV_CLOCK:
-                    gnss_bytes_remaining = UBX_NAV_CLOCK_LENGTH - GNSS_CHECK_BUFFER_SIZE;
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-        
-                case GNSS_UBX_NAV_STATUS:
-                    gnss_bytes_remaining = UBX_NAV_STATUS_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+                    gnss_bytes_remaining = sizeof(ubx_nav_clock_buffer) - sizeof(UBX_HEADER);
+                    gnss_offset = sizeof(UBX_HEADER);
                     memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
                     break;
         
                 case GNSS_UBX_NAV_POSLLH:
-                    gnss_bytes_remaining = UBX_NAV_POSLLH_LENGTH - GNSS_CHECK_BUFFER_SIZE;
+                    gnss_bytes_remaining = sizeof(ubx_nav_posllh_buffer) - sizeof(UBX_HEADER);
+                    gnss_offset = sizeof(UBX_HEADER);
+                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+                    break;
+
+                case GNSS_UBX_NAV_STATUS:
+                    gnss_bytes_remaining = sizeof(ubx_nav_status_buffer) - sizeof(UBX_HEADER);
+                    gnss_offset = sizeof(UBX_HEADER);
+                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+                    break;
+
+                case GNSS_UBX_NAV_TIMEUTC:
+                    gnss_bytes_remaining = sizeof(ubx_nav_timeutc_buffer) - sizeof(UBX_HEADER);
+                    gnss_offset = sizeof(UBX_HEADER);
                     memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
                     break;
         
+                case GNSS_UBX_TIM_TM2:
+                    gnss_bytes_remaining = sizeof(ubx_tim_tm2_buffer) - sizeof(UBX_HEADER);
+                    gnss_offset = sizeof(UBX_HEADER);
+                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+                    break;
+
                 case GNSS_GNRMC:
                     gnss_bytes_remaining = GNSS_STRING_BUFFER_SIZE - GNSS_CHECK_BUFFER_SIZE;
+                    gnss_offset = GNSS_CHECK_BUFFER_SIZE;
                     memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
                     break;
         
@@ -148,29 +153,29 @@ void gnss_copy_buffer(GNSS_MESSAGE_TYPE message)
 {
     switch (message)
     {
-        case GNSS_UBX_TIM_TM2:
-            memcpy(ubx_tim_tm2_buffer, gnss_string_buffer, UBX_TIM_TM2_LENGTH);
-            ubx_tim_tm2_waiting=1;
-            break;
-
-        case GNSS_UBX_NAV_TIMEUTC:
-            memcpy(ubx_nav_timeutc_buffer, gnss_string_buffer, UBX_NAV_TIMEUTC_LENGTH);
-            ubx_nav_timeutc_waiting=1;
-            break;
-
         case GNSS_UBX_NAV_CLOCK:
-            memcpy(ubx_nav_clock_buffer, gnss_string_buffer, UBX_NAV_CLOCK_LENGTH);
+            memcpy(ubx_nav_clock_buffer.raw, gnss_string_buffer, sizeof(ubx_nav_clock_buffer));
             ubx_nav_clock_waiting=1;
             break;
 
+        case GNSS_UBX_NAV_POSLLH:
+            memcpy(ubx_nav_posllh_buffer.raw, gnss_string_buffer, sizeof(ubx_nav_posllh_buffer));
+            ubx_nav_posllh_waiting=1;
+            break;
+
         case GNSS_UBX_NAV_STATUS:
-            memcpy(ubx_nav_status_buffer, gnss_string_buffer, UBX_NAV_STATUS_LENGTH);
+            memcpy(ubx_nav_status_buffer.raw, gnss_string_buffer, sizeof(ubx_nav_status_buffer));
             ubx_nav_status_waiting=1;
             break;
 
-        case GNSS_UBX_NAV_POSLLH:
-            memcpy(ubx_nav_posllh_buffer, gnss_string_buffer, UBX_NAV_POSLLH_LENGTH);
-            ubx_nav_posllh_waiting=1;
+        case GNSS_UBX_NAV_TIMEUTC:
+            memcpy(ubx_nav_timeutc_buffer.raw, gnss_string_buffer, sizeof(ubx_nav_timeutc_buffer));
+            ubx_nav_timeutc_waiting=1;
+            break;
+
+        case GNSS_UBX_TIM_TM2:
+            memcpy(ubx_tim_tm2_buffer.raw, gnss_string_buffer, sizeof(ubx_tim_tm2_buffer));
+            ubx_tim_tm2_waiting=1;
             break;
 
         case GNSS_GNRMC:
@@ -186,11 +191,11 @@ void gnss_copy_buffer(GNSS_MESSAGE_TYPE message)
 
 GNSS_MESSAGE_TYPE gnss_check_incoming(void)
 {
-    if(memcmp(gnss_check_buffer, ubx_tim_tm2_string, GNSS_CHECK_BUFFER_SIZE)==0) return GNSS_UBX_TIM_TM2;
-    if(memcmp(gnss_check_buffer, ubx_nav_timeutc_string, GNSS_CHECK_BUFFER_SIZE)==0) return GNSS_UBX_NAV_TIMEUTC;
-    if(memcmp(gnss_check_buffer, ubx_nav_clock_string, GNSS_CHECK_BUFFER_SIZE)==0) return GNSS_UBX_NAV_CLOCK;
-    if(memcmp(gnss_check_buffer, ubx_nav_status_string, GNSS_CHECK_BUFFER_SIZE)==0) return GNSS_UBX_NAV_STATUS;
-    if(memcmp(gnss_check_buffer, ubx_nav_posllh_string, GNSS_CHECK_BUFFER_SIZE)==0) return GNSS_UBX_NAV_POSLLH;
+    if(memcmp(gnss_check_buffer, ubx_tim_tm2_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_TIM_TM2;
+    if(memcmp(gnss_check_buffer, ubx_nav_timeutc_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_NAV_TIMEUTC;
+    if(memcmp(gnss_check_buffer, ubx_nav_clock_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_NAV_CLOCK;
+    if(memcmp(gnss_check_buffer, ubx_nav_status_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_NAV_STATUS;
+    if(memcmp(gnss_check_buffer, ubx_nav_posllh_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_NAV_POSLLH;
     if(memcmp(gnss_check_buffer, gnss_rmc_string, GNSS_CHECK_BUFFER_SIZE)==0) return GNSS_GNRMC;
     return GNSS_NONE;
 }

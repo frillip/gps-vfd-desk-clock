@@ -33,7 +33,7 @@ bool pic_gnss_fix = 0;
 bool pic_fix_ok = 0;
 bool pic_utc_valid = 0;
 bool pic_timemark_valid = 0;
-uint8_t pic_fix_status = 0;
+UBX_NAV_STATUS_GPSFIX pic_fix_status = GPSFIX_NO_FIX;
 time_t gnss = 0;
 int32_t pic_posllh_lat = 0;
 int32_t pic_posllh_lon = 0;
@@ -610,27 +610,27 @@ void print_gnss_data(void)
     Serial.print(" - ");
     switch (pic_fix_status)
           {
-              case 0x00:
+              case GPSFIX_NO_FIX:
                   Serial.println("No fix");
                   break;
                   
-              case 0x01:
+              case GPSFIX_DR_ONLY:
                   Serial.println("Dead reckoning only");
                   break;
 
-              case 0x02:
+              case GPSFIX_2D:
                   Serial.println("2D-fix");
                   break;
 
-              case 0x03:
+              case GPSFIX_3D:
                   Serial.println("3D-fix");
                   break;
 
-              case 0x04:
+              case GPSFIX_GPS_DR:
                   Serial.println("GNSS + dead reckoning combined");
                   break;
 
-              case 0x05:
+              case GPSFIX_TIME_ONLY:
                   Serial.println("Time only fix");
                   break;
                   
