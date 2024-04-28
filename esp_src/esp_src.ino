@@ -341,22 +341,40 @@ void loop()
         int32_t gnss_offset_ms = gnss_pps_offset_ms;
         int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
         Serial.print("GNSS offset: ");
-        int32_t gnss_offset_display = gnss_offset_micros;
-        if(gnss_offset_display<-1000000) gnss_offset_display += 1000000;
-        if(gnss_offset_display>1000000) gnss_offset_display -= 1000000;
-        Serial.print(gnss_offset_display);
-        Serial.println("us");
+        float gnss_offset_display = gnss_offset_micros;
+        if(gnss_offset_display < -1000000) gnss_offset_display += 1000000;
+        if(gnss_offset_display > 1000000) gnss_offset_display -= 1000000;
+        if((gnss_offset_display < 1000) && (gnss_offset_display > -1000 ))
+        {
+          Serial.print(gnss_offset_display,0);
+          Serial.println("us");
+        }
+        else
+        {
+          gnss_offset_display = gnss_offset_display / 1000;
+          Serial.print(gnss_offset_display,2);
+          Serial.println("ms");
+        }
       }
       if(pic_detected && timeStatus() != timeNotSet)
       {
         int32_t pic_offset_ms = pic_pps_offset_ms;
         int32_t pic_offset_micros = esp_micros - pic_pps_micros;
         Serial.print("PIC offset: ");
-        int32_t pic_offset_display = pic_offset_micros;
+        float pic_offset_display = pic_offset_micros;
         if(pic_offset_display<-1000000) pic_offset_display += 1000000;
         if(pic_offset_display>1000000) pic_offset_display -= 1000000;
-        Serial.print(pic_offset_display);
-        Serial.println("us");
+        if((pic_offset_display < 1000) && (pic_offset_display > -1000 ))
+        {
+          Serial.print(pic_offset_display,0);
+          Serial.println("us");
+        }
+        else
+        {
+          pic_offset_display = pic_offset_display / 1000;
+          Serial.print(pic_offset_display,2);
+          Serial.println("ms");
+        }
       }
       
       print_offset_data();
