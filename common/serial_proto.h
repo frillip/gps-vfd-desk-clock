@@ -15,7 +15,7 @@ extern "C" {
 #define SERIAL_PROTO_STRING_BUFFER_SIZE 100
 #define SERIAL_PROTO_CHECK_BUFFER_SIZE 3
 
-#define SERIAL_PROTO_HEADER 0x83
+#define SERIAL_PROTO_HEADER_MAGIC 0x83
 #define SERIAL_PROTO_TYPE_ESP_TX 0x65
 #define SERIAL_PROTO_TYPE_PIC_TX 0x70
 #define SERIAL_PROTO_DATATYPE_TIMEDATA 0x00
@@ -32,16 +32,19 @@ extern "C" {
 
 // Structs for PIC data
 
+typedef struct __attribute__ ((packed)) _serial_proto_header
+{
+    uint8_t magic;
+    uint8_t type;
+    uint8_t datatype;
+} SERIAL_PROTO_HEADER;
+
 typedef union
 {
   struct __attribute__ ((packed)) _pic_time_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     CLOCK_SOURCE utc_source : 8;
     time_t utc;
     struct __attribute__ ((packed))
@@ -64,12 +67,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_gnss_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t gnss_detected : 1;
@@ -93,12 +92,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_offset_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     CLOCK_SYNC_STATUS sync_state : 8;
     CLOCK_SYNC_STATUS sync_state_last : 8;
     CLOCK_SYNC_STATUS last_sync_cause : 8;
@@ -117,12 +112,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_rtc_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t rtc_detected : 1;
@@ -139,12 +130,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_net_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t reset_config: 1;
@@ -158,12 +145,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_sensor_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t veml6040_detected : 1;
@@ -183,12 +166,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_display_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t update_pending : 1;
@@ -211,12 +190,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _pic_user_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     char c;
   } fields;
   uint8_t raw[sizeof(struct _pic_user_struct)];
@@ -230,12 +205,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _esp_time_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t wifi_status : 1;
@@ -264,12 +235,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _esp_net_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t wifi_status : 1;
@@ -289,12 +256,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _esp_rtc_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t rtc_detected : 1;
@@ -311,12 +274,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _esp_sensor_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t veml6040_detected : 1;
@@ -335,12 +294,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _esp_display_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     struct __attribute__ ((packed))
     {
         uint8_t update_pending : 1;
@@ -363,12 +318,8 @@ typedef union
 {
   struct __attribute__ ((packed)) _esp_user_struct
   {
-    struct __attribute__ ((packed))
-    {
-        uint8_t magic;
-        uint8_t type;
-        uint8_t datatype;
-    } header;
+    SERIAL_PROTO_HEADER header;
+    
     char c;
   } fields;
   uint8_t raw[sizeof(struct _esp_user_struct)];

@@ -4,7 +4,7 @@ bool esp_detected = 0;
 bool esp_ntp_valid = 0;
 
 uint8_t esp_offset = 0;
-char esp_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {0};
+char esp_check_buffer[sizeof(SERIAL_PROTO_HEADER)] = {0};
 char esp_string_buffer[SERIAL_PROTO_STRING_BUFFER_SIZE] = {0};
 ESP_MESSAGE_TYPE esp_incoming = ESP_NONE;
 ESP_MESSAGE_TYPE esp_waiting = ESP_NONE;
@@ -12,7 +12,7 @@ uint8_t esp_bytes_remaining = 0;
 
 SERIAL_PROTO_DATA_ESP_TIME esp_time_buffer;
 bool esp_time_waiting = 0;
-char esp_time_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_TIMEDATA};
+SERIAL_PROTO_HEADER esp_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
 bool esp_wifi_status = 0;
 bool esp_ntp_status = 0;
 bool esp_pps_sync = 0;
@@ -23,7 +23,7 @@ int8_t esp_ntp_offset = 0;
 
 SERIAL_PROTO_DATA_ESP_NET esp_net_buffer;
 bool esp_net_waiting = 0;
-char esp_net_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_NETDATA};
+SERIAL_PROTO_HEADER esp_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
 //bool esp_wifi_status = 0;
 //bool esp_ntp_status = 0
 //bool esp_pps_sync = 0;
@@ -34,12 +34,12 @@ uint8_t esp_dst_flags = 0;
 
 SERIAL_PROTO_DATA_ESP_RTC esp_rtc_buffer;
 bool esp_rtc_waiting = 0;
-char esp_rtc_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_RTCDATA};
+SERIAL_PROTO_HEADER esp_rtc_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_RTCDATA};
 time_t esp_rtc_time = 0;
 
 SERIAL_PROTO_DATA_ESP_SENSOR esp_sensor_buffer;
 bool esp_sensor_waiting = 0;
-char esp_sensor_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_SENSORDATA};
+SERIAL_PROTO_HEADER esp_sensor_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_SENSORDATA};
 uint16_t esp_sensor_lux = 0;
 uint16_t esp_sensor_temp = 0;
 uint16_t esp_sensor_pres = 0;
@@ -47,7 +47,7 @@ uint16_t esp_sensor_hum = 0;
 
 SERIAL_PROTO_DATA_ESP_DISPLAY esp_display_buffer;
 bool esp_display_waiting = 0;
-char esp_display_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_DISPLAYDATA};
+SERIAL_PROTO_HEADER esp_display_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA};
 uint16_t esp_brightness = 0;
 bool esp_brightness_updated = 0;
 uint8_t esp_display_state = 0;
@@ -55,7 +55,7 @@ uint8_t esp_menu_state = 0;
 
 SERIAL_PROTO_DATA_ESP_USER esp_user_buffer;
 bool esp_user_waiting = 0;
-char esp_user_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_ESP_TX, SERIAL_PROTO_DATATYPE_USERDATA};
+SERIAL_PROTO_HEADER esp_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
 
 time_t esp;
 time_t ntp;
@@ -81,7 +81,7 @@ void esp_ntp_init(void)
 {
     UART1_Initialize();
     memset(esp_string_buffer, 0, SERIAL_PROTO_STRING_BUFFER_SIZE);
-    memset(esp_check_buffer, 0, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+    memset(esp_check_buffer, 0, sizeof(SERIAL_PROTO_HEADER));
     UART1_SetRxInterruptHandler(esp_rx);
     CN_SetInterruptHandler(esp_ioc_handler);
     esp_start_sync_timer();
@@ -95,8 +95,8 @@ void esp_rx(void)
     {
         rx_char = UART1_Read();
         
-        memmove(esp_check_buffer, esp_check_buffer+1, SERIAL_PROTO_CHECK_BUFFER_SIZE-1);
-        esp_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE-1] = rx_char;
+        memmove(esp_check_buffer, esp_check_buffer+1, sizeof(SERIAL_PROTO_HEADER)-1);
+        esp_check_buffer[sizeof(SERIAL_PROTO_HEADER)-1] = rx_char;
         
         if(esp_incoming!=ESP_NONE)
         {
@@ -132,37 +132,37 @@ void esp_rx(void)
         {
             esp_waiting = esp_incoming;
             esp_incoming = esp_check_res;
-            esp_offset = SERIAL_PROTO_CHECK_BUFFER_SIZE;
+            esp_offset = sizeof(SERIAL_PROTO_HEADER);
             switch (esp_incoming)
             {
                 case ESP_TIME:
-                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_TIME) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-                    memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_TIME) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
         
                 case ESP_NET:
-                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-                    memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_NET) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
 
                 case ESP_RTC:
-                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_RTC) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-                    memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_RTC) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
         
                 case ESP_SENSOR:
-                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_SENSOR) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-                    memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_SENSOR) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
         
                 case ESP_DISPLAY:
-                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_DISPLAY) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-                    memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_DISPLAY) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
 
                 case ESP_USER:
-                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_USER) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-                    memcpy(esp_string_buffer, esp_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_USER) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
         
                 default:
@@ -214,12 +214,12 @@ void esp_copy_buffer(ESP_MESSAGE_TYPE message)
 
 ESP_MESSAGE_TYPE esp_check_incoming(void)
 {
-    if(memcmp(esp_check_buffer, esp_time_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return ESP_TIME;
-    if(memcmp(esp_check_buffer, esp_net_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return ESP_NET;
-    if(memcmp(esp_check_buffer, esp_rtc_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return ESP_RTC;
-    if(memcmp(esp_check_buffer, esp_sensor_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return ESP_SENSOR;
-    if(memcmp(esp_check_buffer, esp_display_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return ESP_DISPLAY;
-    if(memcmp(esp_check_buffer, esp_user_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return ESP_USER;
+    if(memcmp(esp_check_buffer, &esp_time_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_TIME;
+    if(memcmp(esp_check_buffer, &esp_net_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_NET;
+    if(memcmp(esp_check_buffer, &esp_rtc_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_RTC;
+    if(memcmp(esp_check_buffer, &esp_sensor_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_SENSOR;
+    if(memcmp(esp_check_buffer, &esp_display_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_DISPLAY;
+    if(memcmp(esp_check_buffer, &esp_user_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_USER;
     return ESP_NONE;
 }
 
@@ -480,7 +480,7 @@ void esp_tx_time(void)
     SERIAL_PROTO_DATA_PIC_TIME esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
 
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_TIMEDATA;
     
@@ -510,7 +510,7 @@ void esp_tx_gnss(void)
     SERIAL_PROTO_DATA_PIC_GNSS esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
 
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_GNSSDATA;
     
@@ -547,7 +547,7 @@ void esp_tx_offset(void)
     SERIAL_PROTO_DATA_PIC_OFFSET esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
 
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_OFFSETDATA;
     
@@ -570,7 +570,7 @@ void esp_tx_net(void)
     SERIAL_PROTO_DATA_PIC_NET esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
     
@@ -589,7 +589,7 @@ void esp_tx_rtc(void)
     SERIAL_PROTO_DATA_PIC_RTC esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
     
@@ -614,7 +614,7 @@ void esp_tx_sensor(void)
     SERIAL_PROTO_DATA_PIC_SENSOR esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_SENSORDATA;
     
@@ -644,7 +644,7 @@ void esp_tx_display(void)
     SERIAL_PROTO_DATA_PIC_DISPLAY esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
-    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER;
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA;
 

@@ -6,13 +6,14 @@ uint16_t user_data_counter = 0;
 bool rx_ignore = 0;
 
 uint8_t pic_char_offset = 0;
-char pic_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {0};
+char pic_check_buffer[sizeof(SERIAL_PROTO_HEADER)];
 char pic_string_buffer[SERIAL_PROTO_STRING_BUFFER_SIZE] = {0};
 PIC_MESSAGE_TYPE pic_incoming = PIC_NONE;
 PIC_MESSAGE_TYPE pic_waiting = PIC_NONE;
 uint8_t pic_bytes_remaining = 0;
 
-char pic_time_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_TIMEDATA};
+
+SERIAL_PROTO_HEADER pic_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
 bool pic_time_waiting = 0;
 SERIAL_PROTO_DATA_PIC_TIME pic_time_buffer;
 time_t pic = 0;
@@ -24,7 +25,7 @@ bool pic_dst_active;
 int32_t pic_dst_offset;
 
 
-char pic_gnss_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_GNSSDATA};
+SERIAL_PROTO_HEADER pic_gnss_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_GNSSDATA};
 bool pic_gnss_waiting = 0;
 SERIAL_PROTO_DATA_PIC_GNSS pic_gnss_buffer;
 bool pic_gnss_detected = 0;
@@ -39,7 +40,7 @@ int32_t pic_posllh_lon = 0;
 int16_t pic_posllh_height = 0;
 int16_t pic_posllh_hmsl = 0;
 
-char pic_offset_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_OFFSETDATA};
+SERIAL_PROTO_HEADER pic_offset_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_OFFSETDATA};
 bool pic_offset_waiting = 0;
 SERIAL_PROTO_DATA_PIC_OFFSET pic_offset_buffer;
 CLOCK_SYNC_STATUS pic_clock_sync_state;
@@ -52,11 +53,11 @@ time_t pic_accumulation_delta = 0;
 uint32_t pic_total_oc_seq_count = 0;
 uint32_t pic_sync_events = 0;
 
-char pic_net_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_NETDATA};
+SERIAL_PROTO_HEADER pic_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
 bool pic_net_waiting = 0;
 SERIAL_PROTO_DATA_PIC_NET pic_net_buffer;
 
-char pic_rtc_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_RTCDATA};
+SERIAL_PROTO_HEADER pic_rtc_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_RTCDATA};
 bool pic_rtc_waiting = 0;
 SERIAL_PROTO_DATA_PIC_RTC pic_rtc_buffer;
 bool pic_rtc_detected = 0;
@@ -65,7 +66,7 @@ bool pic_rtc_sync = 0;
 time_t pic_rtc = 0;
 
 
-char pic_sensor_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_SENSORDATA};
+SERIAL_PROTO_HEADER pic_sensor_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_SENSORDATA};
 bool pic_sensor_waiting = 0;
 SERIAL_PROTO_DATA_PIC_SENSOR pic_sensor_buffer;
 bool pic_veml6040_detected = 0;
@@ -76,7 +77,7 @@ float pic_temp_raw = 0;
 float pic_pres = 0;
 float pic_hum = 0;
 
-char pic_display_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_DISPLAYDATA};
+SERIAL_PROTO_HEADER pic_display_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA};
 bool pic_display_waiting = 0;
 SERIAL_PROTO_DATA_PIC_DISPLAY pic_display_buffer;
 bool pic_update_pending = 0;
@@ -90,7 +91,7 @@ uint16_t pic_brightness_target = 0;
 UI_DISPLAY_STATE pic_display_state = UI_DISPLAY_STATE_INIT;
 UI_MENU_STATE pic_menu_state = UI_MENU_STATE_ROOT;
 
-char pic_user_string[SERIAL_PROTO_CHECK_BUFFER_SIZE] = {SERIAL_PROTO_HEADER, SERIAL_PROTO_TYPE_PIC_TX, SERIAL_PROTO_DATATYPE_USERDATA};
+SERIAL_PROTO_HEADER pic_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
 bool pic_user_waiting = 0;
 SERIAL_PROTO_DATA_PIC_USER pic_user_buffer;
 
@@ -266,8 +267,8 @@ void pic_uart_rx()
   {
     char rx_char = UARTPIC.read();
     
-    memmove(pic_check_buffer, pic_check_buffer+1, SERIAL_PROTO_CHECK_BUFFER_SIZE-1);
-    pic_check_buffer[SERIAL_PROTO_CHECK_BUFFER_SIZE-1] = rx_char;
+    memmove(pic_check_buffer, pic_check_buffer+1, sizeof(SERIAL_PROTO_HEADER)-1);
+    pic_check_buffer[sizeof(SERIAL_PROTO_HEADER)-1] = rx_char;
     
     if(pic_incoming!=PIC_NONE)
     {
@@ -304,47 +305,47 @@ void pic_uart_rx()
     {
       pic_waiting = pic_incoming;
       pic_incoming = pic_check_res;
-      pic_char_offset = SERIAL_PROTO_CHECK_BUFFER_SIZE;
+      pic_char_offset = sizeof(SERIAL_PROTO_HEADER);
       switch (pic_incoming)
       {
         case PIC_TIME:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_TIME) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_TIME) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_GNSS:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_GNSS) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_GNSS) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_OFFSET:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_OFFSET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_OFFSET) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_NET:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_NET) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_RTC:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_RTC) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_RTC) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_SENSOR:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_SENSOR) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_SENSOR) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_DISPLAY:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_DISPLAY) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_DISPLAY) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         case PIC_USER:
-          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_USER) - SERIAL_PROTO_CHECK_BUFFER_SIZE;
-          memcpy(pic_string_buffer, pic_check_buffer, SERIAL_PROTO_CHECK_BUFFER_SIZE);
+          pic_bytes_remaining = sizeof(SERIAL_PROTO_DATA_PIC_USER) - sizeof(SERIAL_PROTO_HEADER);
+          memcpy(pic_string_buffer, pic_check_buffer, sizeof(SERIAL_PROTO_HEADER));
           break;
 
         default:
@@ -355,7 +356,7 @@ void pic_uart_rx()
     // If we have plain text incoming, print it
     if(pic_waiting == PIC_NONE && pic_incoming == PIC_NONE && !pic_last_char_hold)
     {
-      if(rx_char != SERIAL_PROTO_HEADER && rx_char != SERIAL_PROTO_TYPE_PIC_TX)
+      if(rx_char != SERIAL_PROTO_HEADER_MAGIC && rx_char != SERIAL_PROTO_TYPE_PIC_TX)
       {
         Serial.print(rx_char);
       }
@@ -417,14 +418,14 @@ void pic_copy_buffer(PIC_MESSAGE_TYPE message)
 
 PIC_MESSAGE_TYPE pic_check_incoming(void)
 {
-  if(memcmp(pic_check_buffer, pic_time_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_TIME;
-  if(memcmp(pic_check_buffer, pic_gnss_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_GNSS;
-  if(memcmp(pic_check_buffer, pic_offset_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_OFFSET;
-  if(memcmp(pic_check_buffer, pic_net_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_NET;
-  if(memcmp(pic_check_buffer, pic_rtc_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_RTC;
-  if(memcmp(pic_check_buffer, pic_sensor_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_SENSOR;
-  if(memcmp(pic_check_buffer, pic_display_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_DISPLAY;
-  if(memcmp(pic_check_buffer, pic_user_string, SERIAL_PROTO_CHECK_BUFFER_SIZE)==0) return PIC_USER;
+  if(memcmp(pic_check_buffer, &pic_time_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_TIME;
+  if(memcmp(pic_check_buffer, &pic_gnss_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_GNSS;
+  if(memcmp(pic_check_buffer, &pic_offset_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_OFFSET;
+  if(memcmp(pic_check_buffer, &pic_net_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_NET;
+  if(memcmp(pic_check_buffer, &pic_rtc_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_RTC;
+  if(memcmp(pic_check_buffer, &pic_sensor_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_SENSOR;
+  if(memcmp(pic_check_buffer, &pic_display_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_DISPLAY;
+  if(memcmp(pic_check_buffer, &pic_user_string, sizeof(SERIAL_PROTO_HEADER))==0) return PIC_USER;
   return PIC_NONE;
 }
 
@@ -813,7 +814,7 @@ void pic_uart_tx_timedata()
   SERIAL_PROTO_DATA_ESP_TIME time_data_tx = {};
   memset(time_data_tx.raw, 0, sizeof(time_data_tx));
 
-  time_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  time_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
   time_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   time_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_TIMEDATA;
 
@@ -841,7 +842,7 @@ void pic_uart_tx_netdata()
   SERIAL_PROTO_DATA_ESP_NET net_data_tx = {};
   memset(net_data_tx.raw, 0, sizeof(net_data_tx));
 
-  net_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  net_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
   net_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   net_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_NETDATA;
 
@@ -862,7 +863,7 @@ void pic_uart_tx_rtcdata()
   SERIAL_PROTO_DATA_ESP_RTC rtc_data_tx = {};
   memset(rtc_data_tx.raw, 0, sizeof(rtc_data_tx));
 
-  rtc_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  rtc_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
   rtc_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   rtc_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
   
@@ -881,7 +882,7 @@ void pic_uart_tx_sensordata()
   SERIAL_PROTO_DATA_ESP_SENSOR sensor_data_tx = {};
   memset(sensor_data_tx.raw, 0, sizeof(sensor_data_tx));
 
-  sensor_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  sensor_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
   sensor_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   sensor_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_SENSORDATA;
 
@@ -916,7 +917,7 @@ void pic_uart_tx_displaydata()
   SERIAL_PROTO_DATA_ESP_DISPLAY display_data_tx = {};
   memset(display_data_tx.raw, 0, sizeof(display_data_tx));
 
-  display_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  display_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
   display_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   display_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA;
 
@@ -949,7 +950,7 @@ void pic_uart_tx_userdata(char c)
   SERIAL_PROTO_DATA_ESP_USER user_data_tx = {};
   memset(user_data_tx.raw, 0, sizeof(user_data_tx));
 
-  user_data_tx.fields.header.magic = SERIAL_PROTO_HEADER;
+  user_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
   user_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   user_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_USERDATA;
 
