@@ -64,6 +64,8 @@ extern uint32_t fosc_freq;
 extern uint32_t sync_events;
 
 extern int32_t esp_time_offset;
+extern uint32_t ntp_seq_count;
+extern uint32_t total_ntp_seq_count;
 
 CLOCK_SYNC_STATUS sync_check_result = SYNC_SYNC;
 CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
@@ -362,16 +364,26 @@ void sync_state_machine(void)
             {
                 int32_t esp_time_offset_adjust = esp_time_offset;
                 while(esp_time_offset_adjust>500) esp_time_offset_adjust -= 1000;
-                if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
-                {
+                // Problem with NTP burst giving higher than normal offsets
+                // which settle after some packets
+                // Either a new state where we wait for better accuracy
+                // Or the below where we wait a number of NTP cycles before syncing
+                // Or might not need this at all if we just tighten
+                // ESP_NTP_OFFSET defines so 10ms so any deviation after burst is
+                // immediately corrected
+                //if(ntp_seq_count > NTP_SEQ_COUNT_MIN)
+                //{
+                    if((esp_time_offset_adjust > ESP_NTP_OFFSET_MAX_MS)||(esp_time_offset_adjust < ESP_NTP_OFFSET_MIN_MS))
+                    {
 #ifdef DEBUG_MESSAGES
-                    printf("Reset NTP sync\r\n");
+                        printf("Reset NTP sync\r\n");
 #endif
-                    pic_pps_reset_sync_ntp();
-                    if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
-                    pic_pps_resync_ntp(esp_time_offset_adjust);
-                    sync_state_machine_set_state(SYNC_NTP_ADJUST); // Move to different state whilst adjust in progress
-                }
+                        pic_pps_reset_sync_ntp();
+                        if(esp_time_offset_adjust<0) esp_time_offset_adjust += 1000;
+                        pic_pps_resync_ntp(esp_time_offset_adjust);
+                        sync_state_machine_set_state(SYNC_NTP_ADJUST); // Move to different state whilst adjust in progressZ
+                    }
+                //}
                 state_new_oc = 0;
                 break;
             }

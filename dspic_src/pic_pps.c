@@ -44,6 +44,7 @@ extern bool gnss_calendar_sync;
 extern bool rtc_sync;
 
 extern bool esp_detected;
+extern uint32_t ntp_seq_count;
 
 extern bool display_update_pending;
 
@@ -197,6 +198,7 @@ void pic_pps_resync_ntp(int16_t ntp_offset)
 
 void pic_pps_reset_sync_ntp(void)
 {
+    ntp_seq_count = 0;
     pps_sync = 0;
     scheduler_sync = 0;
 }

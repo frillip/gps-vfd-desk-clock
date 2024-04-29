@@ -67,6 +67,8 @@ extern uint32_t total_oc_seq_count;
 int32_t esp_time_offset_counter = 0;
 int32_t esp_time_offset = 0;
 bool esp_time_offset_stale = 0;
+uint32_t ntp_seq_count = 0;
+uint32_t total_ntp_seq_count = 0;
 
 extern bool gnss_detected;
 extern bool gnss_fix;
@@ -287,6 +289,11 @@ void esp_ioc_handler(void)
     if(esp_pps_input())
     {
         esp_store_sync_timer();
+        if(esp_ntp_status)
+        {
+            ntp_seq_count++;
+            total_ntp_seq_count++;
+        }
         if(esp_detected)
         {
             esp++;
