@@ -345,7 +345,7 @@ void sync_state_machine(void)
                 if(oc_adjust_fudge) sync_state_machine_set_state(SYNC_ADJUST_STAGE_2);
                 else sync_state_machine_set_state(SYNC_PPS_SYNC);
                 state_new_oc = 0;
-            }
+            }             
             break;
         
         case SYNC_NOSYNC:

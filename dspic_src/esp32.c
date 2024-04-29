@@ -64,6 +64,7 @@ extern time_t gnss;
 extern time_t power_on_time;
 extern uint32_t total_oc_seq_count;
 
+int32_t esp_timeout_counter = 0;
 int32_t esp_time_offset_counter = 0;
 int32_t esp_time_offset = 0;
 bool esp_time_offset_stale = 0;
@@ -104,6 +105,7 @@ void esp_rx(void)
         {
             if(!esp_detected) esp_time_offset_counter = 0; // Reset this if redetecting
             esp_detected = 1;
+            esp_timeout_counter = 0;
             esp_string_buffer[esp_offset] = rx_char;
             esp_offset++;
             esp_bytes_remaining--;
@@ -338,7 +340,12 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
 {
     IFS0bits.T3IF = false;
     esp_time_offset_counter++;
-    if(esp_time_offset_counter>(ESP_DETECT_LIMIT*10)) esp_detected = 0;
+    esp_timeout_counter++;
+    if(esp_timeout_counter>(ESP_DETECT_LIMIT*10)) 
+    {
+        esp_detected = 0;
+        esp_ntp_valid = 0;
+    }
 }
 
 void esp_process_time(void)
