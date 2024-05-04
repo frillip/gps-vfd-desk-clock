@@ -24,9 +24,9 @@ extern UI_MENU_STATE ui_menu_current;
 
 time_t display;
 time_t previous_display;
-int32_t tz_offset = 0;
-int32_t dst_offset = 3600;
-bool dst_active = 0;
+int32_t tz_offset = TZ_OFFSET_DEFAULT;
+int32_t dst_offset = DST_OFFSET_DEFAULT;
+bool dst_active = DST_ACTIVE_DEFAULT;
 
 extern time_t utc;
 

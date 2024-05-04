@@ -23,6 +23,16 @@ extern "C" {
     
 #include "ui.h"
 
+#define TZ_OFFSET_DEFAULT 0L
+#define TZ_OFFSET_STEP_SIZE 900L // 15 minutes
+#define TZ_OFFSET_MAX 50400L // +14:00
+#define TZ_OFFSET_MIN -43200L // -12:00
+#define DST_OFFSET_DEFAULT 3600L
+#define DST_OFFSET_STEP_SIZE 900L // 15 minutes
+#define DST_OFFSET_MAX 3600L // 1 hour
+#define DST_OFFSET_MIN 0L // 0 hours
+#define DST_ACTIVE_DEFAULT 0L
+
 // Digit offsets
 #define TUBE_4_OFFSET   33
 #define TUBE_3_OFFSET   20
