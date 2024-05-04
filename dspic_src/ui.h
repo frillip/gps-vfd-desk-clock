@@ -27,7 +27,7 @@ extern "C" {
 
 #define UI_BUTTON_SHORT_PRESS_COUNT 2
 #define UI_BUTTON_LONG_PRESS_COUNT 50
-#define UI_DISPLAY_TIMEOUT_COUNT 500
+#define UI_DISPLAY_TIMEOUT_COUNT 1000
 
 void ui_init(void);
 void ui_tasks(void);
