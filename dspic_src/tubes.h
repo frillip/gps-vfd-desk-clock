@@ -128,6 +128,7 @@ void display_send_buffer(uint64_t buffer);
 void display_time(const time_t *time);
 void display_mmss(const time_t *time);
 void display_ssmm(const time_t *time);
+void display_offset(int32_t offset);
 void display_menu(void);
 void display_dashes(void);
 void display_all(void);

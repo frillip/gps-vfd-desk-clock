@@ -400,6 +400,42 @@ void display_ssmm(const time_t *time)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
+// Show a counter on the display
+void display_offset(int32_t offset)
+{
+    uint16_t display_digits = 0;
+    bool offset_negative = 0;
+    
+    if(offset<0)
+    {
+        offset_negative =  1;
+        offset = (offset ^ 0xFFFFFFFF) +1; // Make positive
+    }
+    
+    uint16_t hours = offset / 3600;
+    uint16_t minutes = (offset - (3600L * hours)) / 60;
+    // Construct the counter in BCD
+    display_digits |= (hours / 10)<<12;
+    display_digits |= (hours%10)<<8;
+    display_digits |= (minutes / 10)<<4;
+    display_digits |= (minutes%10); // Break the counter down into individual digits
+    
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Enable the middle colon
+    driver_buffer |= MIDDLE_SEPARATOR_DOT;
+    driver_buffer |= MIDDLE_SEPARATOR_LINE;
+    
+    // Enable the minus if negative
+    if(offset_negative) driver_buffer |= START_SEPARATOR_LINE;
+    
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
 void display_menu(void)
 {
     uint64_t driver_buffer = 0ULL;
