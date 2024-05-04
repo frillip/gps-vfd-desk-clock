@@ -797,6 +797,24 @@ bool isDST(const time_t *time)
     return dst;
 }
 
+void display_timezone_incr(void)
+{
+    tz_offset = tz_offset + TZ_OFFSET_STEP_SIZE;
+    if(tz_offset > TZ_OFFSET_MAX)
+    {
+        tz_offset = TZ_OFFSET_MIN;
+    }
+}
+
+void display_timezone_decr(void)
+{
+    tz_offset = tz_offset - TZ_OFFSET_STEP_SIZE;
+    if(tz_offset < TZ_OFFSET_MIN)
+    {
+        tz_offset = TZ_OFFSET_MAX;
+    }
+}
+
 void __attribute__((__interrupt__,no_auto_psv)) _SPI2Interrupt(void)
 {
     IFS2bits.SPI2IF = 0;

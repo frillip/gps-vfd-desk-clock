@@ -205,8 +205,9 @@ void ui_display_task(void)
     {
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
-            if(ui_menu_current==UI_MENU_STATE_EXIT) ui_menu_current=UI_MENU_STATE_ROOT;
-            else ui_menu_current++;
+            display_timezone_incr();
+            //if(ui_menu_current==UI_MENU_STATE_EXIT) ui_menu_current=UI_MENU_STATE_ROOT;
+            //else ui_menu_current++;
         }
         update_display = 1;
     }
@@ -262,7 +263,8 @@ void ui_update_display(void)
     }
     if(ui_state_current==UI_DISPLAY_STATE_MENU)
     {
-        display_menu();
+        display_offset(tz_offset);
+        //display_menu();
         display_latch();
     }
     if(ui_state_current==UI_DISPLAY_STATE_DASHES)
