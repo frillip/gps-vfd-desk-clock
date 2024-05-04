@@ -196,7 +196,9 @@ void ui_display_task(void)
     {
         if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
         else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) ui_state_current=UI_DISPLAY_STATE_TEMP;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_YYYY;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_YYYY) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMDD;
+        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMDD) ui_state_current=UI_DISPLAY_STATE_TEMP;
         else if(ui_state_current==UI_DISPLAY_STATE_TEMP) ui_state_current=UI_DISPLAY_STATE_MENU;
         else if(ui_state_current==UI_DISPLAY_STATE_MENU) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         update_display = 1;
@@ -254,6 +256,16 @@ void ui_update_display(void)
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM)
     {
         display_ssmm(&utc);
+        display_latch();
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_YYYY)
+    {
+        display_yyyy(&utc);
+        display_latch();
+    }
+    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMDD)
+    {
+        display_mmdd(&utc);
         display_latch();
     }
     if(ui_state_current==UI_DISPLAY_STATE_TEMP)

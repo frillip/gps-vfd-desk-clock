@@ -400,6 +400,74 @@ void display_ssmm(const time_t *time)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
+void display_yyyy(const time_t *time)
+{
+    uint16_t display_digits = 0;
+    struct tm *disp_time;
+    
+    // Convert our time_t into a time struct
+    disp_time = gmtime(time);
+    
+    uint16_t year = 1900 + disp_time->tm_year; // tm_year indexed from 1900
+    
+    // Construct our BCD time
+    display_digits |= (year / 1000)<<12;
+    display_digits |= ((year / 100) % 10)<<8;
+    display_digits |= ((year / 10) % 10)<<4;
+    display_digits |= year % 10;
+
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Toggle the middle dots/dashes based on if the seconds are even or odd
+    // but only if we have PPS sync
+    if(!(disp_time->tm_sec%2) && pps_sync)
+    {
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+    }
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    // Show the left hand dot if button is pressed
+    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
+void display_mmdd(const time_t *time)
+{
+    uint16_t display_digits = 0;
+    struct tm *disp_time;
+    
+    // Convert our time_t into a time struct
+    disp_time = gmtime(time);
+    
+    uint16_t month = disp_time->tm_mon + 1; // tm_mon is zero indexed for no reason
+    
+    // Construct our BCD time
+    display_digits |= (month / 10)<<12;
+    display_digits |= (month % 10)<<8;
+    display_digits |= (disp_time->tm_mday / 10)<<4;
+    display_digits |= (disp_time->tm_mday % 10);
+
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Toggle the middle dots/dashes based on if the seconds are even or odd
+    // but only if we have PPS sync
+    if(!(disp_time->tm_sec%2) && pps_sync)
+    {
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+    }
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    // Show the left hand dot if button is pressed
+    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
 // Show a counter on the display
 void display_offset(int32_t offset)
 {
@@ -704,6 +772,8 @@ void display_local_time(time_t time)
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) display_ssmm(&utc);
+    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_YYYY) display_yyyy(&display);
+    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMDD) display_mmdd(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_TEMP) display_temp(bme280_temperature);
     else if(ui_state_current==UI_DISPLAY_STATE_DASHES) display_dashes();
     else if(ui_state_current==UI_DISPLAY_STATE_INIT) display_blank();
