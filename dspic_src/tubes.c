@@ -238,6 +238,9 @@ void display_temp(int32_t temp)
     // Add minus if negative
     if(temp_negative) driver_buffer |= START_SEPARATOR_LINE;
     
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
@@ -273,6 +276,9 @@ void display_count(int16_t count)
     }
     
     if(count_negative) driver_buffer |= START_SEPARATOR_LINE;
+    
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
