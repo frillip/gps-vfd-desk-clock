@@ -171,9 +171,20 @@ void ui_display_task(void)
             display_latch();
         }
     }
-    if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM && !ui_switch_input_state())
+    if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM)
     {
-        ui_display_timeout++;
+        if(!ui_switch_input_state())
+        {
+            ui_display_timeout++;
+        }
+        else if(ui_state_current==UI_DISPLAY_STATE_TEMP)
+        {
+            ui_display_timeout++;
+        }
+        else if(ui_state_current==UI_DISPLAY_STATE_MENU)
+        {
+            ui_display_timeout++;
+        }
     }
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
@@ -186,7 +197,8 @@ void ui_display_task(void)
         if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
         else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
         else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) ui_state_current=UI_DISPLAY_STATE_TEMP;
-        else if(ui_state_current==UI_DISPLAY_STATE_TEMP) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        else if(ui_state_current==UI_DISPLAY_STATE_TEMP) ui_state_current=UI_DISPLAY_STATE_MENU;
+        else if(ui_state_current==UI_DISPLAY_STATE_MENU) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         update_display = 1;
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
