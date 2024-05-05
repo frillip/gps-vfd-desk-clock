@@ -360,27 +360,24 @@ void display_ssmm(const time_t *time)
 {
     uint16_t display_digits = 0;
     struct tm *disp_time;
-    static uint8_t old_second = 0;;
+    uint8_t display_subseconds = t10ms_display;
     
     // Convert our time_t into a time struct
     disp_time = gmtime(time);
     
     // Sometimes we end up with 100 counts due to various uncertainties
-    if(t10ms_display>=100 && disp_time->tm_sec == old_second)
+    if(display_subseconds>=100)
     {
         // So bodge it
         disp_time->tm_sec++;
-        t10ms_display = 0;
+        display_subseconds = display_subseconds - 100;
     }
-    
-    // Store old second value for reference
-    old_second = disp_time->tm_sec;
     
     // Construct our BCD time
     display_digits |= (disp_time->tm_sec / 10)<<12;
     display_digits |= (disp_time->tm_sec % 10)<<8;
-    display_digits |= (t10ms_display / 10)<<4;
-    display_digits |= (t10ms_display % 10);
+    display_digits |= (display_subseconds / 10)<<4;
+    display_digits |= (display_subseconds % 10);
 
     // Generate the buffer content
     uint64_t driver_buffer = display_generate_buffer(display_digits);
