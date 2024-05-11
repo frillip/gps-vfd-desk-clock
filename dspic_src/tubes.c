@@ -762,9 +762,9 @@ void display_latch(void)
 void display_local_time(time_t time)
 {
     display = time;
-    previous_display = display;
     display = display + tz_offset;
-    if(isDST(&time)) display = display+dst_offset; 
+    if(isDST(&time)) display = display+dst_offset;
+    previous_display = display;
 
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
     else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
