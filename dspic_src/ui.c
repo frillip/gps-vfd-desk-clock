@@ -194,13 +194,39 @@ void ui_display_task(void)
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
-        if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) ui_state_current=UI_DISPLAY_STATE_CLOCK_YYYY;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_YYYY) ui_state_current=UI_DISPLAY_STATE_CLOCK_MMDD;
-        else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMDD) ui_state_current=UI_DISPLAY_STATE_TEMP;
-        else if(ui_state_current==UI_DISPLAY_STATE_TEMP) ui_state_current=UI_DISPLAY_STATE_MENU;
-        else if(ui_state_current==UI_DISPLAY_STATE_MENU) ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        switch(ui_state_current)
+        {
+            case UI_DISPLAY_STATE_CLOCK_HHMM:
+                ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+                break;
+            
+            case UI_DISPLAY_STATE_CLOCK_MMSS:
+                ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
+                break;
+            
+            case UI_DISPLAY_STATE_CLOCK_SSMM:
+                ui_state_current=UI_DISPLAY_STATE_CLOCK_YYYY;
+                break;
+            
+            case UI_DISPLAY_STATE_CLOCK_YYYY:
+                ui_state_current=UI_DISPLAY_STATE_CLOCK_MMDD;
+                break;
+            
+            case UI_DISPLAY_STATE_CLOCK_MMDD:
+                ui_state_current=UI_DISPLAY_STATE_TEMP;
+                break;
+            
+            case UI_DISPLAY_STATE_TEMP:
+                ui_state_current=UI_DISPLAY_STATE_MENU;
+                break;
+            
+            case UI_DISPLAY_STATE_MENU:
+                ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+                break;
+            
+            default:
+                break;
+        }
         update_display = 1;
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)

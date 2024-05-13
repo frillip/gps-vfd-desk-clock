@@ -766,14 +766,43 @@ void display_local_time(time_t time)
     if(isDST(&time)) display = display+dst_offset;
     previous_display = display;
 
-    if(ui_state_current==UI_DISPLAY_STATE_CLOCK_HHMM) display_time(&display);
-    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMSS) display_mmss(&display);
-    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM) display_ssmm(&utc);
-    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_YYYY) display_yyyy(&display);
-    else if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMDD) display_mmdd(&display);
-    else if(ui_state_current==UI_DISPLAY_STATE_TEMP) display_temp(bme280_temperature);
-    else if(ui_state_current==UI_DISPLAY_STATE_DASHES) display_dashes();
-    else if(ui_state_current==UI_DISPLAY_STATE_INIT) display_blank();
+    switch(ui_state_current)
+    {
+        case UI_DISPLAY_STATE_CLOCK_HHMM:
+            display_time(&display);
+            break;
+            
+        case UI_DISPLAY_STATE_CLOCK_MMSS:
+            display_mmss(&display);
+            break;
+            
+        case UI_DISPLAY_STATE_CLOCK_SSMM:
+            display_ssmm(&utc);
+            break;
+            
+        case UI_DISPLAY_STATE_CLOCK_YYYY:
+            display_yyyy(&display);
+            break;
+            
+        case UI_DISPLAY_STATE_CLOCK_MMDD:
+            display_mmdd(&display);
+            break;
+            
+        case UI_DISPLAY_STATE_TEMP:
+            display_temp(bme280_temperature);
+            break;
+            
+        case UI_DISPLAY_STATE_DASHES:
+            display_dashes();
+            break;
+            
+        case UI_DISPLAY_STATE_INIT:
+            display_blank();
+            break;
+            
+        default:
+            break;
+    }
 }
 
 // DST is stupid
