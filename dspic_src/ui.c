@@ -221,7 +221,7 @@ void ui_display_task(void)
                 break;
             
             case UI_DISPLAY_STATE_MENU:
-                ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+                ui_menu_long_press();
                 break;
             
             default:
@@ -233,7 +233,8 @@ void ui_display_task(void)
     {
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
-            display_timezone_incr();
+            ui_menu_short_press();
+            //display_timezone_incr();
             //if(ui_menu_current==UI_MENU_STATE_EXIT) ui_menu_current=UI_MENU_STATE_ROOT;
             //else ui_menu_current++;
         }
@@ -301,8 +302,8 @@ void ui_update_display(void)
     }
     if(ui_state_current==UI_DISPLAY_STATE_MENU)
     {
-        display_offset(tz_offset);
-        //display_menu();
+        //display_offset(tz_offset);
+        display_menu();
         display_latch();
     }
     if(ui_state_current==UI_DISPLAY_STATE_DASHES)
@@ -351,6 +352,47 @@ void ui_set_display_menu(void)
     ui_state_current=UI_DISPLAY_STATE_MENU;
     ui_update_display();
 }
+
+void ui_menu_change_state(UI_MENU_STATE new_state)
+{
+    ui_menu_current = new_state;
+}
+
+void ui_menu_long_press(void)
+{
+    switch(ui_menu_current)
+    {
+        case UI_MENU_STATE_ROOT:
+            ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+            break;
+            
+        case UI_MENU_STATE_EXIT:
+            ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+            break;
+            
+        default:
+            break;
+    }
+}
+
+void ui_menu_short_press(void)
+{
+    switch(ui_menu_current)
+    {
+        case UI_MENU_STATE_ROOT:
+            ui_menu_change_state(UI_MENU_STATE_EXIT);
+            break;
+            
+        case UI_MENU_STATE_EXIT:
+            ui_menu_change_state(UI_MENU_STATE_ROOT);
+            break;
+
+        default:
+            break;
+    }
+}
+
+
 
 void ui_uart1_input(char c)
 {

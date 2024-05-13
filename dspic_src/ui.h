@@ -47,7 +47,11 @@ void ui_set_display_hhmm(void);
 void ui_set_display_mmss(void);
 void ui_set_display_ssmm(void);
 void ui_set_display_dashes(void);
+
 void ui_set_display_menu(void);
+void ui_menu_change_state(UI_MENU_STATE new_state);
+void ui_menu_long_press(void);
+void ui_menu_short_press(void);
 
 void ui_uart1_input(char c);
 void ui_print_iso8601_string(time_t iso);
