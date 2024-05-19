@@ -651,6 +651,7 @@ extern bool display_brightness_oc_running;
 extern uint16_t display_brightness;
 extern uint16_t display_brightness_target;
 extern UI_DISPLAY_STATE ui_state_current;
+extern UI_DISPLAY_STATE ui_state_selected;
 extern UI_MENU_STATE ui_menu_current;
 
 void esp_tx_display(void)
@@ -672,7 +673,8 @@ void esp_tx_display(void)
     esp_tx_buffer.fields.brightness = display_brightness;
     esp_tx_buffer.fields.brightness_target = display_brightness_target;
     
-    esp_tx_buffer.fields.display_state = ui_state_current;
+    esp_tx_buffer.fields.display_state.current = ui_state_current;
+    esp_tx_buffer.fields.display_state.current = ui_state_selected;
     esp_tx_buffer.fields.menu_state = ui_menu_current;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));

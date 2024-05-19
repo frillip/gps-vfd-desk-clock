@@ -179,7 +179,11 @@ typedef union
     } flags;
     uint16_t brightness;
     uint16_t brightness_target;
-    UI_DISPLAY_STATE display_state : 8;
+    struct __attribute__ ((packed))
+    {
+        UI_DISPLAY_STATE current : 4;
+        UI_DISPLAY_STATE selected : 4;
+    } display_state;
     UI_MENU_STATE menu_state : 8;
   } fields;
   uint8_t raw[sizeof(struct _pic_display_struct)];

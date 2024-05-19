@@ -1,4 +1,5 @@
 hold
+	root
 	tz
 		auto/manual
 		set

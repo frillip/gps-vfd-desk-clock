@@ -24,6 +24,7 @@ extern "C" {
 #include "tubes.h"
 #include "sync_state.h"
 #include "../common/enums.h"
+#include "eeprom.h"
 
 #define UI_BUTTON_SHORT_PRESS_COUNT 2
 #define UI_BUTTON_LONG_PRESS_COUNT 50

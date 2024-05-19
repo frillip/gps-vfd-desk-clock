@@ -22,6 +22,8 @@ extern "C" {
 #include <stdbool.h>
     
 #include "ui.h"
+#include "../common/enums.h"
+#include "eeprom.h"
 
 #define TZ_OFFSET_DEFAULT 0L
 #define TZ_OFFSET_STEP_SIZE 900L // 15 minutes
@@ -132,6 +134,7 @@ void display_yyyy(const time_t *time);
 void display_mmdd(const time_t *time);
 void display_offset(int32_t offset);
 void display_menu(void);
+void display_menu_text(void);
 void display_dashes(void);
 void display_all(void);
 void display_blank(void);

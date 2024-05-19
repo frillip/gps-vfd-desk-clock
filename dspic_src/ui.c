@@ -29,6 +29,7 @@ extern time_t previous_display;
 bool update_display = 0;
 
 UI_DISPLAY_STATE ui_state_current = UI_DISPLAY_STATE_INIT;
+UI_DISPLAY_STATE ui_state_selected = UI_DISPLAY_STATE_INIT;
 uint16_t ui_display_timeout = 0;
 
 UI_MENU_STATE ui_menu_current = UI_MENU_STATE_ROOT;
@@ -41,6 +42,8 @@ extern time_t utc;
 extern int32_t tz_offset;
 extern int32_t dst_offset;
 extern int32_t bme280_temperature;
+
+extern EEPROM_DATA_STRUCT running_data;
 
 void ui_init(void)
 {
@@ -189,43 +192,19 @@ void ui_display_task(void)
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
         ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+        ui_menu_change_state(UI_MENU_STATE_ROOT);
         update_display = 1;
         ui_display_timeout=0;
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
-        switch(ui_state_current)
+        if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
-            case UI_DISPLAY_STATE_CLOCK_HHMM:
-                ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
-                break;
-            
-            case UI_DISPLAY_STATE_CLOCK_MMSS:
-                ui_state_current=UI_DISPLAY_STATE_CLOCK_SSMM;
-                break;
-            
-            case UI_DISPLAY_STATE_CLOCK_SSMM:
-                ui_state_current=UI_DISPLAY_STATE_CLOCK_YYYY;
-                break;
-            
-            case UI_DISPLAY_STATE_CLOCK_YYYY:
-                ui_state_current=UI_DISPLAY_STATE_CLOCK_MMDD;
-                break;
-            
-            case UI_DISPLAY_STATE_CLOCK_MMDD:
-                ui_state_current=UI_DISPLAY_STATE_TEMP;
-                break;
-            
-            case UI_DISPLAY_STATE_TEMP:
-                ui_state_current=UI_DISPLAY_STATE_MENU;
-                break;
-            
-            case UI_DISPLAY_STATE_MENU:
-                ui_menu_long_press();
-                break;
-            
-            default:
-                break;
+            ui_menu_long_press();
+        }
+        else
+        {
+            ui_state_current=UI_DISPLAY_STATE_MENU;
         }
         update_display = 1;
     }
@@ -234,9 +213,6 @@ void ui_display_task(void)
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
             ui_menu_short_press();
-            //display_timezone_incr();
-            //if(ui_menu_current==UI_MENU_STATE_EXIT) ui_menu_current=UI_MENU_STATE_ROOT;
-            //else ui_menu_current++;
         }
         update_display = 1;
     }
@@ -302,7 +278,6 @@ void ui_update_display(void)
     }
     if(ui_state_current==UI_DISPLAY_STATE_MENU)
     {
-        //display_offset(tz_offset);
         display_menu();
         display_latch();
     }
@@ -366,8 +341,74 @@ void ui_menu_long_press(void)
             ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
             break;
             
+        case UI_MENU_STATE_TZ:
+            ui_menu_change_state(UI_MENU_STATE_TZ_SEL);
+            break;
+            
+        case UI_MENU_STATE_TZ_SEL:
+            if(running_data.fields.tz_data.tz_set) running_data.fields.tz_data.tz_set = 0;
+            else running_data.fields.tz_data.tz_set = 1;
+            break;
+            
+        case UI_MENU_STATE_TZ_BACK:
+            ui_menu_change_state(UI_MENU_STATE_TZ);
+            break;
+
+        case UI_MENU_STATE_DST:
+            ui_menu_change_state(UI_MENU_STATE_DST_SEL);
+            break;
+
+        case UI_MENU_STATE_ALARM:
+            ui_menu_change_state(UI_MENU_STATE_ALARM_SEL);
+            break;
+
+        case UI_MENU_STATE_BEEP:
+            ui_menu_change_state(UI_MENU_STATE_BEEP_SEL);
+            break;
+            
+        case UI_MENU_STATE_DISPLAY:
+             ui_menu_change_state(UI_MENU_STATE_DISPLAY_SEL);
+             if(running_data.fields.display_data.selected < UI_DISPLAY_STATE_CLOCK_HHMM)
+             {
+                 running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+             }
+             else if(running_data.fields.display_data.selected > UI_DISPLAY_STATE_CLOCK_MMDD)
+             {
+                 running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+             }
+             break;
+
+        case UI_MENU_STATE_DISPLAY_SEL:
+             switch(running_data.fields.display_data.selected)
+             {
+                 case UI_DISPLAY_STATE_CLOCK_HHMM:
+                     running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_MMSS;
+                     break;
+
+                 case UI_DISPLAY_STATE_CLOCK_MMSS:
+                     running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_SSMM;
+                     break;
+
+                 case UI_DISPLAY_STATE_CLOCK_SSMM:
+                     running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_YYYY;
+                     break;
+
+                 case UI_DISPLAY_STATE_CLOCK_YYYY:
+                     running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_MMDD;
+                     break;
+
+                 case UI_DISPLAY_STATE_CLOCK_MMDD:
+                     running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+                     break;
+             }
+             break;
+             
+        case UI_MENU_STATE_DISPLAY_BACK:
+            ui_menu_change_state(UI_MENU_STATE_DISPLAY);
+            break;
+            
         case UI_MENU_STATE_EXIT:
-            ui_state_current=UI_DISPLAY_STATE_CLOCK_MMSS;
+            ui_state_current=running_data.fields.display_data.selected;
             break;
             
         default:
@@ -380,8 +421,48 @@ void ui_menu_short_press(void)
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:
+            ui_menu_change_state(UI_MENU_STATE_TZ);
+            break;
+            
+        case UI_MENU_STATE_TZ:
+            ui_menu_change_state(UI_MENU_STATE_DST);
+            break;
+            
+            case UI_MENU_STATE_TZ_SEL:
+                ui_menu_change_state(UI_MENU_STATE_TZ_SET_HH);
+                break;
+
+            case UI_MENU_STATE_TZ_SET_HH:
+                ui_menu_change_state(UI_MENU_STATE_TZ_BACK);
+                break;
+
+            case UI_MENU_STATE_TZ_BACK:
+                ui_menu_change_state(UI_MENU_STATE_TZ_SEL);
+                break;
+            
+        case UI_MENU_STATE_DST:
+            ui_menu_change_state(UI_MENU_STATE_ALARM);
+            break;
+            
+        case UI_MENU_STATE_ALARM:
+            ui_menu_change_state(UI_MENU_STATE_BEEP);
+            break;
+            
+        case UI_MENU_STATE_BEEP:
+            ui_menu_change_state(UI_MENU_STATE_DISPLAY);
+            break;
+            
+        case UI_MENU_STATE_DISPLAY:
             ui_menu_change_state(UI_MENU_STATE_EXIT);
             break;
+            
+            case UI_MENU_STATE_DISPLAY_SEL:
+                ui_menu_change_state(UI_MENU_STATE_DISPLAY_BACK);
+                break;
+
+            case UI_MENU_STATE_DISPLAY_BACK:
+                ui_menu_change_state(UI_MENU_STATE_DISPLAY_SEL);
+                break;
             
         case UI_MENU_STATE_EXIT:
             ui_menu_change_state(UI_MENU_STATE_ROOT);
