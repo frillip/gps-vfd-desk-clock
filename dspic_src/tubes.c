@@ -26,6 +26,7 @@ time_t display;
 time_t previous_display;
 int32_t tz_offset = TZ_OFFSET_DEFAULT;
 int32_t dst_offset = DST_OFFSET_DEFAULT;
+int32_t alarm_offset = UI_ALARM_DEFAULT;
 bool dst_active = DST_ACTIVE_DEFAULT;
 
 extern time_t utc;
@@ -507,11 +508,11 @@ void display_menu(void)
 {
     switch(ui_menu_current)
     {
-        case UI_MENU_STATE_TZ_SET_HH:
+        case UI_MENU_STATE_TZ_SET_SEL:
             display_offset(tz_offset);
             break;
 
-        case UI_MENU_STATE_ALARM_SET_HH:
+        case UI_MENU_STATE_ALARM_SET_SEL:
             display_offset(tz_offset);
             break;
 
@@ -566,14 +567,10 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
             
-        case UI_MENU_STATE_TZ_SET_HH:
+        case UI_MENU_STATE_TZ_SET_SEL:
             no_update_req = 1;
             break;
 
-        case UI_MENU_STATE_TZ_SET_MM:
-            no_update_req = 1;
-            break;
-            
         case UI_MENU_STATE_TZ_BACK:
             driver_buffer |= (DIGIT_B << TUBE_4_OFFSET);
             driver_buffer |= (DIGIT_A << TUBE_3_OFFSET);
@@ -667,11 +664,7 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_ALARM_SET_HH:
-            no_update_req = 1;
-            break;
-
-        case UI_MENU_STATE_ALARM_SET_MM:
+        case UI_MENU_STATE_ALARM_SET_SEL:
             no_update_req = 1;
             break;
 
@@ -767,6 +760,27 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_K << TUBE_1_OFFSET);
             break;
 
+        case UI_MENU_STATE_RESET:
+            driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+            driver_buffer |= (DIGIT_R << TUBE_3_OFFSET);
+            driver_buffer |= (DIGIT_S << TUBE_2_OFFSET);
+            driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
+            break;
+            
+        case UI_MENU_STATE_RESET_CONFIRM:
+            driver_buffer |= (DIGIT_C << TUBE_4_OFFSET);
+            driver_buffer |= (DIGIT_O << TUBE_3_OFFSET);
+            driver_buffer |= (DIGIT_N << TUBE_2_OFFSET);
+            driver_buffer |= (DIGIT_F << TUBE_1_OFFSET);
+            break;
+
+        case UI_MENU_STATE_RESET_BACK:
+            driver_buffer |= (DIGIT_B << TUBE_4_OFFSET);
+            driver_buffer |= (DIGIT_A << TUBE_3_OFFSET);
+            driver_buffer |= (DIGIT_C << TUBE_2_OFFSET);
+            driver_buffer |= (DIGIT_K << TUBE_1_OFFSET);
+            break;
+
         case UI_MENU_STATE_EXIT:
             driver_buffer |= (DIGIT_E << TUBE_4_OFFSET);
             driver_buffer |= (DIGIT_X << TUBE_3_OFFSET);
@@ -775,6 +789,7 @@ void display_menu_text(void)
             break;
 
         default:
+            no_update_req = 1;
             break;
     }
     
