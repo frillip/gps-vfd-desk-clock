@@ -88,7 +88,8 @@ bool pic_switch_state = 0;
 bool pic_button_state = 0;
 uint16_t pic_brightness = 0;
 uint16_t pic_brightness_target = 0;
-UI_DISPLAY_STATE pic_display_state = UI_DISPLAY_STATE_INIT;
+UI_DISPLAY_STATE pic_display_state_current = UI_DISPLAY_STATE_INIT;
+UI_DISPLAY_STATE pic_display_state_selected = UI_DISPLAY_STATE_INIT;
 UI_MENU_STATE pic_menu_state = UI_MENU_STATE_ROOT;
 
 SERIAL_PROTO_HEADER pic_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
@@ -789,7 +790,8 @@ void pic_process_display(void)
   pic_brightness = pic_display_buffer.fields.brightness;
   pic_brightness_target = pic_display_buffer.fields.brightness_target;
 
-  UI_DISPLAY_STATE pic_display_state = pic_display_buffer.fields.display_state;
+  UI_DISPLAY_STATE pic_display_state_current = pic_display_buffer.fields.display_state.current;
+  UI_DISPLAY_STATE pic_display_state_selected = pic_display_buffer.fields.display_state.selected;
   UI_MENU_STATE pic_menu_state = pic_display_buffer.fields.menu_state;
 
   pic_display_waiting = 0;
