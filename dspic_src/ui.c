@@ -33,6 +33,9 @@ UI_DISPLAY_STATE ui_state_selected = UI_DISPLAY_STATE_INIT;
 uint16_t ui_display_timeout = 0;
 
 UI_MENU_STATE ui_menu_current = UI_MENU_STATE_ROOT;
+bool ui_menu_flash = 0;
+bool ui_menu_flash_off = 0;
+int16_t ui_menu_flash_counter = 0;
 
 UI_BUTTON_STATE ui_button_action = UI_BUTTON_STATE_NO_PRESS;
 uint16_t ui_button_counter = 0;
@@ -165,6 +168,19 @@ void ui_buzzer_sounder(void)
 
 void ui_display_task(void)
 {
+    if(ui_menu_flash) ui_menu_flash_counter++;
+    if(ui_menu_flash_counter > UI_MENU_FLASH_PERIOD)
+    {
+        ui_menu_flash_counter = UI_MENU_FLASH_RESET;
+        ui_menu_flash_off = 0;
+        update_display = 1;
+    }
+    else if(ui_menu_flash_counter > UI_MENU_FLASH_ON_PERIOD)
+    {
+        ui_menu_flash_off = 1;
+        update_display = 1;
+    }
+    
     if(utc_source!=CLOCK_SOURCE_NONE)
     {
         if(ui_state_current==UI_DISPLAY_STATE_INIT || ui_state_current==UI_DISPLAY_STATE_DASHES)
@@ -193,6 +209,9 @@ void ui_display_task(void)
     {
         ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         ui_menu_change_state(UI_MENU_STATE_ROOT);
+        ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
+        ui_menu_flash_off = 0;
+        ui_menu_flash = 0;
         update_display = 1;
         ui_display_timeout=0;
     }
@@ -205,7 +224,9 @@ void ui_display_task(void)
         else
         {
             ui_state_current=UI_DISPLAY_STATE_MENU;
+            ui_menu_flash = 1;
         }
+        ui_display_timeout=0;
         update_display = 1;
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
@@ -218,13 +239,14 @@ void ui_display_task(void)
         {
             ui_display_cycle();
         }
+        ui_display_timeout=0;
         update_display = 1;
     }
     ui_button_action = UI_BUTTON_STATE_NO_PRESS;
 
     if(update_display)
     {
-        ui_display_timeout=0;
+        if(!ui_menu_flash) ui_display_timeout=0;
         ui_update_display();
         update_display=0;
     }
@@ -369,6 +391,8 @@ void ui_menu_change_state(UI_MENU_STATE new_state)
 
 void ui_menu_long_press(void)
 {
+    ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
+    ui_menu_flash_off = 0;
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:
@@ -493,6 +517,8 @@ void ui_menu_long_press(void)
 
 void ui_menu_short_press(void)
 {
+    ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
+    ui_menu_flash_off = 0;
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:

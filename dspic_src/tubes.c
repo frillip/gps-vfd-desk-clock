@@ -505,20 +505,25 @@ void display_offset(int32_t offset)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
+extern bool ui_menu_flash_off;
+
 void display_menu(void)
 {
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_TZ_SET_SEL:
-            display_offset(tz_offset);
+            if(ui_menu_flash_off) display_blank();
+            else display_offset(tz_offset);
             break;
 
         case UI_MENU_STATE_ALARM_SET_SEL:
-            display_offset(tz_offset);
+            if(ui_menu_flash_off) display_blank();
+            else display_offset(tz_offset);
             break;
 
         default:
-            display_menu_text();
+            if(ui_menu_flash_off) display_blank();
+            else display_menu_text();
             break;
     }
 }
