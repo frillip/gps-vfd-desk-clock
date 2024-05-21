@@ -499,7 +499,8 @@ void display_offset(int32_t offset)
     if(offset_negative) driver_buffer |= START_SEPARATOR_LINE;
     
     // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    // Don't do this actually
+    //if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
