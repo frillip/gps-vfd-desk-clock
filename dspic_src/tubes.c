@@ -1052,13 +1052,42 @@ void display_timezone_incr(void)
     }
 }
 
-void display_timezone_decr(void)
+void display_timezone_incr_hh(void)
 {
-    tz_offset = tz_offset - TZ_OFFSET_STEP_SIZE;
-    if(tz_offset < TZ_OFFSET_MIN)
+    int32_t tz_hour = tz_offset / 3600;
+    int32_t tz_minute = (tz_offset - (tz_hour * 3600)) / 60;
+    tz_hour++;
+    if(tz_hour > 14)
     {
-        tz_offset = TZ_OFFSET_MAX;
+        tz_hour = -12;
+        tz_minute = tz_minute * -1;
     }
+    
+    tz_offset = tz_hour * 3600;
+    tz_offset += tz_minute * 60;
+}
+
+void display_timezone_incr_mm(void)
+{
+    int32_t tz_hour = tz_offset / 3600;
+    int32_t tz_minute = (tz_offset - (tz_hour * 3600)) / 60;
+    if(tz_offset >= 0)
+    {
+        tz_minute = tz_minute + 15;
+        if(tz_minute >= 60)
+        {
+            tz_minute = 0;
+        }
+    }
+    else 
+    {
+        tz_minute = tz_minute - 15;
+        if(tz_minute <= -60)
+        {
+            tz_minute = 0;
+        }
+    }
+    tz_offset = (tz_hour * 3600) + (tz_minute * 60);
 }
 
 void __attribute__((__interrupt__,no_auto_psv)) _SPI2Interrupt(void)

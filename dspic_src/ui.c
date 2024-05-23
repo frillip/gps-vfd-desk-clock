@@ -558,11 +558,11 @@ void ui_menu_short_press(void)
                 break;
                 
                 case UI_MENU_STATE_TZ_SET_HH:
-                    display_timezone_incr();
+                    display_timezone_incr_hh();
                     break;
                     
                 case UI_MENU_STATE_TZ_SET_MM:
-                    display_timezone_incr();
+                    display_timezone_incr_mm();
                     break;
 
             case UI_MENU_STATE_TZ_BACK:
