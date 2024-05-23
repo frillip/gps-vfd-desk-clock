@@ -511,12 +511,27 @@ void display_menu(void)
 {
     switch(ui_menu_current)
     {
-        case UI_MENU_STATE_TZ_SET_SEL:
+        case UI_MENU_STATE_TZ_SET_HH:
+            if(ui_menu_flash_off) display_blank();
+            else display_offset(tz_offset);
+            break;
+            
+        case UI_MENU_STATE_TZ_SET_MM:
             if(ui_menu_flash_off) display_blank();
             else display_offset(tz_offset);
             break;
 
-        case UI_MENU_STATE_ALARM_SET_SEL:
+        case UI_MENU_STATE_DST_SET_OFFSET:
+            if(ui_menu_flash_off) display_blank();
+            else display_offset(tz_offset);
+            break;
+
+        case UI_MENU_STATE_ALARM_SET_HH:
+            if(ui_menu_flash_off) display_blank();
+            else display_offset(tz_offset);
+            break;
+            
+        case UI_MENU_STATE_ALARM_SET_MM:
             if(ui_menu_flash_off) display_blank();
             else display_offset(tz_offset);
             break;
@@ -573,10 +588,14 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
             
-        case UI_MENU_STATE_TZ_SET_SEL:
+        case UI_MENU_STATE_TZ_SET_HH:
             no_update_req = 1;
             break;
 
+        case UI_MENU_STATE_TZ_SET_MM:
+            no_update_req = 1;
+            break;
+            
         case UI_MENU_STATE_TZ_BACK:
             driver_buffer |= (DIGIT_B << TUBE_4_OFFSET);
             driver_buffer |= (DIGIT_A << TUBE_3_OFFSET);
@@ -615,7 +634,7 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_DST_SET_SEL:
+        case UI_MENU_STATE_DST_SET_STATE:
             if(running_data.fields.dst_data.dst_active)
             {
                 driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
@@ -630,6 +649,10 @@ void display_menu_text(void)
                 driver_buffer |= (DIGIT_F << TUBE_2_OFFSET);
                 driver_buffer |= (DIGIT_F << TUBE_1_OFFSET);
             }
+            break;
+            
+        case UI_MENU_STATE_DST_SET_OFFSET:
+            no_update_req = 1;
             break;
 
         case UI_MENU_STATE_DST_BACK:
@@ -670,7 +693,11 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_ALARM_SET_SEL:
+        case UI_MENU_STATE_ALARM_SET_HH:
+            no_update_req = 1;
+            break;
+            
+        case UI_MENU_STATE_ALARM_SET_MM:
             no_update_req = 1;
             break;
 
