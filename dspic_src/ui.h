@@ -59,6 +59,9 @@ void ui_display_cycle(void);
 
 void ui_set_display_menu(void);
 void ui_menu_change_state(UI_MENU_STATE new_state);
+void ui_menu_start_flash(void);
+void ui_menu_stop_flash(void);
+void ui_menu_reset_flash(void);
 void ui_menu_long_press(void);
 void ui_menu_short_press(void);
 

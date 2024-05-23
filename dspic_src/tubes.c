@@ -558,9 +558,8 @@ void display_menu(void)
             break;
 
         default:
-            //if(ui_menu_flash_off) display_blank();
-            //else display_menu_text();
-            display_menu_text();
+            if(ui_menu_flash_off) display_blank();
+            else display_menu_text();
             break;
     }
 }
@@ -586,8 +585,9 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_Z << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_TZ_SEL:
-            if(running_data.fields.tz_data.tz_set)
+        case UI_MENU_STATE_TZ_AUTO:
+        case UI_MENU_STATE_TZ_AUTO_SEL:
+            if(running_data.fields.tz_data.tz_auto)
             {
                 driver_buffer |= (DIGIT_A << TUBE_4_OFFSET);
                 driver_buffer |= (DIGIT_U << TUBE_3_OFFSET);
@@ -629,8 +629,8 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_DST_SEL:
-            if(running_data.fields.dst_data.dst_set)
+        case UI_MENU_STATE_DST_AUTO:
+            if(running_data.fields.dst_data.dst_auto)
             {
                 driver_buffer |= (DIGIT_A << TUBE_4_OFFSET);
                 driver_buffer |= (DIGIT_U << TUBE_3_OFFSET);
@@ -688,8 +688,8 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_M << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_ALARM_SEL:
-            if(running_data.fields.alarm_data.alarm_set)
+        case UI_MENU_STATE_ALARM_ENABLED:
+            if(running_data.fields.alarm_data.alarm_enabled)
             {
                 driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
                 driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
@@ -734,8 +734,8 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_P << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_BEEP_SEL:
-            if(running_data.fields.beep_data.beep_set)
+        case UI_MENU_STATE_BEEP_ENABLE:
+            if(running_data.fields.beep_data.beep_enabled)
             {
                 driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
                 driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
@@ -765,7 +765,7 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_P << TUBE_1_OFFSET);
             break;
 
-        case UI_MENU_STATE_DISPLAY_SEL:
+        case UI_MENU_STATE_DISPLAY_SET:
             switch(running_data.fields.display_data.selected)
             {
                 case UI_DISPLAY_STATE_CLOCK_HHMM:

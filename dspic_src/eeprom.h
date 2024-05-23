@@ -25,23 +25,23 @@ typedef union
   {
     struct __attribute__ ((packed))
     {
-        uint8_t tz_set : 1;
+        uint8_t tz_auto : 1;
         int8_t tz_offset: 7;
     } tz_data;
     struct __attribute__ ((packed))
     {
-        uint8_t dst_set : 1;
+        uint8_t dst_auto : 1;
         uint8_t dst_active : 1;
         int8_t dst_offset: 4;
     } dst_data;
     struct __attribute__ ((packed))
     {
-        uint8_t alarm_set : 1;
+        uint8_t alarm_enabled : 1;
         uint16_t alarm_offset: 15;
     } alarm_data;
     struct __attribute__ ((packed))
     {
-        uint8_t beep_set : 1;
+        uint8_t beep_enabled : 1;
     } beep_data;
     struct __attribute__ ((packed))
     {

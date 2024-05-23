@@ -209,9 +209,7 @@ void ui_display_task(void)
     {
         ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
         ui_menu_change_state(UI_MENU_STATE_ROOT);
-        ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
-        ui_menu_flash_off = 0;
-        ui_menu_flash = 0;
+        ui_menu_stop_flash();
         update_display = 1;
         ui_display_timeout=0;
     }
@@ -224,7 +222,6 @@ void ui_display_task(void)
         else
         {
             ui_state_current=UI_DISPLAY_STATE_MENU;
-            ui_menu_flash = 1;
         }
         ui_display_timeout=0;
         update_display = 1;
@@ -389,10 +386,29 @@ void ui_menu_change_state(UI_MENU_STATE new_state)
     ui_menu_current = new_state;
 }
 
-void ui_menu_long_press(void)
+void ui_menu_start_flash(void)
 {
     ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
     ui_menu_flash_off = 0;
+    ui_menu_flash = 1;
+}
+
+void ui_menu_stop_flash(void)
+{
+    ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
+    ui_menu_flash_off = 0;
+    ui_menu_flash = 0;
+}
+
+void ui_menu_reset_flash(void)
+{
+    ui_menu_flash_counter = UI_MENU_FLASH_INITIAL;
+    ui_menu_flash_off = 0;
+}
+
+void ui_menu_long_press(void)
+{
+    ui_menu_reset_flash();
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:
@@ -400,12 +416,17 @@ void ui_menu_long_press(void)
             break;
             
         case UI_MENU_STATE_TZ:
-            ui_menu_change_state(UI_MENU_STATE_TZ_SEL);
+            ui_menu_change_state(UI_MENU_STATE_TZ_AUTO);
             break;
             
-            case UI_MENU_STATE_TZ_SEL:
-                if(running_data.fields.tz_data.tz_set) running_data.fields.tz_data.tz_set = 0;
-                else running_data.fields.tz_data.tz_set = 1;
+            case UI_MENU_STATE_TZ_AUTO:
+                ui_menu_start_flash();
+                ui_menu_change_state(UI_MENU_STATE_TZ_AUTO_SEL);
+                break;
+                
+            case UI_MENU_STATE_TZ_AUTO_SEL:
+                ui_menu_stop_flash();
+                ui_menu_change_state(UI_MENU_STATE_TZ_AUTO);
                 break;
             
             case UI_MENU_STATE_TZ_SET:
@@ -425,12 +446,12 @@ void ui_menu_long_press(void)
             break;
 
         case UI_MENU_STATE_DST:
-            ui_menu_change_state(UI_MENU_STATE_DST_SEL);
+            ui_menu_change_state(UI_MENU_STATE_DST_AUTO);
             break;
             
-            case UI_MENU_STATE_DST_SEL:
-                if(running_data.fields.dst_data.dst_set) running_data.fields.dst_data.dst_set = 0;
-                else running_data.fields.dst_data.dst_set = 1;
+            case UI_MENU_STATE_DST_AUTO:
+                if(running_data.fields.dst_data.dst_auto) running_data.fields.dst_data.dst_auto = 0;
+                else running_data.fields.dst_data.dst_auto = 1;
                 break;
                 
             case UI_MENU_STATE_DST_SET:
@@ -446,12 +467,12 @@ void ui_menu_long_press(void)
                     break;
 
         case UI_MENU_STATE_ALARM:
-            ui_menu_change_state(UI_MENU_STATE_ALARM_SEL);
+            ui_menu_change_state(UI_MENU_STATE_ALARM_ENABLED);
             break;
             
-            case UI_MENU_STATE_ALARM_SEL:
-                if(running_data.fields.alarm_data.alarm_set) running_data.fields.alarm_data.alarm_set = 0;
-                else running_data.fields.alarm_data.alarm_set = 1;
+            case UI_MENU_STATE_ALARM_ENABLED:
+                if(running_data.fields.alarm_data.alarm_enabled) running_data.fields.alarm_data.alarm_enabled = 0;
+                else running_data.fields.alarm_data.alarm_enabled = 1;
                 break;
                 
             case UI_MENU_STATE_ALARM_SET:
@@ -467,16 +488,16 @@ void ui_menu_long_press(void)
                     break;
 
         case UI_MENU_STATE_BEEP:
-            ui_menu_change_state(UI_MENU_STATE_BEEP_SEL);
+            ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE);
             break;
             
-            case UI_MENU_STATE_BEEP_SEL:
-                if(running_data.fields.beep_data.beep_set) running_data.fields.beep_data.beep_set = 0;
-                else running_data.fields.beep_data.beep_set = 1;
+            case UI_MENU_STATE_BEEP_ENABLE:
+                if(running_data.fields.beep_data.beep_enabled) running_data.fields.beep_data.beep_enabled = 0;
+                else running_data.fields.beep_data.beep_enabled = 1;
                 break;
             
         case UI_MENU_STATE_DISPLAY:
-             ui_menu_change_state(UI_MENU_STATE_DISPLAY_SEL);
+             ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
              if(running_data.fields.display_data.selected < UI_DISPLAY_STATE_CLOCK_HHMM)
              {
                  running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
@@ -487,7 +508,7 @@ void ui_menu_long_press(void)
              }
              break;
 
-        case UI_MENU_STATE_DISPLAY_SEL:
+        case UI_MENU_STATE_DISPLAY_SET:
              switch(running_data.fields.display_data.selected)
              {
                  case UI_DISPLAY_STATE_CLOCK_HHMM:
@@ -549,9 +570,18 @@ void ui_menu_short_press(void)
             ui_menu_change_state(UI_MENU_STATE_DST);
             break;
             
-            case UI_MENU_STATE_TZ_SEL:
-                ui_menu_change_state(UI_MENU_STATE_TZ_SET);
+            case UI_MENU_STATE_TZ_AUTO:
+                if(!running_data.fields.tz_data.tz_auto)
+                {
+                    ui_menu_change_state(UI_MENU_STATE_TZ_SET);
+                }
+                else ui_menu_change_state(UI_MENU_STATE_TZ_BACK);
                 break;
+                
+                case UI_MENU_STATE_TZ_AUTO_SEL:
+                    if(running_data.fields.tz_data.tz_auto) running_data.fields.tz_data.tz_auto = 0;
+                    else running_data.fields.tz_data.tz_auto = 1;
+                    break;
 
             case UI_MENU_STATE_TZ_SET:
                 ui_menu_change_state(UI_MENU_STATE_TZ_BACK);
@@ -566,7 +596,7 @@ void ui_menu_short_press(void)
                     break;
 
             case UI_MENU_STATE_TZ_BACK:
-                ui_menu_change_state(UI_MENU_STATE_TZ_SEL);
+                ui_menu_change_state(UI_MENU_STATE_TZ_AUTO);
                 break;
 
             
@@ -574,7 +604,7 @@ void ui_menu_short_press(void)
             ui_menu_change_state(UI_MENU_STATE_ALARM);
             break;
 
-            case UI_MENU_STATE_DST_SEL:
+            case UI_MENU_STATE_DST_AUTO:
                 ui_menu_change_state(UI_MENU_STATE_DST_SET);
                 break;
 
@@ -591,7 +621,7 @@ void ui_menu_short_press(void)
                     break;
                 
             case UI_MENU_STATE_DST_BACK:
-                ui_menu_change_state(UI_MENU_STATE_DST_SEL);
+                ui_menu_change_state(UI_MENU_STATE_DST_AUTO);
                 break;
 
             
@@ -599,7 +629,7 @@ void ui_menu_short_press(void)
             ui_menu_change_state(UI_MENU_STATE_BEEP);
             break;
 
-            case UI_MENU_STATE_ALARM_SEL:
+            case UI_MENU_STATE_ALARM_ENABLED:
                 ui_menu_change_state(UI_MENU_STATE_ALARM_SET);
                 break;
 
@@ -616,7 +646,7 @@ void ui_menu_short_press(void)
                     break;
 
             case UI_MENU_STATE_ALARM_BACK:
-                ui_menu_change_state(UI_MENU_STATE_ALARM_SEL);
+                ui_menu_change_state(UI_MENU_STATE_ALARM_ENABLED);
                 break;
 
 
@@ -624,24 +654,24 @@ void ui_menu_short_press(void)
             ui_menu_change_state(UI_MENU_STATE_DISPLAY);
             break;
 
-            case UI_MENU_STATE_BEEP_SEL:
+            case UI_MENU_STATE_BEEP_ENABLE:
                 ui_menu_change_state(UI_MENU_STATE_BEEP_BACK);
                 break;
 
             case UI_MENU_STATE_BEEP_BACK:
-                ui_menu_change_state(UI_MENU_STATE_BEEP_SEL);
+                ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE);
                 break;
             
         case UI_MENU_STATE_DISPLAY:
             ui_menu_change_state(UI_MENU_STATE_RESET);
             break;
             
-            case UI_MENU_STATE_DISPLAY_SEL:
+            case UI_MENU_STATE_DISPLAY_SET:
                 ui_menu_change_state(UI_MENU_STATE_DISPLAY_BACK);
                 break;
 
             case UI_MENU_STATE_DISPLAY_BACK:
-                ui_menu_change_state(UI_MENU_STATE_DISPLAY_SEL);
+                ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
                 break;
 
 
