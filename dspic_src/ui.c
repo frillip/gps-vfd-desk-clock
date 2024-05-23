@@ -117,7 +117,7 @@ void ui_buzzer_interval_beep(void)
     uint8_t minute = display_tm->tm_min;
     uint8_t hour = display_tm->tm_hour;
 
-    if(ui_switch_state())
+    if(running_data.fields.beep_data.beep_enabled && !beep_start)
     {
         if(minute%BEEP_MINOR_INTERVAL==0 && !second)
         {
@@ -143,6 +143,18 @@ void ui_buzzer_interval_beep(void)
                 i++;
             }
         }
+    }
+}
+
+void ui_buzzer_button_beep(void)
+{
+    if(running_data.fields.beep_data.beep_enabled && !beep_start)
+    {
+        memset(buzzer_buffer, 0, BUZZER_BUFFER_LENGTH);
+        beep_start = 1;
+        beep_seq = 0;
+        buzzer_buffer[0] = BEEP_LENGTH_BUTTON | 0x80;
+        buzzer_buffer[1] = BEEP_GAP_BUTTON;
     }
 }
 
@@ -215,6 +227,7 @@ void ui_display_task(void)
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
+        ui_buzzer_button_beep();
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
             ui_menu_long_press();
@@ -228,6 +241,7 @@ void ui_display_task(void)
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
     {
+        ui_buzzer_button_beep();
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
             ui_menu_short_press();
@@ -430,6 +444,7 @@ void ui_menu_long_press(void)
                 break;
             
             case UI_MENU_STATE_TZ_SET:
+                ui_menu_start_flash();
                 ui_menu_change_state(UI_MENU_STATE_TZ_SET_HH);
                 break;
 
@@ -438,6 +453,7 @@ void ui_menu_long_press(void)
                     break;
 
                 case UI_MENU_STATE_TZ_SET_MM:
+                    ui_menu_stop_flash();
                     ui_menu_change_state(UI_MENU_STATE_TZ_SET);
                     break;
             
@@ -492,10 +508,19 @@ void ui_menu_long_press(void)
             break;
             
             case UI_MENU_STATE_BEEP_ENABLE:
-                if(running_data.fields.beep_data.beep_enabled) running_data.fields.beep_data.beep_enabled = 0;
-                else running_data.fields.beep_data.beep_enabled = 1;
+                ui_menu_start_flash();
+                ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE_SEL);
                 break;
-            
+
+            case UI_MENU_STATE_BEEP_ENABLE_SEL:
+                ui_menu_stop_flash();
+                ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE);
+                break;
+                
+            case UI_MENU_STATE_BEEP_BACK:
+                ui_menu_change_state(UI_MENU_STATE_BEEP);
+                break;
+                
         case UI_MENU_STATE_DISPLAY:
              ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
              if(running_data.fields.display_data.selected < UI_DISPLAY_STATE_CLOCK_HHMM)
@@ -656,6 +681,15 @@ void ui_menu_short_press(void)
 
             case UI_MENU_STATE_BEEP_ENABLE:
                 ui_menu_change_state(UI_MENU_STATE_BEEP_BACK);
+                break;
+                
+            case UI_MENU_STATE_BEEP_ENABLE_SEL:
+                if(running_data.fields.beep_data.beep_enabled) running_data.fields.beep_data.beep_enabled = 0;
+                else
+                {
+                    running_data.fields.beep_data.beep_enabled = 1;
+                    ui_buzzer_button_beep();
+                }
                 break;
 
             case UI_MENU_STATE_BEEP_BACK:

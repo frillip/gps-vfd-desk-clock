@@ -735,6 +735,7 @@ void display_menu_text(void)
             break;
 
         case UI_MENU_STATE_BEEP_ENABLE:
+        case UI_MENU_STATE_BEEP_ENABLE_SEL:
             if(running_data.fields.beep_data.beep_enabled)
             {
                 driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);

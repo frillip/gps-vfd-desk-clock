@@ -46,6 +46,7 @@ bool ui_switch_state(void);
 
 void ui_buzzer_task(void);
 void ui_buzzer_interval_beep(void);
+void ui_buzzer_button_beep(void);
 void ui_buzzer_sounder(void);
 
 void ui_display_task(void);
@@ -75,7 +76,9 @@ void ui_print_clear_window(void);
 // Defined in multiples of 20ms
 
 #define BEEP_LENGTH         5
+#define BEEP_LENGTH_BUTTON  3
 #define BEEP_GAP            5
+#define BEEP_GAP_BUTTON     3
 #define BEEP_PAUSE_GAP      15
 #define BEEP_GROUP_SIZE     4
 
