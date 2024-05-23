@@ -767,6 +767,7 @@ void display_menu_text(void)
             break;
 
         case UI_MENU_STATE_DISPLAY_SET:
+        case UI_MENU_STATE_DISPLAY_SET_SEL:
             switch(running_data.fields.display_data.selected)
             {
                 case UI_DISPLAY_STATE_CLOCK_HHMM:
