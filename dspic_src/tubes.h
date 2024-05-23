@@ -99,6 +99,11 @@ extern "C" {
 #define MIDDLE_SEPARATOR_LINE       0x1000
 #define MIDDLE_SEPARATOR_BOTH       ( MIDDLE_SEPARATOR_DOT | MIDDLE_SEPARATOR_LINE )
     
+#define DISPLAY_MASK_TUBE_1         0xFFFFFFFFFFFFFF80
+#define DISPLAY_MASK_TUBE_2         0xFFFFFFFFFFF01FFF
+#define DISPLAY_MASK_TUBE_3         0xFFFFFFFFF80FFFFF
+#define DISPLAY_MASK_TUBE_4         0xFFFFFF01FFFFFFFF
+    
 #define DISPLAY_BRIGHTNESS_HZ           10000
 #define DISPLAY_BRIGHTNESS_PR           3999    // OC3RS = (40000000/10000) - 1
 #define DISPLAY_BRIGHTNESS_MAX          3800    // OC3R must be less than OC3RS
@@ -133,6 +138,8 @@ void display_ssmm(const time_t *time);
 void display_yyyy(const time_t *time);
 void display_mmdd(const time_t *time);
 void display_offset(int32_t offset);
+void display_mask_hh(void);
+void display_mask_mm(void);
 void display_menu(void);
 void display_menu_text(void);
 void display_dashes(void);

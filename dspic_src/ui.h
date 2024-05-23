@@ -32,7 +32,7 @@ extern "C" {
     
 #define UI_MENU_FLASH_ON_PERIOD 30 // * 20ms
 #define UI_MENU_FLASH_PERIOD 50 // * 20ms
-#define UI_MENU_FLASH_INITIAL (-50)
+#define UI_MENU_FLASH_INITIAL (10)
 #define UI_MENU_FLASH_RESET 0
 
 #define UI_ALARM_DEFAULT 0L

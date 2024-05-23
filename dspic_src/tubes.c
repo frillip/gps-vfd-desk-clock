@@ -1,5 +1,6 @@
 #include "tubes.h"
 
+uint64_t display_last_driver_buffer = 0;
 uint32_t characters[] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9, DIGIT_A, DIGIT_B, DIGIT_C, DIGIT_D, DIGIT_E, DIGIT_F};
 bool dash_display = 0;
 bool display_blinking = 0;
@@ -505,20 +506,40 @@ void display_offset(int32_t offset)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
+void display_mask_hh(void)
+{
+    uint64_t driver_buffer = display_last_driver_buffer;
+    driver_buffer &= DISPLAY_MASK_TUBE_3;
+    driver_buffer &= DISPLAY_MASK_TUBE_4;
+    display_send_buffer(driver_buffer);
+}
+
+void display_mask_mm(void)
+{
+    uint64_t driver_buffer = display_last_driver_buffer;
+    driver_buffer &= DISPLAY_MASK_TUBE_1;
+    driver_buffer &= DISPLAY_MASK_TUBE_2;
+    display_send_buffer(driver_buffer);
+}
+
 extern bool ui_menu_flash_off;
 
 void display_menu(void)
 {
     switch(ui_menu_current)
     {
+        case UI_MENU_STATE_TZ_SET:
+            display_offset(tz_offset);
+            break;
+            
         case UI_MENU_STATE_TZ_SET_HH:
-            if(ui_menu_flash_off) display_blank();
-            else display_offset(tz_offset);
+            display_offset(tz_offset);
+            if(ui_menu_flash_off) display_mask_hh();
             break;
             
         case UI_MENU_STATE_TZ_SET_MM:
-            if(ui_menu_flash_off) display_blank();
-            else display_offset(tz_offset);
+            display_offset(tz_offset);
+            if(ui_menu_flash_off) display_mask_mm();
             break;
 
         case UI_MENU_STATE_DST_SET_OFFSET:
@@ -537,8 +558,9 @@ void display_menu(void)
             break;
 
         default:
-            if(ui_menu_flash_off) display_blank();
-            else display_menu_text();
+            //if(ui_menu_flash_off) display_blank();
+            //else display_menu_text();
+            display_menu_text();
             break;
     }
 }
@@ -582,10 +604,7 @@ void display_menu_text(void)
             break;
 
         case UI_MENU_STATE_TZ_SET:
-            driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
-            driver_buffer |= (DIGIT_S << TUBE_3_OFFSET);
-            driver_buffer |= (DIGIT_E << TUBE_2_OFFSET);
-            driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
+            no_update_req = 1;
             break;
             
         case UI_MENU_STATE_TZ_SET_HH:
@@ -881,6 +900,7 @@ uint64_t display_generate_buffer(uint16_t digits)
 
 void display_send_buffer(uint64_t buffer)
 {
+    display_last_driver_buffer = buffer;
     SPI2_Exchange16bit((uint16_t)((buffer>>24)&0xFFFF));
     SPI2_Exchange16bit((uint16_t)((buffer>>32)&0xFFFF));
     SPI2_Exchange16bit((uint16_t)((buffer>>16)&0xFFFF));
