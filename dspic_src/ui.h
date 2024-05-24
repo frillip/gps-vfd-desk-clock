@@ -35,7 +35,13 @@ extern "C" {
 #define UI_MENU_FLASH_INITIAL (10)
 #define UI_MENU_FLASH_RESET 0
 
-#define UI_ALARM_DEFAULT 0L
+#define UI_ALARM_ENABLED_DEFAULT 0
+#define UI_ALARM_OFFSET_DEFAULT 0L
+    
+#define UI_BEEP_ENABLED_DEFAULT 0
+    
+#define UI_DISPLAY_HOUR_FORMAT_DEFAULT 0
+#define UI_DISPLAY_SELECTED_DEFAULT UI_DISPLAY_STATE_CLOCK_HHMM
 
 void ui_init(void);
 void ui_tasks(void);

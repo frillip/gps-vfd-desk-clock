@@ -25,6 +25,7 @@ extern "C" {
 #include "../common/enums.h"
 #include "eeprom.h"
 
+#define TZ_AUTOMATIC_DEFAULT 0
 #define TZ_OFFSET_DEFAULT 0L
 #define TZ_OFFSET_STEP_SIZE 900L // 15 minutes
 #define TZ_OFFSET_MAX 50400L // +14:00
@@ -33,7 +34,8 @@ extern "C" {
 #define DST_OFFSET_STEP_SIZE 900L // 15 minutes
 #define DST_OFFSET_MAX 3600L // 1 hour
 #define DST_OFFSET_MIN 0L // 0 hours
-#define DST_ACTIVE_DEFAULT 0L
+#define DST_AUTOMATIC_DEFAULT 0
+#define DST_ACTIVE_DEFAULT 0
 
 // Digit offsets
 #define TUBE_4_OFFSET   33

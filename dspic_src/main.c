@@ -15,6 +15,7 @@
 #include <xc.h>
 
 #include "bme280.h"
+#include "eeprom.h"
 #include "esp32.h"
 #include "freq.h"
 #include "gnss.h"
@@ -49,6 +50,8 @@ bool sync_state_machine_run = 0;
 
 // time_t to store UTC, GNSS, RTC and local time
 time_t utc;
+bool dst_active;
+
 extern time_t rtc;
 extern bool rtc_detected;
 
@@ -115,6 +118,8 @@ int main(void)
     double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
     printf("Running @ 80MHz on %.06fMHz XTAL\r\n", fosc_freq_f);
 #endif
+    
+    eeprom_init();
     
     veml6040_detected = VEML6040_init();
     if(veml6040_detected)

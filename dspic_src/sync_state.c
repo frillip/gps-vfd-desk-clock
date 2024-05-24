@@ -13,8 +13,8 @@ extern time_t ntp;
 extern time_t gnss;
 extern time_t utc;
 extern time_t display;
-extern int32_t tz_offset;
-extern int32_t dst_offset;
+
+extern bool dst_active;
 
 extern bool rtc_detected;
 extern bool rtc_valid;
@@ -903,6 +903,8 @@ void sync_state_eval_time(void)
             rtc_set_calendar();
         }
     }
+    
+    dst_active = isDST(&utc);
 #ifdef DEBUG_MESSAGES    
     print_clocks();
 #endif

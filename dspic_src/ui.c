@@ -42,11 +42,10 @@ uint16_t ui_button_counter = 0;
 
 extern CLOCK_SOURCE utc_source;
 extern time_t utc;
-extern int32_t tz_offset;
-extern int32_t dst_offset;
 extern int32_t bme280_temperature;
 
-extern EEPROM_DATA_STRUCT running_data;
+extern EEPROM_DATA_STRUCT settings;
+extern EEPROM_DATA_STRUCT modified;
 
 void ui_init(void)
 {
@@ -117,7 +116,7 @@ void ui_buzzer_interval_beep(void)
     uint8_t minute = display_tm->tm_min;
     uint8_t hour = display_tm->tm_hour;
 
-    if(running_data.fields.beep_data.beep_enabled && !beep_start)
+    if(settings.fields.beep.flags.enabled && !beep_start)
     {
         if(minute%BEEP_MINOR_INTERVAL==0 && !second)
         {
@@ -148,7 +147,7 @@ void ui_buzzer_interval_beep(void)
 
 void ui_buzzer_button_beep(void)
 {
-    if(running_data.fields.beep_data.beep_enabled && !beep_start)
+    if(settings.fields.beep.flags.enabled && !beep_start)
     {
         memset(buzzer_buffer, 0, BUZZER_BUFFER_LENGTH);
         beep_start = 1;
@@ -202,13 +201,13 @@ void ui_display_task(void)
             display_latch();
         }
     }
-    if(ui_state_current!=running_data.fields.display_data.selected)
+    if(ui_state_current!=settings.fields.display.selected)
     {
         ui_display_timeout++;
     }
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
-        ui_state_current=running_data.fields.display_data.selected;
+        ui_state_current=settings.fields.display.selected;
         ui_menu_change_state(UI_MENU_STATE_ROOT);
         ui_menu_stop_flash();
         update_display = 1;
@@ -415,7 +414,7 @@ void ui_menu_long_press(void)
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:
-            ui_state_current=running_data.fields.display_data.selected;
+            ui_state_current=settings.fields.display.selected;
             break;
             
         case UI_MENU_STATE_TZ:
@@ -424,16 +423,19 @@ void ui_menu_long_press(void)
             
             case UI_MENU_STATE_TZ_AUTO:
                 ui_menu_start_flash();
+                modified.fields.tz.flags.automatic = settings.fields.tz.flags.automatic;
                 ui_menu_change_state(UI_MENU_STATE_TZ_AUTO_SEL);
                 break;
                 
             case UI_MENU_STATE_TZ_AUTO_SEL:
                 ui_menu_stop_flash();
+                settings.fields.tz.flags.automatic = modified.fields.tz.flags.automatic;
                 ui_menu_change_state(UI_MENU_STATE_TZ_AUTO);
                 break;
             
             case UI_MENU_STATE_TZ_SET:
                 ui_menu_start_flash();
+                modified.fields.tz.offset = settings.fields.tz.offset;
                 ui_menu_change_state(UI_MENU_STATE_TZ_SET_HH);
                 break;
 
@@ -443,6 +445,7 @@ void ui_menu_long_press(void)
 
                 case UI_MENU_STATE_TZ_SET_MM:
                     ui_menu_stop_flash();
+                    settings.fields.tz.offset = modified.fields.tz.offset;
                     ui_menu_change_state(UI_MENU_STATE_TZ_SET);
                     break;
             
@@ -455,8 +458,8 @@ void ui_menu_long_press(void)
             break;
             
             case UI_MENU_STATE_DST_AUTO:
-                if(running_data.fields.dst_data.dst_auto) running_data.fields.dst_data.dst_auto = 0;
-                else running_data.fields.dst_data.dst_auto = 1;
+                if(settings.fields.dst.flags.automatic) settings.fields.dst.flags.automatic = 0;
+                else settings.fields.dst.flags.automatic = 1;
                 break;
                 
             case UI_MENU_STATE_DST_SET:
@@ -476,8 +479,8 @@ void ui_menu_long_press(void)
             break;
             
             case UI_MENU_STATE_ALARM_ENABLED:
-                if(running_data.fields.alarm_data.alarm_enabled) running_data.fields.alarm_data.alarm_enabled = 0;
-                else running_data.fields.alarm_data.alarm_enabled = 1;
+                if(settings.fields.alarm.flags.enabled) settings.fields.alarm.flags.enabled = 0;
+                else settings.fields.alarm.flags.enabled = 1;
                 break;
                 
             case UI_MENU_STATE_ALARM_SET:
@@ -498,11 +501,14 @@ void ui_menu_long_press(void)
             
             case UI_MENU_STATE_BEEP_ENABLE:
                 ui_menu_start_flash();
+                modified.fields.beep.flags.enabled = settings.fields.beep.flags.enabled;
                 ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE_SEL);
                 break;
 
             case UI_MENU_STATE_BEEP_ENABLE_SEL:
                 ui_menu_stop_flash();
+                settings.fields.beep.flags.enabled = modified.fields.beep.flags.enabled;
+                ui_buzzer_button_beep();
                 ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE);
                 break;
                 
@@ -511,20 +517,26 @@ void ui_menu_long_press(void)
                 break;
                 
         case UI_MENU_STATE_DISPLAY:
-            if(!running_data.fields.display_data.selected)
+            if(!settings.fields.display.selected)
             {
-                running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+                settings.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+            }
+            if(!modified.fields.display.selected)
+            {
+                modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
             }
             ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
             break;
 
             case UI_MENU_STATE_DISPLAY_FORMAT:
                 ui_menu_start_flash();
+                modified.fields.display.flags.hour_format = settings.fields.display.flags.hour_format;
                 ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT_SEL);
                 break;
 
                 case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
                     ui_menu_stop_flash();
+                    settings.fields.display.flags.hour_format = modified.fields.display.flags.hour_format;
                     ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
                     break;
 
@@ -551,7 +563,7 @@ void ui_menu_long_press(void)
             break;
             
         case UI_MENU_STATE_EXIT:
-            ui_state_current=running_data.fields.display_data.selected;
+            ui_state_current=settings.fields.display.selected;
             ui_menu_change_state(UI_MENU_STATE_ROOT);
             break;
             
@@ -576,7 +588,7 @@ void ui_menu_short_press(void)
             break;
             
             case UI_MENU_STATE_TZ_AUTO:
-                if(!running_data.fields.tz_data.tz_auto)
+                if(!settings.fields.tz.flags.automatic)
                 {
                     ui_menu_change_state(UI_MENU_STATE_TZ_SET);
                 }
@@ -584,8 +596,7 @@ void ui_menu_short_press(void)
                 break;
                 
                 case UI_MENU_STATE_TZ_AUTO_SEL:
-                    if(running_data.fields.tz_data.tz_auto) running_data.fields.tz_data.tz_auto = 0;
-                    else running_data.fields.tz_data.tz_auto = 1;
+                    modified.fields.tz.flags.automatic = !modified.fields.tz.flags.automatic;
                     break;
 
             case UI_MENU_STATE_TZ_SET:
@@ -664,12 +675,7 @@ void ui_menu_short_press(void)
                 break;
                 
             case UI_MENU_STATE_BEEP_ENABLE_SEL:
-                if(running_data.fields.beep_data.beep_enabled) running_data.fields.beep_data.beep_enabled = 0;
-                else
-                {
-                    running_data.fields.beep_data.beep_enabled = 1;
-                    ui_buzzer_button_beep();
-                }
+                modified.fields.beep.flags.enabled = !modified.fields.beep.flags.enabled;
                 break;
 
             case UI_MENU_STATE_BEEP_BACK:
@@ -685,8 +691,7 @@ void ui_menu_short_press(void)
                 break;
                 
                 case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
-                    if(running_data.fields.display_data.hour_format) running_data.fields.display_data.hour_format = 0;
-                    else running_data.fields.display_data.hour_format = 1;
+                    modified.fields.display.flags.hour_format = !modified.fields.display.flags.hour_format;
                     break;
             
             case UI_MENU_STATE_DISPLAY_SET:
@@ -694,26 +699,26 @@ void ui_menu_short_press(void)
                 break;
                 
                 case UI_MENU_STATE_DISPLAY_SET_SEL:
-                    switch(running_data.fields.display_data.selected)
+                    switch(modified.fields.display.selected)
                     {
                         case UI_DISPLAY_STATE_CLOCK_HHMM:
-                            running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_MMSS;
+                            modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_MMSS;
                             break;
 
                         case UI_DISPLAY_STATE_CLOCK_MMSS:
-                            running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_SSMM;
+                            modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_SSMM;
                             break;
 
                         case UI_DISPLAY_STATE_CLOCK_SSMM:
-                            running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_YYYY;
+                            modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_YYYY;
                             break;
 
                         case UI_DISPLAY_STATE_CLOCK_YYYY:
-                            running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_MMDD;
+                            modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_MMDD;
                             break;
 
                         case UI_DISPLAY_STATE_CLOCK_MMDD:
-                            running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+                            modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
                             break;
                     }
                     break;
@@ -840,11 +845,11 @@ void ui_print_iso8601_string(time_t iso)
 
 void ui_print_iso8601_string_local(time_t local)
 {
-    local += tz_offset;
+    local += settings.fields.tz.offset;
     
     if(isDST(&local))
     {
-        local += dst_offset; 
+        local += settings.fields.dst.offset; 
     }
     
     char buf[32] = {0}; // Allocate buffer

@@ -76,6 +76,8 @@ extern bool gnss_fix;
 extern bool pps_sync;
 extern bool scheduler_sync;
 
+extern EEPROM_DATA_STRUCT settings;
+
 bool ntp_calendar_sync = 0;
 
 bool esp_gnss_data_updated = 0;
@@ -485,8 +487,6 @@ void esp_tx(void *buffer, uint16_t len)
 
 extern CLOCK_SOURCE utc_source;
 extern time_t display;
-extern int32_t tz_offset;
-extern int32_t dst_offset;
 extern bool dst_active;
 
 void esp_tx_time(void)
@@ -501,11 +501,11 @@ void esp_tx_time(void)
     esp_tx_buffer.fields.utc_source = utc_source;
     esp_tx_buffer.fields.utc = utc;
     esp_tx_buffer.fields.tz_flags.tz_set = 0; // Unused
-    esp_tx_buffer.fields.tz_flags.tz_offset = tz_offset / 900;
+    esp_tx_buffer.fields.tz_flags.tz_offset = settings.fields.tz.offset / 900;
     
     esp_tx_buffer.fields.dst_flags.dst_set = 0;
     esp_tx_buffer.fields.dst_flags.dst_active = dst_active;
-    esp_tx_buffer.fields.dst_flags.dst_offset = (dst_offset / 900);
+    esp_tx_buffer.fields.dst_flags.dst_offset = (settings.fields.dst.offset / 900);
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));  
 }

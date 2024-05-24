@@ -18,6 +18,8 @@ extern "C" {
 #include <stdbool.h>
 #include <time.h>
 #include "../common/enums.h"
+#include "tubes.h"
+#include "ui.h"
 
 typedef union
 {
@@ -25,34 +27,58 @@ typedef union
   {
     struct __attribute__ ((packed))
     {
-        uint8_t tz_auto : 1;
-        int8_t tz_offset: 7;
-    } tz_data;
+        struct __attribute__ ((packed))
+        {
+            bool automatic : 1;
+            uint16_t padding : 15;
+        } flags;
+        int32_t offset;
+    } tz;
     struct __attribute__ ((packed))
     {
-        uint8_t dst_auto : 1;
-        uint8_t dst_active : 1;
-        int8_t dst_offset: 4;
-    } dst_data;
+        struct __attribute__ ((packed))
+        {
+            bool automatic : 1;
+            bool active : 1;
+            uint16_t padding : 14;
+        } flags;
+        int32_t offset;
+    } dst;
     struct __attribute__ ((packed))
     {
-        uint8_t alarm_enabled : 1;
-        uint16_t alarm_offset: 15;
-    } alarm_data;
+        struct __attribute__ ((packed))
+        {
+            bool enabled : 1;
+            uint16_t padding : 15;
+        } flags;
+        uint32_t offset;
+    } alarm;
     struct __attribute__ ((packed))
     {
-        uint8_t beep_enabled : 1;
-    } beep_data;
+        struct __attribute__ ((packed))
+        {
+            bool enabled : 1;
+            uint16_t padding : 15;
+        } flags;
+    } beep;
     struct __attribute__ ((packed))
     {
-        uint8_t hour_format : 1;
-        uint8_t padding: 7;
+        struct __attribute__ ((packed))
+        {
+            bool hour_format : 1;
+            uint16_t padding: 15;
+        } flags;
         UI_DISPLAY_STATE current : 8;
         UI_DISPLAY_STATE selected : 8;
-    } display_data;
+    } display;
   } fields;
   uint8_t raw[sizeof(struct _eeprom_data_struct)];
 } EEPROM_DATA_STRUCT;
+
+
+void eeprom_init(void);
+void eeprom_read(void);
+void eeprom_write(void);
 
 
 #ifdef	__cplusplus
