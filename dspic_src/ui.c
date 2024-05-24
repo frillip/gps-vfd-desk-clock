@@ -836,6 +836,13 @@ void ui_dst_offset_incr(void)
 }
 
 
+void pic_reset(void)
+{
+    printf("\r\nRESETTING!!!\r\n");
+    __asm__ volatile ( "reset ");
+}
+
+
 void ui_uart1_input(char c)
 {
     switch (c)
@@ -861,8 +868,7 @@ void ui_uart1_input(char c)
 
         // Reset the entire device if we see 'R'
         case 0x52:
-            printf("\r\nRESETTING!!!\r\n");
-            __asm__ volatile ( "reset ");
+            pic_reset();
             break; // Pointless, but good practise I guess
 
         // Brightness up on 'B'

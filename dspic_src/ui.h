@@ -89,6 +89,7 @@ void ui_tz_offset_incr_hh(void);
 void ui_tz_offset_incr_mm(void);
 void ui_dst_offset_incr(void);
 
+void pic_reset(void);
 void ui_uart1_input(char c);
 void ui_print_iso8601_string(time_t iso);
 void ui_print_iso8601_string_local(time_t local);
