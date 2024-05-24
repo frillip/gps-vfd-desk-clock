@@ -182,7 +182,6 @@ extern time_t gnss;
 void IRAM_ATTR gnss_pps_in(void)
 {
   gnss_pps_micros = micros();
-  gnss_pps_offset_ms = UTC.ms();
   if(!gnss_detected) gnss_detected = 1;
   gnss++;
   gnss_new_pps = 1;
@@ -198,7 +197,6 @@ extern time_t pic;
 void IRAM_ATTR pic_pps_in(void)
 {
   pic_pps_micros = micros();
-  pic_pps_offset_ms = UTC.ms();
   if(!pic_detected) pic_detected = 1;
   pic++;
   pic_new_pps = 1;
@@ -316,9 +314,10 @@ void loop()
     local_print_millis = millis();
     
     esp = UTC.now();
+
     /*
     Serial.print("UTC: ");
-    print_iso8601_string(now);
+    print_iso8601_string(esp);
     Serial.println("");
     */
   }

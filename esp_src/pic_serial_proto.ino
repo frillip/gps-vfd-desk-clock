@@ -472,9 +472,10 @@ void pic_process_time()
       {
         if(pic_new_pps)
         {
-          if((pic_pps_offset_ms > 50) && (pic_pps_offset_ms < 950) && (timeStatus() != timeSync))
+          uint32_t pic_us_offset = micros() - pic_pps_micros;
+          if((pic_us_offset > 50000) && (pic_us_offset < 950000) && (timeStatus() != timeSync))
           {
-            uint32_t pic_us_offset = micros() - pic_pps_micros;
+            pic_us_offset = micros() - pic_pps_micros;
             UTC.setTimeus(pic,pic_us_offset);
             pps_sync = 0;
             scheduler_sync = 0;
@@ -532,11 +533,12 @@ void print_pic_time(void)
     Serial.print(" - MISSING");
   }
 
+  time_t now = UTC.now();
   Serial.print("\r\nESP:   ");
-  print_iso8601_string(esp);
+  print_iso8601_string(now);
 
   Serial.print("\r\nNTP:   ");
-  print_iso8601_string(esp);
+  print_iso8601_string(now);
   if(WiFi.status() != WL_CONNECTED)
   {
     Serial.print(" - NO WIFI");
@@ -578,7 +580,8 @@ void pic_process_gnss(void)
   pic_posllh_height = pic_gnss_buffer.fields.posllh_height;
   pic_posllh_hmsl = pic_gnss_buffer.fields.posllh_hmsl;
 
-  if(pic_gnss_detected && pic_gnss_fix && gnss_new_pps)
+  // Don't bother with this, the PIC PPS signal should already be synced to GNSS if available
+  /*if(pic_gnss_detected && pic_gnss_fix && gnss_new_pps)
   {
     if((gnss_pps_offset_ms > 50) && (gnss_pps_offset_ms < 950) && (timeStatus() != timeSync))
     {
@@ -588,7 +591,7 @@ void pic_process_gnss(void)
       scheduler_sync = 0;
     }
     gnss_new_pps = 0;
-  }
+  }*/
 
   pic_gnss_waiting = 0;
 }
@@ -827,7 +830,7 @@ void pic_uart_tx_timedata()
   if(pps_sync) time_data_tx.fields.flags.pps_sync = 1;
   if(scheduler_sync) time_data_tx.fields.flags.scheduler_sync = 1;
 
-  time_data_tx.fields.utc = esp;
+  time_data_tx.fields.utc = UTC.now();
 
   time_data_tx.fields.tz_flags.tz_set = 0;
   time_data_tx.fields.tz_flags.tz_offset = 0;
