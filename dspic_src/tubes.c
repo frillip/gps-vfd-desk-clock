@@ -1261,53 +1261,6 @@ bool isDST(const time_t *time)
     return dst;
 }
 
-void display_timezone_incr(void)
-{
-    modified.fields.tz.offset = modified.fields.tz.offset + UI_TZ_OFFSET_STEP_SIZE;
-    if(modified.fields.tz.offset > UI_TZ_OFFSET_MAX)
-    {
-        modified.fields.tz.offset = UI_TZ_OFFSET_MIN;
-    }
-}
-
-void display_timezone_incr_hh(void)
-{
-    int32_t tz_hour = modified.fields.tz.offset / 3600;
-    int32_t tz_minute = (modified.fields.tz.offset - (tz_hour * 3600)) / 60;
-    tz_hour++;
-    if(tz_hour > 14)
-    {
-        tz_hour = -12;
-        tz_minute = tz_minute * -1;
-    }
-    
-    modified.fields.tz.offset = tz_hour * 3600;
-    modified.fields.tz.offset += tz_minute * 60;
-}
-
-void display_timezone_incr_mm(void)
-{
-    int32_t tz_hour = modified.fields.tz.offset / 3600;
-    int32_t tz_minute = (modified.fields.tz.offset - (tz_hour * 3600)) / 60;
-    if(modified.fields.tz.offset >= 0)
-    {
-        tz_minute = tz_minute + 15;
-        if(tz_minute >= 60)
-        {
-            tz_minute = 0;
-        }
-    }
-    else 
-    {
-        tz_minute = tz_minute - 15;
-        if(tz_minute <= -60)
-        {
-            tz_minute = 0;
-        }
-    }
-    modified.fields.tz.offset = (tz_hour * 3600) + (tz_minute * 60);
-}
-
 void __attribute__((__interrupt__,no_auto_psv)) _SPI2Interrupt(void)
 {
     IFS2bits.SPI2IF = 0;

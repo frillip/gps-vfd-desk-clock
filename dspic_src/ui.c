@@ -619,11 +619,11 @@ void ui_menu_short_press(void)
                 break;
                 
                 case UI_MENU_STATE_TZ_SET_HH:
-                    display_timezone_incr_hh();
+                    ui_tz_offset_incr_hh();
                     break;
                     
                 case UI_MENU_STATE_TZ_SET_MM:
-                    display_timezone_incr_mm();
+                    ui_tz_offset_incr_mm();
                     break;
 
             case UI_MENU_STATE_TZ_BACK:
@@ -775,6 +775,54 @@ void ui_menu_short_press(void)
         default:
             break;
     }
+}
+
+
+void ui_tz_offset_incr(void)
+{
+    modified.fields.tz.offset = modified.fields.tz.offset + UI_TZ_OFFSET_STEP_SIZE;
+    if(modified.fields.tz.offset > UI_TZ_OFFSET_MAX)
+    {
+        modified.fields.tz.offset = UI_TZ_OFFSET_MIN;
+    }
+}
+
+void ui_tz_offset_incr_hh(void)
+{
+    int32_t tz_hour = modified.fields.tz.offset / 3600;
+    int32_t tz_minute = (modified.fields.tz.offset - (tz_hour * 3600)) / 60;
+    tz_hour++;
+    if(tz_hour > 14)
+    {
+        tz_hour = -12;
+        tz_minute = tz_minute * -1;
+    }
+    
+    modified.fields.tz.offset = tz_hour * 3600;
+    modified.fields.tz.offset += tz_minute * 60;
+}
+
+void ui_tz_offset_incr_mm(void)
+{
+    int32_t tz_hour = modified.fields.tz.offset / 3600;
+    int32_t tz_minute = (modified.fields.tz.offset - (tz_hour * 3600)) / 60;
+    if(modified.fields.tz.offset >= 0)
+    {
+        tz_minute = tz_minute + 15;
+        if(tz_minute >= 60)
+        {
+            tz_minute = 0;
+        }
+    }
+    else 
+    {
+        tz_minute = tz_minute - 15;
+        if(tz_minute <= -60)
+        {
+            tz_minute = 0;
+        }
+    }
+    modified.fields.tz.offset = (tz_hour * 3600) + (tz_minute * 60);
 }
 
 

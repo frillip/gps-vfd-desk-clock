@@ -84,6 +84,9 @@ void ui_menu_reset_flash(void);
 void ui_menu_long_press(void);
 void ui_menu_short_press(void);
 
+void ui_tz_offset_incr(void);
+void ui_tz_offset_incr_hh(void);
+void ui_tz_offset_incr_mm(void);
 void ui_dst_offset_incr(void);
 
 void ui_uart1_input(char c);
