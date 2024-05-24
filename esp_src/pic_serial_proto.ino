@@ -1,6 +1,8 @@
 #include "enums.h"
 #include "serial_proto.h"
 
+extern time_t esp;
+
 uint8_t rx_stage = 0;
 uint16_t user_data_counter = 0;
 bool rx_ignore = 0;
@@ -531,11 +533,10 @@ void print_pic_time(void)
   }
 
   Serial.print("\r\nESP:   ");
-  time_t now = UTC.now();
-  print_iso8601_string(now);
+  print_iso8601_string(esp);
 
   Serial.print("\r\nNTP:   ");
-  print_iso8601_string(now);
+  print_iso8601_string(esp);
   if(WiFi.status() != WL_CONNECTED)
   {
     Serial.print(" - NO WIFI");
@@ -826,7 +827,7 @@ void pic_uart_tx_timedata()
   if(pps_sync) time_data_tx.fields.flags.pps_sync = 1;
   if(scheduler_sync) time_data_tx.fields.flags.scheduler_sync = 1;
 
-  time_data_tx.fields.utc = UTC.now();
+  time_data_tx.fields.utc = esp;
 
   time_data_tx.fields.tz_flags.tz_set = 0;
   time_data_tx.fields.tz_flags.tz_offset = 0;

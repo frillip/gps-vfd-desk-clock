@@ -37,6 +37,7 @@ double light_sensor_lux = 0;
 #define NTP_INTERVAL 1800
 uint16_t ntp_interval_count = 0;
 uint32_t ntp_resync_count = 0;
+time_t esp = 0;
 
 int32_t tz_offset = 0;
 bool dst_active = 0;
@@ -314,8 +315,8 @@ void loop()
 
     local_print_millis = millis();
     
+    esp = UTC.now();
     /*
-    time_t now = UTC.now();
     Serial.print("UTC: ");
     print_iso8601_string(now);
     Serial.println("");
