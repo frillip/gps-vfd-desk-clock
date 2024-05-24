@@ -202,20 +202,9 @@ void ui_display_task(void)
             display_latch();
         }
     }
-    if(ui_state_current!=UI_DISPLAY_STATE_CLOCK_HHMM)
+    if(ui_state_current!=running_data.fields.display_data.selected)
     {
-        if(!ui_switch_input_state())
-        {
-            ui_display_timeout++;
-        }
-        else if(ui_state_current==UI_DISPLAY_STATE_TEMP)
-        {
-            ui_display_timeout++;
-        }
-        else if(ui_state_current==UI_DISPLAY_STATE_MENU)
-        {
-            ui_display_timeout++;
-        }
+        ui_display_timeout++;
     }
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
