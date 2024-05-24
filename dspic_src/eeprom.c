@@ -6,12 +6,12 @@ EEPROM_DATA_STRUCT modified = { .raw ={0} };
 void eeprom_init()
 {
     
-    settings.fields.tz.flags.automatic = TZ_AUTOMATIC_DEFAULT;
-    settings.fields.tz.offset = TZ_OFFSET_DEFAULT;
+    settings.fields.tz.flags.automatic = UI_TZ_AUTOMATIC_DEFAULT;
+    settings.fields.tz.offset = UI_TZ_OFFSET_DEFAULT;
 
-    settings.fields.dst.flags.automatic = DST_AUTOMATIC_DEFAULT;
-    settings.fields.dst.flags.active = DST_ACTIVE_DEFAULT;
-    settings.fields.dst.offset = DST_OFFSET_DEFAULT;
+    settings.fields.dst.flags.automatic = UI_DST_AUTOMATIC_DEFAULT;
+    settings.fields.dst.flags.active = UI_DST_ACTIVE_DEFAULT;
+    settings.fields.dst.offset = UI_DST_OFFSET_DEFAULT;
 
     settings.fields.alarm.flags.enabled = UI_ALARM_ENABLED_DEFAULT;
     settings.fields.alarm.offset = UI_ALARM_OFFSET_DEFAULT;

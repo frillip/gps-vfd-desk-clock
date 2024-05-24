@@ -604,9 +604,13 @@ void display_menu(void)
             if(ui_menu_flash_off) display_mask_mm();
             break;
 
-        case UI_MENU_STATE_DST_SET_OFFSET:
+        case UI_MENU_STATE_DST_OFFSET:
+            display_offset(modified.fields.dst.offset); //Placeholder
+            break;
+
+        case UI_MENU_STATE_DST_OFFSET_SEL:
             if(ui_menu_flash_off) display_blank();
-            else display_offset(1234); //Placeholder
+            else display_offset(modified.fields.dst.offset); //Placeholder
             break;
 
         case UI_MENU_STATE_ALARM_SET_HH:
@@ -682,13 +686,7 @@ void display_menu_text(void)
             break;
 
         case UI_MENU_STATE_TZ_SET:
-            no_update_req = 1;
-            break;
-            
         case UI_MENU_STATE_TZ_SET_HH:
-            no_update_req = 1;
-            break;
-
         case UI_MENU_STATE_TZ_SET_MM:
             no_update_req = 1;
             break;
@@ -741,14 +739,7 @@ void display_menu_text(void)
             }
             break;
             
-        case UI_MENU_STATE_DST_SET:
-            driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
-            driver_buffer |= (DIGIT_S << TUBE_3_OFFSET);
-            driver_buffer |= (DIGIT_E << TUBE_2_OFFSET);
-            driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
-            break;
-
-        case UI_MENU_STATE_DST_SET_STATE:
+        case UI_MENU_STATE_DST_STATE:
             if(settings.fields.dst.flags.active)
             {
                 driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
@@ -764,8 +755,26 @@ void display_menu_text(void)
                 driver_buffer |= (DIGIT_F << TUBE_1_OFFSET);
             }
             break;
+
+        case UI_MENU_STATE_DST_STATE_SEL:
+            if(modified.fields.dst.flags.active)
+            {
+                driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
+                driver_buffer |= (DIGIT_O << TUBE_2_OFFSET);
+                driver_buffer |= (DIGIT_N << TUBE_1_OFFSET);
+            }
+            else
+            {
+                driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                driver_buffer |= (DIGIT_O << TUBE_3_OFFSET);
+                driver_buffer |= (DIGIT_F << TUBE_2_OFFSET);
+                driver_buffer |= (DIGIT_F << TUBE_1_OFFSET);
+            }
+            break;
             
-        case UI_MENU_STATE_DST_SET_OFFSET:
+        case UI_MENU_STATE_DST_OFFSET:
+        case UI_MENU_STATE_DST_OFFSET_SEL:
             no_update_req = 1;
             break;
 
@@ -801,16 +810,7 @@ void display_menu_text(void)
             break;
             
         case UI_MENU_STATE_ALARM_SET:
-            driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
-            driver_buffer |= (DIGIT_S << TUBE_3_OFFSET);
-            driver_buffer |= (DIGIT_E << TUBE_2_OFFSET);
-            driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
-            break;
-
         case UI_MENU_STATE_ALARM_SET_HH:
-            no_update_req = 1;
-            break;
-            
         case UI_MENU_STATE_ALARM_SET_MM:
             no_update_req = 1;
             break;
@@ -1172,80 +1172,90 @@ void display_local_time(time_t time)
 // at 0100 UTC
 bool isDST(const time_t *time)
 {
-    struct tm *disp_time;
-    
-    // Convert our time_t into a time struct
-    disp_time = gmtime(time);
-    uint8_t next_sunday = 0;
-    uint8_t last_sunday = 0;
     bool dst = 0;
-
-    // Are we in the DST danger zone?
-    if(disp_time->tm_mon >= 2 && disp_time->tm_mon <= 9)
+    
+    if(settings.fields.dst.flags.automatic)
     {
-        // If we're in April to September is always DST
-        if(disp_time->tm_mon > 2 && disp_time->tm_mon < 9)
+        struct tm *disp_time;
+
+        // Convert our time_t into a time struct
+        disp_time = gmtime(time);
+        uint8_t next_sunday = 0;
+        uint8_t last_sunday = 0;
+
+
+        // Are we in the DST danger zone?
+        if(disp_time->tm_mon >= 2 && disp_time->tm_mon <= 9)
         {
-            dst = 1;
-        }
-        
-        // Are we in either March or October?
-        else if(disp_time->tm_mon == 2 || disp_time->tm_mon == 9)
-        {
-            // Calculate next Sunday
-            next_sunday = disp_time->tm_mday + (7 - disp_time->tm_wday);
-            
-            // And then the last Sunday of the month
-            last_sunday = next_sunday;
-            if(last_sunday > 31) 
+            // If we're in April to September is always DST
+            if(disp_time->tm_mon > 2 && disp_time->tm_mon < 9)
             {
-                last_sunday -= 7;
+                dst = 1;
             }
-            else
+
+            // Are we in either March or October?
+            else if(disp_time->tm_mon == 2 || disp_time->tm_mon == 9)
             {
-                while((last_sunday + 7) <= 31)
+                // Calculate next Sunday
+                next_sunday = disp_time->tm_mday + (7 - disp_time->tm_wday);
+
+                // And then the last Sunday of the month
+                last_sunday = next_sunday;
+                if(last_sunday > 31) 
                 {
-                    last_sunday += 7;
+                    last_sunday -= 7;
                 }
-            }
-            
-            // If we are in March
-            if(disp_time->tm_mon == 2)
-            {
-                // Are we past the last Sunday?
-                if(disp_time->tm_mday > last_sunday)
+                else
                 {
-                    dst = 1;
+                    while((last_sunday + 7) <= 31)
+                    {
+                        last_sunday += 7;
+                    }
                 }
-                // Is this the last Sunday in the month?
-                else if(disp_time->tm_mday == last_sunday)
+
+                // If we are in March
+                if(disp_time->tm_mon == 2)
                 {
-                    // Apply DST if it's after 0100 UTC
-                    if(disp_time->tm_hour >= 1)
+                    // Are we past the last Sunday?
+                    if(disp_time->tm_mday > last_sunday)
                     {
                         dst = 1;
                     }
+                    // Is this the last Sunday in the month?
+                    else if(disp_time->tm_mday == last_sunday)
+                    {
+                        // Apply DST if it's after 0100 UTC
+                        if(disp_time->tm_hour >= 1)
+                        {
+                            dst = 1;
+                        }
+                    }
                 }
-            }
-            //If we are in October
-            else if(disp_time->tm_mon == 9)
-            {
-                // Are we still before the last Sunday?
-                if(disp_time->tm_mday < last_sunday)
+                //If we are in October
+                else if(disp_time->tm_mon == 9)
                 {
-                    dst = 1;
-                }
-                // Is this the last Sunday in the month?
-                if(disp_time->tm_mday == last_sunday)
-                {
-                    // Apply DST if it's before 0100 UTC
-                    if(disp_time->tm_hour < 1)
+                    // Are we still before the last Sunday?
+                    if(disp_time->tm_mday < last_sunday)
                     {
                         dst = 1;
+                    }
+                    // Is this the last Sunday in the month?
+                    if(disp_time->tm_mday == last_sunday)
+                    {
+                        // Apply DST if it's before 0100 UTC
+                        if(disp_time->tm_hour < 1)
+                        {
+                            dst = 1;
+                        }
                     }
                 }
             }
         }
+    }
+    else
+    {
+        if(settings.fields.dst.flags.active) dst = 1;
+        else dst = 0;
     }
     // Return DST status
     return dst;
@@ -1253,10 +1263,10 @@ bool isDST(const time_t *time)
 
 void display_timezone_incr(void)
 {
-    modified.fields.tz.offset = modified.fields.tz.offset + TZ_OFFSET_STEP_SIZE;
-    if(modified.fields.tz.offset > TZ_OFFSET_MAX)
+    modified.fields.tz.offset = modified.fields.tz.offset + UI_TZ_OFFSET_STEP_SIZE;
+    if(modified.fields.tz.offset > UI_TZ_OFFSET_MAX)
     {
-        modified.fields.tz.offset = TZ_OFFSET_MIN;
+        modified.fields.tz.offset = UI_TZ_OFFSET_MIN;
     }
 }
 

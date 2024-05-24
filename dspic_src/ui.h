@@ -42,6 +42,18 @@ extern "C" {
     
 #define UI_DISPLAY_HOUR_FORMAT_DEFAULT 0
 #define UI_DISPLAY_SELECTED_DEFAULT UI_DISPLAY_STATE_CLOCK_HHMM
+    
+#define UI_TZ_AUTOMATIC_DEFAULT 0
+#define UI_TZ_OFFSET_DEFAULT 0L
+#define UI_TZ_OFFSET_STEP_SIZE 900L // 15 minutes
+#define UI_TZ_OFFSET_MAX 50400L // +14:00
+#define UI_TZ_OFFSET_MIN -43200L // -12:00
+#define UI_DST_OFFSET_DEFAULT 3600L
+#define UI_DST_OFFSET_STEP_SIZE 900L // 15 minutes
+#define UI_DST_OFFSET_MAX 3600L // 1 hour
+#define UI_DST_OFFSET_MIN 0L // 0 hours
+#define UI_DST_AUTOMATIC_DEFAULT 1
+#define UI_DST_ACTIVE_DEFAULT 0
 
 void ui_init(void);
 void ui_tasks(void);
@@ -71,6 +83,8 @@ void ui_menu_stop_flash(void);
 void ui_menu_reset_flash(void);
 void ui_menu_long_press(void);
 void ui_menu_short_press(void);
+
+void ui_dst_offset_incr(void);
 
 void ui_uart1_input(char c);
 void ui_print_iso8601_string(time_t iso);

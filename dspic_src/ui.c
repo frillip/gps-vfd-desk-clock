@@ -449,30 +449,53 @@ void ui_menu_long_press(void)
                     ui_menu_change_state(UI_MENU_STATE_TZ_SET);
                     break;
             
-        case UI_MENU_STATE_TZ_BACK:
-            ui_menu_change_state(UI_MENU_STATE_TZ);
-            break;
+            case UI_MENU_STATE_TZ_BACK:
+                ui_menu_change_state(UI_MENU_STATE_TZ);
+                break;
 
         case UI_MENU_STATE_DST:
             ui_menu_change_state(UI_MENU_STATE_DST_AUTO);
             break;
             
             case UI_MENU_STATE_DST_AUTO:
-                if(settings.fields.dst.flags.automatic) settings.fields.dst.flags.automatic = 0;
-                else settings.fields.dst.flags.automatic = 1;
+                ui_menu_start_flash();
+                modified.fields.dst.flags.automatic = settings.fields.dst.flags.automatic;
+                ui_menu_change_state(UI_MENU_STATE_DST_AUTO_SEL);
                 break;
                 
-            case UI_MENU_STATE_DST_SET:
-                ui_menu_change_state(UI_MENU_STATE_DST_SET_STATE);
+                case UI_MENU_STATE_DST_AUTO_SEL:
+                    ui_menu_stop_flash();
+                    settings.fields.dst.flags.automatic = modified.fields.dst.flags.automatic;
+                    ui_menu_change_state(UI_MENU_STATE_DST_AUTO);
+                    break;
+                
+            case UI_MENU_STATE_DST_STATE:
+                ui_menu_start_flash();
+                modified.fields.dst.flags.active = settings.fields.dst.flags.active;
+                ui_menu_change_state(UI_MENU_STATE_DST_STATE_SEL);
                 break;
                 
-                case UI_MENU_STATE_DST_SET_STATE:
-                    ui_menu_change_state(UI_MENU_STATE_DST_SET_OFFSET);
+                case UI_MENU_STATE_DST_STATE_SEL:
+                    ui_menu_stop_flash();
+                    settings.fields.dst.flags.active = modified.fields.dst.flags.active;
+                    ui_menu_change_state(UI_MENU_STATE_DST_STATE);
                     break;
 
-                case UI_MENU_STATE_DST_SET_OFFSET:
-                    ui_menu_change_state(UI_MENU_STATE_DST_SET);
+            case UI_MENU_STATE_DST_OFFSET:
+                ui_menu_start_flash();
+                modified.fields.dst.offset = settings.fields.dst.offset;
+                ui_menu_change_state(UI_MENU_STATE_DST_OFFSET_SEL);
+                break;
+                
+                case UI_MENU_STATE_DST_OFFSET_SEL:
+                    ui_menu_stop_flash();
+                    settings.fields.dst.offset = modified.fields.dst.offset;
+                    ui_menu_change_state(UI_MENU_STATE_DST_OFFSET);
                     break;
+                    
+            case UI_MENU_STATE_DST_BACK:
+                ui_menu_change_state(UI_MENU_STATE_DST);
+                break;
 
         case UI_MENU_STATE_ALARM:
             ui_menu_change_state(UI_MENU_STATE_ALARM_ENABLED);
@@ -588,11 +611,11 @@ void ui_menu_short_press(void)
             break;
             
             case UI_MENU_STATE_TZ_AUTO:
-                if(!settings.fields.tz.flags.automatic)
+                if(settings.fields.tz.flags.automatic)
                 {
-                    ui_menu_change_state(UI_MENU_STATE_TZ_SET);
+                    ui_menu_change_state(UI_MENU_STATE_TZ_BACK);
                 }
-                else ui_menu_change_state(UI_MENU_STATE_TZ_BACK);
+                else ui_menu_change_state(UI_MENU_STATE_TZ_SET);
                 break;
                 
                 case UI_MENU_STATE_TZ_AUTO_SEL:
@@ -621,19 +644,31 @@ void ui_menu_short_press(void)
             break;
 
             case UI_MENU_STATE_DST_AUTO:
-                ui_menu_change_state(UI_MENU_STATE_DST_SET);
+                if(settings.fields.dst.flags.automatic)
+                {
+                    ui_menu_change_state(UI_MENU_STATE_DST_BACK);
+                }
+                else ui_menu_change_state(UI_MENU_STATE_DST_STATE);
                 break;
-
-            case UI_MENU_STATE_DST_SET:
-                ui_menu_change_state(UI_MENU_STATE_DST_BACK);
-                break;
-
-                case UI_MENU_STATE_DST_SET_STATE:
-                    ui_menu_change_state(UI_MENU_STATE_DST_SET_OFFSET);
+                
+                case UI_MENU_STATE_DST_AUTO_SEL:
+                    modified.fields.dst.flags.automatic = !modified.fields.dst.flags.automatic;
                     break;
 
-                case UI_MENU_STATE_DST_SET_OFFSET:
-                    ui_menu_change_state(UI_MENU_STATE_DST_SET);
+            case UI_MENU_STATE_DST_STATE:
+                ui_menu_change_state(UI_MENU_STATE_DST_OFFSET);
+                break;
+
+                case UI_MENU_STATE_DST_STATE_SEL:
+                    modified.fields.dst.flags.active = !modified.fields.dst.flags.active;
+                    break;
+
+            case UI_MENU_STATE_DST_OFFSET:
+                ui_menu_change_state(UI_MENU_STATE_DST_BACK);
+                break;
+                
+                case UI_MENU_STATE_DST_OFFSET_SEL:
+                    ui_dst_offset_incr();
                     break;
                 
             case UI_MENU_STATE_DST_BACK:
@@ -750,6 +785,15 @@ void ui_menu_short_press(void)
     }
 }
 
+
+void ui_dst_offset_incr(void)
+{
+    modified.fields.dst.offset += UI_DST_OFFSET_STEP_SIZE;
+    if(modified.fields.dst.offset > UI_DST_OFFSET_MAX)
+    {
+        modified.fields.dst.offset = UI_DST_OFFSET_MIN;
+    }
+}
 
 
 void ui_uart1_input(char c)

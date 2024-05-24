@@ -905,6 +905,7 @@ void sync_state_eval_time(void)
     }
     
     dst_active = isDST(&utc);
+
 #ifdef DEBUG_MESSAGES    
     print_clocks();
 #endif
