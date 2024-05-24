@@ -45,8 +45,10 @@ typedef union
     } beep_data;
     struct __attribute__ ((packed))
     {
-        UI_DISPLAY_STATE current : 4;
-        UI_DISPLAY_STATE selected : 4;
+        uint8_t hour_format : 1;
+        uint8_t padding: 7;
+        UI_DISPLAY_STATE current : 8;
+        UI_DISPLAY_STATE selected : 8;
     } display_data;
   } fields;
   uint8_t raw[sizeof(struct _eeprom_data_struct)];

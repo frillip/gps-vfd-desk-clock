@@ -269,13 +269,13 @@ void ui_update_display(void)
     {
         if(display_update_pending)
         {
-            display_time(&previous_display);
+            display_hhmm(&previous_display);
             display_latch();
-            display_time(&display);
+            display_hhmm(&display);
         }
         else
         {
-            display_time(&display);
+            display_hhmm(&display);
             display_latch();
         }
     }
@@ -526,8 +526,18 @@ void ui_menu_long_press(void)
             {
                 running_data.fields.display_data.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
             }
-            ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
+            ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
             break;
+
+            case UI_MENU_STATE_DISPLAY_FORMAT:
+                ui_menu_start_flash();
+                ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT_SEL);
+                break;
+
+                case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
+                    ui_menu_stop_flash();
+                    ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
+                    break;
 
             case UI_MENU_STATE_DISPLAY_SET:
                 ui_menu_start_flash();
@@ -681,6 +691,15 @@ void ui_menu_short_press(void)
             ui_menu_change_state(UI_MENU_STATE_RESET);
             break;
             
+            case UI_MENU_STATE_DISPLAY_FORMAT:
+                ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
+                break;
+                
+                case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
+                    if(running_data.fields.display_data.hour_format) running_data.fields.display_data.hour_format = 0;
+                    else running_data.fields.display_data.hour_format = 1;
+                    break;
+            
             case UI_MENU_STATE_DISPLAY_SET:
                 ui_menu_change_state(UI_MENU_STATE_DISPLAY_BACK);
                 break;
@@ -711,7 +730,7 @@ void ui_menu_short_press(void)
                     break;
 
             case UI_MENU_STATE_DISPLAY_BACK:
-                ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
+                ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
                 break;
 
 

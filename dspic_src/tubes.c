@@ -287,7 +287,19 @@ void display_count(int16_t count)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
-void display_time(const time_t *time)
+void display_hhmm(const time_t *time)
+{
+    if(running_data.fields.display_data.hour_format)
+    {
+        display_hhmm_12(time);
+    }
+    else
+    {
+        display_hhmm_24(time);
+    }
+}
+
+void display_hhmm_24(const time_t *time)
 {
     uint16_t display_digits = 0;
     struct tm *disp_time;
@@ -326,6 +338,52 @@ void display_time(const time_t *time)
     if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
 
     display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
+void display_hhmm_12(const time_t *time)
+{
+    uint16_t display_digits = 0;
+    struct tm *disp_time;
+    
+    // Convert our time_t into a time struct
+    disp_time = gmtime(time);
+    uint16_t disp_hour = 0;
+    if(!disp_time->tm_hour) disp_hour = 12;
+    else if(disp_time->tm_hour>12) disp_hour = (disp_time->tm_hour - 12);
+    else disp_hour = disp_time->tm_hour;
+    
+    // Construct our BCD time
+    display_digits |= (disp_hour / 10)<<12;
+    display_digits |= (disp_hour % 10)<<8;
+    display_digits |= (disp_time->tm_min / 10)<<4;
+    display_digits |= (disp_time->tm_min % 10);
+    
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+
+    // Toggle the middle dots/dashes based on if the seconds are even or odd
+    // but only if we have PPS sync
+    // otherwise separator on permanently
+    if(pps_sync)
+    {
+        if(!(disp_time->tm_sec%2))
+        {
+            driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+        }
+    }
+    else
+    {
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+    }
+
+    // Show the left hand dot if switch is closed
+    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    
+    // Show the left hand dot if button is pressed
+    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+    if(disp_hour<10) display_mask_12h();
 }
 
 void display_mmss(const time_t *time)
@@ -504,6 +562,13 @@ void display_offset(int32_t offset)
     //if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
+void display_mask_12h(void)
+{
+    uint64_t driver_buffer = display_last_driver_buffer;
+    driver_buffer &= DISPLAY_MASK_TUBE_4;
+    display_send_buffer(driver_buffer);
 }
 
 void display_mask_hh(void)
@@ -766,6 +831,26 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_P << TUBE_1_OFFSET);
             break;
 
+        case UI_MENU_STATE_DISPLAY_FORMAT:
+        case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
+            switch(running_data.fields.display_data.hour_format)
+            {
+                case 0:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_2 << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_4 << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_H << TUBE_1_OFFSET);
+                    break;
+                    
+                default:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_1 << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_2 << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_H << TUBE_1_OFFSET);
+                    break;
+            }
+            break;
+
         case UI_MENU_STATE_DISPLAY_SET:
         case UI_MENU_STATE_DISPLAY_SET_SEL:
             switch(running_data.fields.display_data.selected)
@@ -941,7 +1026,7 @@ void display_local_time(time_t time)
     switch(ui_state_current)
     {
         case UI_DISPLAY_STATE_CLOCK_HHMM:
-            display_time(&display);
+            display_hhmm(&display);
             break;
             
         case UI_DISPLAY_STATE_CLOCK_MMSS:
