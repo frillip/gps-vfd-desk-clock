@@ -540,14 +540,6 @@ void ui_menu_long_press(void)
                 break;
                 
         case UI_MENU_STATE_DISPLAY:
-            if(!settings.fields.display.selected)
-            {
-                settings.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
-            }
-            if(!modified.fields.display.selected)
-            {
-                modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
-            }
             ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
             break;
 

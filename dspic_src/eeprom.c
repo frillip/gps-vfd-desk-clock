@@ -20,6 +20,8 @@ void eeprom_init()
     
     settings.fields.display.flags.hour_format = UI_DISPLAY_HOUR_FORMAT_DEFAULT;
     settings.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+    
+    memcpy(modified.raw, settings.raw, sizeof(settings.raw));
 }
 
 void eeprom_read()
