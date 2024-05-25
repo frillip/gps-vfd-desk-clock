@@ -71,6 +71,17 @@ typedef union
         UI_DISPLAY_STATE current : 8;
         UI_DISPLAY_STATE selected : 8;
     } display;
+    
+    struct __attribute__ ((packed))
+    {
+        struct __attribute__ ((packed))
+        {
+            bool wifi : 1;
+            bool settings : 1;
+            bool all : 1;
+            uint16_t padding: 13;
+        } flags;
+    } reset;
   } fields;
   uint8_t raw[sizeof(struct _eeprom_data_struct)];
 } EEPROM_DATA_STRUCT;

@@ -21,6 +21,10 @@ void eeprom_init()
     settings.fields.display.flags.hour_format = UI_DISPLAY_HOUR_FORMAT_DEFAULT;
     settings.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
     
+    settings.fields.reset.flags.wifi = UI_RESET_WIFI_DEFAULT;
+    settings.fields.reset.flags.settings = UI_RESET_SETTINGS_DEFAULT;
+    settings.fields.reset.flags.all = UI_RESET_ALL_DEFAULT;
+    
     memcpy(modified.raw, settings.raw, sizeof(settings.raw));
 }
 

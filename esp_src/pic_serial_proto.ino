@@ -269,7 +269,7 @@ void pic_uart_rx()
   while(UARTPIC.available())
   {
     char rx_char = UARTPIC.read();
-    
+
     memmove(pic_check_buffer, pic_check_buffer+1, sizeof(SERIAL_PROTO_HEADER)-1);
     pic_check_buffer[sizeof(SERIAL_PROTO_HEADER)-1] = rx_char;
     
@@ -440,7 +440,7 @@ void pic_data_task(void)
     if(pic_time_waiting) pic_process_time();
     if(pic_gnss_waiting) pic_process_gnss();
     if(pic_offset_waiting) pic_process_offset();
-    //if(pic_net_waiting) pic_process_net();
+    if(pic_net_waiting) pic_process_net();
     if(pic_rtc_waiting) pic_process_rtc();
     if(pic_sensor_waiting) pic_process_sensor();
     if(pic_display_waiting) pic_process_display();
@@ -696,6 +696,17 @@ void print_offset_data(void)
   Serial.println(pic_sync_events);
 }
 
+void pic_process_net(void)
+{
+  if(pic_net_buffer.fields.flags.reset_config)
+  {
+    Serial.println("Resetting WiFi credentials...");
+    wm.resetSettings(); // Delete WiFi credentials
+    ESP.restart(); // And reset
+  }
+
+  pic_net_waiting = 0;
+}
 
 void pic_process_rtc(void)
 {

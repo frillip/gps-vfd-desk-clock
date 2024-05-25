@@ -210,6 +210,7 @@ void ui_display_task(void)
         ui_state_current=settings.fields.display.selected;
         ui_menu_change_state(UI_MENU_STATE_ROOT);
         ui_menu_stop_flash();
+        memcpy(modified.raw, settings.raw, sizeof(settings.raw));
         update_display = 1;
         ui_display_timeout=0;
     }
@@ -570,12 +571,58 @@ void ui_menu_long_press(void)
                 break;
             
         case UI_MENU_STATE_RESET:
-            ui_menu_change_state(UI_MENU_STATE_RESET_CONFIRM);
-            break;            
-            
-        case UI_MENU_STATE_RESET_BACK:
-            ui_menu_change_state(UI_MENU_STATE_RESET);
+            ui_menu_change_state(UI_MENU_STATE_RESET_WIFI);
             break;
+            
+            case UI_MENU_STATE_RESET_WIFI:
+                ui_menu_start_flash();
+                ui_menu_change_state(UI_MENU_STATE_RESET_WIFI_YN);
+                break;            
+            
+                case UI_MENU_STATE_RESET_WIFI_YN:
+                    if(modified.fields.reset.flags.wifi)
+                    {
+                        esp_tx_net(1);
+                        modified.fields.reset.flags.wifi = 0;
+                    }
+                    ui_menu_stop_flash();
+                    ui_menu_change_state(UI_MENU_STATE_RESET_WIFI);
+                    break;
+                
+            case UI_MENU_STATE_RESET_SETTINGS:
+                ui_menu_start_flash();
+                ui_menu_change_state(UI_MENU_STATE_RESET_SETTINGS_YN);
+                break;            
+
+                case UI_MENU_STATE_RESET_SETTINGS_YN:
+                    if(modified.fields.reset.flags.settings)
+                    {
+                        eeprom_init();
+                        modified.fields.reset.flags.settings = 0;
+                    }
+                    ui_menu_stop_flash();
+                    ui_menu_change_state(UI_MENU_STATE_RESET_SETTINGS);
+                    break;
+                
+            case UI_MENU_STATE_RESET_ALL:
+                ui_menu_start_flash();
+                ui_menu_change_state(UI_MENU_STATE_RESET_ALL_YN);
+                break;
+                
+                case UI_MENU_STATE_RESET_ALL_YN:
+                    if(modified.fields.reset.flags.all)
+                    {
+                        esp_tx_net(1);
+                        eeprom_init();
+                        modified.fields.reset.flags.all = 0;
+                    }
+                    ui_menu_stop_flash();
+                    ui_menu_change_state(UI_MENU_STATE_RESET_ALL);
+                    break;
+                    
+            case UI_MENU_STATE_RESET_BACK:
+                ui_menu_change_state(UI_MENU_STATE_RESET);
+                break;
             
         case UI_MENU_STATE_EXIT:
             ui_state_current=settings.fields.display.selected;
@@ -758,13 +805,33 @@ void ui_menu_short_press(void)
         case UI_MENU_STATE_RESET:
             ui_menu_change_state(UI_MENU_STATE_EXIT);
             break;
+
+            case UI_MENU_STATE_RESET_WIFI:
+                ui_menu_change_state(UI_MENU_STATE_RESET_SETTINGS);
+                break;
+                
+                case UI_MENU_STATE_RESET_WIFI_YN:
+                    modified.fields.reset.flags.wifi = !modified.fields.reset.flags.wifi;
+                    break;
             
-            case UI_MENU_STATE_RESET_CONFIRM:
+            case UI_MENU_STATE_RESET_SETTINGS:
+                ui_menu_change_state(UI_MENU_STATE_RESET_ALL);
+                break;
+
+                case UI_MENU_STATE_RESET_SETTINGS_YN:
+                    modified.fields.reset.flags.settings = !modified.fields.reset.flags.settings;
+                    break;
+                    
+            case UI_MENU_STATE_RESET_ALL:
                 ui_menu_change_state(UI_MENU_STATE_RESET_BACK);
                 break;
 
+                case UI_MENU_STATE_RESET_ALL_YN:
+                    modified.fields.reset.flags.all = !modified.fields.reset.flags.all;
+                    break;
+
             case UI_MENU_STATE_RESET_BACK:
-                ui_menu_change_state(UI_MENU_STATE_RESET_CONFIRM);
+                ui_menu_change_state(UI_MENU_STATE_RESET_WIFI);
                 break;
             
 

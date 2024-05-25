@@ -1009,11 +1009,82 @@ void display_menu_text(void)
             driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
             break;
             
-        case UI_MENU_STATE_RESET_CONFIRM:
+        case UI_MENU_STATE_RESET_WIFI:
+            driver_buffer |= (DIGIT_W << TUBE_4_OFFSET);
+            driver_buffer |= (DIGIT_I << TUBE_3_OFFSET);
+            driver_buffer |= (DIGIT_F << TUBE_2_OFFSET);
+            driver_buffer |= (DIGIT_I << TUBE_1_OFFSET);
+            break;
+            
+        case UI_MENU_STATE_RESET_WIFI_YN:
+            switch(modified.fields.reset.flags.wifi)
+            {
+                case 1:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_Y << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_E << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_S << TUBE_1_OFFSET);
+                    break;
+                    
+                default:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_N << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_O << TUBE_1_OFFSET);
+                    break;
+            }
+            break;
+            
+        case UI_MENU_STATE_RESET_SETTINGS:
             driver_buffer |= (DIGIT_C << TUBE_4_OFFSET);
             driver_buffer |= (DIGIT_O << TUBE_3_OFFSET);
             driver_buffer |= (DIGIT_N << TUBE_2_OFFSET);
             driver_buffer |= (DIGIT_F << TUBE_1_OFFSET);
+            break;
+            
+        case UI_MENU_STATE_RESET_SETTINGS_YN:
+            switch(modified.fields.reset.flags.settings)
+            {
+                case 1:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_Y << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_E << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_S << TUBE_1_OFFSET);
+                    break;
+                    
+                default:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_N << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_O << TUBE_1_OFFSET);
+                    break;
+            }
+            break;
+            
+        case UI_MENU_STATE_RESET_ALL:
+            driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+            driver_buffer |= (DIGIT_A << TUBE_3_OFFSET);
+            driver_buffer |= (DIGIT_L << TUBE_2_OFFSET);
+            driver_buffer |= (DIGIT_L << TUBE_1_OFFSET);
+            break;
+            
+        case UI_MENU_STATE_RESET_ALL_YN:
+            switch(modified.fields.reset.flags.all)
+            {
+                case 1:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_Y << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_E << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_S << TUBE_1_OFFSET);
+                    break;
+                    
+                default:
+                    driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_N << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_O << TUBE_1_OFFSET);
+                    break;
+            }
             break;
 
         case UI_MENU_STATE_RESET_BACK:

@@ -68,7 +68,7 @@ void esp_tx(void *buffer, uint16_t len);
 void esp_tx_time(void);
 void esp_tx_gnss(void);
 void esp_tx_offset(void);
-void esp_tx_net(void);
+void esp_tx_net(bool reset);
 void esp_tx_rtc(void);
 void esp_tx_sensor(void);
 void esp_tx_display(void);

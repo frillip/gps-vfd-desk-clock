@@ -579,16 +579,16 @@ void esp_tx_offset(void)
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
-void esp_tx_net(void)
+void esp_tx_net(bool reset)
 {
     SERIAL_PROTO_DATA_PIC_NET esp_tx_buffer;
     memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
     
     esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
-    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_NETDATA;
     
-    esp_tx_buffer.fields.flags.reset_config = 0;
+    esp_tx_buffer.fields.flags.reset_config = reset;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
