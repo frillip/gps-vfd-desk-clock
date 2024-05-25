@@ -42,6 +42,7 @@ uint16_t ui_button_counter = 0;
 
 extern CLOCK_SOURCE utc_source;
 extern time_t utc;
+extern bool dst_active;
 extern int32_t bme280_temperature;
 
 extern EEPROM_DATA_STRUCT settings;
@@ -520,6 +521,7 @@ void ui_menu_long_press(void)
                         settings.fields.dst.offset = UI_DST_OFFSET_DEFAULT;
                     }
                     settings.fields.dst.flags.automatic = modified.fields.dst.flags.automatic;
+                    dst_active = isDST(&utc);
                     ui_menu_change_state(UI_MENU_STATE_DST_AUTO);
                     break;
                 
@@ -532,6 +534,7 @@ void ui_menu_long_press(void)
                 case UI_MENU_STATE_DST_STATE_SEL:
                     ui_menu_stop_flash();
                     settings.fields.dst.flags.active = modified.fields.dst.flags.active;
+                    dst_active = isDST(&utc);
                     ui_menu_change_state(UI_MENU_STATE_DST_STATE);
                     break;
 
