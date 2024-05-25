@@ -52,6 +52,7 @@ extern "C" {
 #define UI_TZ_OFFSET_STEP_SIZE 900L // 15 minutes
 #define UI_TZ_OFFSET_MAX 50400L // +14:00
 #define UI_TZ_OFFSET_MIN -43200L // -12:00
+
 #define UI_DST_OFFSET_DEFAULT 3600L
 #define UI_DST_OFFSET_STEP_SIZE 900L // 15 minutes
 #define UI_DST_OFFSET_MAX 3600L // 1 hour

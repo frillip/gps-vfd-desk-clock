@@ -515,6 +515,10 @@ void ui_menu_long_press(void)
                 
                 case UI_MENU_STATE_DST_AUTO_SEL:
                     ui_menu_stop_flash();
+                    if(modified.fields.dst.flags.automatic && !settings.fields.dst.flags.automatic)
+                    {
+                        settings.fields.dst.offset = UI_DST_OFFSET_DEFAULT;
+                    }
                     settings.fields.dst.flags.automatic = modified.fields.dst.flags.automatic;
                     ui_menu_change_state(UI_MENU_STATE_DST_AUTO);
                     break;
