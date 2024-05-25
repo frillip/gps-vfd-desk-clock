@@ -68,7 +68,11 @@ bool ui_switch_state(void);
 
 void ui_buzzer_task(void);
 void ui_buzzer_interval_beep(void);
-void ui_buzzer_button_beep(void);
+uint8_t ui_buzzer_get_beep_count(uint8_t hour, uint8_t minute);
+void ui_buzzer_interval_generate_buffer(uint8_t beep_count);
+void ui_buzzer_button_beep(uint8_t beep_count);
+void ui_buzzer_button_generate_buffer(uint8_t beep_count);
+void ui_buzzer_mute(uint8_t length);
 void ui_buzzer_sounder(void);
 
 void ui_display_task(void);
@@ -99,19 +103,40 @@ void ui_print_iso8601_string(time_t iso);
 void ui_print_iso8601_string_local(time_t local);
 void ui_print_clear_window(void);
 
-#define BUZZER_BUFFER_LENGTH 64
+#define BUZZER_BUFFER_LENGTH 100
+
+typedef enum
+{
+    BUZZER_OFF = 0,
+    BUZZER_ON = 1,
+} UI_BUZZER_STATE;
+
+struct _buzzer_buffer_element {
+    UI_BUZZER_STATE state : 1;
+    uint8_t length : 7;
+};
 
 // Defined in multiples of 20ms
 
-#define BEEP_LENGTH         5
-#define BEEP_LENGTH_BUTTON  3
-#define BEEP_GAP            5
-#define BEEP_GAP_BUTTON     3
-#define BEEP_PAUSE_GAP      15
-#define BEEP_GROUP_SIZE     4
+#define UI_BEEP_LENGTH         5
+#define UI_BEEP_GAP            5
 
-#define BEEP_MINOR_LENGTH   5
-#define BEEP_MINOR_INTERVAL 15
+#define UI_BEEP_LENGTH_BUTTON  3
+#define UI_BEEP_GAP_BUTTON     3
+#define UI_BEEP_COUNT_BUTTON_SHORT   1
+#define UI_BEEP_COUNT_BUTTON_LONG    1
+
+#define UI_BEEP_MUTE_LENGTH    1
+
+#define UI_BEEP_PAUSE_GAP      15
+#define UI_BEEP_GROUP_SIZE     4
+
+#define UI_BEEP_MINOR_LENGTH   5
+#define UI_BEEP_MINOR_INTERVAL 15
+
+#define UI_BEEP_MIDNIGHT_HOUR           0
+#define UI_BEEP_MIDNIGHT_BEEP_COUNT     12
+#define UI_BEEP_AM_PM_HOUR_THRESHOLD    12
 
 #define ui_buzzer_on()      (_LATB7 = 1)
 #define ui_buzzer_off()     (_LATB7 = 0)

@@ -7,7 +7,7 @@ extern time_t accumulation_delta;
 
 uint8_t beep_seq = 0;
 bool beep_start = 0;
-uint8_t buzzer_buffer[BUZZER_BUFFER_LENGTH] = {0};
+struct _buzzer_buffer_element buzzer_buffer[BUZZER_BUFFER_LENGTH];
 
 bool button_state;
 bool button_last_state;
@@ -118,61 +118,110 @@ void ui_buzzer_interval_beep(void)
 
     if(settings.fields.beep.flags.enabled && !beep_start)
     {
-        if(minute%BEEP_MINOR_INTERVAL==0 && !second)
+        if(minute % UI_BEEP_MINOR_INTERVAL==0 && second == 0)
         {
-            memset(buzzer_buffer, 0, BUZZER_BUFFER_LENGTH);
             beep_start = 1;
             beep_seq = 0;
 
-            uint8_t beep_count = 0;
-            if(!minute) 
-            {
-                if(!hour) beep_count = 12;
-                else if(hour>12) beep_count = (hour - 12);
-                else beep_count = hour;
-            }
-            else beep_count = 1;
-
-            uint8_t i=0;
-            while(i<beep_count)
-            {
-                buzzer_buffer[i*2] = BEEP_LENGTH | 0x80;
-                if(i && !((i+1) % BEEP_GROUP_SIZE)) buzzer_buffer[(i*2)+1] = BEEP_PAUSE_GAP;
-                else buzzer_buffer[(i*2)+1] = BEEP_GAP;
-                i++;
-            }
+            uint8_t beep_count = ui_buzzer_get_beep_count(hour, minute);
+            ui_buzzer_interval_generate_buffer(beep_count);
         }
     }
 }
 
-void ui_buzzer_button_beep(void)
+uint8_t ui_buzzer_get_beep_count(uint8_t hour, uint8_t minute)
 {
-    if(settings.fields.beep.flags.enabled && !beep_start)
+    if(minute == 0) 
     {
-        memset(buzzer_buffer, 0, BUZZER_BUFFER_LENGTH);
-        beep_start = 1;
-        beep_seq = 0;
-        buzzer_buffer[0] = BEEP_LENGTH_BUTTON | 0x80;
-        buzzer_buffer[1] = BEEP_GAP_BUTTON;
+        if(UI_BEEP_MIDNIGHT_HOUR)
+        {
+            return UI_BEEP_MIDNIGHT_BEEP_COUNT;
+        }
+        else if(hour > UI_BEEP_AM_PM_HOUR_THRESHOLD)
+        {
+            return (hour - UI_BEEP_AM_PM_HOUR_THRESHOLD);
+        }
+        else
+        {
+            return hour;
+        }
+    }
+    return 1;
+}
+
+void ui_buzzer_interval_generate_buffer(uint8_t beep_count)
+{
+    memset(buzzer_buffer, 0, sizeof(buzzer_buffer));
+    
+    uint8_t i=0;
+    while(i<beep_count)
+    {
+        buzzer_buffer[i*2].state = BUZZER_ON;
+        buzzer_buffer[i*2].length = UI_BEEP_LENGTH;
+        if(i && !((i+1) % UI_BEEP_GROUP_SIZE))
+        {
+            buzzer_buffer[(i*2)+1].state = BUZZER_OFF;
+            buzzer_buffer[(i*2)+1].length = UI_BEEP_PAUSE_GAP;
+        }
+        else
+        {
+            buzzer_buffer[(i*2)+1].state = BUZZER_OFF;
+            buzzer_buffer[(i*2)+1].length = UI_BEEP_GAP;
+        }
+        i++;
     }
 }
 
+void ui_buzzer_button_beep(uint8_t beep_count)
+{
+    if(settings.fields.beep.flags.enabled && !beep_start)
+    {
+        beep_start = 1;
+        beep_seq = 0;
+        ui_buzzer_button_generate_buffer(beep_count);
+    }
+}
+
+void ui_buzzer_button_generate_buffer(uint8_t beep_count)
+{
+    memset(buzzer_buffer, 0, sizeof(buzzer_buffer));
+    
+    uint8_t i=0;
+    while(i<beep_count)
+    {
+        buzzer_buffer[i*2].state = BUZZER_ON;
+        buzzer_buffer[i*2].length = UI_BEEP_LENGTH_BUTTON;
+        buzzer_buffer[(i*2)+1].state = BUZZER_OFF;
+        buzzer_buffer[(i*2)+1].length = UI_BEEP_GAP_BUTTON;
+        i++;
+    }
+}
+
+void ui_buzzer_mute(uint8_t length)
+{
+    beep_start = 1;
+    beep_seq = 0;
+
+    memset(buzzer_buffer, 0, sizeof(buzzer_buffer));
+    buzzer_buffer[0].state = BUZZER_OFF;
+    buzzer_buffer[0].length = length;
+}
 
 void ui_buzzer_sounder(void)
 {
     if(beep_start)
     {
-        if(!buzzer_buffer[beep_seq])
+        if(buzzer_buffer[beep_seq].state == BUZZER_OFF && buzzer_buffer[beep_seq].length == 0)
         {
             ui_buzzer_off();
             beep_start = 0;
         }
         else
         {
-            if(buzzer_buffer[beep_seq] & 0x80) ui_buzzer_on();
+            if(buzzer_buffer[beep_seq].state == BUZZER_ON) ui_buzzer_on();
             else ui_buzzer_off();
-            buzzer_buffer[beep_seq]--;
-            if(!(buzzer_buffer[beep_seq] & 0x7F)) beep_seq++;
+            buzzer_buffer[beep_seq].length--;
+            if((buzzer_buffer[beep_seq].length == 0)) beep_seq++;
         }
     }
 }
@@ -216,7 +265,6 @@ void ui_display_task(void)
     }
     if(ui_button_action==UI_BUTTON_STATE_LONG_PRESS)
     {
-        ui_buzzer_button_beep();
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
             ui_menu_long_press();
@@ -225,12 +273,12 @@ void ui_display_task(void)
         {
             ui_state_current=UI_DISPLAY_STATE_MENU;
         }
+        ui_buzzer_button_beep(UI_BEEP_COUNT_BUTTON_LONG);
         ui_display_timeout=0;
         update_display = 1;
     }
     else if(ui_button_action==UI_BUTTON_STATE_SHORT_PRESS)
     {
-        ui_buzzer_button_beep();
         if(ui_state_current==UI_DISPLAY_STATE_MENU)
         {
             ui_menu_short_press();
@@ -239,6 +287,7 @@ void ui_display_task(void)
         {
             ui_display_cycle();
         }
+        ui_buzzer_button_beep(UI_BEEP_COUNT_BUTTON_SHORT);
         ui_display_timeout=0;
         update_display = 1;
     }
@@ -532,7 +581,7 @@ void ui_menu_long_press(void)
             case UI_MENU_STATE_BEEP_ENABLE_SEL:
                 ui_menu_stop_flash();
                 settings.fields.beep.flags.enabled = modified.fields.beep.flags.enabled;
-                ui_buzzer_button_beep();
+                if(!settings.fields.beep.flags.enabled ) ui_buzzer_mute(UI_BEEP_MUTE_LENGTH);
                 ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE);
                 break;
                 
