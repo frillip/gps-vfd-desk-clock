@@ -1056,22 +1056,22 @@ void ui_print_iso8601_string(time_t iso)
     printf(buf);
 }
 
-void ui_print_iso8601_string_local(time_t local)
+void ui_print_iso8601_string_local(time_t utc)
 {
-    local += settings.fields.tz.offset;
+    utc += settings.fields.tz.offset;
     
-    if(isDST(&local))
+    if(isDST(&utc))
     {
-        local += settings.fields.dst.offset; 
+        utc += settings.fields.dst.offset; 
     }
     
     char buf[32] = {0}; // Allocate buffer
     struct tm *local_time; // Allocate buffer
-    local_time = gmtime(&local);
+    local_time = gmtime(&utc);
     strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", local_time);
     printf(buf);
     
-    int32_t total_offset = local - utc;
+    int32_t total_offset = utc - utc;
     if((total_offset)>=0)
     {
         printf("+"); 

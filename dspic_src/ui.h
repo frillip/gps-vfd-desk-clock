@@ -101,7 +101,7 @@ void ui_dst_offset_incr(void);
 void pic_reset(void);
 void ui_uart1_input(char c);
 void ui_print_iso8601_string(time_t iso);
-void ui_print_iso8601_string_local(time_t local);
+void ui_print_iso8601_string_local(time_t utc);
 void ui_print_clear_window(void);
 
 #define BUZZER_BUFFER_LENGTH 100
