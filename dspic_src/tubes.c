@@ -1342,11 +1342,7 @@ bool isDST(const time_t *time)
             }
         }
     }
-    else
-    {
-        if(settings.fields.dst.flags.active) dst = 1;
-        else dst = 0;
-    }
+    else dst = settings.fields.dst.flags.active;
     // Return DST status
     return dst;
 }
