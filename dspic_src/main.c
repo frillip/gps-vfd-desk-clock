@@ -50,6 +50,7 @@ bool sync_state_machine_run = 0;
 
 // time_t to store UTC, GNSS, RTC and local time
 time_t utc;
+time_t local;
 bool dst_active;
 
 extern time_t rtc;

@@ -13,6 +13,7 @@ extern time_t ntp;
 extern time_t gnss;
 extern time_t utc;
 extern time_t display;
+extern time_t local;
 
 extern bool dst_active;
 
@@ -90,6 +91,7 @@ void sync_state_machine(void)
         sync_state_eval_time_counter = EVAL_TIME_DELAY_INTERVAL;
         state_new_oc = 1;
         pic_pps_calculate_oc_stats();
+        local = get_local_time(utc);
         ui_buzzer_interval_beep();
         oc_event=0;
     }
@@ -904,6 +906,7 @@ void sync_state_eval_time(void)
         }
     }
     
+    local = get_local_time(utc);
     dst_active = isDST(&utc);
 
 #ifdef DEBUG_MESSAGES    
