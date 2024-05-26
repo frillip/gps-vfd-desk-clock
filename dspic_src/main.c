@@ -200,8 +200,8 @@ int main(void)
         if(t10ms1>=2)
         {
             t10ms1=0;
-            ui_buzzer_sounder();
             ui_button_task();
+            ui_buzzer_task();
             ui_display_task();
         }
         if(t100ms0)

@@ -43,6 +43,8 @@ extern "C" {
 #define UI_ALARM_BEEP_GAP       5
 #define UI_ALARM_PAUSE_GAP     15
 #define UI_ALARM_GROUP_SIZE     4
+#define UI_ALARM_DURATION     120
+#define UI_ALARM_MUTE_LENGTH    5
     
 #define UI_BEEP_ENABLED_DEFAULT 0
     
@@ -81,6 +83,25 @@ void ui_buzzer_button_beep(uint8_t beep_count);
 void ui_buzzer_button_generate_buffer(uint8_t beep_count);
 void ui_buzzer_mute(uint8_t length);
 void ui_buzzer_sounder(void);
+
+typedef enum
+{
+    ALARM_DISABLED = 0,
+    ALARM_OFF = 1,
+    ALARM_ARMED = 2,
+    ALARM_START = 3,
+    ALARM_FINISH = 4,
+} UI_ALARM_STATE;
+
+void ui_alarm_task(void);
+void print_alarm_state(UI_ALARM_STATE state);
+void ui_alarm_arm(void);
+void ui_alarm_disarm(void);
+void ui_alarm_stop(void);
+void ui_alarm_reset(void);
+void ui_alarm_sound(void);
+void ui_alarm_generate_buffer(void);
+void ui_alarm_mute(void);
 
 void ui_display_task(void);
 void ui_update_display(void);

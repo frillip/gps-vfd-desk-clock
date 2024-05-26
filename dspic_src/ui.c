@@ -9,6 +9,13 @@ uint8_t beep_seq = 0;
 bool beep_start = 0;
 struct _buzzer_buffer_element buzzer_buffer[BUZZER_BUFFER_LENGTH];
 
+UI_ALARM_STATE alarm;
+time_t alarm_time_arm = 0;
+time_t alarm_time_start = 0;
+time_t alarm_last_run = 0;
+bool alarm_dst = 0;
+bool alarm_last_dst = 0;
+
 bool button_state;
 bool button_last_state;
 bool button_input_last_state;
@@ -42,6 +49,8 @@ uint16_t ui_button_counter = 0;
 
 extern CLOCK_SOURCE utc_source;
 extern time_t utc;
+extern time_t local;
+extern time_t display;
 extern bool dst_active;
 extern int32_t bme280_temperature;
 
@@ -106,7 +115,8 @@ bool ui_switch_state(void)
 
 void ui_buzzer_task(void)
 {
-    
+    ui_alarm_task();
+    ui_buzzer_sounder();
 }
 
 void ui_buzzer_interval_beep(void)
@@ -117,7 +127,7 @@ void ui_buzzer_interval_beep(void)
     uint8_t minute = display_tm->tm_min;
     uint8_t hour = display_tm->tm_hour;
 
-    if(settings.fields.beep.flags.enabled && !beep_start)
+    if(settings.fields.beep.flags.enabled && !beep_start && alarm != ALARM_START)
     {
         if(minute % UI_BEEP_MINOR_INTERVAL==0 && second == 0)
         {
@@ -175,7 +185,7 @@ void ui_buzzer_interval_generate_buffer(uint8_t beep_count)
 
 void ui_buzzer_button_beep(uint8_t beep_count)
 {
-    if(settings.fields.beep.flags.enabled && !beep_start)
+    if(settings.fields.beep.flags.enabled && !beep_start && alarm != ALARM_START)
     {
         beep_start = 1;
         beep_seq = 0;
@@ -206,16 +216,19 @@ void ui_buzzer_mute(uint8_t length)
     memset(buzzer_buffer, 0, sizeof(buzzer_buffer));
     buzzer_buffer[0].state = BUZZER_OFF;
     buzzer_buffer[0].length = length;
+    ui_buzzer_off();
 }
 
 void ui_buzzer_sounder(void)
 {
-    if(beep_start)
+    if(beep_start || alarm == ALARM_START)
     {
         if(buzzer_buffer[beep_seq].state == BUZZER_OFF && buzzer_buffer[beep_seq].length == 0)
         {
             ui_buzzer_off();
             beep_start = 0;
+            beep_seq = 0;
+            memset(buzzer_buffer, 0, sizeof(buzzer_buffer));
         }
         else
         {
@@ -225,6 +238,218 @@ void ui_buzzer_sounder(void)
             if((buzzer_buffer[beep_seq].length == 0)) beep_seq++;
         }
     }
+}
+
+void ui_alarm_task(void)
+{
+    if(settings.fields.alarm.flags.enabled)
+    {
+        time_t local_time = get_local_time(utc);
+
+        struct tm local_tm; // Allocate buffer
+        local_tm = *gmtime(&local_time);
+        
+        alarm_dst = isDST(&utc);
+        
+        uint32_t midnight_offset = (uint32_t)local_tm.tm_hour * 3600UL;
+        midnight_offset += local_tm.tm_min * 60;
+        midnight_offset += local_tm.tm_sec;
+        
+        if(alarm_last_run != local_time)
+        {
+            printf("\r\nALARM: %u %u %lu %lu\r\n",alarm, local_tm.tm_hour, midnight_offset, settings.fields.alarm.offset);
+        }
+        
+        if(midnight_offset == 0)
+        {
+            ui_alarm_reset();
+        }
+        
+        if(alarm == ALARM_DISABLED)
+        {
+            ui_alarm_reset();
+        }
+        if(alarm == ALARM_OFF)
+        {
+            if(switch_state)
+            {
+                ui_alarm_arm();
+                alarm_time_arm = local_time;
+            }
+        }
+                
+        if(alarm == ALARM_ARMED)
+        {
+            if(!switch_state) ui_alarm_disarm();
+            else if(local_time != alarm_time_arm)
+            {
+                if(settings.fields.alarm.offset == midnight_offset)
+                {
+                    ui_alarm_sound();
+                    alarm_time_start = local_time;
+                }
+                else if(alarm_dst != alarm_last_dst)
+                {
+                    if(settings.fields.alarm.offset == (midnight_offset - settings.fields.dst.offset))
+                    {
+                        ui_alarm_sound();
+                        alarm_time_start = local_time;
+                    }
+                }
+            }
+        }
+        
+        if(alarm == ALARM_START)
+        {
+            if(switch_state)
+            {
+                if(local_time > (alarm_time_start + UI_ALARM_DURATION))
+                {
+                    ui_alarm_stop();
+                }
+                else
+                {
+                    ui_alarm_sound();
+                }
+            }
+            else
+            {
+                ui_alarm_stop();
+                ui_alarm_disarm();
+            }
+        }
+        
+        if(alarm == ALARM_FINISH)
+        {
+            if(!switch_state)
+            {
+                ui_alarm_disarm();
+            }
+        }
+        
+        alarm_last_run = local_time;
+        alarm_last_dst = alarm_dst;
+    }
+    
+}
+
+void print_alarm_state(UI_ALARM_STATE state)
+{
+    switch(state)
+    {
+        case ALARM_DISABLED:
+            printf("ALARM_DISABLED");
+            break;
+            
+        case ALARM_OFF:
+            printf("ALARM_OFF");
+            break;
+            
+        case ALARM_ARMED:
+            printf("ALARM_ARMED");
+            break;
+            
+        case ALARM_START:
+            printf("ALARM_START");
+            break;
+            
+        case ALARM_FINISH:
+            printf("ALARM_FINISH");
+            break;
+    }
+    printf("\r\n");
+}
+
+void ui_alarm_arm(void)
+{
+    printf("ui_alarm_arm ");
+    alarm = ALARM_ARMED;
+    print_alarm_state(alarm);
+}
+
+void ui_alarm_disarm(void)
+{
+    printf("ui_alarm_disarm ");
+    alarm = ALARM_OFF;
+    print_alarm_state(alarm);
+    alarm_time_start = 0;
+    alarm_time_arm = 0;
+}
+
+void ui_alarm_stop(void)
+{
+    printf("ui_alarm_stop ");
+    alarm = ALARM_FINISH;
+    print_alarm_state(alarm);
+    alarm_time_start = 0;
+    ui_alarm_mute();
+}
+
+void ui_alarm_reset(void)
+{
+    printf("ui_alarm_reset ");
+    if(settings.fields.alarm.flags.enabled)
+    {
+        if(switch_state)
+        {
+            alarm = ALARM_ARMED;
+            print_alarm_state(alarm);
+        }
+        else
+        {
+            alarm = ALARM_OFF;
+            print_alarm_state(alarm);
+        }
+        
+    }
+    else alarm = ALARM_DISABLED;
+    print_alarm_state(alarm);
+    alarm_time_start = 0;
+    alarm_time_arm = 0;
+}
+
+void ui_alarm_sound(void)
+{
+    if(alarm == ALARM_START)
+    {
+        if(buzzer_buffer[0].state == BUZZER_OFF && buzzer_buffer[0].length == 0)
+        {
+            ui_alarm_generate_buffer();
+        }
+    }
+    else
+    {
+        printf("ui_alarm_sound ");
+        alarm = ALARM_START;
+        print_alarm_state(alarm);
+        ui_alarm_generate_buffer();
+    }
+}
+
+void ui_alarm_generate_buffer(void)
+{
+    memset(buzzer_buffer, 0, sizeof(buzzer_buffer));
+    beep_seq = 0;
+    
+    uint8_t i=0;
+    while(i<UI_ALARM_GROUP_SIZE)
+    {
+        buzzer_buffer[i*2].state = BUZZER_ON;
+        buzzer_buffer[i*2].length = UI_ALARM_BEEP_LENGTH;
+        buzzer_buffer[(i*2)+1].state = BUZZER_OFF;
+        buzzer_buffer[(i*2)+1].length = UI_ALARM_BEEP_GAP;
+        i++;
+    }
+    
+    i--; // Make the last off section longer
+    buzzer_buffer[(i*2)+1].state = BUZZER_OFF;
+    buzzer_buffer[(i*2)+1].length = UI_ALARM_PAUSE_GAP;
+}
+
+void ui_alarm_mute(void)
+{
+    ui_buzzer_off();
+    ui_buzzer_mute(UI_ALARM_MUTE_LENGTH);
 }
 
 void ui_display_task(void)
@@ -567,6 +792,7 @@ void ui_menu_long_press(void)
                 case UI_MENU_STATE_ALARM_ENABLED_SEL:
                     ui_menu_stop_flash();
                     settings.fields.alarm.flags.enabled = modified.fields.alarm.flags.enabled;
+                    ui_alarm_reset();
                     ui_menu_change_state(UI_MENU_STATE_ALARM_ENABLED);
                     break;
                 
