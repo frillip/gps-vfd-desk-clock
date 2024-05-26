@@ -37,6 +37,12 @@ extern "C" {
 
 #define UI_ALARM_ENABLED_DEFAULT 0
 #define UI_ALARM_OFFSET_DEFAULT 0L
+#define UI_ALARM_MINUTE_INCREMENT_STEP_SIZE 300
+    
+#define UI_ALARM_BEEP_LENGTH    5
+#define UI_ALARM_BEEP_GAP       5
+#define UI_ALARM_PAUSE_GAP     15
+#define UI_ALARM_GROUP_SIZE     4
     
 #define UI_BEEP_ENABLED_DEFAULT 0
     
@@ -97,6 +103,8 @@ void ui_tz_offset_incr(void);
 void ui_tz_offset_incr_hh(void);
 void ui_tz_offset_incr_mm(void);
 void ui_dst_offset_incr(void);
+void ui_alarm_offset_incr_hh(void);
+void ui_alarm_offset_incr_mm(void);
 
 void pic_reset(void);
 void ui_uart1_input(char c);

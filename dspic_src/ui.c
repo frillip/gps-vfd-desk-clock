@@ -559,11 +559,20 @@ void ui_menu_long_press(void)
             break;
             
             case UI_MENU_STATE_ALARM_ENABLED:
-                if(settings.fields.alarm.flags.enabled) settings.fields.alarm.flags.enabled = 0;
-                else settings.fields.alarm.flags.enabled = 1;
+                ui_menu_start_flash();
+                modified.fields.alarm.flags.enabled = settings.fields.alarm.flags.enabled;
+                ui_menu_change_state(UI_MENU_STATE_ALARM_ENABLED_SEL);
                 break;
                 
+                case UI_MENU_STATE_ALARM_ENABLED_SEL:
+                    ui_menu_stop_flash();
+                    settings.fields.alarm.flags.enabled = modified.fields.alarm.flags.enabled;
+                    ui_menu_change_state(UI_MENU_STATE_ALARM_ENABLED);
+                    break;
+                
             case UI_MENU_STATE_ALARM_SET:
+                ui_menu_start_flash();
+                modified.fields.alarm.offset = settings.fields.alarm.offset;
                 ui_menu_change_state(UI_MENU_STATE_ALARM_SET_HH);
                 break;
 
@@ -572,8 +581,14 @@ void ui_menu_long_press(void)
                     break;
 
                 case UI_MENU_STATE_ALARM_SET_MM:
+                    ui_menu_stop_flash();
+                    settings.fields.alarm.offset = modified.fields.alarm.offset;
                     ui_menu_change_state(UI_MENU_STATE_ALARM_SET);
                     break;
+                    
+            case UI_MENU_STATE_ALARM_BACK:
+                ui_menu_change_state(UI_MENU_STATE_ALARM);
+                break;    
 
         case UI_MENU_STATE_BEEP:
             ui_menu_change_state(UI_MENU_STATE_BEEP_ENABLE);
@@ -776,19 +791,27 @@ void ui_menu_short_press(void)
             break;
 
             case UI_MENU_STATE_ALARM_ENABLED:
-                ui_menu_change_state(UI_MENU_STATE_ALARM_SET);
+                if(settings.fields.alarm.flags.enabled)
+                {
+                    ui_menu_change_state(UI_MENU_STATE_ALARM_SET);
+                }
+                else ui_menu_change_state(UI_MENU_STATE_ALARM_BACK);
                 break;
+                
+                case UI_MENU_STATE_ALARM_ENABLED_SEL:
+                    modified.fields.alarm.flags.enabled = !modified.fields.alarm.flags.enabled;
+                    break;
 
             case UI_MENU_STATE_ALARM_SET:
                 ui_menu_change_state(UI_MENU_STATE_ALARM_BACK);
                 break;
                 
                 case UI_MENU_STATE_ALARM_SET_HH:
-                    //ui_menu_change_state(UI_MENU_STATE_ALARM_BACK);
+                    ui_alarm_offset_incr_hh();
                     break;
 
                 case UI_MENU_STATE_ALARM_SET_MM:
-                    //ui_menu_change_state(UI_MENU_STATE_ALARM_BACK);
+                    ui_alarm_offset_incr_mm();
                     break;
 
             case UI_MENU_STATE_ALARM_BACK:
@@ -958,6 +981,33 @@ void ui_dst_offset_incr(void)
     }
 }
 
+void ui_alarm_offset_incr_hh(void)
+{
+    uint32_t alarm_hour = modified.fields.alarm.offset / 3600;
+    uint32_t alarm_minute = (modified.fields.alarm.offset - (alarm_hour * 3600)) / 60;
+    alarm_hour++;
+    if(alarm_hour > 23)
+    {
+        alarm_hour = 0;
+    }
+    
+    modified.fields.alarm.offset = alarm_hour * 3600;
+    modified.fields.alarm.offset += alarm_minute * 60;
+}
+
+void ui_alarm_offset_incr_mm(void)
+{
+    uint32_t alarm_hour = modified.fields.alarm.offset / 3600;
+    uint32_t alarm_minute = (modified.fields.alarm.offset - (alarm_hour * 3600)) / 60;
+
+    alarm_minute = alarm_minute + 5;
+    if(alarm_minute >= 60)
+    {
+        alarm_minute = 0;
+    }
+
+    modified.fields.alarm.offset = (alarm_hour * 3600) + (alarm_minute * 60);
+}
 
 void pic_reset(void)
 {

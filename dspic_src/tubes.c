@@ -612,15 +612,19 @@ void display_menu(void)
             if(ui_menu_flash_off) display_blank();
             else display_offset(modified.fields.dst.offset); //Placeholder
             break;
+            
+        case UI_MENU_STATE_ALARM_SET:
+            display_offset(settings.fields.alarm.offset);
+            break;
 
         case UI_MENU_STATE_ALARM_SET_HH:
-            if(ui_menu_flash_off) display_blank();
-            else display_offset(1234); //Placeholder
+            if(ui_menu_flash_off) display_mask_hh();
+            else display_offset(modified.fields.alarm.offset);
             break;
             
         case UI_MENU_STATE_ALARM_SET_MM:
-            if(ui_menu_flash_off) display_blank();
-            else display_offset(1234); //Placeholder
+            if(ui_menu_flash_off) display_mask_mm();
+            else display_offset(modified.fields.alarm.offset);
             break;
 
         default:
@@ -794,6 +798,23 @@ void display_menu_text(void)
 
         case UI_MENU_STATE_ALARM_ENABLED:
             if(settings.fields.alarm.flags.enabled)
+            {
+                driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
+                driver_buffer |= (DIGIT_O << TUBE_2_OFFSET);
+                driver_buffer |= (DIGIT_N << TUBE_1_OFFSET);
+            }
+            else
+            {
+                driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
+                driver_buffer |= (DIGIT_O << TUBE_3_OFFSET);
+                driver_buffer |= (DIGIT_F << TUBE_2_OFFSET);
+                driver_buffer |= (DIGIT_F << TUBE_1_OFFSET);
+            }
+            break;
+            
+        case UI_MENU_STATE_ALARM_ENABLED_SEL:
+            if(modified.fields.alarm.flags.enabled)
             {
                 driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
                 driver_buffer |= (DIGIT_NONE << TUBE_3_OFFSET);
