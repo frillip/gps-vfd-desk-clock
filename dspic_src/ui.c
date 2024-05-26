@@ -478,11 +478,11 @@ void ui_menu_long_press(void)
                 ui_menu_change_state(UI_MENU_STATE_TZ_AUTO_SEL);
                 break;
                 
-            case UI_MENU_STATE_TZ_AUTO_SEL:
-                ui_menu_stop_flash();
-                settings.fields.tz.flags.automatic = modified.fields.tz.flags.automatic;
-                ui_menu_change_state(UI_MENU_STATE_TZ_AUTO);
-                break;
+                case UI_MENU_STATE_TZ_AUTO_SEL:
+                    ui_menu_stop_flash();
+                    settings.fields.tz.flags.automatic = modified.fields.tz.flags.automatic;
+                    ui_menu_change_state(UI_MENU_STATE_TZ_AUTO);
+                    break;
             
             case UI_MENU_STATE_TZ_SET:
                 ui_menu_start_flash();
