@@ -1058,20 +1058,15 @@ void ui_print_iso8601_string(time_t iso)
 
 void ui_print_iso8601_string_local(time_t utc)
 {
-    utc += settings.fields.tz.offset;
-    
-    if(isDST(&utc))
-    {
-        utc += settings.fields.dst.offset; 
-    }
+    time_t local_time = get_local_time(utc);
     
     char buf[32] = {0}; // Allocate buffer
-    struct tm *local_time; // Allocate buffer
-    local_time = gmtime(&utc);
-    strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", local_time);
+    struct tm *local_tm; // Allocate buffer
+    local_tm = gmtime(&local_time);
+    strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", local_tm);
     printf(buf);
     
-    int32_t total_offset = utc - utc;
+    int32_t total_offset = local_time - utc;
     if((total_offset)>=0)
     {
         printf("+"); 

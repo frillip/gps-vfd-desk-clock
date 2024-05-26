@@ -141,6 +141,7 @@ void display_blank(void);
 void display_latch(void);
 void display_local_time(time_t time);
 bool isDST(const time_t *tod);
+time_t get_local_time(time_t utc);
 void display_timezone_decr(void);
 
 #ifdef	__cplusplus

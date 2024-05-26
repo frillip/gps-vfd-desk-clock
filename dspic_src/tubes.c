@@ -1192,9 +1192,7 @@ void display_latch(void)
 
 void display_local_time(time_t time)
 {
-    display = time;
-    display = display + settings.fields.tz.offset;
-    if(isDST(&time)) display = display + settings.fields.dst.offset;
+    display = get_local_time(time);
     previous_display = display;
 
     switch(ui_state_current)
@@ -1330,6 +1328,19 @@ bool isDST(const time_t *time)
     }
     // Return DST status
     return dst;
+}
+
+time_t get_local_time(time_t utc)
+{
+    time_t local_time = utc;
+    local_time += settings.fields.tz.offset;
+    
+    if(isDST(&local_time))
+    {
+        local_time += settings.fields.dst.offset; 
+    }
+    
+    return local_time;
 }
 
 void __attribute__((__interrupt__,no_auto_psv)) _SPI2Interrupt(void)
