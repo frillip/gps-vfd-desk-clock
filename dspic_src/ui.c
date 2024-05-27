@@ -852,11 +852,13 @@ void ui_menu_long_press(void)
 
             case UI_MENU_STATE_DISPLAY_SET:
                 ui_menu_start_flash();
+                settings.fields.display.selected = modified.fields.display.selected;
                 ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET_SEL);
                 break;
 
                 case UI_MENU_STATE_DISPLAY_SET_SEL:
                     ui_menu_stop_flash();
+                    settings.fields.display.selected = modified.fields.display.selected;
                     ui_menu_change_state(UI_MENU_STATE_DISPLAY_SET);
                     break;
 
