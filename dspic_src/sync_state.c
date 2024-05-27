@@ -477,13 +477,16 @@ void sync_state_machine(void)
 #ifdef DEBUG_MESSAGES
                 printf("NO CLOCK!\r\n");
 #endif
-                if(no_clock_blink)
+                if(!ui_in_menu())
                 {
-                    ui_set_display_dashes();
-                }
-                else
-                {
-                    ui_set_display_off();
+                    if(no_clock_blink)
+                    {
+                        ui_set_display_dashes();
+                    }
+                    else
+                    {
+                        ui_set_display_off();
+                    }
                 }
                 no_clock_blink = !no_clock_blink;
                 state_new_oc = 0;

@@ -468,22 +468,27 @@ void ui_display_task(void)
     {
         if(ui_state_current==UI_DISPLAY_STATE_INIT || ui_state_current==UI_DISPLAY_STATE_DASHES)
         {
-            ui_state_current=UI_DISPLAY_STATE_CLOCK_HHMM;
+            ui_state_current=settings.fields.display.selected;
             display_local_time(utc);
             display_latch();
         }
     }
     if(ui_state_current!=settings.fields.display.selected)
     {
-        ui_display_timeout++;
+        if(utc_source!=CLOCK_SOURCE_NONE || ui_state_current==UI_DISPLAY_STATE_MENU)
+        {
+            ui_display_timeout++;
+        }
     }
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
         if(ui_state_current==UI_DISPLAY_STATE_MENU) eeprom_write();
-        ui_state_current=settings.fields.display.selected;
         ui_menu_change_state(UI_MENU_STATE_ROOT);
         ui_menu_stop_flash();
         memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
+        
+        if(utc_source==CLOCK_SOURCE_NONE) ui_set_display_dashes();
+        else ui_state_current=settings.fields.display.selected;
         update_display = 1;
         ui_display_timeout=0;
     }
@@ -682,14 +687,20 @@ void ui_menu_reset_flash(void)
     ui_menu_flash_off = 0;
 }
 
+bool ui_in_menu(void)
+{
+    return ui_state_current==UI_DISPLAY_STATE_MENU;
+}
+
 void ui_menu_long_press(void)
 {
     ui_menu_reset_flash();
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:
+            if(utc_source==CLOCK_SOURCE_NONE) ui_set_display_dashes();
+            else ui_state_current=settings.fields.display.selected;
             eeprom_write();
-            ui_state_current=settings.fields.display.selected;
             break;
             
         case UI_MENU_STATE_TZ:
@@ -925,7 +936,8 @@ void ui_menu_long_press(void)
                 break;
             
         case UI_MENU_STATE_EXIT:
-            ui_state_current=settings.fields.display.selected;
+            if(utc_source==CLOCK_SOURCE_NONE) ui_set_display_dashes();
+            else ui_state_current=settings.fields.display.selected;
             eeprom_write();
             ui_menu_change_state(UI_MENU_STATE_ROOT);
             break;
