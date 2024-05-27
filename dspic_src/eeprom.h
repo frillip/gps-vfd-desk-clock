@@ -20,11 +20,16 @@ extern "C" {
 #include "../common/enums.h"
 #include "tubes.h"
 #include "ui.h"
-
+    
+#include "mcc_generated_files/memory/flash.h"
+    
+#define EEPROM_HEADER_VALUE 0xC0FFEEEE
+    
 typedef union
 {
   struct __attribute__ ((packed)) _eeprom_data_struct
   {
+    uint32_t header;
     struct __attribute__ ((packed))
     {
         struct __attribute__ ((packed))
@@ -82,14 +87,19 @@ typedef union
             uint16_t padding: 13;
         } flags;
     } reset;
+    uint32_t checksum; // unused
   } fields;
-  uint8_t raw[sizeof(struct _eeprom_data_struct)];
+  uint16_t raw[sizeof(struct _eeprom_data_struct)];
 } EEPROM_DATA_STRUCT;
 
 
 void eeprom_init(void);
 void eeprom_read(void);
 void eeprom_write(void);
+bool eeprom_check_settings(void);
+void eeprom_reset_settings(void);
+void eeprom_print_settings(void);
+
 
 
 #ifdef	__cplusplus

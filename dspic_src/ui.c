@@ -479,10 +479,11 @@ void ui_display_task(void)
     }
     if(ui_display_timeout==UI_DISPLAY_TIMEOUT_COUNT)
     {
+        if(ui_state_current==UI_DISPLAY_STATE_MENU) eeprom_write();
         ui_state_current=settings.fields.display.selected;
         ui_menu_change_state(UI_MENU_STATE_ROOT);
         ui_menu_stop_flash();
-        memcpy(modified.raw, settings.raw, sizeof(settings.raw));
+        memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
         update_display = 1;
         ui_display_timeout=0;
     }
@@ -687,6 +688,7 @@ void ui_menu_long_press(void)
     switch(ui_menu_current)
     {
         case UI_MENU_STATE_ROOT:
+            eeprom_write();
             ui_state_current=settings.fields.display.selected;
             break;
             
@@ -893,7 +895,8 @@ void ui_menu_long_press(void)
                 case UI_MENU_STATE_RESET_SETTINGS_YN:
                     if(modified.fields.reset.flags.settings)
                     {
-                        eeprom_init();
+                        eeprom_reset_settings();
+                        eeprom_write();
                         modified.fields.reset.flags.settings = 0;
                     }
                     ui_menu_stop_flash();
@@ -909,7 +912,8 @@ void ui_menu_long_press(void)
                     if(modified.fields.reset.flags.all)
                     {
                         esp_tx_net(1);
-                        eeprom_init();
+                        eeprom_reset_settings();
+                        eeprom_write();
                         modified.fields.reset.flags.all = 0;
                     }
                     ui_menu_stop_flash();
@@ -922,6 +926,7 @@ void ui_menu_long_press(void)
             
         case UI_MENU_STATE_EXIT:
             ui_state_current=settings.fields.display.selected;
+            eeprom_write();
             ui_menu_change_state(UI_MENU_STATE_ROOT);
             break;
             
@@ -1315,6 +1320,10 @@ void ui_uart1_input(char c)
         case 0x61:
             display_brightness_set_auto();
             printf("BRI: AUTO\r\n");
+            break;
+            
+        case 0x53:
+            eeprom_print_settings();
             break;
 
         default:
