@@ -130,6 +130,7 @@ void display_ssmm(const time_t *time);
 void display_yyyy(const time_t *time);
 void display_mmdd(const time_t *time);
 void display_offset(int32_t offset);
+void display_alarm_offset(uint32_t offset);
 void display_mask_12h(void);
 void display_mask_hh(void);
 void display_mask_mm(void);

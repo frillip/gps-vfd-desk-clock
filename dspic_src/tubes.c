@@ -38,6 +38,8 @@ uint16_t spi2_dma_buffer[SPI2_DMA_BUFFER_LENGTH];
 extern EEPROM_DATA_STRUCT settings;
 extern EEPROM_DATA_STRUCT modified;
 
+extern UI_ALARM_STATE alarm;
+
 void spi2_dma_init(void)
 {
     // MSTEN Master; DISSDO disabled; PPRE 4:1; SPRE 2:1; MODE16 enabled; SMP Middle; DISSCK disabled; CKP Idle:High, Active:Low; CKE Idle to Active; SSEN disabled;
@@ -239,8 +241,8 @@ void display_temp(int32_t temp)
     // Add minus if negative
     if(temp_negative) driver_buffer |= START_SEPARATOR_LINE;
     
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
@@ -278,15 +280,15 @@ void display_count(int16_t count)
     
     if(count_negative) driver_buffer |= START_SEPARATOR_LINE;
     
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
 void display_hhmm(const time_t *time)
 {
-    if(settings.fields.display.flags.hour_format)
+    if(settings.fields.display.flags.hour_12_format)
     {
         display_hhmm_12(time);
     }
@@ -328,11 +330,8 @@ void display_hhmm_24(const time_t *time)
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
 
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
-    
-    // Show the left hand dot if button is pressed
-    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
 
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
@@ -373,11 +372,8 @@ void display_hhmm_12(const time_t *time)
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
 
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
-    
-    // Show the left hand dot if button is pressed
-    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
 
     display_send_buffer(driver_buffer); // Load buffer into the driver
     if(disp_hour<10) display_mask_12h();
@@ -406,11 +402,8 @@ void display_mmss(const time_t *time)
     {
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
-    
-    // Show the left hand dot if button is pressed
-    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
 
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
@@ -447,12 +440,9 @@ void display_ssmm(const time_t *time)
     {
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
     
-    // Show the left hand dot if button is pressed
-    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
-
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
@@ -481,11 +471,8 @@ void display_yyyy(const time_t *time)
     {
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
-    
-    // Show the left hand dot if button is pressed
-    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
 
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
@@ -515,11 +502,8 @@ void display_mmdd(const time_t *time)
     {
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
-    // Show the left hand dot if switch is closed
-    if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
-    
-    // Show the left hand dot if button is pressed
-    if(ui_button_state()) driver_buffer |= START_SEPARATOR_LINE;
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
 
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
@@ -554,11 +538,46 @@ void display_offset(int32_t offset)
     // Enable the minus if negative
     if(offset_negative) driver_buffer |= START_SEPARATOR_LINE;
     
-    // Show the left hand dot if switch is closed
-    // Don't do this actually
-    //if(ui_switch_state()) driver_buffer |= START_SEPARATOR_DOT;
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
+// Show a counter on the display
+void display_alarm_offset(uint32_t offset)
+{
+    uint16_t display_digits = 0;
+    bool pm_indicator = 0;
+
+    uint16_t hours = offset / 3600;
+    uint16_t minutes = (offset - (3600L * hours)) / 60;
+
+    if(settings.fields.display.flags.hour_12_format)
+    {
+        if(hours == 0) hours = 12;
+        else if(hours >= 12)
+        {
+            if(hours > 12)hours = hours - 12;
+            pm_indicator = 1;
+        }
+    }
+    
+    // Construct the counter in BCD
+    display_digits |= (hours / 10)<<12;
+    display_digits |= (hours%10)<<8;
+    display_digits |= (minutes / 10)<<4;
+    display_digits |= (minutes%10); // Break the counter down into individual digits
+    
+    // Generate the buffer content
+    uint64_t driver_buffer = display_generate_buffer(display_digits);
+    
+    // Enable the middle colon
+    driver_buffer |= MIDDLE_SEPARATOR_DOT;
+    driver_buffer |= MIDDLE_SEPARATOR_LINE;
+    
+    // Enable the dot if we're in 12 hour mode and it's PM
+    if(pm_indicator) driver_buffer |= START_SEPARATOR_DOT;
     
     display_send_buffer(driver_buffer); // Load buffer into the driver
+    if(settings.fields.display.flags.hour_12_format && hours<10) display_mask_12h();
 }
 
 void display_mask_12h(void)
@@ -614,17 +633,17 @@ void display_menu(void)
             break;
             
         case UI_MENU_STATE_ALARM_SET:
-            display_offset(settings.fields.alarm.offset);
+            display_alarm_offset(settings.fields.alarm.offset);
             break;
 
         case UI_MENU_STATE_ALARM_SET_HH:
             if(ui_menu_flash_off) display_mask_hh();
-            else display_offset(modified.fields.alarm.offset);
+            else display_alarm_offset(modified.fields.alarm.offset);
             break;
             
         case UI_MENU_STATE_ALARM_SET_MM:
             if(ui_menu_flash_off) display_mask_mm();
-            else display_offset(modified.fields.alarm.offset);
+            else display_alarm_offset(modified.fields.alarm.offset);
             break;
 
         default:
@@ -899,7 +918,7 @@ void display_menu_text(void)
             break;
 
         case UI_MENU_STATE_DISPLAY_FORMAT:
-            switch(settings.fields.display.flags.hour_format)
+            switch(settings.fields.display.flags.hour_12_format)
             {
                 case 0:
                     driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);
@@ -918,7 +937,7 @@ void display_menu_text(void)
             break;
 
         case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
-            switch(modified.fields.display.flags.hour_format)
+            switch(modified.fields.display.flags.hour_12_format)
             {
                 case 0:
                     driver_buffer |= (DIGIT_NONE << TUBE_4_OFFSET);

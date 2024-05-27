@@ -408,6 +408,19 @@ void ui_alarm_reset(void)
     alarm_time_arm = 0;
 }
 
+bool ui_alarm_check_state(void)
+{
+    if(settings.fields.alarm.flags.enabled)
+    {
+        if(alarm == ALARM_ARMED || alarm == ALARM_START)
+        {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
 void ui_alarm_sound(void)
 {
     if(alarm == ALARM_START)
@@ -843,13 +856,13 @@ void ui_menu_long_press(void)
 
             case UI_MENU_STATE_DISPLAY_FORMAT:
                 ui_menu_start_flash();
-                modified.fields.display.flags.hour_format = settings.fields.display.flags.hour_format;
+                modified.fields.display.flags.hour_12_format = settings.fields.display.flags.hour_12_format;
                 ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT_SEL);
                 break;
 
                 case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
                     ui_menu_stop_flash();
-                    settings.fields.display.flags.hour_format = modified.fields.display.flags.hour_format;
+                    settings.fields.display.flags.hour_12_format = modified.fields.display.flags.hour_12_format;
                     ui_menu_change_state(UI_MENU_STATE_DISPLAY_FORMAT);
                     break;
 
@@ -1070,7 +1083,7 @@ void ui_menu_short_press(void)
                 break;
                 
                 case UI_MENU_STATE_DISPLAY_FORMAT_SEL:
-                    modified.fields.display.flags.hour_format = !modified.fields.display.flags.hour_format;
+                    modified.fields.display.flags.hour_12_format = !modified.fields.display.flags.hour_12_format;
                     break;
             
             case UI_MENU_STATE_DISPLAY_SET:

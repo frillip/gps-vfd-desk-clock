@@ -65,7 +65,7 @@ typedef union
     {
         struct __attribute__ ((packed))
         {
-            bool hour_format : 1;
+            bool hour_12_format : 1;
             uint16_t padding: 15;
         } flags;
         UI_DISPLAY_STATE current : 8;

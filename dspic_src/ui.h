@@ -99,6 +99,7 @@ void ui_alarm_arm(void);
 void ui_alarm_disarm(void);
 void ui_alarm_stop(void);
 void ui_alarm_reset(void);
+bool ui_alarm_check_state(void);
 void ui_alarm_sound(void);
 void ui_alarm_generate_buffer(void);
 void ui_alarm_mute(void);
