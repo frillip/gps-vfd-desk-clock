@@ -76,7 +76,11 @@ void ui_button_task(void)
         {
             if(ui_button_counter==UI_BUTTON_LONG_PRESS_COUNT)
             {
-                ui_button_action=UI_BUTTON_STATE_LONG_PRESS;
+                if(alarm==ALARM_START) // Cancel alarm with a long press
+                {
+                    ui_alarm_stop();
+                }
+                else ui_button_action=UI_BUTTON_STATE_LONG_PRESS;
             }
             ui_button_counter++;
         }
