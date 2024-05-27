@@ -64,10 +64,8 @@ void eeprom_init()
     eeprom_read_flash();
     if(!eeprom_check_settings())
     {
-        printf("Invalid EEPROM header: %08lX\r\n", settings.fields.header);
         eeprom_print_settings();
         eeprom_reset_settings();
-        printf("New EEPROM header: %08lX\r\n", settings.fields.header);
     }
 }
 
@@ -88,7 +86,12 @@ void eeprom_write(void)
 bool eeprom_check_settings(void)
 {
     // To do: check settings after read, for now, just check the header value
-    return settings.fields.header == EEPROM_HEADER_VALUE;
+    bool check_passed = 1;
+
+    check_passed &= (settings.fields.header == EEPROM_HEADER_VALUE);
+    if(!check_passed) printf("Invalid EEPROM header: %08lX\r\n", settings.fields.header);
+    
+    return check_passed;
 }
 
 void eeprom_reset_settings(void)
