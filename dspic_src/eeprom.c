@@ -69,18 +69,19 @@ void eeprom_init()
         eeprom_reset_settings();
         printf("New EEPROM header: %08lX\r\n", settings.fields.header);
     }
-    memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
 }
 
 void eeprom_read(void)
 {
     eeprom_read_flash();
+    eeprom_clear_pending_changes();
     //eeprom_print_settings();
 }
 
 void eeprom_write(void)
 {
     eeprom_write_flash();
+    eeprom_clear_pending_changes();
     //eeprom_print_settings();
 }
 
@@ -117,6 +118,11 @@ void eeprom_reset_settings(void)
     eeprom_print_settings();
     
     eeprom_write();
+}
+
+void eeprom_clear_pending_changes(void)
+{
+    memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
 }
 
 void eeprom_print_settings(void)

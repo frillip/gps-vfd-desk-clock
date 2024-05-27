@@ -491,7 +491,7 @@ void ui_display_task(void)
         if(ui_state_current==UI_DISPLAY_STATE_MENU) eeprom_write();
         ui_menu_change_state(UI_MENU_STATE_ROOT);
         ui_menu_stop_flash();
-        memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
+        eeprom_clear_pending_changes();
         
         if(utc_source==CLOCK_SOURCE_NONE) ui_set_display_dashes();
         else ui_state_current=settings.fields.display.selected;
@@ -506,7 +506,7 @@ void ui_display_task(void)
         }
         else
         {
-            memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
+            eeprom_clear_pending_changes();
             ui_state_current=UI_DISPLAY_STATE_MENU;
         }
         ui_buzzer_button_beep(UI_BEEP_COUNT_BUTTON_LONG);

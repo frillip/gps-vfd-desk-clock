@@ -98,8 +98,8 @@ void eeprom_read(void);
 void eeprom_write(void);
 bool eeprom_check_settings(void);
 void eeprom_reset_settings(void);
+void eeprom_clear_pending_changes(void);
 void eeprom_print_settings(void);
-
 
 
 #ifdef	__cplusplus
