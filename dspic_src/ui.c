@@ -12,7 +12,6 @@ struct _buzzer_buffer_element buzzer_buffer[BUZZER_BUFFER_LENGTH];
 UI_ALARM_STATE alarm;
 time_t alarm_time_arm = 0;
 time_t alarm_time_start = 0;
-time_t alarm_last_run = 0;
 bool alarm_dst = 0;
 bool alarm_last_dst = 0;
 
@@ -254,12 +253,7 @@ void ui_alarm_task(void)
         uint32_t midnight_offset = (uint32_t)local_tm.tm_hour * 3600UL;
         midnight_offset += local_tm.tm_min * 60;
         midnight_offset += local_tm.tm_sec;
-        
-        if(alarm_last_run != local_time)
-        {
-            printf("\r\nALARM: %u %u %lu %lu\r\n",alarm, local_tm.tm_hour, midnight_offset, settings.fields.alarm.offset);
-        }
-        
+
         if(midnight_offset == 0)
         {
             ui_alarm_reset();
@@ -327,7 +321,6 @@ void ui_alarm_task(void)
             }
         }
         
-        alarm_last_run = local_time;
         alarm_last_dst = alarm_dst;
     }
     
@@ -362,48 +355,37 @@ void print_alarm_state(UI_ALARM_STATE state)
 
 void ui_alarm_arm(void)
 {
-    printf("ui_alarm_arm ");
     alarm = ALARM_ARMED;
-    print_alarm_state(alarm);
 }
 
 void ui_alarm_disarm(void)
 {
-    printf("ui_alarm_disarm ");
     alarm = ALARM_OFF;
-    print_alarm_state(alarm);
     alarm_time_start = 0;
     alarm_time_arm = 0;
 }
 
 void ui_alarm_stop(void)
 {
-    printf("ui_alarm_stop ");
     alarm = ALARM_FINISH;
-    print_alarm_state(alarm);
     alarm_time_start = 0;
     ui_alarm_mute();
 }
 
 void ui_alarm_reset(void)
 {
-    printf("ui_alarm_reset ");
     if(settings.fields.alarm.flags.enabled)
     {
         if(switch_state)
         {
             alarm = ALARM_ARMED;
-            print_alarm_state(alarm);
         }
         else
         {
             alarm = ALARM_OFF;
-            print_alarm_state(alarm);
         }
-        
     }
     else alarm = ALARM_DISABLED;
-    print_alarm_state(alarm);
     alarm_time_start = 0;
     alarm_time_arm = 0;
 }
@@ -432,9 +414,7 @@ void ui_alarm_sound(void)
     }
     else
     {
-        printf("ui_alarm_sound ");
         alarm = ALARM_START;
-        print_alarm_state(alarm);
         ui_alarm_generate_buffer();
     }
 }
