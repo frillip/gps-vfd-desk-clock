@@ -65,9 +65,9 @@ void eeprom_init()
     if(!eeprom_check_settings())
     {
         printf("Invalid EEPROM header: %08lX\r\n", settings.fields.header);
+        eeprom_print_settings();
         eeprom_reset_settings();
         printf("New EEPROM header: %08lX\r\n", settings.fields.header);
-        eeprom_write();
     }
     memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
 }
@@ -114,11 +114,13 @@ void eeprom_reset_settings(void)
     settings.fields.reset.flags.all = UI_RESET_ALL_DEFAULT;
     
     printf("Settings reset!\r\n");
+    eeprom_print_settings();
+    
+    eeprom_write();
 }
 
 void eeprom_print_settings(void)
 {
-    printf("\r\nCurrent settings:\r\n");
     printf("header: %08lX\r\n", settings.fields.header);
     printf("tz.flags.automatic: %u\r\n", settings.fields.tz.flags.automatic);
     printf("tz.offset: %li\r\n", settings.fields.tz.offset);
@@ -133,5 +135,4 @@ void eeprom_print_settings(void)
     printf("reset.flags.wifi: %u\r\n", settings.fields.reset.flags.wifi);
     printf("reset.flags.settings: %u\r\n", settings.fields.reset.flags.settings);
     printf("reset.flags.all: %u\r\n", settings.fields.reset.flags.all);
-    printf("\r\n");
 }

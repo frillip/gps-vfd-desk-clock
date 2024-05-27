@@ -468,6 +468,12 @@ void ui_display_task(void)
     {
         if(ui_state_current==UI_DISPLAY_STATE_INIT || ui_state_current==UI_DISPLAY_STATE_DASHES)
         {
+            if(settings.fields.display.selected==UI_DISPLAY_STATE_INIT || settings.fields.display.selected==UI_DISPLAY_STATE_DASHES )
+            {
+                // If we have either of these states something is wrong, so correct and save
+                settings.fields.display.selected = UI_DISPLAY_SELECTED_DEFAULT;
+                eeprom_reset_settings();
+            }
             ui_state_current=settings.fields.display.selected;
             display_local_time(utc);
             display_latch();
@@ -500,6 +506,7 @@ void ui_display_task(void)
         }
         else
         {
+            memcpy(modified.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT));
             ui_state_current=UI_DISPLAY_STATE_MENU;
         }
         ui_buzzer_button_beep(UI_BEEP_COUNT_BUTTON_LONG);
