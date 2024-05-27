@@ -91,6 +91,21 @@ bool eeprom_check_settings(void)
     check_passed &= (settings.fields.header == EEPROM_HEADER_VALUE);
     if(!check_passed) printf("Invalid EEPROM header: %08lX\r\n", settings.fields.header);
     
+    check_passed &= (settings.fields.tz.offset <= (UI_TZ_OFFSET_MAX + UI_TZ_OFFSET_FUDGE));
+    check_passed &= (settings.fields.tz.offset >= (UI_TZ_OFFSET_MIN - UI_TZ_OFFSET_FUDGE));
+    
+    check_passed &= (settings.fields.dst.offset <= UI_DST_OFFSET_MAX);
+    check_passed &= (settings.fields.dst.offset >= UI_DST_OFFSET_MIN);
+    
+    check_passed &= (settings.fields.dst.offset <= UI_DST_OFFSET_MAX);
+    check_passed &= (settings.fields.dst.offset >= UI_DST_OFFSET_MIN);
+    
+    check_passed &= (settings.fields.alarm.offset <= UI_ALARM_OFFSET_MAX);
+    check_passed &= (settings.fields.alarm.offset >= UI_ALARM_OFFSET_MIN);
+    
+    check_passed &= (settings.fields.display.selected >= UI_DISPLAY_STATE_CLOCK_HHMM);
+    check_passed &= (settings.fields.display.selected <= UI_DISPLAY_STATE_CLOCK_MMDD);
+    
     return check_passed;
 }
 
