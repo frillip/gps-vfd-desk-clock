@@ -106,6 +106,11 @@ bool eeprom_check_settings(void)
     check_passed &= (settings.fields.display.selected >= UI_DISPLAY_STATE_CLOCK_HHMM);
     check_passed &= (settings.fields.display.selected <= UI_DISPLAY_STATE_CLOCK_MMDD);
     
+    // These should always be 0 (DEFAULT))
+    check_passed &= (settings.fields.reset.flags.wifi == UI_RESET_WIFI_DEFAULT);
+    check_passed &= (settings.fields.reset.flags.settings == UI_RESET_SETTINGS_DEFAULT);
+    check_passed &= (settings.fields.reset.flags.all == UI_RESET_ALL_DEFAULT);
+    
     return check_passed;
 }
 
