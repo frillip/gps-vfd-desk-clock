@@ -837,6 +837,7 @@ void ui_menu_long_press(void)
                     ui_menu_stop_flash();
                     settings.fields.alarm.offset = modified.fields.alarm.offset;
                     eeprom_write();
+                    ui_alarm_reset();
                     ui_menu_change_state(UI_MENU_STATE_ALARM_SET);
                     break;
                     
