@@ -43,7 +43,7 @@ extern "C" {
     
 #define UI_ALARM_BEEP_LENGTH    5
 #define UI_ALARM_BEEP_GAP       5
-#define UI_ALARM_PAUSE_GAP     15
+#define UI_ALARM_PAUSE_GAP     25
 #define UI_ALARM_GROUP_SIZE     4
 #define UI_ALARM_DURATION     120
 #define UI_ALARM_MUTE_LENGTH    5
