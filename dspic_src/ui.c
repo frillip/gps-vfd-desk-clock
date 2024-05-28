@@ -323,6 +323,11 @@ void ui_alarm_task(void)
             {
                 ui_alarm_disarm();
             }
+            else
+            {
+                ui_alarm_arm();
+                alarm_time_arm = local_time;
+            }
         }
         
         alarm_last_dst = alarm_dst;
