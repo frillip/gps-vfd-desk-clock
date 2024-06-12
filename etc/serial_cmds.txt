@@ -27,3 +27,5 @@ pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
 pic-clear-all = Clear all settings
 pic-save = Save settings
+
+\n = print available data from PIC
