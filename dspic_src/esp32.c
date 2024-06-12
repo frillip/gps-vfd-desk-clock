@@ -423,7 +423,7 @@ void esp_process_display(void)
 
 void esp_process_user(void)
 {
-    char user_cmd = esp_user_buffer.fields.c;
+    char user_cmd = esp_user_buffer.fields.cmd;
     ui_uart1_input(user_cmd);
     memset(esp_user_buffer.raw, 0, sizeof(esp_user_buffer));
     esp_user_waiting = 0;

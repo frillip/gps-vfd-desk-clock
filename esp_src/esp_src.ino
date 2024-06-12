@@ -8,6 +8,12 @@
 #include <esp_task_wdt.h>
 #define WDT_TIMEOUT 15
 
+#include "enums.h"
+#include "serial_proto.h"
+void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg);
+// ^ ugly, terrible coding practice, this whole thing needs restructuring and refactoring
+// into a set of *.cpp and *.h files rather than multiple *.ino files
+
 WiFiManager wm;
 //ESP32Time rtc;
 
@@ -384,7 +390,8 @@ void loop()
       print_bme_data();
       print_sync_state_machine();
     }
-    pic_uart_tx_userdata(c);
+    USER_CMD cmd = static_cast<USER_CMD>(c);
+    pic_uart_tx_userdata(cmd, 0);
   }
 
   if(UARTPIC.available())

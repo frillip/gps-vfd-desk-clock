@@ -962,7 +962,7 @@ void pic_uart_tx_displaydata()
   size_t bytesSent = UARTPIC.write(display_data_tx.raw, sizeof(display_data_tx));
 }
 
-void pic_uart_tx_userdata(char c)
+void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg)
 {
   SERIAL_PROTO_DATA_ESP_USER user_data_tx = {};
   memset(user_data_tx.raw, 0, sizeof(user_data_tx));
@@ -971,7 +971,8 @@ void pic_uart_tx_userdata(char c)
   user_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   user_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_USERDATA;
 
-  user_data_tx.fields.c = c;
+  user_data_tx.fields.cmd = cmd;
+  user_data_tx.fields.arg = arg;
 
   size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx));
 }
