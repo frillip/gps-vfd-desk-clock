@@ -2,6 +2,7 @@ esp-reset = Reset the ESP
 esp-set-interval [n] = Set NTP interval to [n] (min 300, max 43200)
 esp-set-server [s] = Set the NTP server to [s]
 esp-resync = Force NTP sync
+esp-wifi-show = Print WiFi info
 esp-wifi-connect = Force WiFi connect
 esp-wifi-disconnect = Force WiFi disconnect
 esp-wifi-ssid [s] = Set the saved SSID to [s]
@@ -11,10 +12,11 @@ esp-wifi-mask [s] = Set ip mask to [s], only valid with static IP
 esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
 esp-wifi-clear = Clear saved WiFi config
 esp-wifi-setup = Enable WiFi setup AP mode
-esp-print-time [b] = Enable/disable printing of time each second based on boolean [b]
+
 esp-clear-all = Clear all settings
 esp-save = Save settings
 
+pic-info = Show info directly from PIC
 pic-reset = Resets the PIC
 pic-set-rtc [s] = Set the PIC RTC to [s] (ISO8601 format)
 pic-set-tz-offset [n] = Set timezone offset to [n] in seconds
@@ -28,4 +30,4 @@ pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=
 pic-clear-all = Clear all settings
 pic-save = Save settings
 
-\n = print available data from PIC
+\n = print available data
