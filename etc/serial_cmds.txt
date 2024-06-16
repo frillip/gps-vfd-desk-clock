@@ -30,4 +30,6 @@ pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=
 pic-clear-all = Clear all settings
 pic-save = Save settings
 
+reset = Reset both
+
 \n = print available data
