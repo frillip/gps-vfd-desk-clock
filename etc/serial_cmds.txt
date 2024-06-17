@@ -7,6 +7,7 @@ esp-wifi-connect = Force WiFi connect
 esp-wifi-disconnect = Force WiFi disconnect
 esp-wifi-ssid [s] = Set the saved SSID to [s]
 esp-wifi-pass [s] = Set the saved passphrase to [s]
+esp-wifi-dhcp [b] = Enable/disable DHCP
 esp-wifi-ip [s] = Set static IP to [s], unless [s] is 'dhcp' or 'auto'
 esp-wifi-mask [s] = Set ip mask to [s], only valid with static IP
 esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
@@ -27,9 +28,14 @@ pic-set-alarm-enabled [b] = Enable/disable alarm
 pic-set-alarm [n] = Set PIC alarm to [n] seconds past midnight
 pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
+pic-set-brightness-auto [b] = Set display brightness to auto
+pic-set-brightness [n] = Set display brightness to n / 4000
 pic-clear-all = Clear all settings
 pic-save = Save settings
 
-reset = Reset both
+rst-all = Reset both
+rst-pic = Same as pic-reset
+rst-esp = Same as esp-reset
+
 
 \n = print available data
