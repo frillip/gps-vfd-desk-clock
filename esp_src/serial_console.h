@@ -19,11 +19,15 @@
 #define USER_CMD_STAGE_1_RST_STRING "rst-"
 #define USER_CMD_STAGE_1_LENGTH 4
 
+#define USER_CMD_ESP_WIFI_PREFIX_STRING "wifi-"
+#define USER_CMD_ESP_WIFI_PREFIX_LENGTH 5
+
 #define USER_CMD_ESP_RESET_STRING "esp-reset"
 #define USER_CMD_ESP_SET_INTERVAL_STRING "esp-set-interval"
 #define USER_CMD_ESP_SET_SERVER_STRING "esp-set-server"
 #define USER_CMD_ESP_RESYNC_STRING "esp-resync"
-#define USER_CMD_ESP_WIFI_INFO_STRING "esp-wifi-show"
+#define USER_CMD_ESP_WIFI_INFO_STRING "esp-wifi-info"
+#define USER_CMD_ESP_WIFI_SHOW_STRING "esp-wifi-show"
 #define USER_CMD_ESP_WIFI_CONNECT_STRING "esp-wifi-connect"
 #define USER_CMD_ESP_WIFI_DISCONNECT_STRING "esp-wifi-disconnect"
 #define USER_CMD_ESP_WIFI_SSID_STRING "esp-wifi-ssid"

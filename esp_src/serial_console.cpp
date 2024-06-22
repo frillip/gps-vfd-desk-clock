@@ -65,11 +65,11 @@ void serial_console_task(void)
       switch(cmd_type)
       {
         case USER_CMD_TYPE_ESP:
-
+          exec = serial_console_check_2_esp();
           break;
 
         case USER_CMD_TYPE_PIC:
-
+          exec = serial_console_check_2_pic();
           break;
 
         case USER_CMD_TYPE_RST:
@@ -108,136 +108,302 @@ void serial_console_task(void)
   }
 }
 
-/*
-#define USER_CMD_STAGE_1_ESP_STRING "esp-"
-#define USER_CMD_STAGE_1_PIC_STRING "pic-"
-#define USER_CMD_STAGE_1_RST_STRING "rst-"
-#define USER_CMD_STAGE_1_LENGTH 4
-
-#define USER_CMD_ESP_RESET_STRING "esp-reset"
-#define USER_CMD_ESP_SET_INTERVAL_STRING "esp-set-interval"
-#define USER_CMD_ESP_SET_SERVER_STRING "esp-set-server"
-#define USER_CMD_ESP_RESYNC_STRING "esp-resync"
-#define USER_CMD_ESP_WIFI_INFO "esp-wifi-show"
-#define USER_CMD_ESP_WIFI_CONNECT_STRING "esp-wifi-connect"
-#define USER_CMD_ESP_WIFI_DISCONNECT_STRING "esp-wifi-disconnect"
-#define USER_CMD_ESP_WIFI_SSID_STRING "esp-wifi-ssid"
-#define USER_CMD_ESP_WIFI_PASS_STRING "esp-wifi-pass"
-#define USER_CMD_ESP_WIFI_DHCP_STRING "esp-wifi-dhcp"
-#define USER_CMD_ESP_WIFI_IP_STRING "esp-wifi-ip"
-#define USER_CMD_ESP_WIFI_MASK_STRING "esp-wifi-mask"
-#define USER_CMD_ESP_WIFI_GATEWAY_STRING "esp-wifi-gateway"
-#define USER_CMD_ESP_WIFI_CLEAR_STRING "esp-wifi-clear"
-#define USER_CMD_ESP_WIFI_SETUP_STRING "esp-wifi-setup"
-#define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
-#define USER_CMD_ESP_SAVE_STRING "esp-save"
-#define USER_CMD_PIC_INFO_STRING "pic-info"
-#define USER_CMD_PIC_RESET_STRING "pic-reset"
-#define USER_CMD_PIC_SET_RTC_STRING "pic-set-rtc"
-#define USER_CMD_PIC_SET_TZ_OFFSET_STRING "pic-set-tz-offset"
-#define USER_CMD_PIC_SET_DST_OFFSET_STRING "pic-set-dst-offset"
-#define USER_CMD_PIC_SET_DST_AUTO_STRING "pic-set-dst-auto"
-#define USER_CMD_PIC_SET_DST_ACTIVE_STRING "pic-set-dst-active"
-#define USER_CMD_PIC_SET_ALARM_ENABLED_STRING "pic-set-alarm-enabled"
-#define USER_CMD_PIC_SET_ALARM_STRING "pic-set-alarm"
-#define USER_CMD_PIC_SET_BEEPS_STRING "pic-set-beeps"
-#define USER_CMD_PIC_SET_DISPLAY_STRING "pic-set-display"
-#define USER_CMD_PIC_CLEAR_ALL_STRING "pic-clear-all"
-#define USER_CMD_PIC_SAVE_STRING "pic-save"
-#define USER_CMD_RESET_ALL_STRING "rst-all"
-#define USER_CMD_RESET_PIC_STRING "rst-pic"
-#define USER_CMD_RESET_ESP_STRING "rst-esp"
-*/
 
 USER_CMD_TYPE serial_console_check_1(void)
 {
   if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_ESP_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
   {
-    Serial.println("ESP");
     return USER_CMD_TYPE_ESP;
   }
   if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_PIC_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
   {
-    Serial.println("PIC");
     return USER_CMD_TYPE_PIC;
   }
   if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_RST_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
   {
-    Serial.print("RST");
     return USER_CMD_TYPE_RST;
   }
-  Serial.println("NONE");
   return USER_CMD_TYPE_NONE;
 }
 
+
 USER_CMD serial_console_check_2_esp(void)
 {
+  // Check if chars 5-10 are "wifi-"
+  if(strncmp(user_cmd_buf + USER_CMD_STAGE_1_LENGTH, USER_CMD_ESP_WIFI_PREFIX_STRING, USER_CMD_ESP_WIFI_PREFIX_LENGTH) == 0)
+  {
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_INFO_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_INFO_STRING);
+      return USER_CMD_ESP_WIFI_INFO;
+    }
 
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_SHOW_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_SHOW_STRING);
+      return USER_CMD_ESP_WIFI_SHOW;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_CONNECT_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_CONNECT_STRING);
+      return USER_CMD_ESP_WIFI_CONNECT;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_DISCONNECT_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_DISCONNECT_STRING);
+      return USER_CMD_ESP_WIFI_DISCONNECT;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_SSID_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_SSID_STRING);
+      return USER_CMD_ESP_WIFI_SSID;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_PASS_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_PASS_STRING);
+      return USER_CMD_ESP_WIFI_PASS;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_DHCP_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_DHCP_STRING);
+      return USER_CMD_ESP_WIFI_DHCP;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_IP_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_IP_STRING);
+      return USER_CMD_ESP_WIFI_IP;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_MASK_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_MASK_STRING);
+      return USER_CMD_ESP_WIFI_MASK;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_GATEWAY_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_GATEWAY_STRING);
+      return USER_CMD_ESP_WIFI_GATEWAY;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_CLEAR_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_CLEAR_STRING);
+      return USER_CMD_ESP_WIFI_CLEAR;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_SETUP_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_WIFI_SETUP_STRING);
+      return USER_CMD_ESP_WIFI_SETUP;
+    }
+  }
+  else
+  {
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_RESET_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_RESET_STRING);
+      return USER_CMD_ESP_RESET;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_SET_INTERVAL_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_SET_INTERVAL_STRING);
+      return USER_CMD_ESP_SET_INTERVAL;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_SET_SERVER_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_SET_SERVER_STRING);
+      return USER_CMD_ESP_SET_SERVER;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_RESYNC_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_RESYNC_STRING);
+      return USER_CMD_ESP_RESYNC;
+    }
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_CLEAR_ALL_STRING);
+      return USER_CMD_ESP_CLEAR_ALL;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_ESP_SAVE_STRING) == 0)
+    {
+      Serial.println(USER_CMD_ESP_SAVE_STRING);
+      return USER_CMD_ESP_SAVE;
+    }
+  }
+  return USER_CMD_NONE;
 }
+
 
 USER_CMD serial_console_check_2_pic(void)
 {
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_INFO_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_INFO_STRING);
+      return USER_CMD_PIC_INFO;
+    }
 
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_RESET_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_RESET_STRING);
+      return USER_CMD_PIC_RESET;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_RTC_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_RTC_STRING);
+      return USER_CMD_PIC_SET_RTC;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_TZ_OFFSET_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_TZ_OFFSET_STRING);
+      return USER_CMD_PIC_SET_TZ_OFFSET;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DST_OFFSET_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_DST_OFFSET_STRING);
+      return USER_CMD_PIC_SET_DST_OFFSET;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DST_AUTO_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_DST_AUTO_STRING);
+      return USER_CMD_PIC_SET_DST_AUTO;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DST_ACTIVE_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_DST_ACTIVE_STRING);
+      return USER_CMD_PIC_SET_DST_ACTIVE;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_ALARM_ENABLED_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_ALARM_ENABLED_STRING);
+      return USER_CMD_PIC_SET_ALARM_ENABLED;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_ALARM_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_ALARM_STRING);
+      return USER_CMD_PIC_SET_ALARM;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BEEPS_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_BEEPS_STRING);
+      return USER_CMD_PIC_SET_BEEPS;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DISPLAY_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_DISPLAY_STRING);
+      return USER_CMD_PIC_SET_DISPLAY;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING);
+      return USER_CMD_PIC_SET_BRIGHTNESS_AUTO;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BRIGHTNESS_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SET_BRIGHTNESS_STRING);
+      return USER_CMD_PIC_SET_BRIGHTNESS;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_CLEAR_ALL_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_CLEAR_ALL_STRING);
+      return USER_CMD_PIC_CLEAR_ALL;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SAVE_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_SAVE_STRING);
+      return USER_CMD_PIC_SAVE;
+    }
+  return USER_CMD_NONE;
 }
+
 
 USER_CMD serial_console_check_2_rst(void)
 {
   if(strcmp(user_cmd_buf, USER_CMD_RESET_ALL_STRING) == 0)
   {
-    Serial.println(" ALL");
+    Serial.println(USER_CMD_RESET_ALL_STRING);
     return USER_CMD_RESET_ALL;
   }
-  else if(strcmp(user_cmd_buf, USER_CMD_RESET_ESP_STRING) == 0)
+  if(strcmp(user_cmd_buf, USER_CMD_RESET_ESP_STRING) == 0)
   {
-    Serial.println(" ESP");
+    Serial.println(USER_CMD_RESET_ESP_STRING);
     return USER_CMD_ESP_RESET;
   }
-  else if(strcmp(user_cmd_buf, USER_CMD_RESET_PIC_STRING) == 0)
+  if(strcmp(user_cmd_buf, USER_CMD_RESET_PIC_STRING) == 0)
   {
-    Serial.println(" PIC");
+    Serial.println(USER_CMD_RESET_PIC_STRING);
     return USER_CMD_PIC_RESET;
   }
-  Serial.println(" NONE");
   return USER_CMD_NONE;
 }
 
-/*
-typedef enum
+
+void sercon_print_wifi(void)
 {
-	USER_CMD_NONE = 0,
-	USER_CMD_ESP_RESET,
-	USER_CMD_ESP_SET_INTERVAL,
-	USER_CMD_ESP_SET_SERVER,
-	USER_CMD_ESP_RESYNC,
-	USER_CMD_ESP_WIFI_INFO,
-	USER_CMD_ESP_WIFI_CONNECT,
-	USER_CMD_ESP_WIFI_DISCONNECT,
-	USER_CMD_ESP_WIFI_SSID,
-	USER_CMD_ESP_WIFI_PASS,
-	USER_CMD_ESP_WIFI_DHCP,
-	USER_CMD_ESP_WIFI_IP,
-	USER_CMD_ESP_WIFI_MASK,
-	USER_CMD_ESP_WIFI_GATEWAY,
-	USER_CMD_ESP_WIFI_CLEAR,
-	USER_CMD_ESP_WIFI_SETUP,
-	USER_CMD_ESP_CLEAR_ALL,
-	USER_CMD_ESP_SAVE,
-	USER_CMD_PIC_INFO,
-	USER_CMD_PIC_RESET,
-	USER_CMD_PIC_SET_RTC,
-	USER_CMD_PIC_SET_TZ_OFFSET,
-	USER_CMD_PIC_SET_DST_OFFSET,
-	USER_CMD_PIC_SET_DST_AUTO,
-	USER_CMD_PIC_SET_DST_ACTIVE,
-	USER_CMD_PIC_SET_ALARM_ENABLED,
-	USER_CMD_PIC_SET_ALARM,
-	USER_CMD_PIC_SET_BEEPS,
-	USER_CMD_PIC_SET_DISPLAY,
-	USER_CMD_PIC_CLEAR_ALL,
-	USER_CMD_PIC_SAVE,
-	USER_CMD_RESET_ALL,
-} USER_CMD;
-*/
+  wifi_config_t cachedConfig;
+  esp_err_t configResult = esp_wifi_get_config( (wifi_interface_t)ESP_IF_WIFI_STA, &cachedConfig );
+      
+  if( configResult == ESP_OK )
+  {
+      Serial.printf("SSID: %s, PSK: %s", cachedConfig.ap.ssid, cachedConfig.ap.password );
+  }
+  else
+  {
+      Serial.printf( "Nope; esp_wifi_get_config returned %i", configResult );
+  }
+  Serial.println();
+}
+
+void sercon_print_ssids(void)
+{
+  Serial.println("Scan start");
+  // WiFi.scanNetworks will return the number of networks found
+  int n = WiFi.scanNetworks();
+  Serial.println("Scan done");
+  if (n == 0)
+  {
+    Serial.println("No networks found");
+  } else
+  {
+    Serial.print(n);
+    Serial.println(" networks found");
+    for (int i = 0; i < n; ++i)
+    {
+      // Print SSID and RSSI for each network found
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(")");
+      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+    }
+  }
+  Serial.println("");
+}
 
 void serial_console_exec(USER_CMD cmd)
 {
@@ -263,7 +429,11 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_WIFI_INFO:
-      
+      sercon_print_wifi();
+      break;
+
+    case USER_CMD_ESP_WIFI_SHOW:
+      sercon_print_ssids();
       break;
 
     case USER_CMD_ESP_WIFI_CONNECT:
@@ -315,7 +485,7 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_INFO:
-      serial_console_exec_char(0x0A);
+      serial_console_exec_char(0x0D);
       break;
 
     case USER_CMD_PIC_RESET:
@@ -381,6 +551,7 @@ void serial_console_exec(USER_CMD cmd)
   }
 }
 
+
 void serial_console_exec_char(char c)
 {
   if(c==0x45) ESP.restart(); // Reset ESP on 'E'
@@ -414,6 +585,7 @@ void serial_console_exec_char(char c)
   USER_CMD cmd = static_cast<USER_CMD>(c);
   pic_uart_tx_userdata(cmd, 0);
 }
+
 
 uint32_t local_print_millis = 0;
 
