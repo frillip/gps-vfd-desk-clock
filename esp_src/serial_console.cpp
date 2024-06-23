@@ -59,7 +59,10 @@ void serial_console_task(void)
       Serial.println(user_cmd_buf);
       Serial.print("ARG: ");
       Serial.println(user_arg_buf);
-      if(console_buffer_offset==0 && last_rx_char!=0x0A) serial_console_exec_char(0x5A);
+      if(console_buffer_offset==0 && last_rx_char!=0x0A)
+      {
+        serial_console_print_info();
+      }
 
       cmd_type = serial_console_check_1();
       switch(cmd_type)
@@ -77,7 +80,7 @@ void serial_console_task(void)
           break;
 
         case USER_CMD_TYPE_NONE:
-          if(console_buffer_offset==1) serial_console_exec_char(user_cmd_buf[0]);
+          if(console_buffer_offset==1) serial_console_print_info();
           break;
       }
 
@@ -253,6 +256,12 @@ USER_CMD serial_console_check_2_pic(void)
       return USER_CMD_PIC_INFO;
     }
 
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_RESYNC_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_RESYNC_STRING);
+      return USER_CMD_PIC_RESYNC;
+    }
+
     if(strcmp(user_cmd_buf, USER_CMD_PIC_RESET_STRING) == 0)
     {
       Serial.println(USER_CMD_PIC_RESET_STRING);
@@ -323,6 +332,12 @@ USER_CMD serial_console_check_2_pic(void)
     {
       Serial.println(USER_CMD_PIC_SET_BRIGHTNESS_STRING);
       return USER_CMD_PIC_SET_BRIGHTNESS;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_EEPROM_SHOW_STRING) == 0)
+    {
+      Serial.println(USER_CMD_PIC_EEPROM_SHOW_STRING);
+      return USER_CMD_PIC_EEPROM_SHOW;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_CLEAR_ALL_STRING) == 0)
@@ -413,7 +428,8 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_RESET:
-      serial_console_exec_char(0x45);
+      Serial.println("ESP resetting");
+      ESP.restart(); // And reset
       break;
 
     case USER_CMD_ESP_SET_INTERVAL:
@@ -425,7 +441,8 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_RESYNC:
-      
+      Serial.println("Manual NTP resync");
+      updateNTP();
       break;
 
     case USER_CMD_ESP_WIFI_INFO:
@@ -437,11 +454,13 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_WIFI_CONNECT:
-      
+      Serial.println("ESP reconnecting to WiFi");
+      WiFi.reconnect();
       break;
 
     case USER_CMD_ESP_WIFI_DISCONNECT:
-      
+      Serial.println("ESP disconnecting from WiFi");
+      WiFi.disconnect();
       break;
 
     case USER_CMD_ESP_WIFI_SSID:
@@ -469,15 +488,30 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_WIFI_CLEAR:
-      serial_console_exec_char(0x57);
+      {
+        extern WiFiManager wm;
+        Serial.println("ESP clearing WiFi config");
+        wm.resetSettings(); // Delete WiFi credentials
+        ESP.restart(); // And reset
+      }
       break;
 
     case USER_CMD_ESP_WIFI_SETUP:
-      serial_console_exec_char(0x57);
+      {
+        extern WiFiManager wm;
+        Serial.println("ESP clearing WiFi config");
+        wm.resetSettings(); // Delete WiFi credentials
+        ESP.restart(); // And reset
+      }
       break;
 
     case USER_CMD_ESP_CLEAR_ALL:
-      
+      {
+        extern WiFiManager wm;
+        Serial.println("ESP clearing WiFi config");
+        wm.resetSettings(); // Delete WiFi credentials
+        ESP.restart(); // And reset
+      }
       break;
 
     case USER_CMD_ESP_SAVE:
@@ -485,11 +519,15 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_INFO:
-      serial_console_exec_char(0x0D);
+      pic_uart_tx_userdata(cmd, 0);
+      break;
+
+    case USER_CMD_PIC_RESYNC:
+      pic_uart_tx_userdata(cmd, 0);
       break;
 
     case USER_CMD_PIC_RESET:
-      serial_console_exec_char(0x52);
+      pic_uart_tx_userdata(cmd, 0);
       break;
 
     case USER_CMD_PIC_SET_RTC:
@@ -529,15 +567,19 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_BRIGHTNESS_AUTO:
-      
+      pic_uart_tx_userdata(cmd, 0);
       break;
 
     case USER_CMD_PIC_SET_BRIGHTNESS:
       
       break;
 
+    case USER_CMD_PIC_EEPROM_SHOW:
+      pic_uart_tx_userdata(cmd, 0);
+      break;
+
     case USER_CMD_PIC_CLEAR_ALL:
-      
+      pic_uart_tx_userdata(cmd, 0);
       break;
 
     case USER_CMD_PIC_SAVE:
@@ -545,45 +587,33 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_RESET_ALL:
-      serial_console_exec_char(0x52);
-      serial_console_exec_char(0x45);
+      pic_uart_tx_userdata(USER_CMD_PIC_RESET, 0);
+      ESP.restart();
       break;
   }
 }
 
 
-void serial_console_exec_char(char c)
+void serial_console_print_info(void)
 {
-  if(c==0x45) ESP.restart(); // Reset ESP on 'E'
-  else if(c==0x57) // on 'W'...
+  Serial.println("");
+  print_pic_time();
+  
+  if(gnss_is_detected() && timeStatus() != timeNotSet)
   {
-    extern WiFiManager wm;
-    wm.resetSettings(); // Delete WiFi credentials
-    ESP.restart(); // And reset
+    print_gnss_pps_offset();
   }
-  else if(c==0x5A) // on 'Z'
+  if(pic_is_detected() && timeStatus() != timeNotSet)
   {
-    Serial.println("");
-    print_pic_time();
-    
-    if(gnss_is_detected() && timeStatus() != timeNotSet)
-    {
-      print_gnss_pps_offset();
-    }
-    if(pic_is_detected() && timeStatus() != timeNotSet)
-    {
-      print_pic_pps_offset();
-    }
-    
-    print_offset_data();
-    print_gnss_data();
-    pic_print_rtc();
-    print_veml_data();
-    print_bme_data();
-    print_sync_state_machine();
+    print_pic_pps_offset();
   }
-  USER_CMD cmd = static_cast<USER_CMD>(c);
-  pic_uart_tx_userdata(cmd, 0);
+  
+  print_offset_data();
+  print_gnss_data();
+  pic_print_rtc();
+  print_veml_data();
+  print_bme_data();
+  print_sync_state_machine();
 }
 
 

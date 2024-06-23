@@ -41,6 +41,7 @@
 #define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
 #define USER_CMD_ESP_SAVE_STRING "esp-save"
 #define USER_CMD_PIC_INFO_STRING "pic-info"
+#define USER_CMD_PIC_RESYNC_STRING "pic-resync"
 #define USER_CMD_PIC_RESET_STRING "pic-reset"
 #define USER_CMD_PIC_SET_RTC_STRING "pic-set-rtc"
 #define USER_CMD_PIC_SET_TZ_OFFSET_STRING "pic-set-tz-offset"
@@ -53,6 +54,7 @@
 #define USER_CMD_PIC_SET_DISPLAY_STRING "pic-set-display"
 #define USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING "pic-set-brightness-auto"
 #define USER_CMD_PIC_SET_BRIGHTNESS_STRING "pic-set-brightness"
+#define USER_CMD_PIC_EEPROM_SHOW_STRING "pic-eeprom-show"
 #define USER_CMD_PIC_CLEAR_ALL_STRING "pic-clear-all"
 #define USER_CMD_PIC_SAVE_STRING "pic-save"
 #define USER_CMD_RESET_ALL_STRING "rst-all"
@@ -70,7 +72,7 @@ USER_CMD serial_console_check_2_esp(void);
 USER_CMD serial_console_check_2_pic(void);
 USER_CMD serial_console_check_2_rst(void);
 void serial_console_exec(USER_CMD cmd);
-void serial_console_exec_char(char c);
+void serial_console_print_info(void);
 
 void serial_console_second_changed(uint32_t millis);
 bool serial_console_print_local_available(void);

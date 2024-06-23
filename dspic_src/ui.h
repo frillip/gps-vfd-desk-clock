@@ -133,7 +133,7 @@ void ui_alarm_offset_incr_hh(void);
 void ui_alarm_offset_incr_mm(void);
 
 void pic_reset(void);
-void ui_uart1_input(char c);
+void ui_user_cmd(USER_CMD cmd, uint32_t arg);
 void ui_print_iso8601_string(time_t iso);
 void ui_print_iso8601_string_local(time_t utc);
 void ui_print_clear_window(void);

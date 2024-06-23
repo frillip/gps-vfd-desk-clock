@@ -1279,12 +1279,12 @@ void pic_reset(void)
 }
 
 
-void ui_uart1_input(char c)
+void ui_user_cmd(USER_CMD cmd, uint32_t arg)
 {
-    switch (c)
+    switch (cmd)
     {
         // print some data if enter has been pressed
-        case 0x0d:
+        case USER_CMD_PIC_INFO:
             if(!disable_manual_print)
             {
                 print_data = 1;
@@ -1294,16 +1294,18 @@ void ui_uart1_input(char c)
             break;
 
         // Press 'r' for manual resync
-        case 0x72: 
+        case USER_CMD_PIC_RESYNC: 
             if(pic_pps_manual_resync_available())
             {
-                printf("\r\nManual resync\r\n");
+                printf("\r\nPIC manual resync\r\n");
                 sync_state_machine_set_state(SYNC_NOSYNC_MANUAL);
             }
             break;
 
         // Reset the entire device if we see 'R'
-        case 0x52:
+        case USER_CMD_PIC_RESET:
+            printf("PIC resetting\r\n");
+            DELAY_microseconds(10000); // Let the serial data send first!
             pic_reset();
             break; // Pointless, but good practise I guess
 
@@ -1350,13 +1352,19 @@ void ui_uart1_input(char c)
             break;
             
         // Auto brightness down on 'a'
-        case 0x61:
+        case USER_CMD_PIC_SET_BRIGHTNESS_AUTO:
             display_brightness_set_auto();
-            printf("BRI: AUTO\r\n");
+            printf("Display brightness auto\r\n");
             break;
             
-        case 0x53:
+        case USER_CMD_PIC_EEPROM_SHOW:
+            printf("PIC EEPROM settings:\r\n");
             eeprom_print_settings();
+            break;
+            
+        case USER_CMD_PIC_CLEAR_ALL:
+            printf("PIC clear all EEPROM settings\r\n");
+            eeprom_reset_settings();
             break;
 
         default:

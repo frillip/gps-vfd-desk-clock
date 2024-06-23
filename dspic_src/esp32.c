@@ -423,8 +423,9 @@ void esp_process_display(void)
 
 void esp_process_user(void)
 {
-    char user_cmd = esp_user_buffer.fields.cmd;
-    ui_uart1_input(user_cmd);
+    USER_CMD user_cmd = esp_user_buffer.fields.cmd;
+    uint32_t user_arg = esp_user_buffer.fields.arg;
+    ui_user_cmd(user_cmd, user_arg);
     memset(esp_user_buffer.raw, 0, sizeof(esp_user_buffer));
     esp_user_waiting = 0;
 }
