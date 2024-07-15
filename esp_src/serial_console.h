@@ -17,6 +17,7 @@
 #define USER_CMD_STAGE_1_ESP_STRING "esp-"
 #define USER_CMD_STAGE_1_PIC_STRING "pic-"
 #define USER_CMD_STAGE_1_RST_STRING "rst-"
+#define USER_CMD_STAGE_1_HELP_STRING "help"
 #define USER_CMD_STAGE_1_LENGTH 4
 
 #define USER_CMD_ESP_WIFI_PREFIX_STRING "wifi-"
@@ -60,6 +61,7 @@
 #define USER_CMD_RESET_ALL_STRING "rst-all"
 #define USER_CMD_RESET_ESP_STRING "rst-esp"
 #define USER_CMD_RESET_PIC_STRING "rst-pic"
+#define USER_CMD_HELP_STRING "help"
 
 #define DEBUG_UART  0
 #define DEBUG_BAUD  115200
@@ -71,6 +73,9 @@ USER_CMD_TYPE serial_console_check_1(void);
 USER_CMD serial_console_check_2_esp(void);
 USER_CMD serial_console_check_2_pic(void);
 USER_CMD serial_console_check_2_rst(void);
+USER_CMD serial_console_check_2_help(void);
+void serial_console_help(void);
+void serial_console_print_help_all(void);
 void serial_console_exec(USER_CMD cmd);
 void serial_console_print_info(void);
 

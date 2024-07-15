@@ -236,6 +236,7 @@ typedef enum
     USER_CMD_PIC_CLEAR_ALL,
     USER_CMD_PIC_SAVE,
     USER_CMD_RESET_ALL,
+    USER_CMD_HELP,
 } USER_CMD;
 
 typedef enum
@@ -244,6 +245,7 @@ typedef enum
     USER_CMD_TYPE_ESP,
     USER_CMD_TYPE_PIC,
     USER_CMD_TYPE_RST,
+    USER_CMD_TYPE_HELP,
 } USER_CMD_TYPE;
 
 

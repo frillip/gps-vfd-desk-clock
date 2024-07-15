@@ -1,5 +1,51 @@
 #include "serial_console.h"
 
+const char* serial_console_help_text = R"literal(
+esp-reset = Reset the ESP
+esp-set-interval [n] = Set NTP interval to [n] (min 300, max 43200)
+esp-set-server [s] = Set the NTP server to [s]
+esp-resync = Force NTP sync
+esp-wifi-show = Print WiFi info
+esp-wifi-connect = Force WiFi connect
+esp-wifi-disconnect = Force WiFi disconnect
+esp-wifi-ssid [s] = Set the saved SSID to [s]
+esp-wifi-pass [s] = Set the saved passphrase to [s]
+esp-wifi-dhcp [b] = Enable/disable DHCP
+esp-wifi-ip [s] = Set static IP to [s], unless [s] is 'dhcp' or 'auto'
+esp-wifi-mask [s] = Set ip mask to [s], only valid with static IP
+esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
+esp-wifi-clear = Clear saved WiFi config
+esp-wifi-setup = Enable WiFi setup AP mode
+
+esp-clear-all = Clear all settings
+esp-save = Save settings
+
+pic-info = Show info directly from PIC
+pic-reset = Resets the PIC
+pic-set-rtc [s] = Set the PIC RTC to [s] (ISO8601 format)
+pic-set-tz-offset [n] = Set timezone offset to [n] in seconds
+pic-set-dst-offset [n] = Set dst offset to [n] in seconds
+pic-set-dst-auto [b] = Enable/disable auto dst
+pic-set-dst-active [b] = Enable/disable dst (pic-set-dst-auto must be off)
+pic-set-alarm-enabled [b] = Enable/disable alarm
+pic-set-alarm [n] = Set PIC alarm to [n] seconds past midnight
+pic-set-beeps [b] = Enable/disable beeping
+pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
+pic-set-brightness-auto [b] = Set display brightness to auto
+pic-set-brightness [n] = Set display brightness to n / 4000
+pic-clear-all = Clear all settings
+pic-save = Save settings
+
+rst-all = Reset both
+rst-pic = Same as pic-reset
+rst-esp = Same as esp-reset
+
+help = show this text
+help x = Print help for the command x
+
+\n = print available data
+)literal";
+
 char console_buffer[SERIAL_CONSOLE_BUFFER_LENGTH] = {0};
 uint8_t console_buffer_offset = 0;
 char user_cmd_buf[SERIAL_CONSOLE_BUFFER_LENGTH] = {0};
@@ -21,7 +67,15 @@ void serial_console_task(void)
   if(Serial.available())
   {
     char c = Serial.read();
-    Serial.print(c);
+    if(c == 0x7F)
+    {
+      // Only print backspace if we have something in the buffer
+      if(console_buffer_offset > 0) Serial.print(c);
+    }
+    else
+    {
+      Serial.print(c);
+    }
 
     if(c == 0x0A || c == 0x0D) // new line char
     {
@@ -53,12 +107,6 @@ void serial_console_task(void)
       {
         memcpy(user_cmd_buf, console_buffer, i);
       }
-      Serial.print("BUF: ");
-      Serial.println(console_buffer);
-      Serial.print("CMD: ");
-      Serial.println(user_cmd_buf);
-      Serial.print("ARG: ");
-      Serial.println(user_arg_buf);
       if(console_buffer_offset==0 && last_rx_char!=0x0A)
       {
         serial_console_print_info();
@@ -79,17 +127,30 @@ void serial_console_task(void)
           exec = serial_console_check_2_rst();
           break;
 
+        case USER_CMD_TYPE_HELP:
+          exec = serial_console_check_2_help();
+          break;
+
         case USER_CMD_TYPE_NONE:
           if(console_buffer_offset==1) serial_console_print_info();
           break;
       }
 
-      if(exec != USER_CMD_NONE) serial_console_exec(exec);
+
+      if((exec != USER_CMD_NONE) && (exec != USER_CMD_HELP))
+      {
+        serial_console_exec(exec);
+      }
+      else if(exec == USER_CMD_HELP)
+      {
+        serial_console_help();
+      }
 
       memset(console_buffer, 0, SERIAL_CONSOLE_BUFFER_LENGTH);
       memset(user_cmd_buf, 0, SERIAL_CONSOLE_BUFFER_LENGTH);
       memset(user_arg_buf, 0, SERIAL_CONSOLE_BUFFER_LENGTH);
       console_buffer_offset = 0;
+      Serial.print("> ");
     }
     else if(c == 0x7F) // Backspace
     {
@@ -104,6 +165,7 @@ void serial_console_task(void)
       {
         memset(console_buffer, 0, SERIAL_CONSOLE_BUFFER_LENGTH);
         console_buffer_offset = 0;
+        Serial.print("\n> ");
       }
     }
 
@@ -118,13 +180,17 @@ USER_CMD_TYPE serial_console_check_1(void)
   {
     return USER_CMD_TYPE_ESP;
   }
-  if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_PIC_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
+  else if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_PIC_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
   {
     return USER_CMD_TYPE_PIC;
   }
-  if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_RST_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
+  else if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_RST_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
   {
     return USER_CMD_TYPE_RST;
+  }
+  else if(strncmp(user_cmd_buf, USER_CMD_STAGE_1_HELP_STRING, USER_CMD_STAGE_1_LENGTH) == 0)
+  {
+    return USER_CMD_TYPE_HELP;
   }
   return USER_CMD_TYPE_NONE;
 }
@@ -137,73 +203,61 @@ USER_CMD serial_console_check_2_esp(void)
   {
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_INFO_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_INFO_STRING);
       return USER_CMD_ESP_WIFI_INFO;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_SHOW_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_SHOW_STRING);
       return USER_CMD_ESP_WIFI_SHOW;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_CONNECT_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_CONNECT_STRING);
       return USER_CMD_ESP_WIFI_CONNECT;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_DISCONNECT_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_DISCONNECT_STRING);
       return USER_CMD_ESP_WIFI_DISCONNECT;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_SSID_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_SSID_STRING);
       return USER_CMD_ESP_WIFI_SSID;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_PASS_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_PASS_STRING);
       return USER_CMD_ESP_WIFI_PASS;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_DHCP_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_DHCP_STRING);
       return USER_CMD_ESP_WIFI_DHCP;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_IP_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_IP_STRING);
       return USER_CMD_ESP_WIFI_IP;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_MASK_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_MASK_STRING);
       return USER_CMD_ESP_WIFI_MASK;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_GATEWAY_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_GATEWAY_STRING);
       return USER_CMD_ESP_WIFI_GATEWAY;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_CLEAR_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_CLEAR_STRING);
       return USER_CMD_ESP_WIFI_CLEAR;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_WIFI_SETUP_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_WIFI_SETUP_STRING);
       return USER_CMD_ESP_WIFI_SETUP;
     }
   }
@@ -211,36 +265,30 @@ USER_CMD serial_console_check_2_esp(void)
   {
     if(strcmp(user_cmd_buf, USER_CMD_ESP_RESET_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_RESET_STRING);
       return USER_CMD_ESP_RESET;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_SET_INTERVAL_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_SET_INTERVAL_STRING);
       return USER_CMD_ESP_SET_INTERVAL;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_SET_SERVER_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_SET_SERVER_STRING);
       return USER_CMD_ESP_SET_SERVER;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_RESYNC_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_RESYNC_STRING);
       return USER_CMD_ESP_RESYNC;
     }
     if(strcmp(user_cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_CLEAR_ALL_STRING);
       return USER_CMD_ESP_CLEAR_ALL;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_ESP_SAVE_STRING) == 0)
     {
-      Serial.println(USER_CMD_ESP_SAVE_STRING);
       return USER_CMD_ESP_SAVE;
     }
   }
@@ -252,103 +300,86 @@ USER_CMD serial_console_check_2_pic(void)
 {
     if(strcmp(user_cmd_buf, USER_CMD_PIC_INFO_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_INFO_STRING);
       return USER_CMD_PIC_INFO;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_RESYNC_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_RESYNC_STRING);
       return USER_CMD_PIC_RESYNC;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_RESET_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_RESET_STRING);
       return USER_CMD_PIC_RESET;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_RTC_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_RTC_STRING);
       return USER_CMD_PIC_SET_RTC;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_TZ_OFFSET_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_TZ_OFFSET_STRING);
       return USER_CMD_PIC_SET_TZ_OFFSET;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DST_OFFSET_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_DST_OFFSET_STRING);
       return USER_CMD_PIC_SET_DST_OFFSET;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DST_AUTO_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_DST_AUTO_STRING);
       return USER_CMD_PIC_SET_DST_AUTO;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DST_ACTIVE_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_DST_ACTIVE_STRING);
       return USER_CMD_PIC_SET_DST_ACTIVE;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_ALARM_ENABLED_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_ALARM_ENABLED_STRING);
       return USER_CMD_PIC_SET_ALARM_ENABLED;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_ALARM_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_ALARM_STRING);
       return USER_CMD_PIC_SET_ALARM;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BEEPS_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_BEEPS_STRING);
       return USER_CMD_PIC_SET_BEEPS;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DISPLAY_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_DISPLAY_STRING);
       return USER_CMD_PIC_SET_DISPLAY;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING);
       return USER_CMD_PIC_SET_BRIGHTNESS_AUTO;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BRIGHTNESS_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SET_BRIGHTNESS_STRING);
       return USER_CMD_PIC_SET_BRIGHTNESS;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_EEPROM_SHOW_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_EEPROM_SHOW_STRING);
       return USER_CMD_PIC_EEPROM_SHOW;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_CLEAR_ALL_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_CLEAR_ALL_STRING);
       return USER_CMD_PIC_CLEAR_ALL;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SAVE_STRING) == 0)
     {
-      Serial.println(USER_CMD_PIC_SAVE_STRING);
       return USER_CMD_PIC_SAVE;
     }
   return USER_CMD_NONE;
@@ -373,6 +404,34 @@ USER_CMD serial_console_check_2_rst(void)
     return USER_CMD_PIC_RESET;
   }
   return USER_CMD_NONE;
+}
+
+
+USER_CMD serial_console_check_2_help(void)
+{
+  if(strcmp(user_cmd_buf, USER_CMD_HELP_STRING) == 0)
+  {
+    return USER_CMD_HELP;
+  }
+}
+
+void serial_console_help(void)
+{
+  if(user_arg_buf[0] == 0x00)
+  {
+    serial_console_print_help_all();
+  }
+  else
+  {
+    Serial.print("ARG: ");
+    Serial.println(user_arg_buf);
+    serial_console_print_help_all();
+  }
+}
+
+void serial_console_print_help_all(void)
+{
+  Serial.print(serial_console_help_text);
 }
 
 
