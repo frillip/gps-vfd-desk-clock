@@ -104,7 +104,7 @@ bool eeprom_check_settings(void)
     check_passed &= (settings.fields.alarm.offset >= UI_ALARM_OFFSET_MIN);
     
     check_passed &= (settings.fields.display.selected >= UI_DISPLAY_STATE_CLOCK_HHMM);
-    check_passed &= (settings.fields.display.selected <= UI_DISPLAY_STATE_CLOCK_MMDD);
+    check_passed &= (settings.fields.display.selected < UI_DISPLAY_STATE_DASHES);
     
     // These should always be 0 (DEFAULT))
     check_passed &= (settings.fields.reset.flags.wifi == UI_RESET_WIFI_DEFAULT);

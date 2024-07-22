@@ -544,29 +544,50 @@ void display_offset(int32_t offset)
 void display_delta_t(const time_t *time)
 {
     time_t now = *time;
+    now += 1; // Account for off-by-one
     time_t epoch = settings.fields.delta.epoch;
-    struct tm *now_tm;
-    struct tm *epoch_tm;
+    struct tm *gmtime_tm;
+    struct tm now_tm;
+    struct tm epoch_tm;
     bool future = 0;
     int16_t d_year, d_mon, d_day, d_hour, d_min, d_sec;
+    
+    uint8_t prev_month;
+    uint16_t prev_year;
+    static const uint8_t mon_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     
     uint16_t display_digits = 0;
     uint64_t driver_buffer = 0;
     
+    
+    gmtime_tm = gmtime(&now);
+    now_tm = *gmtime_tm;
+    gmtime_tm = gmtime(&epoch);
+    epoch_tm = *gmtime_tm;
+    
     if(now < epoch)
     {
         future = 1;
+        d_year = epoch_tm.tm_year - now_tm.tm_year;
+        d_mon = epoch_tm.tm_mon - now_tm.tm_mon;
+        d_day = epoch_tm.tm_mday - now_tm.tm_mday;
+        d_hour = epoch_tm.tm_hour - now_tm.tm_hour;
+        d_min = epoch_tm.tm_min - now_tm.tm_min;
+        d_sec = epoch_tm.tm_sec - now_tm.tm_sec;
+        prev_month = (epoch_tm.tm_mon + 11) % 12;
+        prev_year = epoch_tm.tm_year;
     }
-    
-    now_tm = gmtime(&utc);
-    epoch_tm = gmtime(&epoch);
-    
-    d_year = now_tm->tm_year - epoch_tm->tm_year;
-    d_mon = now_tm->tm_mon - epoch_tm->tm_mon;
-    d_day = now_tm->tm_mday - epoch_tm->tm_mday;
-    d_hour = now_tm->tm_hour - epoch_tm->tm_hour;
-    d_min = now_tm->tm_min - epoch_tm->tm_min;
-    d_sec = now_tm->tm_sec - epoch_tm->tm_sec;
+    else
+    {
+        d_year = now_tm.tm_year - epoch_tm.tm_year;
+        d_mon = now_tm.tm_mon - epoch_tm.tm_mon;
+        d_day = now_tm.tm_mday - epoch_tm.tm_mday;
+        d_hour = now_tm.tm_hour - epoch_tm.tm_hour;
+        d_min = now_tm.tm_min - epoch_tm.tm_min;
+        d_sec = now_tm.tm_sec - epoch_tm.tm_sec;
+        prev_month = (now_tm.tm_mon + 11) % 12;
+        prev_year = now_tm.tm_year;
+    }
     
     if(d_sec < 0)
     {
@@ -585,10 +606,7 @@ void display_delta_t(const time_t *time)
     }
     if(d_day < 0)
     {
-        uint8_t prev_month = (now_tm->tm_mon + 11) % 12;
-        static const uint8_t mon_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-        
-        if (prev_month == 1 && ((now_tm->tm_year + 1900) % 4 == 0 && ((now_tm->tm_year + 1900) % 100 != 0 || (now_tm->tm_year + 1900) % 400 == 0)))
+        if (prev_month == 1 && ((prev_year + 1900) % 4 == 0 && ((prev_year + 1900) % 100 != 0 || (prev_year + 1900) % 400 == 0)))
         {
             d_day += 29;
         }
@@ -608,6 +626,10 @@ void display_delta_t(const time_t *time)
     {
         d_year = -d_year;
     }
+    
+    printf("%li %li\r\n",now , epoch);
+    if(future) printf("-");
+    printf("%iy %im %id %ih %im %is\r\n", d_year, d_mon, d_day, d_hour, d_min, d_sec);
     
     // Years only
     if(d_year > 100)
@@ -667,7 +689,7 @@ void display_delta_t(const time_t *time)
 
     // Toggle the middle dots/dashes based on if the seconds are even or odd
     // but only if we have a PPS sync
-    if(!(now_tm->tm_sec%2) && pps_sync)
+    if(!(now_tm.tm_sec%2) && pps_sync)
     {
         driver_buffer |= MIDDLE_SEPARATOR_BOTH;
     }
@@ -1130,6 +1152,13 @@ void display_menu_text(void)
                     driver_buffer |= (DIGIT_D << TUBE_2_OFFSET);
                     driver_buffer |= (DIGIT_D << TUBE_1_OFFSET);
                     break;
+
+                case UI_DISPLAY_STATE_DELTA:
+                    driver_buffer |= (DIGIT_D << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_E << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_L << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
+                    break;
             }
             break;
 
@@ -1169,6 +1198,13 @@ void display_menu_text(void)
                     driver_buffer |= (DIGIT_M << TUBE_3_OFFSET);
                     driver_buffer |= (DIGIT_D << TUBE_2_OFFSET);
                     driver_buffer |= (DIGIT_D << TUBE_1_OFFSET);
+                    break;
+                    
+                case UI_DISPLAY_STATE_DELTA:
+                    driver_buffer |= (DIGIT_D << TUBE_4_OFFSET);
+                    driver_buffer |= (DIGIT_E << TUBE_3_OFFSET);
+                    driver_buffer |= (DIGIT_L << TUBE_2_OFFSET);
+                    driver_buffer |= (DIGIT_T << TUBE_1_OFFSET);
                     break;
             }
             break;
@@ -1395,6 +1431,10 @@ void display_local_time(time_t time)
             display_mmdd(&display);
             break;
             
+        case UI_DISPLAY_STATE_DELTA:
+            display_delta_t(&utc);
+            break;
+            
         case UI_DISPLAY_STATE_TEMP:
             display_temp(bme280_temperature);
             break;
@@ -1407,7 +1447,7 @@ void display_local_time(time_t time)
             display_blank();
             break;
             
-        default:
+        case UI_DISPLAY_STATE_MENU:
             break;
     }
 }

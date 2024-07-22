@@ -587,6 +587,11 @@ void ui_update_display(void)
         display_mmdd(&utc);
         display_latch();
     }
+    if(ui_state_current==UI_DISPLAY_STATE_DELTA)
+    {
+        display_delta_t(&utc);
+        display_latch();
+    }
     if(ui_state_current==UI_DISPLAY_STATE_TEMP)
     {
         display_temp(bme280_temperature);
@@ -660,10 +665,15 @@ void ui_display_cycle(void)
             break;
 
         case UI_DISPLAY_STATE_CLOCK_MMDD:
+            ui_state_current = UI_DISPLAY_STATE_DELTA;
+            break;
+
+        case UI_DISPLAY_STATE_DELTA:
             ui_state_current = UI_DISPLAY_STATE_CLOCK_HHMM;
             break;
             
         default:
+            ui_state_current = UI_DISPLAY_STATE_CLOCK_HHMM;
             break;
     }
 }
@@ -1134,6 +1144,10 @@ void ui_menu_short_press(void)
                             break;
 
                         case UI_DISPLAY_STATE_CLOCK_MMDD:
+                            modified.fields.display.selected = UI_DISPLAY_STATE_DELTA;
+                            break;
+                            
+                        case UI_DISPLAY_STATE_DELTA:
                             modified.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
                             break;
                     }
