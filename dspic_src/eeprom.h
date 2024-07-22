@@ -62,6 +62,14 @@ typedef union
     {
         struct __attribute__ ((packed))
         {
+            uint16_t padding : 16;
+        } flags;
+        time_t epoch;
+    } delta;
+    struct __attribute__ ((packed))
+    {
+        struct __attribute__ ((packed))
+        {
             bool enabled : 1;
             uint16_t padding : 15;
         } flags;

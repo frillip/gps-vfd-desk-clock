@@ -127,6 +127,8 @@ void eeprom_reset_settings(void)
 
     settings.fields.alarm.flags.enabled = UI_ALARM_ENABLED_DEFAULT;
     settings.fields.alarm.offset = UI_ALARM_OFFSET_DEFAULT;
+    
+    settings.fields.delta.epoch = UI_DELTA_EPOCH_DEFAULT;
 
     settings.fields.beep.flags.enabled = UI_BEEP_ENABLED_DEFAULT;
     
@@ -158,6 +160,7 @@ void eeprom_print_settings(void)
     printf("dst.offset: %li\r\n", settings.fields.dst.offset);
     printf("alarm.flags.enabled: %u\r\n", settings.fields.alarm.flags.enabled);
     printf("alarm.offset: %lu\r\n", settings.fields.alarm.offset);
+    printf("delta.epoch: %lu\r\n", settings.fields.delta.epoch);
     printf("beep.flags.enabled: %u\r\n", settings.fields.beep.flags.enabled);
     printf("display.flags.hour_12_format: %u\r\n", settings.fields.display.flags.hour_12_format);
     printf("display.selected: %u\r\n", settings.fields.display.selected);

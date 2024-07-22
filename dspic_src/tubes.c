@@ -541,6 +541,144 @@ void display_offset(int32_t offset)
     display_send_buffer(driver_buffer); // Load buffer into the driver
 }
 
+void display_delta_t(const time_t *time)
+{
+    time_t now = *time;
+    time_t epoch = settings.fields.delta.epoch;
+    struct tm *now_tm;
+    struct tm *epoch_tm;
+    bool future = 0;
+    int16_t d_year, d_mon, d_day, d_hour, d_min, d_sec;
+    
+    uint16_t display_digits = 0;
+    uint64_t driver_buffer = 0;
+    
+    if(now < epoch)
+    {
+        future = 1;
+    }
+    
+    now_tm = gmtime(&utc);
+    epoch_tm = gmtime(&epoch);
+    
+    d_year = now_tm->tm_year - epoch_tm->tm_year;
+    d_mon = now_tm->tm_mon - epoch_tm->tm_mon;
+    d_day = now_tm->tm_mday - epoch_tm->tm_mday;
+    d_hour = now_tm->tm_hour - epoch_tm->tm_hour;
+    d_min = now_tm->tm_min - epoch_tm->tm_min;
+    d_sec = now_tm->tm_sec - epoch_tm->tm_sec;
+    
+    if(d_sec < 0)
+    {
+        d_sec += 60;
+        d_min--;
+    }
+    if(d_min < 0)
+    {
+        d_min += 60;
+        d_hour--;
+    }
+    if(d_hour < 0)
+    {
+        d_hour += 24;
+        d_day--;
+    }
+    if(d_day < 0)
+    {
+        uint8_t prev_month = (now_tm->tm_mon + 11) % 12;
+        static const uint8_t mon_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        
+        if (prev_month == 1 && ((now_tm->tm_year + 1900) % 4 == 0 && ((now_tm->tm_year + 1900) % 100 != 0 || (now_tm->tm_year + 1900) % 400 == 0)))
+        {
+            d_day += 29;
+        }
+        else
+        {
+            d_day += mon_days[prev_month];
+        }
+
+        d_mon--;
+    }
+    if(d_mon < 0)
+    {
+        d_mon += 12;
+        d_year--;
+    }
+    if(d_year < 0)
+    {
+        d_year = -d_year;
+    }
+    
+    // Years only
+    if(d_year > 100)
+    {
+        // Construct our BCD time
+        if(d_year > 1000)
+        {
+            display_digits |= (d_year / 1000)<<12;
+        }
+        display_digits |= ((d_year / 100) % 10)<<8;
+        display_digits |= ((d_year / 10) % 10)<<4;
+        display_digits |= d_year % 10;
+    }
+    // years and months
+    else if(d_year)
+    {
+        display_digits |= ((d_year / 10) % 10)<<12;
+        display_digits |= (d_year % 10)<<8;
+        display_digits |= ((d_mon / 10) % 10)<<4;
+        display_digits |= d_mon % 10;
+    }
+    // months and days
+    else if(d_mon)
+    {
+        display_digits |= ((d_mon / 10) % 10)<<12;
+        display_digits |= (d_mon % 10)<<8;
+        display_digits |= ((d_day / 10) % 10)<<4;
+        display_digits |= d_day % 10;
+    }
+    // days and hours
+    else if(d_day)
+    {
+        display_digits |= ((d_day / 10) % 10)<<12;
+        display_digits |= (d_day % 10)<<8;
+        display_digits |= ((d_hour / 10) % 10)<<4;
+        display_digits |= d_hour % 10;
+    }
+    // hours and minutes
+    else if(d_hour)
+    {
+        display_digits |= ((d_hour / 10) % 10)<<12;
+        display_digits |= (d_hour % 10)<<8;
+        display_digits |= ((d_min / 10) % 10)<<4;
+        display_digits |= d_min % 10;
+    }
+    // minutes and seconds
+    else
+    {
+        display_digits |= ((d_min / 10) % 10)<<12;
+        display_digits |= (d_min % 10)<<8;
+        display_digits |= ((d_sec / 10) % 10)<<4;
+        display_digits |= d_sec % 10;
+    }
+
+    // Generate the buffer content
+    driver_buffer = display_generate_buffer(display_digits);
+
+    // Toggle the middle dots/dashes based on if the seconds are even or odd
+    // but only if we have a PPS sync
+    if(!(now_tm->tm_sec%2) && pps_sync)
+    {
+        driver_buffer |= MIDDLE_SEPARATOR_BOTH;
+    }
+    // Show the left hand dot if alarm is active
+    if(ui_alarm_check_state()) driver_buffer |= START_SEPARATOR_DOT;
+    // Show left hand line if date is in the future
+    if(future) driver_buffer |= START_SEPARATOR_LINE;
+
+    display_send_buffer(driver_buffer); // Load buffer into the driver
+}
+
 // Show a counter on the display
 void display_alarm_offset(uint32_t offset)
 {
