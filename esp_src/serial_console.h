@@ -10,6 +10,7 @@
 #include "gnss_pps_esp.h"
 #include "pic.h"
 #include <HardwareSerial.h>
+#include <ezTime.h>
 
 #define LOCAL_TIME_PRINT_DELAY 50
 #define SERIAL_CONSOLE_BUFFER_LENGTH 100
@@ -82,3 +83,5 @@ void serial_console_print_info(void);
 void serial_console_second_changed(uint32_t millis);
 bool serial_console_print_local_available(void);
 void serial_console_print_local(void);
+
+bool serial_console_validate_uint32(const char* input, uint32_t* output);

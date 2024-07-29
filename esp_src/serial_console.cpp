@@ -492,7 +492,15 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_SET_INTERVAL:
-      
+      uint32_t ntp_interval_new;
+      if(serial_console_validate_uint32(user_arg_buf, &ntp_interval_new))
+      {
+        extern uint32_t ntp_interval;
+        Serial.print("Setting NTP resync to ");
+        Serial.println(ntp_interval_new);
+        ntp_interval = ntp_interval_new;
+        setInterval(ntp_interval);
+      }
       break;
 
     case USER_CMD_ESP_SET_SERVER:
@@ -707,4 +715,33 @@ void serial_console_print_local(void)
     Serial.println("");
     local_print_millis = 0;
   }
+}
+
+bool serial_console_validate_uint32(const char* input, uint32_t* output)
+{
+  // Check if the input is null
+  if (input == NULL)
+  {
+    return false;
+  }
+
+  uint32_t temp;
+  // Parse
+  int result = sscanf(input, "%ld", &temp);
+
+  // Success?
+  if (result == 1)
+  {
+    // Bounds check
+    if (temp > UINT32_MAX)
+    {
+        return false;
+    }
+    // Store the parsed value in the output variable
+    *output = temp;
+    return true;
+  }
+
+  // If parsing failed, return false
+  return false;
 }

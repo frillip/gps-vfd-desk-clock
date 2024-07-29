@@ -27,7 +27,8 @@ extern int8_t t1s0;
 WiFiManager wm;
 
 #define NTP_SERVER "rubidium.darksky.io"
-#define NTP_INTERVAL 1800
+#define NTP_INTERVAL_DEFAULT 1800
+uint32_t ntp_interval = NTP_INTERVAL_DEFAULT;
 uint16_t ntp_interval_count = 0;
 uint32_t ntp_resync_count = 0;
 time_t esp = 0;
@@ -79,7 +80,7 @@ void setup()
   gnss_uart_init();
 
   setServer(NTP_SERVER);
-  setInterval(NTP_INTERVAL);
+  setInterval(ntp_interval);
 
   WiFi.mode(WIFI_STA);
   wm.setConfigPortalBlocking(false);
@@ -211,7 +212,7 @@ void loop()
   {
     t1s0=0;
     ntp_interval_count++;
-    if(ntp_interval_count>NTP_INTERVAL)
+    if(ntp_interval_count>ntp_interval)
     {
       updateNTP();
       Serial.println("NTP RESYNC");
