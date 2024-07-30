@@ -89,7 +89,7 @@ bool eeprom_check_settings(void)
     bool check_passed = 1;
 
     check_passed &= (settings.fields.header == EEPROM_HEADER_VALUE);
-    if(!check_passed) printf("Invalid EEPROM header: %08lX\r\n", settings.fields.header);
+    if(!check_passed) printf("Invalid EEPROM header: %08lX\n", settings.fields.header);
     
     check_passed &= (settings.fields.tz.offset <= (UI_TZ_OFFSET_MAX + UI_TZ_OFFSET_FUDGE));
     check_passed &= (settings.fields.tz.offset >= (UI_TZ_OFFSET_MIN - UI_TZ_OFFSET_FUDGE));
@@ -139,7 +139,7 @@ void eeprom_reset_settings(void)
     settings.fields.reset.flags.settings = UI_RESET_SETTINGS_DEFAULT;
     settings.fields.reset.flags.all = UI_RESET_ALL_DEFAULT;
     
-    printf("Settings reset!\r\n");
+    printf("Settings reset!\n");
     eeprom_print_settings();
     
     eeprom_write();
@@ -152,19 +152,19 @@ void eeprom_clear_pending_changes(void)
 
 void eeprom_print_settings(void)
 {
-    printf("header: %08lX\r\n", settings.fields.header);
-    printf("tz.flags.automatic: %u\r\n", settings.fields.tz.flags.automatic);
-    printf("tz.offset: %li\r\n", settings.fields.tz.offset);
-    printf("dst.flags.automatic: %u\r\n", settings.fields.dst.flags.automatic);
-    printf("dst.flags.active: %u\r\n", settings.fields.dst.flags.active);
-    printf("dst.offset: %li\r\n", settings.fields.dst.offset);
-    printf("alarm.flags.enabled: %u\r\n", settings.fields.alarm.flags.enabled);
-    printf("alarm.offset: %lu\r\n", settings.fields.alarm.offset);
-    printf("delta.epoch: %lu\r\n", settings.fields.delta.epoch);
-    printf("beep.flags.enabled: %u\r\n", settings.fields.beep.flags.enabled);
-    printf("display.flags.hour_12_format: %u\r\n", settings.fields.display.flags.hour_12_format);
-    printf("display.selected: %u\r\n", settings.fields.display.selected);
-    printf("reset.flags.wifi: %u\r\n", settings.fields.reset.flags.wifi);
-    printf("reset.flags.settings: %u\r\n", settings.fields.reset.flags.settings);
-    printf("reset.flags.all: %u\r\n", settings.fields.reset.flags.all);
+    printf("header: %08lX\n", settings.fields.header);
+    printf("tz.flags.automatic: %u\n", settings.fields.tz.flags.automatic);
+    printf("tz.offset: %li\n", settings.fields.tz.offset);
+    printf("dst.flags.automatic: %u\n", settings.fields.dst.flags.automatic);
+    printf("dst.flags.active: %u\n", settings.fields.dst.flags.active);
+    printf("dst.offset: %li\n", settings.fields.dst.offset);
+    printf("alarm.flags.enabled: %u\n", settings.fields.alarm.flags.enabled);
+    printf("alarm.offset: %lu\n", settings.fields.alarm.offset);
+    printf("delta.epoch: %lu\n", settings.fields.delta.epoch);
+    printf("beep.flags.enabled: %u\n", settings.fields.beep.flags.enabled);
+    printf("display.flags.hour_12_format: %u\n", settings.fields.display.flags.hour_12_format);
+    printf("display.selected: %u\n", settings.fields.display.selected);
+    printf("reset.flags.wifi: %u\n", settings.fields.reset.flags.wifi);
+    printf("reset.flags.settings: %u\n", settings.fields.reset.flags.settings);
+    printf("reset.flags.all: %u\n", settings.fields.reset.flags.all);
 }

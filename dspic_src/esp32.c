@@ -237,9 +237,9 @@ bool ntp_is_calendar_sync(time_t utc)
 void esp_ntp_set_calendar(void)
 {
 #ifdef DEBUG_MESSAGES
-    printf("NTP calendar sync\r\nTime is now: ");
+    printf("NTP calendar sync\nTime is now: ");
     ui_print_iso8601_string(ntp);
-    printf("\r\n");
+    printf("\n");
 #endif
     
     utc = ntp;
@@ -335,7 +335,7 @@ void print_esp_offset(void)
         printf("%lims off OC", esp_time_offset_display);
     }
     if(esp_time_offset_stale) printf(" - stale");
-    printf("\r\n");
+    printf("\n");
 }
 
 void __attribute__ ( ( interrupt, no_auto_psv ) ) _T3Interrupt (  )
@@ -697,14 +697,14 @@ void print_esp_data(void)
 {
     if(esp_detected)
     {
-        printf("\r\n=== ESP32 ===\r\n");
+        printf("\n=== ESP32 ===\n");
         printf("UTC: ");
         ui_print_iso8601_string(ntp);
-        printf("\r\nWiFi: %01u Sync: %01u\r\n", esp_wifi_status, esp_ntp_status);
+        printf("\nWiFi: %01u Sync: %01u\n", esp_wifi_status, esp_ntp_status);
         print_esp_offset();
     }
     else
     {
-        printf("\r\n=== NO ESP32 DETECTED ===\r\n");
+        printf("\n=== NO ESP32 DETECTED ===\n");
     }
 }

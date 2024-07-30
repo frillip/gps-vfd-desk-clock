@@ -132,23 +132,23 @@ void pic_pps_calculate_oc_stats(void)
 
 void pic_pps_print_stats(void)
 {
-    printf("\r\n=== Clock and PPS stats ===\r\n");
+    printf("\n=== Clock and PPS stats ===\n");
     // Cycles between current and last PPS, and the OC offset from this
     double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
-    printf("Crystal freq: %.06fMHz\r\n", fosc_freq_f);
-    printf("PPS D:%lu OC D:%li\r\n", pps_count_diff, oc_offset);
+    printf("Crystal freq: %.06fMHz\n", fosc_freq_f);
+    printf("PPS D:%lu OC D:%li\n", pps_count_diff, oc_offset);
     // Raw timer values for both PPS and OC
-    printf("PPS C:%lu OC C:%lu\r\n", pps_count, oc_count);
+    printf("PPS C:%lu OC C:%lu\n", pps_count, oc_count);
     // PPS sync status
-    printf("PPS S: %i ADJ: %i\r\n", pps_sync, oc_adjust_in_progress);
+    printf("PPS S: %i ADJ: %i\n", pps_sync, oc_adjust_in_progress);
     // Scheduler sync status
-    printf("SCH S: %i GNSS FIX: %i\r\n", scheduler_sync, gnss_fix);
+    printf("SCH S: %i GNSS FIX: %i\n", scheduler_sync, gnss_fix);
     // Accumulated clock data
-    printf("CLK D: %li CLK T: %li\r\n",accumulated_clocks, accumulation_delta);
+    printf("CLK D: %li CLK T: %li\n",accumulated_clocks, accumulation_delta);
     double accumulated_clocks_diff_total_avg = accumulated_clocks;
     if(accumulation_delta) accumulated_clocks_diff_total_avg = accumulated_clocks_diff_total_avg / accumulation_delta;
     else accumulated_clocks_diff_total_avg = 0;
-    printf("AVG D: %.1f AVG D10: %.1f\r\n", accumulated_clocks_diff_total_avg, accumulated_clocks_diff_avg);
+    printf("AVG D: %.1f AVG D10: %.1f\n", accumulated_clocks_diff_total_avg, accumulated_clocks_diff_avg);
     
     uint32_t run_time = utc - power_on_time;
     uint16_t days = (run_time/86400);
@@ -162,8 +162,8 @@ void pic_pps_print_stats(void)
     if(days) printf("%u days, ",days);
     printf("%02u:%02u:%02u since ",hours,minutes,seconds);
     ui_print_iso8601_string(power_on_time);
-    printf("\r\n");
-    printf("OC events: %lu Resync events: %lu\r\n",total_oc_seq_count, sync_events);
+    printf("\n");
+    printf("OC events: %lu Resync events: %lu\n",total_oc_seq_count, sync_events);
 }
 
 bool pic_pps_manual_resync_available(void)

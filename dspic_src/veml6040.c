@@ -113,12 +113,12 @@ void print_veml_data(void)
 {
     if(veml6040_detected)
     {
-        printf("\r\n=== VEML6040 LUX DATA ===\r\n");
+        printf("\n=== VEML6040 LUX DATA ===\n");
         printf("LUX: %4u.%01u", veml_ambient_light/10, veml_ambient_light%10);
-        printf(" BRI: %4u/4000\r\n", veml_brightness);
+        printf(" BRI: %4u/4000\n", veml_brightness);
     }
     else
     {
-        printf("\r\n=== NO VEML6040 DETECTED ===\r\n");
+        printf("\n=== NO VEML6040 DETECTED ===\n");
     }
 }

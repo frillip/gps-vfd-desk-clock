@@ -359,7 +359,7 @@ void print_alarm_state(UI_ALARM_STATE state)
             printf("ALARM_FINISH");
             break;
     }
-    printf("\r\n");
+    printf("\n");
 }
 
 void ui_alarm_arm(void)
@@ -1288,7 +1288,7 @@ void ui_alarm_offset_incr_mm(void)
 
 void pic_reset(void)
 {
-    printf("\r\nRESETTING!!!\r\n");
+    printf("\nRESETTING!!!\n");
     __asm__ volatile ( "reset ");
 }
 
@@ -1311,14 +1311,14 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
         case USER_CMD_PIC_RESYNC: 
             if(pic_pps_manual_resync_available())
             {
-                printf("\r\nPIC manual resync\r\n");
+                printf("\nPIC manual resync\n");
                 sync_state_machine_set_state(SYNC_NOSYNC_MANUAL);
             }
             break;
 
         // Reset the entire device if we see 'R'
         case USER_CMD_PIC_RESET:
-            printf("PIC resetting\r\n");
+            printf("PIC resetting\n");
             DELAY_microseconds(10000); // Let the serial data send first!
             pic_reset();
             break; // Pointless, but good practise I guess
@@ -1327,64 +1327,64 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             settings.fields.delta.epoch = (time_t)arg;
             printf("Delta mode epoch set to: ");
             ui_print_iso8601_string_local(settings.fields.delta.epoch);
-            printf("  / %lu\r\n",arg);
+            printf("  / %lu\n",arg);
             break;
 
         // Brightness up on 'B'
         case 0x42:
             display_brightness_set_manual();
             display_brightness_up(DISPLAY_BRIGHTNESS_STEP);
-            printf("BRI: %u\r\n", display_brightness);
+            printf("BRI: %u\n", display_brightness);
             break;
 
         // Brightness down on 'b'
         case 0x62:
             display_brightness_set_manual();
             display_brightness_down(DISPLAY_BRIGHTNESS_STEP);
-            printf("BRI: %u\r\n", display_brightness);
+            printf("BRI: %u\n", display_brightness);
             break;
 
         // Max brightness on 'M'
         case 0x4D:
             display_brightness_set_manual();
             display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
-            printf("BRI: %u\r\n", display_brightness);
+            printf("BRI: %u\n", display_brightness);
             break;
 
         // Min brightness on 'm'
         case 0x6D:
             display_brightness_set_manual();
             display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
-            printf("BRI: %u\r\n", display_brightness);
+            printf("BRI: %u\n", display_brightness);
             break;
 
         // Full brightness
         case 0x4F:
             display_brightness_set_manual();
             display_brightness_on();
-            printf("BRI: %u\r\n", display_brightness);
+            printf("BRI: %u\n", display_brightness);
             break;
 
         // Display off
         case 0x6F:
             display_brightness_set_manual();
             display_brightness_off();
-            printf("BRI: %u\r\n", display_brightness);
+            printf("BRI: %u\n", display_brightness);
             break;
             
         // Auto brightness down on 'a'
         case USER_CMD_PIC_SET_BRIGHTNESS_AUTO:
             display_brightness_set_auto();
-            printf("Display brightness auto\r\n");
+            printf("Display brightness auto\n");
             break;
             
         case USER_CMD_PIC_EEPROM_SHOW:
-            printf("PIC EEPROM settings:\r\n");
+            printf("PIC EEPROM settings:\n");
             eeprom_print_settings();
             break;
             
         case USER_CMD_PIC_CLEAR_ALL:
-            printf("PIC clear all EEPROM settings\r\n");
+            printf("PIC clear all EEPROM settings\n");
             eeprom_reset_settings();
             break;
 

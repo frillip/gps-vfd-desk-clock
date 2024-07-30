@@ -228,15 +228,15 @@ void print_bme280_data(void)
     if(bme280_detected)
     {
         int32_t bme280_temp_uncomp = bme280_temperature - BME280_TEMP_OFFSET;
-        printf("\r\n=== BME280 env data ===\r\n");
+        printf("\n=== BME280 env data ===\n");
         printf("T: %4li.%02liC ",  bme280_temperature/100, bme280_temperature%100);
-        printf("(%li.%02liC board)\r\n", bme280_temp_uncomp/100, bme280_temp_uncomp%100);
-        printf("P: %4lu.%02lumB\r\n", bme280_pressure/100, bme280_pressure%100);
-        printf("H: %4lu.%02lu%%\r\n", bme280_humidity/100, bme280_humidity%100);
+        printf("(%li.%02liC board)\n", bme280_temp_uncomp/100, bme280_temp_uncomp%100);
+        printf("P: %4lu.%02lumB\n", bme280_pressure/100, bme280_pressure%100);
+        printf("H: %4lu.%02lu%%\n", bme280_humidity/100, bme280_humidity%100);
     }
     else
     {
-        printf("\r\n=== NO BME280 DETECTED ===\r\n");
+        printf("\n=== NO BME280 DETECTED ===\n");
     }
 }
 

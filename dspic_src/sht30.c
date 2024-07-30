@@ -120,6 +120,6 @@ double sht30_convert_humidity(uint16_t val)
 
 void print_sht30_data(void)
 {
-    printf("\r\n=== SHT30 ===\r\n");
+    printf("\n=== SHT30 ===\n");
     printf("%3.2fC, %3.2f%%", temperature, humidity);
 }

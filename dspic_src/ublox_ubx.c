@@ -118,16 +118,16 @@ void process_ubx_nav_clock(void)
 
 void print_ubx_nav_clock_data(void)
 {
-    printf("\r\n=== UBX-NAV-CLOCK ===\r\n");
+    printf("\n=== UBX-NAV-CLOCK ===\n");
     if(print_ubx_nav_clock)
     {
-        printf("ToW: %lu\r\n", ubx_nav_clock_tow_ms);
-        printf("Bias: %lins Drift: %lins/s\r\n",ubx_nav_clock_bias_ns, ubx_nav_clock_drift_nss);
-        printf("Acc: %luns fAcc: %lups/s\r\n",ubx_nav_clock_accuracy_ns, ubx_nav_clock_f_accuracy_pss);
+        printf("ToW: %lu\n", ubx_nav_clock_tow_ms);
+        printf("Bias: %lins Drift: %lins/s\n",ubx_nav_clock_bias_ns, ubx_nav_clock_drift_nss);
+        printf("Acc: %luns fAcc: %lups/s\n",ubx_nav_clock_accuracy_ns, ubx_nav_clock_f_accuracy_pss);
     }
     else
     {
-        printf("No new data\r\n");
+        printf("No new data\n");
     }
 }
 
@@ -146,35 +146,35 @@ void process_ubx_nav_posllh(void)
 
 void print_ubx_nav_posllh_data(void)
 {
-    printf("\r\n=== UBX-NAV-POSLLH ===\r\n");
+    printf("\n=== UBX-NAV-POSLLH ===\n");
     if(print_ubx_nav_posllh)
     {
         int16_t lat_d = ubx_nav_posllh_lat / 10000000;
         int32_t lat_p = ubx_nav_posllh_lat - (lat_d * 10000000);
         if(lat_p<0) lat_p = (lat_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
-        printf("LAT: %4i.%7li\r\n", lat_d, lat_p);
+        printf("LAT: %4i.%7li\n", lat_d, lat_p);
         
         int16_t lon_d = ubx_nav_posllh_lon / 10000000;
         int32_t lon_p = ubx_nav_posllh_lon - (lon_d * 10000000);
         if(lon_p<0) lon_p = (lon_p ^ 0xFFFFFFFF) +1; // dirty abs() equivalent again
-        printf("LON: %4i.%7li\r\n", lon_d, lon_p);
+        printf("LON: %4i.%7li\n", lon_d, lon_p);
         
         double height_m = ubx_nav_posllh_height;
         height_m = height_m / 1000;
         double hmsl_m = ubx_nav_posllh_hmsl;
         hmsl_m = hmsl_m / 1000;
-        printf("Height: %4.0fm aMSL: %4.0fm\r\n", height_m, hmsl_m);
+        printf("Height: %4.0fm aMSL: %4.0fm\n", height_m, hmsl_m);
         
         double hacc_m = ubx_nav_posllh_hacc;
         hacc_m = hacc_m / 1000;
         double vacc_m = ubx_nav_posllh_vacc;
         vacc_m = vacc_m / 1000;
-        printf("Acc H: %6.3fm V: %6.3fm\r\n" ,hacc_m, vacc_m);
+        printf("Acc H: %6.3fm V: %6.3fm\n" ,hacc_m, vacc_m);
         
     }
     else
     {
-        printf("No new data\r\n");
+        printf("No new data\n");
     }
 }
 
@@ -196,45 +196,45 @@ void process_ubx_nav_status(void)
 
 void print_ubx_nav_status_data(void)
 {
-    printf("\r\n=== UBX-NAV-STATUS ===\r\n");
+    printf("\n=== UBX-NAV-STATUS ===\n");
     if(print_ubx_nav_status)
     {
         printf("Fix type: 0x%02X - ", ubx_nav_status_gpsfix);
         switch (ubx_nav_status_gpsfix)
         {
             case GPSFIX_NO_FIX:
-                printf("No fix\r\n");
+                printf("No fix\n");
                 break;
                 
             case GPSFIX_DR_ONLY:
-                printf("Dead reckoning only\r\n");
+                printf("Dead reckoning only\n");
                 break;
 
             case GPSFIX_2D:
-                printf("2D-fix\r\n");
+                printf("2D-fix\n");
                 break;
 
             case GPSFIX_3D:
-                printf("3D-fix\r\n");
+                printf("3D-fix\n");
                 break;
 
             case GPSFIX_GPS_DR:
-                printf("GNSS + dead reckoning combined\r\n");
+                printf("GNSS + dead reckoning combined\n");
                 break;
 
             case GPSFIX_TIME_ONLY:
-                printf("Time only fix\r\n");
+                printf("Time only fix\n");
                 break;
                 
             default:
-                printf("Unknown\r\n");
+                printf("Unknown\n");
                 break;
         }
-        printf("Fix ok: %i\r\n", ubx_nav_status_gpsfixok);
+        printf("Fix ok: %i\n", ubx_nav_status_gpsfixok);
     }
     else
     {
-        printf("No new data\r\n");
+        printf("No new data\n");
     }
 }
 
@@ -262,16 +262,16 @@ time_t process_ubx_nav_timeutc(void)
 
 void print_ubx_nav_timeutc_data(void)
 {
-    printf("\r\n=== UBX-NAV-TIMEUTC ===\r\n");
+    printf("\n=== UBX-NAV-TIMEUTC ===\n");
     if(print_ubx_nav_timeutc)
     {
         printf("UTC: ");
         ui_print_iso8601_string(gnss);
-        printf("\r\nAcc: %luns Val: %i\r\n",ubx_nav_timeutc_accuracy_ns, ubx_nav_timeutc_valid);
+        printf("\nAcc: %luns Val: %i\n",ubx_nav_timeutc_accuracy_ns, ubx_nav_timeutc_valid);
     }
     else
     {
-        printf("No new data\r\n");
+        printf("No new data\n");
     }
 }
 
@@ -334,19 +334,19 @@ void process_ubx_tim_tm2(void)
 
 void print_ubx_tim_tm2_data(void)
 {
-    printf("\r\n=== UBX-TIM-TM2 ===\r\n");
+    printf("\n=== UBX-TIM-TM2 ===\n");
     if(print_ubx_tim_tm2)
     {
-        printf("Rm: %lu Fm: %lu Dm: %li\r\n",ubx_tim_tm2_rising_ms, ubx_tim_tm2_falling_ms, ubx_tim_tm2_ms_diff);
-        printf("Rmd: %li Fmd: %li\r\n",ubx_tim_tm2_rising_ms_diff, ubx_tim_tm2_falling_ms_diff);
-        printf("Rn: %lu Fn: %lu Dn: %li\r\n",ubx_tim_tm2_rising_ns, ubx_tim_tm2_falling_ns, ubx_tim_tm2_ns_diff);
-        printf("Rnd: %li Fnd: %li Dnd: %li\r\n",ubx_tim_tm2_rising_ns_diff, ubx_tim_tm2_falling_ns_diff, ubx_tim_tm2_ns_diff_diff);
-        printf("Cnt: %u Acc: %luns Val: %i\r\n",ubx_tim_tm2_edge_count, ubx_tim_tm2_accuracy_ns, ubx_tim_tm2_valid);
+        printf("Rm: %lu Fm: %lu Dm: %li\n",ubx_tim_tm2_rising_ms, ubx_tim_tm2_falling_ms, ubx_tim_tm2_ms_diff);
+        printf("Rmd: %li Fmd: %li\n",ubx_tim_tm2_rising_ms_diff, ubx_tim_tm2_falling_ms_diff);
+        printf("Rn: %lu Fn: %lu Dn: %li\n",ubx_tim_tm2_rising_ns, ubx_tim_tm2_falling_ns, ubx_tim_tm2_ns_diff);
+        printf("Rnd: %li Fnd: %li Dnd: %li\n",ubx_tim_tm2_rising_ns_diff, ubx_tim_tm2_falling_ns_diff, ubx_tim_tm2_ns_diff_diff);
+        printf("Cnt: %u Acc: %luns Val: %i\n",ubx_tim_tm2_edge_count, ubx_tim_tm2_accuracy_ns, ubx_tim_tm2_valid);
         print_ubx_tim_tm2 = 0;
     }
     else
     {
-        printf("No new data\r\n");
+        printf("No new data\n");
     }
 }
 
@@ -363,7 +363,7 @@ void print_ubx_data(void)
     }
     else
     {
-        printf("\r\n=== NO GNSS DETECTED ===\r\n");
+        printf("\n=== NO GNSS DETECTED ===\n");
     }
 }
 

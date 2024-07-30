@@ -115,9 +115,9 @@ int main(void)
 
 #ifdef DEBUG_MESSAGES
     printf("\033[2J\033[1;1H"); // Clear the terminal window
-    printf("\r\nHELLO!\r\n\r\n"); // And say hello!
+    printf("\nHELLO!\n\n"); // And say hello!
     double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
-    printf("Running @ 80MHz on %.06fMHz XTAL\r\n", fosc_freq_f);
+    printf("Running @ 80MHz on %.06fMHz XTAL\n", fosc_freq_f);
 #endif
     
     eeprom_init();
@@ -192,7 +192,7 @@ int main(void)
                 print_veml_data();
                 print_bme280_data();
                 print_sync_state_machine();
-                printf("\r\n");
+                printf("\n");
                 print_data = 0;
             }
         }

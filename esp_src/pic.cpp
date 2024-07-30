@@ -472,7 +472,7 @@ void print_pic_time(void)
   Serial.print("UTC:   ");
   print_iso8601_string(pic);
 
-  Serial.print("\r\nGNSS:  ");
+  Serial.print("\nGNSS:  ");
   print_iso8601_string(gnss);
   if(!pic_gnss_detected)
   {
@@ -480,10 +480,10 @@ void print_pic_time(void)
   }
 
   time_t now = UTC.now();
-  Serial.print("\r\nESP:   ");
+  Serial.print("\nESP:   ");
   print_iso8601_string(now);
 
-  Serial.print("\r\nNTP:   ");
+  Serial.print("\nNTP:   ");
   print_iso8601_string(now);
   if(WiFi.status() != WL_CONNECTED)
   {
@@ -494,17 +494,17 @@ void print_pic_time(void)
     Serial.print(" - NO NTP SYNC");
   }
 
-  Serial.print("\r\nRTC:   ");
+  Serial.print("\nRTC:   ");
   print_iso8601_string(pic_rtc);
   if(!pic_rtc_detected)
   {
     Serial.print(" - MISSING");
   }
 
-  Serial.print("\r\nLocal: ");
+  Serial.print("\nLocal: ");
   print_local_time(pic);
 
-  Serial.print("\r\nUTC source: ");
+  Serial.print("\nUTC source: ");
   print_clock_source(pic_utc_source);
   Serial.println("");
 }
@@ -578,7 +578,7 @@ void print_gnss_data(void)
 {
   if(pic_gnss_detected)
   {
-    Serial.print("\r\n=== GNSS ===\r\n");
+    Serial.print("\n=== GNSS ===\n");
     Serial.print("Fix: ");
     Serial.print(pic_gnss_fix);
     Serial.print("  OK: ");
@@ -635,7 +635,7 @@ void print_gnss_data(void)
   }
   else
   {
-    Serial.print("\r\n=== NO GNSS DETECTED ===\r\n");
+    Serial.print("\n=== NO GNSS DETECTED ===\n");
   }
 }
 
@@ -658,16 +658,16 @@ void pic_process_offset(void)
 
 void print_offset_data(void)
 {
-  Serial.print("\r\n=== Clock and PPS stats ===\r\n");
+  Serial.print("\n=== Clock and PPS stats ===\n");
   Serial.print("Crystal freq: ");
   Serial.print((float)pic_fosc_freq / 1000000,6);
-  Serial.print("MHz\r\nOC D: ");
+  Serial.print("MHz\nOC D: ");
   Serial.print(pic_oc_offset);
   Serial.print(" CLK D: ");
   Serial.print(pic_accumulation_delta);
   Serial.print(" CLK T: ");
   Serial.print(pic_accumulated_clocks);
-  Serial.print("\r\nOC events: ");
+  Serial.print("\nOC events: ");
   Serial.print(pic_total_oc_seq_count);
   Serial.print(" Resync events: ");
   Serial.println(pic_sync_events);
@@ -701,7 +701,7 @@ void pic_print_rtc(void)
 {
   if(pic_rtc_detected)
   {
-    Serial.print("\r\n=== RTC ===\r\n");
+    Serial.print("\n=== RTC ===\n");
     Serial.print("D: ");
     Serial.print(pic_rtc_detected);
     Serial.print("  V: ");
@@ -711,7 +711,7 @@ void pic_print_rtc(void)
   }
   else
   {
-    Serial.print("\r\n=== NO RTC DETECTED ===\r\n");
+    Serial.print("\n=== NO RTC DETECTED ===\n");
   }
 }
 
@@ -735,16 +735,16 @@ void print_veml_data(void)
 {
     if(pic_veml6040_detected)
     {
-        Serial.print("\r\n=== VEML6040 LUX DATA ===\r\n");
+        Serial.print("\n=== VEML6040 LUX DATA ===\n");
         Serial.print("LUX: ");
         Serial.print(pic_lux,1);
         Serial.print(" BRI: ");
         Serial.print(pic_brightness);
-        Serial.print("/4000\r\n");
+        Serial.print("/4000\n");
     }
     else
     {
-        Serial.print("\r\n=== NO VEML6040 DETECTED ===\r\n");
+        Serial.print("\n=== NO VEML6040 DETECTED ===\n");
     }
 }
 
@@ -753,20 +753,20 @@ void print_bme_data()
 {
   if(pic_bme280_detected)
   {
-    Serial.print("\r\n=== BME280 env data ===\r\n");
+    Serial.print("\n=== BME280 env data ===\n");
     Serial.print("T: ");
     Serial.print(pic_temp,2);
     Serial.print("C (");
     Serial.print(pic_temp_raw,2);
-    Serial.print("C board)\r\nP: ");
+    Serial.print("C board)\nP: ");
     Serial.print(pic_pres,1);
-    Serial.print("mB\r\nH: ");
+    Serial.print("mB\nH: ");
     Serial.print(pic_hum,2);
     Serial.println("%");
   }
   else
   {
-    Serial.print("\r\n=== NO BME280 DETECTED ===\r\n");
+    Serial.print("\n=== NO BME280 DETECTED ===\n");
   }
 }
 
@@ -793,14 +793,14 @@ void pic_process_display(void)
 
 void print_sync_state_machine(void)
 {
-    Serial.print("\r\n=== STATE MACHINE ===\r\n");
+    Serial.print("\n=== STATE MACHINE ===\n");
     Serial.print("STATE: ");
     sync_state_print(pic_clock_sync_state);
     Serial.print(" LAST: ");
     sync_state_print(pic_clock_sync_state_last);
-    Serial.print("\r\nLAST SYNC CAUSE: ");
+    Serial.print("\nLAST SYNC CAUSE: ");
     sync_state_print(pic_last_sync_cause);
-    Serial.print("\r\n");
+    Serial.print("\n");
 }
 
 

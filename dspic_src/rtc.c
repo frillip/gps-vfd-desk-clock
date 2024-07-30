@@ -21,9 +21,9 @@ void rtc_get_calendar(void)
 void rtc_set_calendar(void)
 {
 #ifdef DEBUG_MESSAGES
-    printf("RTC calendar sync\r\nTime is now: ");
+    printf("RTC calendar sync\nTime is now: ");
     ui_print_iso8601_string(rtc);
-    printf("\r\n");
+    printf("\n");
 #endif
     utc = rtc;
 }
@@ -41,7 +41,7 @@ void rtc_write_from_calendar(time_t utc)
 #ifdef DEBUG_MESSAGES
     printf("RTC time is now: ");
     ui_print_iso8601_string(rtc);
-    printf("\r\n");
+    printf("\n");
 #endif
     rtc_sync = 1; 
 }
