@@ -627,10 +627,6 @@ void display_delta_t(const time_t *time)
         d_year = -d_year;
     }
     
-    printf("%li %li\r\n",now , epoch);
-    if(future) printf("-");
-    printf("%iy %im %id %ih %im %is\r\n", d_year, d_mon, d_day, d_hour, d_min, d_sec);
-    
     // Years only
     if(d_year > 100)
     {
