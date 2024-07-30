@@ -33,6 +33,7 @@ pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
 pic-set-brightness-auto [b] = Set display brightness to auto
 pic-set-brightness [n] = Set display brightness to n / 4000
+pic-eeprom-show = show settings stored in EEPROM
 pic-clear-all = Clear all settings
 pic-save = Save settings
 
