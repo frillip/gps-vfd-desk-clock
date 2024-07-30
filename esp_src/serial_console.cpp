@@ -29,6 +29,7 @@ pic-set-dst-auto [b] = Enable/disable auto dst
 pic-set-dst-active [b] = Enable/disable dst (pic-set-dst-auto must be off)
 pic-set-alarm-enabled [b] = Enable/disable alarm
 pic-set-alarm [n] = Set PIC alarm to [n] seconds past midnight
+pic-set-delta [n] = Set PIC delta epoch to [n] unix time
 pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
 pic-set-brightness-auto [b] = Set display brightness to auto
@@ -349,6 +350,11 @@ USER_CMD serial_console_check_2_pic(void)
       return USER_CMD_PIC_SET_ALARM;
     }
 
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_DELTA_STRING) == 0)
+    {
+      return USER_CMD_PIC_SET_DELTA;
+    }
+
     if(strcmp(user_cmd_buf, USER_CMD_PIC_SET_BEEPS_STRING) == 0)
     {
       return USER_CMD_PIC_SET_BEEPS;
@@ -624,6 +630,14 @@ void serial_console_exec(USER_CMD cmd)
 
     case USER_CMD_PIC_SET_ALARM:
       
+      break;
+
+    case USER_CMD_PIC_SET_DELTA:
+      uint32_t delta_val_new;
+      if(serial_console_validate_uint32(user_arg_buf, &delta_val_new))
+      {
+        pic_uart_tx_userdata(USER_CMD_PIC_SET_DELTA, delta_val_new);
+      }
       break;
 
     case USER_CMD_PIC_SET_BEEPS:

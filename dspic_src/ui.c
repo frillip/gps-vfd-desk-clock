@@ -1323,6 +1323,13 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             pic_reset();
             break; // Pointless, but good practise I guess
 
+        case USER_CMD_PIC_SET_DELTA:
+            settings.fields.delta.epoch = (time_t)arg;
+            printf("Delta mode epoch set to: ");
+            ui_print_iso8601_string_local(settings.fields.delta.epoch);
+            printf("  / %lu\r\n",arg);
+            break;
+
         // Brightness up on 'B'
         case 0x42:
             display_brightness_set_manual();

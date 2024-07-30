@@ -196,7 +196,8 @@ typedef union
   {
     SERIAL_PROTO_HEADER header;
     
-    USER_CMD cmd;
+    USER_CMD cmd : 8;
+    uint8_t padding;
     uint32_t arg;
   } fields;
   uint8_t raw[sizeof(struct _pic_user_struct)];
@@ -325,7 +326,8 @@ typedef union
   {
     SERIAL_PROTO_HEADER header;
     
-    USER_CMD cmd;
+    USER_CMD cmd : 8;
+    uint8_t padding;
     uint32_t arg;
   } fields;
   uint8_t raw[sizeof(struct _esp_user_struct)];

@@ -52,6 +52,7 @@
 #define USER_CMD_PIC_SET_DST_ACTIVE_STRING "pic-set-dst-active"
 #define USER_CMD_PIC_SET_ALARM_ENABLED_STRING "pic-set-alarm-enabled"
 #define USER_CMD_PIC_SET_ALARM_STRING "pic-set-alarm"
+#define USER_CMD_PIC_SET_DELTA_STRING "pic-set-delta"
 #define USER_CMD_PIC_SET_BEEPS_STRING "pic-set-beeps"
 #define USER_CMD_PIC_SET_DISPLAY_STRING "pic-set-display"
 #define USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING "pic-set-brightness-auto"
