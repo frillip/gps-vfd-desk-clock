@@ -1,5 +1,6 @@
 #include "eeprom.h"
 
+EEPROM_DATA_STRUCT stored = { .raw ={0} };
 EEPROM_DATA_STRUCT settings = { .raw ={0} };
 EEPROM_DATA_STRUCT modified = { .raw ={0} };
 
@@ -9,28 +10,26 @@ static __prog__  uint8_t eeprom_flash_page[FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS] __
 static void eeprom_read_flash(void)
 {
     uint32_t flash_storage_address = FLASH_GetErasePageAddress((uint32_t)&eeprom_flash_page[0]);
-    EEPROM_DATA_STRUCT read_data = { .raw ={0} }; // Temporary holding pen
 
     // Get flash page aligned address of flash reserved above for this test.
     flash_storage_address = FLASH_GetErasePageAddress((uint32_t)&eeprom_flash_page[0]);
 
     uint32_t i = 0;
-    while(i < (sizeof(EEPROM_DATA_STRUCT)/sizeof(read_data.raw[0])))
+    while(i < (sizeof(EEPROM_DATA_STRUCT)/sizeof(stored.raw[0])))
     {
-        read_data.raw[i] = FLASH_ReadWord16(flash_storage_address + (2 * i));
+        stored.raw[i] = FLASH_ReadWord16(flash_storage_address + (2 * i));
         i++;
     }
     
-    memcpy(settings.raw, read_data.raw, sizeof(EEPROM_DATA_STRUCT));
+    memcpy(settings.raw, stored.raw, sizeof(EEPROM_DATA_STRUCT));
 }
 
 static void eeprom_write_flash(void)
 {
     uint32_t flash_storage_address = FLASH_GetErasePageAddress((uint32_t)&eeprom_flash_page[0]);
     bool result;
-    EEPROM_DATA_STRUCT write_data = { .raw ={0} }; // Set up write buffer
     
-    memcpy(write_data.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT)); // Copy our settings
+    memcpy(stored.raw, settings.raw, sizeof(EEPROM_DATA_STRUCT)); // Copy our settings
     
     FLASH_Unlock(FLASH_UNLOCK_KEY);
 
@@ -42,9 +41,9 @@ static void eeprom_write_flash(void)
     
     uint32_t i = 0;
     // For this product we must write two adjacent words at a one time.
-    while(i < (sizeof(EEPROM_DATA_STRUCT)/sizeof(write_data.raw[0])))
+    while(i < (sizeof(EEPROM_DATA_STRUCT)/sizeof(stored.raw[0])))
     {
-        result &= FLASH_WriteDoubleWord24(flash_storage_address + (2 * i), write_data.raw[i], write_data.raw[i+1]);
+        result &= FLASH_WriteDoubleWord24(flash_storage_address + (2 * i), stored.raw[i], stored.raw[i+1]);
         i +=2 ;
     }
 
@@ -65,7 +64,10 @@ void eeprom_init()
     if(!eeprom_check_settings())
     {
         eeprom_print_settings();
+        printf("Settings reset!\n");
         eeprom_reset_settings();
+        eeprom_print_settings();
+        eeprom_write();
     }
 }
 
@@ -114,6 +116,8 @@ bool eeprom_check_settings(void)
     return check_passed;
 }
 
+
+
 void eeprom_reset_settings(void)
 {
     settings.fields.header = EEPROM_HEADER_VALUE;
@@ -138,11 +142,6 @@ void eeprom_reset_settings(void)
     settings.fields.reset.flags.wifi = UI_RESET_WIFI_DEFAULT;
     settings.fields.reset.flags.settings = UI_RESET_SETTINGS_DEFAULT;
     settings.fields.reset.flags.all = UI_RESET_ALL_DEFAULT;
-    
-    printf("Settings reset!\n");
-    eeprom_print_settings();
-    
-    eeprom_write();
 }
 
 void eeprom_clear_pending_changes(void)

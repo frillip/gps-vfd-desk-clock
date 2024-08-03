@@ -665,7 +665,7 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SAVE:
-      
+      pic_uart_tx_userdata(cmd, 0);
       break;
 
     case USER_CMD_RESET_ALL:

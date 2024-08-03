@@ -478,6 +478,7 @@ void ui_display_task(void)
                 // If we have either of these states something is wrong, so correct and save
                 settings.fields.display.selected = UI_DISPLAY_SELECTED_DEFAULT;
                 eeprom_reset_settings();
+                eeprom_write();
             }
             ui_state_current=settings.fields.display.selected;
             display_local_time(utc);
@@ -1334,7 +1335,7 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             ui_print_iso8601_string_local(settings.fields.delta.epoch);
             printf("  / %lu\n",arg);
             break;
-
+            
         // Brightness up on 'B'
         case 0x42:
             display_brightness_set_manual();
@@ -1389,8 +1390,13 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             break;
             
         case USER_CMD_PIC_CLEAR_ALL:
-            printf("PIC clear all EEPROM settings\n");
+            printf("PIC settings reset\n");
             eeprom_reset_settings();
+            break;
+            
+        case USER_CMD_PIC_SAVE:
+            eeprom_write();
+            printf("PIC settings saved\n");
             break;
 
         default:
