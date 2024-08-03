@@ -673,7 +673,12 @@ void ui_display_cycle(void)
             break;
             
         default:
-            ui_state_current = UI_DISPLAY_STATE_CLOCK_HHMM;
+            // If we're here it's probably because we're flashing dashes and
+            // have no clock reference, so check and do not cycle display if so
+            if(utc_source!=CLOCK_SOURCE_NONE)
+            {
+                ui_state_current = UI_DISPLAY_STATE_CLOCK_HHMM;
+            }
             break;
     }
 }
