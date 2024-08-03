@@ -21,6 +21,7 @@ extern "C" {
 #include "mcc_generated_files/uart1.h"
 #include "gnss_pps.h"
 #include "pic_pps.h"
+#include "rtc.h"
 #include "tubes.h"
 #include "sync_state.h"
 #include "../common/enums.h"

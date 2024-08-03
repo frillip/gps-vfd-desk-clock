@@ -515,6 +515,18 @@ void sync_state_machine(void)
                     break;
                 }
             }
+            if(rtc_detected)
+            {
+                if(rtc_valid)
+                {
+#ifdef DEBUG_MESSAGES
+                    printf("VALID RTC DATA ACQUIRED\n");
+#endif
+                    sync_set_clock_source(CLOCK_SOURCE_RTC);
+                    sync_state_machine_set_state(SYNC_RTC);
+                    break;
+                }
+            }
             break;
         
         case SYNC_GNSS_WAIT_FOR_FIX:

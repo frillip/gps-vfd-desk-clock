@@ -22,14 +22,14 @@ esp-save = Save settings
 
 pic-info = Show info directly from PIC
 pic-reset = Resets the PIC
-pic-set-rtc [s] = Set the PIC RTC to [s] (ISO8601 format)
+pic-set-rtc [n] = Set PIC delta epoch to [n] unix epoch time
 pic-set-tz-offset [n] = Set timezone offset to [n] in seconds
 pic-set-dst-offset [n] = Set dst offset to [n] in seconds
 pic-set-dst-auto [b] = Enable/disable auto dst
 pic-set-dst-active [b] = Enable/disable dst (pic-set-dst-auto must be off)
 pic-set-alarm-enabled [b] = Enable/disable alarm
 pic-set-alarm [n] = Set PIC alarm to [n] seconds past midnight
-pic-set-delta [n] = Set PIC delta epoch to [n] unix time
+pic-set-delta [n] = Set PIC delta epoch to [n] unix epoch time
 pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
 pic-set-brightness-auto [b] = Set display brightness to auto
@@ -605,7 +605,12 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_RTC:
-      
+      // time_t values are implemented as uint32_t in XC16, not int32_t
+      uint32_t rtc_val_new;
+      if(serial_console_validate_uint32(user_arg_buf, &rtc_val_new))
+      {
+        pic_uart_tx_userdata(cmd, rtc_val_new);
+      }
       break;
 
     case USER_CMD_PIC_SET_TZ_OFFSET:
@@ -637,7 +642,7 @@ void serial_console_exec(USER_CMD cmd)
       uint32_t delta_val_new;
       if(serial_console_validate_uint32(user_arg_buf, &delta_val_new))
       {
-        pic_uart_tx_userdata(USER_CMD_PIC_SET_DELTA, delta_val_new);
+        pic_uart_tx_userdata(cmd, delta_val_new);
       }
       break;
 

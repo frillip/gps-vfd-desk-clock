@@ -48,6 +48,7 @@ uint16_t ui_button_counter = 0;
 
 extern CLOCK_SOURCE utc_source;
 extern time_t utc;
+extern time_t rtc;
 extern time_t local;
 extern time_t display;
 extern bool dst_active;
@@ -1328,12 +1329,19 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             DELAY_microseconds(10000); // Let the serial data send first!
             pic_reset();
             break; // Pointless, but good practise I guess
+            
+        case USER_CMD_PIC_SET_RTC:
+            rtc_write_from_calendar((time_t)arg);
+            printf("RTC set to: ");
+            ui_print_iso8601_string_local(rtc);
+            printf(" / %lu\n",rtc);
+            break;
 
         case USER_CMD_PIC_SET_DELTA:
             settings.fields.delta.epoch = (time_t)arg;
             printf("Delta mode epoch set to: ");
             ui_print_iso8601_string_local(settings.fields.delta.epoch);
-            printf("  / %lu\n",arg);
+            printf(" / %lu\n",arg);
             break;
             
         // Brightness up on 'B'
