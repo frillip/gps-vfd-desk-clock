@@ -99,9 +99,6 @@ bool eeprom_check_settings(void)
     check_passed &= (settings.fields.dst.offset <= UI_DST_OFFSET_MAX);
     check_passed &= (settings.fields.dst.offset >= UI_DST_OFFSET_MIN);
     
-    check_passed &= (settings.fields.dst.offset <= UI_DST_OFFSET_MAX);
-    check_passed &= (settings.fields.dst.offset >= UI_DST_OFFSET_MIN);
-    
     check_passed &= (settings.fields.alarm.offset <= UI_ALARM_OFFSET_MAX);
     check_passed &= (settings.fields.alarm.offset >= UI_ALARM_OFFSET_MIN);
     
@@ -166,4 +163,23 @@ void eeprom_print_settings(void)
     printf("reset.flags.wifi: %u\n", settings.fields.reset.flags.wifi);
     printf("reset.flags.settings: %u\n", settings.fields.reset.flags.settings);
     printf("reset.flags.all: %u\n", settings.fields.reset.flags.all);
+}
+
+void eeprom_print_stored_settings(void)
+{
+    printf("header: %08lX\n", stored.fields.header);
+    printf("tz.flags.automatic: %u\n", stored.fields.tz.flags.automatic);
+    printf("tz.offset: %li\n", stored.fields.tz.offset);
+    printf("dst.flags.automatic: %u\n", stored.fields.dst.flags.automatic);
+    printf("dst.flags.active: %u\n", stored.fields.dst.flags.active);
+    printf("dst.offset: %li\n", stored.fields.dst.offset);
+    printf("alarm.flags.enabled: %u\n", stored.fields.alarm.flags.enabled);
+    printf("alarm.offset: %lu\n", stored.fields.alarm.offset);
+    printf("delta.epoch: %lu\n", stored.fields.delta.epoch);
+    printf("beep.flags.enabled: %u\n", stored.fields.beep.flags.enabled);
+    printf("display.flags.hour_12_format: %u\n", stored.fields.display.flags.hour_12_format);
+    printf("display.selected: %u\n", stored.fields.display.selected);
+    printf("reset.flags.wifi: %u\n", stored.fields.reset.flags.wifi);
+    printf("reset.flags.settings: %u\n", stored.fields.reset.flags.settings);
+    printf("reset.flags.all: %u\n", stored.fields.reset.flags.all);
 }

@@ -139,6 +139,7 @@ void pic_reset(void);
 void ui_user_cmd(USER_CMD cmd, uint32_t arg);
 void ui_print_iso8601_string(time_t iso);
 void ui_print_iso8601_string_local(time_t utc);
+void ui_print_local_offset(int32_t total_offset);
 void ui_print_clear_window(void);
 
 #define BUZZER_BUFFER_LENGTH 100

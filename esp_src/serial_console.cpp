@@ -23,8 +23,8 @@ esp-save = Save settings
 pic-info = Show info directly from PIC
 pic-reset = Resets the PIC
 pic-set-rtc [n] = Set PIC delta epoch to [n] unix epoch time
-pic-set-tz-offset [n] = Set timezone offset to [n] in seconds
-pic-set-dst-offset [n] = Set dst offset to [n] in seconds
+pic-set-tz-offset [n] = Set timezone offset to [n] in seconds, rounds to nearest 15 minutes
+pic-set-dst-offset [n] = Set dst offset to [n] in seconds, rounds to nearest 15 minutes
 pic-set-dst-auto [b] = Enable/disable auto dst
 pic-set-dst-active [b] = Enable/disable dst (pic-set-dst-auto must be off)
 pic-set-alarm-enabled [b] = Enable/disable alarm
@@ -34,8 +34,9 @@ pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
 pic-set-brightness-auto [b] = Set display brightness to auto
 pic-set-brightness [n] = Set display brightness to n / 4000
-pic-eeprom-show = show settings stored in EEPROM
-pic-clear-all = Clear all settings
+pic-show-eeprom = show settings stored in EEPROM
+pic-show-config = show running config settings
+pic-clear-all = Clear all settings to defaults
 pic-save = Save settings
 
 rst-all = Reset both
@@ -375,9 +376,14 @@ USER_CMD serial_console_check_2_pic(void)
       return USER_CMD_PIC_SET_BRIGHTNESS;
     }
 
-    if(strcmp(user_cmd_buf, USER_CMD_PIC_EEPROM_SHOW_STRING) == 0)
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SHOW_EEPROM_STRING) == 0)
     {
-      return USER_CMD_PIC_EEPROM_SHOW;
+      return USER_CMD_PIC_SHOW_EEPROM;
+    }
+
+    if(strcmp(user_cmd_buf, USER_CMD_PIC_SHOW_CONFIG_STRING) == 0)
+    {
+      return USER_CMD_PIC_SHOW_CONFIG;
     }
 
     if(strcmp(user_cmd_buf, USER_CMD_PIC_CLEAR_ALL_STRING) == 0)
@@ -614,11 +620,19 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_TZ_OFFSET:
-      Serial.println("Not implemented yet :(");
+      int32_t tz_offset_val_new;
+      if(serial_console_validate_int32(user_arg_buf, &tz_offset_val_new))
+      {
+        pic_uart_tx_userdata(cmd, tz_offset_val_new);
+      }
       break;
 
     case USER_CMD_PIC_SET_DST_OFFSET:
-      Serial.println("Not implemented yet :(");
+      uint32_t dst_offset_val_new;
+      if(serial_console_validate_uint32(user_arg_buf, &dst_offset_val_new))
+      {
+        pic_uart_tx_userdata(cmd, dst_offset_val_new);
+      }
       break;
 
     case USER_CMD_PIC_SET_DST_AUTO:
@@ -662,7 +676,11 @@ void serial_console_exec(USER_CMD cmd)
       Serial.println("Not implemented yet :(");
       break;
 
-    case USER_CMD_PIC_EEPROM_SHOW:
+    case USER_CMD_PIC_SHOW_EEPROM:
+      pic_uart_tx_userdata(cmd, 0);
+      break;
+
+    case USER_CMD_PIC_SHOW_CONFIG:
       pic_uart_tx_userdata(cmd, 0);
       break;
 
@@ -755,6 +773,39 @@ bool serial_console_validate_uint32(const char* input, uint32_t* output)
   {
     // Bounds check
     if (temp > UINT32_MAX)
+    {
+        return false;
+    }
+    // Store the parsed value in the output variable
+    *output = temp;
+    return true;
+  }
+
+  // If parsing failed, return false
+  return false;
+}
+
+bool serial_console_validate_int32(const char* input, int32_t* output)
+{
+  // Check if the input is null
+  if (input == NULL)
+  {
+    return false;
+  }
+
+  int32_t temp;
+  // Parse
+  int result = sscanf(input, "%ld", &temp);
+
+  // Success?
+  if (result == 1)
+  {
+    // Bounds check
+    if (temp > INT32_MAX)
+    {
+        return false;
+    }
+    if (temp < INT32_MIN)
     {
         return false;
     }

@@ -56,7 +56,7 @@ typedef union
             bool enabled : 1;
             uint16_t padding : 15;
         } flags;
-        uint32_t offset;
+        int32_t offset;
     } alarm;
     struct __attribute__ ((packed))
     {
@@ -108,6 +108,7 @@ bool eeprom_check_settings(void);
 void eeprom_reset_settings(void);
 void eeprom_clear_pending_changes(void);
 void eeprom_print_settings(void);
+void eeprom_print_stored_settings(void);
 
 
 #ifdef	__cplusplus

@@ -57,7 +57,8 @@
 #define USER_CMD_PIC_SET_DISPLAY_STRING "pic-set-display"
 #define USER_CMD_PIC_SET_BRIGHTNESS_AUTO_STRING "pic-set-brightness-auto"
 #define USER_CMD_PIC_SET_BRIGHTNESS_STRING "pic-set-brightness"
-#define USER_CMD_PIC_EEPROM_SHOW_STRING "pic-eeprom-show"
+#define USER_CMD_PIC_SHOW_CONFIG_STRING "pic-show-config"
+#define USER_CMD_PIC_SHOW_EEPROM_STRING "pic-show-eeprom"
 #define USER_CMD_PIC_CLEAR_ALL_STRING "pic-clear-all"
 #define USER_CMD_PIC_SAVE_STRING "pic-save"
 #define USER_CMD_RESET_ALL_STRING "rst-all"
@@ -86,3 +87,4 @@ bool serial_console_print_local_available(void);
 void serial_console_print_local(void);
 
 bool serial_console_validate_uint32(const char* input, uint32_t* output);
+bool serial_console_validate_int32(const char* input, int32_t* output);

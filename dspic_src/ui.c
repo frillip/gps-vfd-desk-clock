@@ -1336,6 +1336,79 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             ui_print_iso8601_string_local(rtc);
             printf(" / %lu\n",rtc);
             break;
+            
+        case USER_CMD_PIC_SET_TZ_OFFSET:
+            ; // Empty statement
+            int32_t tz_offset_new = (int32_t) arg; 
+            if((tz_offset_new > UI_TZ_OFFSET_MAX) || (tz_offset_new < UI_TZ_OFFSET_MIN))
+            {
+                printf("Invalid TZ offset: ");
+                ui_print_local_offset(tz_offset_new);
+                printf(" / %lis\n", tz_offset_new);
+            }
+            else
+            {
+                // Round to nearest step size with int maths
+                if(tz_offset_new < 0)
+                {
+                    tz_offset_new -= UI_TZ_OFFSET_STEP_SIZE / 2;
+                }
+                else
+                {
+                    tz_offset_new += UI_TZ_OFFSET_STEP_SIZE / 2;
+                }
+                tz_offset_new /= UI_TZ_OFFSET_STEP_SIZE;
+                tz_offset_new *= UI_TZ_OFFSET_STEP_SIZE;
+                
+                if(tz_offset_new != arg)
+                {
+                    printf("Rounding to nearest 15 minutes\n");
+                }
+                
+                if(settings.fields.tz.offset != tz_offset_new)
+                {
+                    settings.fields.tz.offset = tz_offset_new;
+                    ui_update_display();
+                }
+                printf("TZ offset set to: ");
+                ui_print_local_offset(settings.fields.tz.offset);
+                printf(" / %lis\n", settings.fields.tz.offset);
+
+                
+            }
+            break;
+            
+        case USER_CMD_PIC_SET_DST_OFFSET:
+            ; // Empty statement
+            int32_t dst_offset_new = arg; 
+            if((dst_offset_new > UI_DST_OFFSET_MAX) || (dst_offset_new < UI_DST_OFFSET_MIN))
+            {
+                printf("Invalid DST offset: ");
+                ui_print_local_offset(dst_offset_new);
+                printf(" / %lis\n", dst_offset_new);
+            }
+            else
+            {
+                // Round to nearest step size with int maths
+                dst_offset_new += UI_DST_OFFSET_STEP_SIZE / 2;
+                dst_offset_new /= UI_DST_OFFSET_STEP_SIZE;
+                dst_offset_new *= UI_DST_OFFSET_STEP_SIZE;
+                
+                if(dst_offset_new != arg)
+                {
+                    printf("Rounding to nearest 15 minutes\n");
+                }
+                
+                if(settings.fields.dst.offset != dst_offset_new)
+                {
+                    settings.fields.dst.offset = dst_offset_new;
+                    ui_update_display();
+                }
+                printf("DST offset set to: ");
+                ui_print_local_offset(settings.fields.dst.offset);
+                printf(" / %lis\n", settings.fields.dst.offset);
+            }
+            break;
 
         case USER_CMD_PIC_SET_DELTA:
             settings.fields.delta.epoch = (time_t)arg;
@@ -1392,14 +1465,20 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             printf("Display brightness auto\n");
             break;
             
-        case USER_CMD_PIC_EEPROM_SHOW:
-            printf("PIC EEPROM settings:\n");
+        case USER_CMD_PIC_SHOW_EEPROM:
+            printf("PIC stored config:\n");
+            eeprom_print_stored_settings();
+            break;
+            
+        case USER_CMD_PIC_SHOW_CONFIG:
+            printf("PIC running config:\n");
             eeprom_print_settings();
             break;
             
         case USER_CMD_PIC_CLEAR_ALL:
             printf("PIC settings reset\n");
             eeprom_reset_settings();
+            ui_update_display();
             break;
             
         case USER_CMD_PIC_SAVE:
@@ -1431,7 +1510,11 @@ void ui_print_iso8601_string_local(time_t utc)
     strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", local_tm);
     printf(buf);
     
-    int32_t total_offset = local_time - utc;
+    ui_print_local_offset((int32_t)(local_time - utc));
+}
+
+void ui_print_local_offset(int32_t total_offset)
+{
     if((total_offset)>=0)
     {
         printf("+"); 
