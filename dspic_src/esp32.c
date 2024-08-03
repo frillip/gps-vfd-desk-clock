@@ -609,7 +609,7 @@ void esp_tx_rtc(void)
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_RTCDATA;
     
     esp_tx_buffer.fields.flags.rtc_detected = rtc_detected;
-    esp_tx_buffer.fields.flags.rtc_valid = rtc_detected;
+    esp_tx_buffer.fields.flags.rtc_valid = rtc_valid;
     esp_tx_buffer.fields.flags.rtc_sync = rtc_sync;
     
     esp_tx_buffer.fields.rtc = rtc;

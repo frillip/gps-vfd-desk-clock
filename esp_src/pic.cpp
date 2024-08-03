@@ -500,6 +500,10 @@ void print_pic_time(void)
   {
     Serial.print(" - MISSING");
   }
+  else if(!pic_rtc_valid)
+  {
+    Serial.printf(" - INVALID");
+  }
 
   Serial.print("\nLocal: ");
   print_local_time(pic);

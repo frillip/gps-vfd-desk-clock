@@ -961,6 +961,10 @@ void print_clocks(void)
     {
         printf(" - MISSING");
     }
+    else if(!rtc_valid)
+    {
+        printf(" - INVALID");
+    }
     printf("\n");
     
     printf("Local: ");
