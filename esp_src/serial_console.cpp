@@ -511,7 +511,7 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_SET_SERVER:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_RESYNC:
@@ -538,27 +538,27 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_WIFI_SSID:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_WIFI_PASS:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_WIFI_DHCP:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_WIFI_IP:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_WIFI_MASK:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_WIFI_GATEWAY:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_ESP_WIFI_CLEAR:
@@ -589,7 +589,7 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_ESP_SAVE:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_INFO:
@@ -614,27 +614,27 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_TZ_OFFSET:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_DST_OFFSET:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_DST_AUTO:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_DST_ACTIVE:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_ALARM_ENABLED:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_ALARM:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_DELTA:
@@ -647,11 +647,11 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_BEEPS:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_DISPLAY:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_SET_BRIGHTNESS_AUTO:
@@ -659,7 +659,7 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_BRIGHTNESS:
-      
+      Serial.println("Not implemented yet :(");
       break;
 
     case USER_CMD_PIC_EEPROM_SHOW:
