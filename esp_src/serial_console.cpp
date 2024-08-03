@@ -633,6 +633,7 @@ void serial_console_exec(USER_CMD cmd)
       break;
 
     case USER_CMD_PIC_SET_DELTA:
+      // time_t values are implemented as uint32_t in XC16, not int32_t
       uint32_t delta_val_new;
       if(serial_console_validate_uint32(user_arg_buf, &delta_val_new))
       {
