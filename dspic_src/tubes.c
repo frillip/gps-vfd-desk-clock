@@ -1545,7 +1545,7 @@ time_t get_local_time(time_t utc)
     time_t local_time = utc;
     local_time += settings.fields.tz.offset;
     
-    if(isDST(&local_time))
+    if(isDST(&utc))
     {
         local_time += settings.fields.dst.offset; 
     }
