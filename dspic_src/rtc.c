@@ -5,6 +5,15 @@ extern time_t utc;
 bool rtc_sync = 0;
 bool rtc_detected = 0;
 bool rtc_valid = 0;
+#ifdef RTC_SOURCE_DS1307
+PIC_RTC_TYPE rtc_type = RTC_DS1307;
+#else
+    #ifdef RTC_SOURCE_PCF8563
+PIC_RTC_TYPE rtc_type = RTC_PCF8563;
+    #else
+PIC_RTC_TYPE rtc_type = RTC_UNDEFINED;
+    #endif
+#endif
 
 void rtc_get_calendar(void)
 {
@@ -54,4 +63,25 @@ bool rtc_is_calendar_sync(time_t utc)
 void rtc_reset_calendar_sync(void)
 {
     rtc_sync = 0;
+}
+
+void print_rtc_data(void)
+{
+    if(rtc_detected)
+    {
+        printf("\n=== RTC ===\n");
+#ifdef RTC_SOURCE_DS1307
+        printf("DS1307: ");
+#else
+    #ifdef RTC_SOURCE_PCF8563
+        printf("PCF8563: ");
+    #endif
+#endif
+        ui_print_iso8601_string(rtc);
+        printf("\nValid: %u Sync: %u\n", rtc_valid, rtc_sync);
+    }
+    else
+    {
+        printf("\n=== NO RTC DETECTED ===\n");
+    }
 }

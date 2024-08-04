@@ -119,6 +119,7 @@ typedef union
         uint8_t rtc_detected : 1;
         uint8_t rtc_valid : 1;
         uint8_t rtc_sync : 1;
+        PIC_RTC_TYPE rtc_type : 4;
     } flags;
     time_t rtc;
   } fields;

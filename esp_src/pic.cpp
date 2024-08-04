@@ -63,6 +63,7 @@ SERIAL_PROTO_DATA_PIC_RTC pic_rtc_buffer;
 bool pic_rtc_detected = 0;
 bool pic_rtc_valid = 0;
 bool pic_rtc_sync = 0;
+PIC_RTC_TYPE pic_rtc_type = RTC_UNDEFINED;
 time_t pic_rtc = 0;
 
 
@@ -712,6 +713,7 @@ void pic_process_rtc(void)
   pic_rtc_detected = pic_rtc_buffer.fields.flags.rtc_detected;
   pic_rtc_valid = pic_rtc_buffer.fields.flags.rtc_valid;
   pic_rtc_sync = pic_rtc_buffer.fields.flags.rtc_sync;
+  pic_rtc_type = pic_rtc_buffer.fields.flags.rtc_type;
   pic_rtc = pic_rtc_buffer.fields.rtc;
 
   pic_rtc_waiting = 0;
@@ -723,11 +725,22 @@ void pic_print_rtc(void)
   if(pic_rtc_detected)
   {
     Serial.print("\n=== RTC ===\n");
-    Serial.print("D: ");
-    Serial.print(pic_rtc_detected);
-    Serial.print("  V: ");
+    if(pic_rtc_type==RTC_DS1307)
+    {
+      Serial.print("DS1307: ");
+    }
+    else if(pic_rtc_type==RTC_PCF8563)
+    {
+      Serial.print("PCF8563: ");
+    }
+    else
+    {
+      Serial.print("Undefined: ");
+    }
+    print_iso8601_string(pic_rtc);
+    Serial.print("\nValid: ");
     Serial.print(pic_rtc_valid);
-    Serial.print("  S: ");
+    Serial.print(" Sync: ");
     Serial.println(pic_rtc_sync);
   }
   else

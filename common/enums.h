@@ -96,6 +96,13 @@ typedef enum
 
 typedef enum
 {
+    RTC_UNDEFINED = 0,
+    RTC_DS1307,
+    RTC_PCF8563,
+} PIC_RTC_TYPE;
+
+typedef enum
+{
     UI_DISPLAY_STATE_INIT = 0,
     UI_DISPLAY_STATE_CLOCK_HHMM,
     UI_DISPLAY_STATE_CLOCK_MMSS,
