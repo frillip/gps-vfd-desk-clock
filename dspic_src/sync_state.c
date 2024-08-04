@@ -73,6 +73,8 @@ CLOCK_SYNC_STATUS last_sync_cause = SYNC_POWER_ON;
 
 CLOCK_SOURCE utc_source = CLOCK_SOURCE_NONE;
 
+extern EEPROM_DATA_STRUCT settings;
+
 bool no_clock_blink = 0;
 
 extern uint8_t esp_data_task_cycle;
@@ -981,6 +983,22 @@ void print_clocks(void)
     
     printf("Local: ");
     ui_print_iso8601_string_local(utc);
+    printf("\n");
+
+    printf("TZ:    ");
+    ui_print_local_offset(settings.fields.tz.offset);
+    printf("\n");
+    
+    printf("DST:   ");
+    if(isDST(&utc))
+    {
+        ui_print_local_offset(settings.fields.dst.offset);
+        printf(" (active)");
+    }
+    else
+    {
+        printf("Inactive");
+    }
     printf("\n");
     
     printf("UTC source: ");

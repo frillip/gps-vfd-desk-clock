@@ -439,19 +439,23 @@ void print_local_time(time_t now)
   iso_time = gmtime(&local);
   strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", iso_time);
   Serial.print(buf);
-  int32_t total_offset = local - now;
+  print_local_offset((int32_t)(local - now));
+}
+
+void print_local_offset(int32_t total_offset)
+{
+  char buf[10] = {0};
   if((total_offset)>=0)
   {
-    Serial.print("+"); 
+      Serial.print("+"); 
   }
   else
   {
-    Serial.print("-"); 
-    total_offset = total_offset*-1;
+      Serial.print("-"); 
+      total_offset = total_offset*-1;
   }
   uint32_t total_offset_hours = total_offset/3600;
   uint32_t total_offset_minutes = (total_offset-(total_offset_hours*3600))/60;
-
   sprintf(buf,"%02lu:%02lu",total_offset_hours,total_offset_minutes);
   Serial.print(buf);
 }
@@ -507,6 +511,19 @@ void print_pic_time(void)
 
   Serial.print("\nLocal: ");
   print_local_time(pic);
+  Serial.print("\nTZ:    ");
+  print_local_offset(pic_tz_offset);
+  
+  Serial.print("\nDST:   ");
+  if(pic_dst_active)
+  {
+      print_local_offset(pic_dst_offset);
+      Serial.print(" (active)");
+  }
+  else
+  {
+      Serial.print("Inactive");
+  }
 
   Serial.print("\nUTC source: ");
   print_clock_source(pic_utc_source);

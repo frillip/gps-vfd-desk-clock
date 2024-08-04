@@ -436,8 +436,8 @@ void serial_console_help(void)
   }
   else
   {
-    Serial.print("ARG: ");
-    Serial.println(user_arg_buf);
+    //Serial.print("ARG: ");
+    //Serial.println(user_arg_buf);
     serial_console_print_help_all();
   }
 }

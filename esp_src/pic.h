@@ -36,6 +36,7 @@ void pic_data_task(void);
 
 void pic_process_time(void);
 void print_local_time(time_t now);
+void print_local_offset(int32_t total_offset);
 void print_iso8601_string(time_t time);
 void print_pic_time(void);
 void print_clock_source(CLOCK_SOURCE source);
