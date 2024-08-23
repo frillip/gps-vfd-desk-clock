@@ -12,7 +12,7 @@ uint8_t esp_bytes_remaining = 0;
 
 SERIAL_PROTO_DATA_ESP_TIME esp_time_buffer;
 bool esp_time_waiting = 0;
-SERIAL_PROTO_HEADER esp_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
+const SERIAL_PROTO_HEADER esp_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
 bool esp_wifi_status = 0;
 bool esp_ntp_status = 0;
 bool esp_pps_sync = 0;
@@ -23,7 +23,7 @@ int8_t esp_ntp_offset = 0;
 
 SERIAL_PROTO_DATA_ESP_NET esp_net_buffer;
 bool esp_net_waiting = 0;
-SERIAL_PROTO_HEADER esp_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
+const SERIAL_PROTO_HEADER esp_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
 //bool esp_wifi_status = 0;
 //bool esp_ntp_status = 0
 //bool esp_pps_sync = 0;
@@ -34,12 +34,12 @@ uint8_t esp_dst_flags = 0;
 
 SERIAL_PROTO_DATA_ESP_RTC esp_rtc_buffer;
 bool esp_rtc_waiting = 0;
-SERIAL_PROTO_HEADER esp_rtc_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_RTCDATA};
+const SERIAL_PROTO_HEADER esp_rtc_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_RTCDATA};
 time_t esp_rtc_time = 0;
 
 SERIAL_PROTO_DATA_ESP_SENSOR esp_sensor_buffer;
 bool esp_sensor_waiting = 0;
-SERIAL_PROTO_HEADER esp_sensor_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_SENSORDATA};
+const SERIAL_PROTO_HEADER esp_sensor_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_SENSORDATA};
 uint16_t esp_sensor_lux = 0;
 uint16_t esp_sensor_temp = 0;
 uint16_t esp_sensor_pres = 0;
@@ -47,7 +47,7 @@ uint16_t esp_sensor_hum = 0;
 
 SERIAL_PROTO_DATA_ESP_DISPLAY esp_display_buffer;
 bool esp_display_waiting = 0;
-SERIAL_PROTO_HEADER esp_display_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA};
+const SERIAL_PROTO_HEADER esp_display_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA};
 uint16_t esp_brightness = 0;
 bool esp_brightness_updated = 0;
 uint8_t esp_display_state = 0;
@@ -55,7 +55,7 @@ uint8_t esp_menu_state = 0;
 
 SERIAL_PROTO_DATA_ESP_USER esp_user_buffer;
 bool esp_user_waiting = 0;
-SERIAL_PROTO_HEADER esp_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
+const SERIAL_PROTO_HEADER esp_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
 
 time_t esp;
 time_t ntp;

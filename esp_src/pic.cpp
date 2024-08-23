@@ -13,7 +13,7 @@ PIC_MESSAGE_TYPE pic_waiting = PIC_NONE;
 uint8_t pic_bytes_remaining = 0;
 
 
-SERIAL_PROTO_HEADER pic_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
+const SERIAL_PROTO_HEADER pic_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
 bool pic_time_waiting = 0;
 SERIAL_PROTO_DATA_PIC_TIME pic_time_buffer;
 time_t pic = 0;
@@ -25,7 +25,7 @@ bool pic_dst_active;
 int32_t pic_dst_offset;
 
 
-SERIAL_PROTO_HEADER pic_gnss_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_GNSSDATA};
+const SERIAL_PROTO_HEADER pic_gnss_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_GNSSDATA};
 bool pic_gnss_waiting = 0;
 SERIAL_PROTO_DATA_PIC_GNSS pic_gnss_buffer;
 bool pic_gnss_detected = 0;
@@ -40,7 +40,7 @@ int32_t pic_posllh_lon = 0;
 int16_t pic_posllh_height = 0;
 int16_t pic_posllh_hmsl = 0;
 
-SERIAL_PROTO_HEADER pic_offset_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_OFFSETDATA};
+const SERIAL_PROTO_HEADER pic_offset_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_OFFSETDATA};
 bool pic_offset_waiting = 0;
 SERIAL_PROTO_DATA_PIC_OFFSET pic_offset_buffer;
 CLOCK_SYNC_STATUS pic_clock_sync_state;
@@ -53,11 +53,11 @@ time_t pic_accumulation_delta = 0;
 uint32_t pic_total_oc_seq_count = 0;
 uint32_t pic_sync_events = 0;
 
-SERIAL_PROTO_HEADER pic_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
+const SERIAL_PROTO_HEADER pic_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
 bool pic_net_waiting = 0;
 SERIAL_PROTO_DATA_PIC_NET pic_net_buffer;
 
-SERIAL_PROTO_HEADER pic_rtc_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_RTCDATA};
+const SERIAL_PROTO_HEADER pic_rtc_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_RTCDATA};
 bool pic_rtc_waiting = 0;
 SERIAL_PROTO_DATA_PIC_RTC pic_rtc_buffer;
 bool pic_rtc_detected = 0;
@@ -67,7 +67,7 @@ PIC_RTC_TYPE pic_rtc_type = RTC_UNDEFINED;
 time_t pic_rtc = 0;
 
 
-SERIAL_PROTO_HEADER pic_sensor_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_SENSORDATA};
+const SERIAL_PROTO_HEADER pic_sensor_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_SENSORDATA};
 bool pic_sensor_waiting = 0;
 SERIAL_PROTO_DATA_PIC_SENSOR pic_sensor_buffer;
 bool pic_veml6040_detected = 0;
@@ -78,7 +78,7 @@ float pic_temp_raw = 0;
 float pic_pres = 0;
 float pic_hum = 0;
 
-SERIAL_PROTO_HEADER pic_display_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA};
+const SERIAL_PROTO_HEADER pic_display_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA};
 bool pic_display_waiting = 0;
 SERIAL_PROTO_DATA_PIC_DISPLAY pic_display_buffer;
 bool pic_update_pending = 0;
@@ -93,7 +93,7 @@ UI_DISPLAY_STATE pic_display_state_current = UI_DISPLAY_STATE_INIT;
 UI_DISPLAY_STATE pic_display_state_selected = UI_DISPLAY_STATE_INIT;
 UI_MENU_STATE pic_menu_state = UI_MENU_STATE_ROOT;
 
-SERIAL_PROTO_HEADER pic_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
+const SERIAL_PROTO_HEADER pic_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
 bool pic_user_waiting = 0;
 SERIAL_PROTO_DATA_PIC_USER pic_user_buffer;
 
