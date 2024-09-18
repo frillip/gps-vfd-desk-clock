@@ -17,10 +17,17 @@ bool scheduler_sync = 0;
 
 void scheduler_init(void)
 {
-  scheduler_timer = timerBegin(SCHEDULER_HW_TIMER, 80, true);
-  timerAttachInterrupt(scheduler_timer, &scheduler_1ms, true);
-  timerAlarmWrite(scheduler_timer, 1000, true);
-  timerAlarmEnable(scheduler_timer);
+  scheduler_timer = timerBegin(1000000);
+  if(scheduler_timer == NULL)
+  {
+    printf("Unable to run scheduler!!!\n");
+    while(1)
+    {
+      delay(50); // Stop here
+    }
+  }
+  timerAttachInterrupt(scheduler_timer, &scheduler_1ms);
+  timerAlarm(scheduler_timer, 1000, true, 0);
   scheduler_reset();
 }
 
@@ -41,7 +48,7 @@ void scheduler_reset_sync(void)
   scheduler_sync = 1;
 }
 
-void IRAM_ATTR scheduler_1ms()
+void ARDUINO_ISR_ATTR scheduler_1ms()
 {
   t1ms++;
   t1ms0++;

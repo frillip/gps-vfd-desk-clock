@@ -9,10 +9,9 @@ void esp_pps_init(void)
   pinMode(ESP_PPS_OUT_PIN, OUTPUT);
   esp_pps_out_clear();
 
-  esp_pps_timer = timerBegin(ESP_PPS_HW_TIMER, 80, true);
-  timerAttachInterrupt(esp_pps_timer, &esp_pps_out_intr, true);
-  timerAlarmWrite(esp_pps_timer, 1000000, true);
-  timerAlarmEnable(esp_pps_timer);
+  esp_pps_timer = timerBegin(1000000);
+  timerAttachInterrupt(esp_pps_timer, &esp_pps_out_intr);
+  timerAlarm(esp_pps_timer, 1000000, true, 0);
 }
 
 bool esp_pps_is_sync(void)
@@ -32,7 +31,7 @@ void esp_pps_unsync(void)
   esp_pps_sync = 0;
 }
 
-void esp_pps_out_intr(void)
+void ARDUINO_ISR_ATTR esp_pps_out_intr(void)
 {
   esp_pps_out_set();
 }

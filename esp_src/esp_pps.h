@@ -11,4 +11,4 @@ void esp_pps_init(void);
 bool esp_pps_is_sync(void);
 void esp_pps_reset_sync(void);
 void esp_pps_unsync(void);
-void esp_pps_out_intr(void);
+void ARDUINO_ISR_ATTR esp_pps_out_intr(void);

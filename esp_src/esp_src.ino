@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <esp_task_wdt.h>
-#define WDT_TIMEOUT 15
+#define TWDT_TIMEOUT_MS 15000
 
 #include "enums.h"
 #include "serial_proto.h"
@@ -60,10 +60,23 @@ void reconnect_wifi(void)
 
 void setup()
 {
-  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
-  esp_task_wdt_add(NULL); //add current thread to WDT watch
-  
   serial_console_init();
+
+  /*
+  // TO DO:
+  // Fix TWDT in esp32 v3.0.x
+  //
+  ESP_ERROR_CHECK(esp_task_wdt_deinit());
+  esp_task_wdt_config_t twdt_config = {
+        .timeout_ms = TWDT_TIMEOUT_MS,
+        .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
+        .trigger_panic = true,
+    };
+  ESP_ERROR_CHECK(esp_task_wdt_init(&twdt_config));
+  printf("TWDT initialized\n");
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+  */
+  
   uint32_t id = 0;
   for(int i=0; i<17; i=i+8) {
     id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
@@ -111,7 +124,7 @@ void loop()
 {
   if(secondChanged())
   {
-    esp_task_wdt_reset();
+    //esp_task_wdt_reset();
     esp_micros = micros();
     if(!esp_pps_is_sync())
     {

@@ -57,7 +57,7 @@ char last_rx_char;
 
 void serial_console_init()
 {
-    Serial.begin(DEBUG_BAUD);
+  Serial.begin(DEBUG_BAUD);
 }
 
 bool serial_console_char_available(void)
