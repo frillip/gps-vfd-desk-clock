@@ -195,6 +195,7 @@ void pic_uart_rx()
     while(UARTPIC.available())
     {
       char rx_char = UARTPIC.read();
+      //Serial.printf("%X ", rx_char);
 
       memmove(pic_check_buffer, pic_check_buffer+1, sizeof(SERIAL_PROTO_HEADER)-1);
       pic_check_buffer[sizeof(SERIAL_PROTO_HEADER)-1] = rx_char;
@@ -382,17 +383,79 @@ void pic_process_time()
   extern int32_t tz_offset;
   extern bool dst_active;
   extern int32_t dst_offset;
-  
+
   pic_utc_source = pic_time_buffer.fields.utc_source;
+
   pic = pic_time_buffer.fields.utc;
+
   pic_tz_set = pic_time_buffer.fields.tz_flags.tz_set; // Unused
   pic_tz_offset = pic_time_buffer.fields.tz_flags.tz_offset * 900;
-
   tz_offset = pic_tz_offset;
   
   pic_dst_set = pic_time_buffer.fields.dst_flags.dst_set;
   pic_dst_active = pic_time_buffer.fields.dst_flags.dst_active;
   pic_dst_offset = pic_time_buffer.fields.dst_flags.dst_offset * 900;
+
+  /*
+  uint8_t i;
+  Serial.printf("\nTime_struct (%u bytes): ", sizeof(pic_time_buffer));
+  for(i=0; i < sizeof(pic_time_buffer); i++)
+  {
+    Serial.printf("%X-",pic_time_buffer.raw[i]);
+  }
+
+  Serial.printf("\nheader.magic:  %X\n", pic_time_buffer.fields.header.magic);
+  Serial.printf("  .type:       %X\n", pic_time_buffer.fields.header.type);
+  Serial.printf("  .datatype:   %X\n", pic_time_buffer.fields.header.datatype);
+
+  Serial.printf("utc_source:    %X\n", pic_time_buffer.fields.utc_source);
+  Serial.printf("utc:           %X\n", pic_time_buffer.fields.utc);
+
+  Serial.printf("tz_flags.set:  %X\n", pic_time_buffer.fields.tz_flags.tz_set);
+  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.tz_flags.tz_offset);
+
+  Serial.printf("dst_flags.set: %X\n", pic_time_buffer.fields.dst_flags.dst_set);
+  Serial.printf("  .active:     %X\n", pic_time_buffer.fields.dst_flags.dst_active);
+  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.dst_flags.dst_offset);
+
+  //Serial.printf("checksum:      %X\n", pic_time_buffer.fields.checksum);
+
+  memset(pic_time_buffer.raw, 0xFF, sizeof(pic_time_buffer));
+
+  pic_time_buffer.fields.header.magic = 0x83;
+  pic_time_buffer.fields.header.type = 0xb6;
+  pic_time_buffer.fields.header.datatype = 0xf0;
+  pic_time_buffer.fields.utc_source = CLOCK_SOURCE_RTC;
+  pic_time_buffer.fields.utc = 0x66ec1441;
+  pic_time_buffer.fields.tz_flags.tz_set = 0x1;
+  pic_time_buffer.fields.tz_flags.tz_offset = 0x2;
+  pic_time_buffer.fields.dst_flags.dst_set = 0x1;
+  pic_time_buffer.fields.dst_flags.dst_active = 0x1;
+  pic_time_buffer.fields.dst_flags.dst_offset = 0x3;
+  //pic_time_buffer.fields.checksum = 0x0;
+
+  Serial.printf("\nTime_struct (%u bytes): ", sizeof(pic_time_buffer));
+  for(i=0; i < sizeof(pic_time_buffer.raw); i++)
+  {
+    Serial.printf("%X-",pic_time_buffer.raw[i]);
+  }
+
+  Serial.printf("\nheader.magic:  %X\n", pic_time_buffer.fields.header.magic);
+  Serial.printf("  .type:       %X\n", pic_time_buffer.fields.header.type);
+  Serial.printf("  .datatype:   %X\n", pic_time_buffer.fields.header.datatype);
+
+  Serial.printf("utc_source:    %X\n", pic_time_buffer.fields.utc_source);
+  Serial.printf("utc:           %X\n", pic_time_buffer.fields.utc);
+
+  Serial.printf("tz_flags.set:  %X\n", pic_time_buffer.fields.tz_flags.tz_set);
+  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.tz_flags.tz_offset);
+
+  Serial.printf("dst_flags.set: %X\n", pic_time_buffer.fields.dst_flags.dst_set);
+  Serial.printf("  .active:     %X\n", pic_time_buffer.fields.dst_flags.dst_active);
+  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.dst_flags.dst_offset);
+
+  //Serial.printf("checksum:      %X\n", pic_time_buffer.fields.checksum);
+  */
 
   dst_active = pic_dst_active;
   dst_offset = pic_dst_offset;

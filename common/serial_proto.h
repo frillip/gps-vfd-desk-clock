@@ -32,27 +32,28 @@ extern "C" {
 
 // Structs for PIC data
 
-typedef struct __attribute__ ((packed)) _serial_proto_header
+typedef struct __attribute__((packed)) _serial_proto_header
 {
     uint8_t magic;
     uint8_t type;
-    uint8_t datatype;
+    uint16_t datatype;
 } SERIAL_PROTO_HEADER;
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_time_struct
+  struct __attribute__((packed)) _pic_time_struct
   {
     SERIAL_PROTO_HEADER header;
     
+    time_t utc : 32;
     CLOCK_SOURCE utc_source : 8;
-    time_t utc;
-    struct __attribute__ ((packed))
+    
+    struct __attribute__((packed))
     {
         uint8_t tz_set : 1;
         int8_t tz_offset: 7;
     } tz_flags;
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t dst_set : 1;
         uint8_t dst_active : 1;
@@ -65,11 +66,11 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_gnss_struct
+  struct __attribute__((packed)) _pic_gnss_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t gnss_detected : 1;
         uint8_t gnss_fix : 1;
@@ -78,7 +79,7 @@ typedef union
         uint8_t timemark_valid : 1;
         UBX_NAV_STATUS_GPSFIX fix_status : 4;
     } flags;
-    time_t gnss;
+    time_t gnss : 32;
     int32_t posllh_lat;
     int32_t posllh_lon;
     int16_t posllh_height;
@@ -90,7 +91,7 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_offset_struct
+  struct __attribute__((packed)) _pic_offset_struct
   {
     SERIAL_PROTO_HEADER header;
     
@@ -100,7 +101,7 @@ typedef union
     uint32_t fosc_freq;
     int32_t oc_offset;
     int32_t accumulated_clocks;
-    time_t accumulation_delta;
+    time_t accumulation_delta : 32;
     uint32_t total_oc_seq_count;
     uint32_t sync_events;
   } fields;
@@ -110,18 +111,18 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_rtc_struct
+  struct __attribute__((packed)) _pic_rtc_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t rtc_detected : 1;
         uint8_t rtc_valid : 1;
         uint8_t rtc_sync : 1;
         PIC_RTC_TYPE rtc_type : 4;
     } flags;
-    time_t rtc;
+    time_t rtc : 32;
   } fields;
   uint8_t raw[sizeof(struct _pic_rtc_struct)];
 } SERIAL_PROTO_DATA_PIC_RTC;
@@ -129,11 +130,11 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_net_struct
+  struct __attribute__((packed)) _pic_net_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t reset_config: 1;
     } flags;
@@ -144,11 +145,11 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_sensor_struct
+  struct __attribute__((packed)) _pic_sensor_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t veml6040_detected : 1;
         uint8_t bme280_detected : 1;
@@ -165,11 +166,11 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_display_struct
+  struct __attribute__((packed)) _pic_display_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t update_pending : 1;
         uint8_t brightness_manual : 1;
@@ -180,7 +181,7 @@ typedef union
     } flags;
     uint16_t brightness;
     uint16_t brightness_target;
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         UI_DISPLAY_STATE current : 4;
         UI_DISPLAY_STATE selected : 4;
@@ -193,7 +194,7 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _pic_user_struct
+  struct __attribute__((packed)) _pic_user_struct
   {
     SERIAL_PROTO_HEADER header;
     
@@ -210,24 +211,24 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _esp_time_struct
+  struct __attribute__((packed)) _esp_time_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t wifi_status : 1;
         uint8_t ntp_status : 1;
         uint8_t pps_sync : 1;
         uint8_t scheduler_sync : 1;
     } flags;
-    time_t utc;
-    struct __attribute__ ((packed))
+    time_t utc : 32;
+    struct __attribute__((packed))
     {
         uint8_t tz_set : 1;
         int8_t tz_offset: 7;
     } tz_flags;
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t dst_set : 1;
         uint8_t dst_active : 1;
@@ -240,18 +241,18 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _esp_net_struct
+  struct __attribute__((packed)) _esp_net_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t wifi_status : 1;
         uint8_t ntp_status : 1;
         uint8_t pps_sync : 1;
         uint8_t scheduler_sync : 1;
     } flags;
-    time_t lastUpdate;
+    time_t lastUpdate : 32;
     uint16_t ntpInterval;
     uint8_t dstFlags;
   } fields;
@@ -261,17 +262,17 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _esp_rtc_struct
+  struct __attribute__((packed)) _esp_rtc_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t rtc_detected : 1;
         uint8_t rtc_valid : 1;
         uint8_t rtc_sync : 1;
     } flags;
-    time_t rtc;
+    time_t rtc : 32;
   } fields;
   uint8_t raw[sizeof(struct _esp_rtc_struct)];
 } SERIAL_PROTO_DATA_ESP_RTC;
@@ -279,11 +280,11 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _esp_sensor_struct
+  struct __attribute__((packed)) _esp_sensor_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t veml6040_detected : 1;
         uint8_t bme280_detected : 1;
@@ -299,11 +300,11 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _esp_display_struct
+  struct __attribute__((packed)) _esp_display_struct
   {
     SERIAL_PROTO_HEADER header;
     
-    struct __attribute__ ((packed))
+    struct __attribute__((packed))
     {
         uint8_t update_pending : 1;
         uint8_t brightness_manual : 1;
@@ -323,7 +324,7 @@ typedef union
 
 typedef union
 {
-  struct __attribute__ ((packed)) _esp_user_struct
+  struct __attribute__((packed)) _esp_user_struct
   {
     SERIAL_PROTO_HEADER header;
     
