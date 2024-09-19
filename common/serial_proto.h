@@ -36,7 +36,7 @@ typedef struct __attribute__((packed)) _serial_proto_header
 {
     uint8_t magic;
     uint8_t type;
-    uint16_t datatype;
+    uint8_t datatype;
 } SERIAL_PROTO_HEADER;
 
 typedef union
@@ -45,8 +45,8 @@ typedef union
   {
     SERIAL_PROTO_HEADER header;
     
-    time_t utc : 32;
     CLOCK_SOURCE utc_source : 8;
+    time_t utc : 32;
     
     struct __attribute__((packed))
     {
