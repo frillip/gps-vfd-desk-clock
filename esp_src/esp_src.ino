@@ -49,13 +49,21 @@ void startNTPqueries(void)
 
 uint32_t wifi_disconnect_millis = 0;
 uint32_t wifi_disconnect_last_millis = 0;
+uint32_t wifi_disconnect_count = 0;
 #define WIFI_RECONNECT_INTERVAL_MILLIS 30000
+#define WIFI_RECONNECT_INTERVAL_WARN   120
 
 void reconnect_wifi(void)
 {
-  Serial.println("Reconnecting to WiFi...");
-  WiFi.disconnect();
-  WiFi.reconnect();
+  if(wm.getWiFiIsSaved() && !wm.getConfigPortalActive())
+  {
+    if(wifi_disconnect_count == 0)
+    {
+      Serial.println("Reconnecting to WiFi...");
+    }
+    WiFi.disconnect();
+    WiFi.reconnect();
+  }
 }
 
 void setup()
