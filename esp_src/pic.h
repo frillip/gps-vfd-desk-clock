@@ -41,6 +41,7 @@ void print_iso8601_string(time_t time);
 void print_pic_time(void);
 void print_clock_source(CLOCK_SOURCE source);
 
+void print_gnss_fix(UBX_NAV_STATUS_GPSFIX fix_status);
 void pic_process_gnss(void);
 void print_gnss_data(void);
 

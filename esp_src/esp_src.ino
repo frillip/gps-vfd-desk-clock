@@ -236,7 +236,7 @@ void loop()
     if(ntp_interval_count>ntp_interval)
     {
       updateNTP();
-      Serial.println("NTP RESYNC");
+      Serial.printf("NTP RESYNC\n");
       ntp_resync_count++;
       ntp_interval_count = 0;
       scheduler_unsync();
