@@ -22,7 +22,7 @@ void gnss_pps_init(void)
 }
 
 
-void IRAM_ATTR gnss_pps_in(void)
+void ARDUINO_ISR_ATTR gnss_pps_in(void)
 {
   gnss_pps_micros = micros();
   if(!gnss_detected) gnss_detected = 1;

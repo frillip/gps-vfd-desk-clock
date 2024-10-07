@@ -23,7 +23,7 @@ void pic_init(void);
 bool pic_is_detected(void);
 void pic_timeout_incr(void);
 void pic_pps_init(void);
-void IRAM_ATTR pic_pps_in(void);
+void ARDUINO_ISR_ATTR pic_pps_in(void);
 void print_pic_pps_offset(void);
 
 void pic_uart_init(void);

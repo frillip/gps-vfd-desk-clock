@@ -145,7 +145,7 @@ void pic_pps_init(void)
   attachInterrupt(PIC_PPS_PIN, pic_pps_in, RISING);
 }
 
-void IRAM_ATTR pic_pps_in(void)
+void ARDUINO_ISR_ATTR pic_pps_in(void)
 {
   pic_pps_micros = micros();
   if(!pic_detected) pic_detected = 1;
