@@ -733,7 +733,7 @@ void print_offset_data(void)
 {
   Serial.printf("\n=== Clock and PPS stats ===\n");
   Serial.printf("Crystal freq: %9.6fMHz\n", (float)pic_fosc_freq / 1000000);
-  Serial.printf("OC D: %i CLK D: %u CLK T: %u\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
+  Serial.printf("OC D: %i CLK D: %u CLK T: %i\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
   Serial.printf("OC events: %u Resync events: %u\n", pic_total_oc_seq_count, pic_sync_events);
 }
 
