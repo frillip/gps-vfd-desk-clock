@@ -26,9 +26,9 @@ extern int8_t t1s0;
 
 WiFiManager wm;
 
-#define NTP_SERVER "rubidium.darksky.io"
-#define NTP_INTERVAL_DEFAULT 1800
-uint32_t ntp_interval = NTP_INTERVAL_DEFAULT;
+#define CLOCK_NTP_SERVER "rubidium.darksky.io"
+#define CLOCK_NTP_INTERVAL_DEFAULT 1800
+uint32_t ntp_interval = CLOCK_NTP_INTERVAL_DEFAULT;
 uint16_t ntp_interval_count = 0;
 uint32_t ntp_resync_count = 0;
 time_t esp = 0;
@@ -100,7 +100,7 @@ void setup()
   pic_uart_init();
   gnss_uart_init();
 
-  setServer(NTP_SERVER);
+  setServer(CLOCK_NTP_SERVER);
   setInterval(ntp_interval);
 
   WiFi.mode(WIFI_STA);
