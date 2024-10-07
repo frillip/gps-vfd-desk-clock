@@ -426,6 +426,7 @@ USER_CMD serial_console_check_2_help(void)
   {
     return USER_CMD_HELP;
   }
+  return USER_CMD_NONE;
 }
 
 void serial_console_help(void)
