@@ -22,11 +22,11 @@ I've gone for a very similar Microchip offering in 2x HV5812WG-G, this gives us 
 
 ## Microcontroller
 
-A dsPIC33EP256GP504 runs the show with 4x input capture modules, 3x output compare modules, an I2C peripheral, an SPI peripheral and 2 UARTs. This is run off a relatively cheap 40MHz osciillator, but could be easily swapped out for something fancier like an OCXO or TCXO, but for the purposes of this project we can use GPS to more accurately characterise our frequency source.
+A dsPIC33EP256GP504 runs the show with 4x input capture modules, 3x output compare modules, an I2C peripheral, an SPI peripheral and 2 UARTs. This is run off a relatively cheap 40MHz osciillator, but could be easily swapped out for something fancier like an OCXO or TCXO, but for the purposes of this project we can use GPS to more accurately characterise our frequency source. The flash program memory is also used to store some user preferences.
 
 ## ESP32
 
-An ESP32 allows us to connect to the internet to obtain time from NTP servers. It is connected to the PIC via UART for data transfer, and also has access to the PPS signals from both the PIC OC module and GNSS module (if populated). It is also connected to the I2C bus (though I2C is not enabled in software), the GNSS UART via unpopulated solder jumpers, and some other IO. There is also a PPS signal from the ESP module to the PIC for sub-second accuracy. Typical achievable accuracy for NTP mode is within ~20ms of UTC. A programming and communication interface is provided on UART0 by a CP2102N USB to UART bridge. As the ESP32 is NRND, the next revision will swap the ESP32 module for an ESP32-S3 which supports USB direct and I can remove the CP2102N from the board.
+An ESP32 allows us to connect to the internet to obtain time from NTP servers. It is connected to the PIC via UART for data transfer, and also has access to the PPS signals from both the PIC OC module and GNSS module (if populated). It is also connected to the I2C bus (though I2C is not enabled in software), the GNSS UART via unpopulated solder jumpers, and some other IO. There is also a PPS signal from the ESP module to the PIC for sub-second accuracy. Typical achievable accuracy for NTP mode is within ~20ms of UTC. A programming and communication interface is provided on UART0 by a CP2102N USB to UART bridge. As the ESP32 is NRND, the next revision will swap the ESP32 module for an ESP32-S3 or ESP32-C6 which supports USB directly and I can remove the CP2102N from the board.
 
 ## GNSS
 
@@ -44,21 +44,29 @@ A VEML6040 is used for ambient light sensing. The output of which goes through a
 
 ## Inputs
 
-There is a single push button and a toggle switch. Holding the push button switched between a few different display modes:
- - Hours and minutes
- - Minutes and seconds
- - Seconds and 100ths of seconds
- - Estimated room temperature
- 
-After a number of seconds, the clock will time out, and revert to hours and minutes display. The toggle switch is used for enabling/disabling the buzzer, and will also disable the display mode timeout.
+There is a single push button and a toggle switch. The toggle switch is used to arm/disarm the alarm feature, and the push button is used to navigate the menu via a series of long/short presses. Currently it is possible to set:
+
+ - Timezone offset
+ - Daylight savings time automatic/manual
+ - Daylight savings time offset
+ - Alarm time
+ - Alarm enabled
+ - Buzzer functionality
+ - 12/24 hour display format
+ - Display format (YYYY/MMDD/HHMM/MMSS/SSmm/delta)
+ - Reset WiFi settings
+ - Reset clock settings
+ - Reset all settings
+
+The menu is implemented in such a way that changes are saved only when a long press is used to confirm the selection. If left to time out, the setting will not be saved.
 
 ## Buzzer
 
-A self oscillating 5V buzzer beeps at semi-regular intervals. If enabled, every hour it beeps 1-12 times, corresponding to the hour, in groupds of 4. It also beeps once at 15, 30 and 45 minutes past the hour. This could also be potentially used for an alarm feature in the future.
+A self oscillating 5V buzzer beeps at semi-regular intervals. If enabled, every hour it beeps 1-12 times, corresponding to the hour, in groupds of 4. It also beeps once at 15, 30 and 45 minutes past the hour. This is also utilized in for the alarm feature.
 
 ## Power
 
-Power is provided through either the USB-C port connected to the ESP or the USB-C connected to the GNSS module. This goes through a TPS2113A power mux chip that provides current limiting, inrush current control, and power selection/prioritization. It also prevents backfeeding from one USB source to the other if both are connected. A LM3671MFX based buck converter provides 3.3V for the GNSS module, PIC, and ESP32. Tube voltages are generated using a TPS55340 boost converter IC to give 34V for the grid voltage, and a LM2831Z based buck converter provides the lower 1.65V filament voltage.
+Power is provided through either the USB-C port connected to the ESP or the USB-C connected to the GNSS module. This goes through a TPS2113A power mux chip that provides current limiting, inrush current control, and power selection/prioritization. It also prevents backfeeding from one USB source to the other if both are connected. A LM3671MFX based buck converter provides 3.3V for the GNSS module, PIC, and ESP32. Tube voltages are generated using a TPS55340 boost converter IC to give 34V for the grid voltage, and a LM2831Z based buck converter provides the lower 1.65V filament voltage. Future hardware revisions will simplify and commonise much of the power supplies to help reduce complexity and cost.
 
 # How?
 
@@ -80,19 +88,48 @@ It is possible to send commands over the ESP UART to perform some actions, or pr
 
 | Command | Description |
 | --- | --- |
-| `\r` | Print debug information to the terminal |
-| `R` | Reset the dsPIC |
-| `E` | Reset the ESP |
-| `W` | Clear saved WiFi credentials and reset the ESP |
-| `Z` | Print the debug information available to the ESP |
-| `r` | If GNSS module is present, manually resync PPS |
-| `B` | Increase display brightness |
-| `b` | Decrease display brightness |
-| `M` | Maximum display brightness |
-| `m` | Minimum display brightness |
-| `O` | Set display to overdrive brightness |
-| `o` | Turn display off entirely |
-| `a` | Automatic brightness |
+| `\n` | Print standard set of debug information to the terminal |
+| esp-reset | Reset the ESP |
+| esp-set-interval [n] | Set NTP interval to [n] (min 300, max 43200) |
+| esp-set-server [s] | Set the NTP server to [s] |
+| esp-resync | Force NTP sync |
+| esp-wifi-show | Print WiFi info |
+| esp-wifi-connect | Force WiFi connect |
+| esp-wifi-disconnect | Force WiFi disconnect |
+| esp-wifi-ssid [s] | Set the saved SSID to [s] |
+| esp-wifi-pass [s] | Set the saved passphrase to [s] |
+| esp-wifi-dhcp [b] | Enable/disable DHCP |
+| esp-wifi-ip [s] | Set static IP to [s], unless [s] is 'dhcp' or 'auto' |
+| esp-wifi-mask [s] | Set ip mask to [s], only valid with static IP |
+| esp-wifi-gateway [s] | Set gateway to [s], only valid with static IP |
+| esp-wifi-clear | Clear saved WiFi config |
+| esp-wifi-setup | Enable WiFi setup AP mode |
+| --- | --- |
+| esp-clear-all | Clear all settings |
+| esp-save | Save settings |
+| --- | --- |
+| pic-info | Show info directly from PIC |
+| pic-reset | Resets the PIC |
+| pic-set-rtc [n] | Set PIC delta epoch to [n] unix epoch time |
+| pic-set-tz-offset [n] | Set timezone offset to [n] in seconds, rounds to nearest 15 minutes |
+| pic-set-dst-offset [n] | Set dst offset to [n] in seconds, rounds to nearest 15 minutes |
+| pic-set-dst-auto [b] | Enable/disable auto dst |
+| pic-set-dst-active [b] | Enable/disable dst (pic-set-dst-auto must be off) |
+| pic-set-alarm-enabled [b] | Enable/disable alarm |
+| pic-set-alarm [n] | Set PIC alarm to [n] seconds past midnight |
+| pic-set-delta [n] | Set PIC delta epoch to [n] unix epoch time |
+| pic-set-beeps [b] | Enable/disable beeping |
+| pic-set-display [e] | Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD |
+| pic-set-brightness-auto [b] | Set display brightness to auto |
+| pic-set-brightness [n] | Set display brightness to n / 4000 |
+| pic-show-eeprom | show settings stored in EEPROM |
+| pic-show-config | show running config settings |
+| pic-clear-all | Clear all settings to defaults |
+| pic-save | Save settings |
+| --- | --- |
+| rst-all | Reset both |
+| rst-pic | Same as pic-reset |
+| rst-esp | Same as esp-reset |
 
 
 # Improvements
