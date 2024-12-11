@@ -381,6 +381,7 @@ void pic_process_time()
   extern int32_t tz_offset;
   extern bool dst_active;
   extern int32_t dst_offset;
+  extern uint32_t esp_micros;
 
   pic_utc_source = pic_time_buffer.fields.utc_source;
 
@@ -458,28 +459,31 @@ void pic_process_time()
   dst_active = pic_dst_active;
   dst_offset = pic_dst_offset;
 
-  if(WiFi.status() != WL_CONNECTED)
+  if(timeStatus() != timeSync)
   {
-    if(timeStatus() == timeNotSet)
+    if((pic_utc_source != CLOCK_SOURCE_NONE) && (pic_utc_source != CLOCK_SOURCE_ESP) && (pic_utc_source != CLOCK_SOURCE_NTP)) // Do not sync if PIC is using ESP/NTP time or has no clock
     {
-      if(pic_utc_source != CLOCK_SOURCE_NONE)
+      if(pic_new_pps)
       {
-        if(pic_new_pps)
+        if(timeStatus() == timeNotSet)
         {
-          uint32_t pic_us_offset = micros() - pic_pps_micros;
-          if((pic_us_offset > 50000) && (pic_us_offset < 950000) && (timeStatus() != timeSync))
+          UTC.setTime(pic); // Set the coarse time if ESP time isn't set
+        }
+        
+        if(pic_utc_source == CLOCK_SOURCE_GNSS) // If we have a GNSS sync
+        {
+          int32_t pic_us_offset = esp_micros - pic_pps_micros;
+          if((pic_us_offset > 50000) || (pic_us_offset < -50000)) // Resync to GNSS if we have no NTP time and ESP has drifted
           {
-            pic_us_offset = micros() - pic_pps_micros;
-            UTC.setTimeus(pic,pic_us_offset);
+            pic_us_offset = (micros() + PIC_ESP_SET_LATENCY_US) - pic_pps_micros; // recalculate with current micros() + latency for adjustment
+            UTC.setTimeus(pic,(uint32_t)pic_us_offset); // Set fine time to GNSS
             esp_pps_unsync();
             scheduler_unsync();
+            if(pic_us_offset > 500000) pic_us_offset = pic_us_offset - 1000000;
+            Serial.printf("ESP resync: %lius\n", pic_us_offset);
           }
-          else
-          {
-            UTC.setTime(pic);
-          }
-          pic_new_pps = 0;
         }
+        pic_new_pps = 0;
       }
     }
   }

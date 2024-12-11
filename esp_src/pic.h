@@ -19,6 +19,8 @@
 
 #define PIC_TIMEOUT_LIMIT 300 // in 0.01s counts
 
+#define PIC_ESP_SET_LATENCY_US 300
+
 void pic_init(void);
 bool pic_is_detected(void);
 void pic_timeout_incr(void);
