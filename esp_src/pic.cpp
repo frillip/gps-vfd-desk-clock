@@ -475,6 +475,8 @@ void pic_process_time()
         if(pic_utc_source == CLOCK_SOURCE_GNSS) // If we have a GNSS sync
         {
           int32_t pic_us_offset = esp_micros - pic_pps_micros;
+          while(pic_us_offset>1000000) pic_us_offset = pic_us_offset - 1000000;
+          while(pic_us_offset< -1000000) pic_us_offset = pic_us_offset + 1000000;
           if((pic_us_offset > 50000) || (pic_us_offset < -50000)) // Resync to GNSS if we have no NTP time and ESP has drifted
           {
             pic_us_offset = (micros() + PIC_ESP_SET_LATENCY_US) - pic_pps_micros; // recalculate with current micros() + latency for adjustment
