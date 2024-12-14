@@ -150,5 +150,15 @@ void print_gnss_pps_info(void)
     printf("\n=== GNSS PPS ===\n");
     printf("PPS SEQ: %lu TOTAL:%lu\n", pps_seq_count, gnss_pps_count);
     printf("MISSING: %u COUNT:%lu\n", pps_missing, pps_missing_count);
-    printf("Relative offset: %luns\n", oc_offset * 25);
+    uint32_t oc_offset_ns = oc_offset * 25;
+    if(oc_offset_ns>1000)
+    {
+        uint32_t oc_offset_us = (oc_offset_ns) / 1000;
+        uint32_t oc_offset_100ns = ((oc_offset_ns + 50) / 100) - (oc_offset_us * 10);
+        printf("Relative offset: %lu.%luus\n", oc_offset_us, oc_offset_100ns);
+    }
+    else
+    {
+        printf("Relative offset: %luns\n", oc_offset_ns);
+    }
 }

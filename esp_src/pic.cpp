@@ -178,6 +178,23 @@ void print_pic_pps_offset(void)
   }
 }
 
+void print_pic_pps_relative_offset(void)
+{
+  Serial.printf("PPS offset:  ");
+  float pic_relative_offset_display = pic_oc_offset * 25;
+  if(pic_relative_offset_display<-1000000000) pic_relative_offset_display += 1000000000;
+  if(pic_relative_offset_display>1000000000) pic_relative_offset_display -= 1000000000;
+  if((pic_relative_offset_display < 1000) && (pic_relative_offset_display > -1000 ))
+  {
+    Serial.printf("%3.0fns\n", pic_relative_offset_display);
+  }
+  else
+  {
+    pic_relative_offset_display = pic_relative_offset_display / 1000;
+    Serial.printf("%6.2fus\n", pic_relative_offset_display,2);
+  }
+}
+
 void pic_uart_init(void)
 {
   UARTPIC.begin(PIC_BAUD, SERIAL_8N1, PIC_RXD, PIC_TXD);

@@ -27,6 +27,7 @@ void pic_timeout_incr(void);
 void pic_pps_init(void);
 void ARDUINO_ISR_ATTR pic_pps_in(void);
 void print_pic_pps_offset(void);
+void print_pic_pps_relative_offset(void);
 
 void pic_uart_init(void);
 bool pic_uart_char_available(void);

@@ -714,6 +714,10 @@ void serial_console_print_info(void)
   {
     print_pic_pps_offset();
   }
+  if(pic_is_detected() && gnss_is_detected() && timeStatus() != timeNotSet)
+  {
+    print_pic_pps_relative_offset();
+  }
   
   print_offset_data();
   print_gnss_data();
