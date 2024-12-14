@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <string.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
@@ -27,6 +28,7 @@ void calculate_pps_stats(void);
 void reset_pps_stats(void);
 void recalculate_fosc_freq(void);
 void recalculate_fosc_freq_short(void);
+void print_gnss_pps_info(void);
 
 #ifdef	__cplusplus
 }

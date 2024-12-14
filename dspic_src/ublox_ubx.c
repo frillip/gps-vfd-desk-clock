@@ -355,11 +355,12 @@ void print_ubx_data(void)
 {
     if(gnss_detected)
     {
-        print_ubx_tim_tm2_data();
+        print_gnss_pps_info();
+        print_ubx_nav_status_data();
         print_ubx_nav_timeutc_data();
         print_ubx_nav_clock_data();
-        print_ubx_nav_status_data();
         print_ubx_nav_posllh_data();
+        print_ubx_tim_tm2_data();
     }
     else
     {

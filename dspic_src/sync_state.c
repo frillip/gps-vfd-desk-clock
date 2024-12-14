@@ -184,7 +184,7 @@ void sync_state_machine(void)
 #ifdef DEBUG_MESSAGES
             printf("\nOC unsynchronised... resetting\n");
 #endif
-            if((accumulation_delta > PPS_SEQ_COUNT_MIN) && scheduler_sync)
+            if((pps_seq_count > PPS_SEQ_COUNT_MIN) && scheduler_sync)
             {
                 recalculate_fosc_freq();
 #ifdef DEBUG_MESSAGES
@@ -907,13 +907,15 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
 
 extern uint32_t oc_offset_correction_count_pos;
 extern uint32_t oc_offset_correction_count_neg;
+extern uint32_t gnss_pps_count;
 
 void sync_state_print_stats(void)
 {
     printf("CLK D: %li CLK T: %li\n",accumulated_clocks, accumulation_delta);
     printf("PPS D:%lu OC D:%li\n", pps_count_diff, oc_offset);
     printf("OC ADJ+:%lu OC ADJ-:%lu\n", oc_offset_correction_count_pos, oc_offset_correction_count_neg);
-    printf("PPS MISS: %u MISS C:%lu\n", pps_missing, pps_missing_count);
+    printf("PPS SEQ: %lu TOTAL:%lu\n", pps_seq_count, gnss_pps_count);
+    printf("MISSING: %u COUNT:%lu\n", pps_missing, pps_missing_count);
     printf("AVG D: %.1f\n", accumulated_clocks_diff_avg);
     printf("Sync cause: ");
     sync_state_print(clock_sync_state);

@@ -10,6 +10,7 @@ uint32_t pps_count_diff = 0;
 uint32_t pps_count_old = 0;
 uint32_t pps_seq_count = 0;
 uint32_t pps_seq_count_old = 0;
+uint32_t gnss_pps_count = 0;
 bool pps_missing = 0;
 uint32_t pps_missing_count = 0;
 int32_t accumulated_clocks = 0;
@@ -90,7 +91,7 @@ void reset_pps_stats(void)
     pps_seq_count = 0;
     pps_seq_count_old = 0;
     pps_missing = 0;
-    pps_missing_count = 0;
+    //pps_missing_count = 0;
     accumulation_start = utc;
     accumulated_clocks = 0;
     accumulation_delta = 0;
@@ -124,6 +125,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC1Interrupt( void )
     {
         pps_seq_count_old = pps_seq_count;
         pps_seq_count++; // Increment our PPS counter
+        gnss_pps_count++;
         gnss++;
         ic_event = 1;    // Flag we've had an IC event on GNSS
         ic1_val = IC1BUF; // Read the IC1 timer
@@ -139,4 +141,14 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC2Interrupt( void )
         ic2_val = IC2BUF; // Read the IC2 timer
         IFS0bits.IC2IF = 0; // Clear the interrupt flag
     }
+}
+
+void print_gnss_pps_info(void)
+{
+    extern uint32_t oc_offset;
+    
+    printf("\n=== GNSS PPS ===\n");
+    printf("PPS SEQ: %lu TOTAL:%lu\n", pps_seq_count, gnss_pps_count);
+    printf("MISSING: %u COUNT:%lu\n", pps_missing, pps_missing_count);
+    printf("Relative offset: %luns\n", oc_offset * 25);
 }

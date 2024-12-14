@@ -80,6 +80,7 @@ typedef union
         UBX_NAV_STATUS_GPSFIX fix_status : 4;
     } flags;
     time_t gnss : 32;
+    uint32_t gnss_pps_count;
     int32_t posllh_lat;
     int32_t posllh_lon;
     int16_t posllh_height;

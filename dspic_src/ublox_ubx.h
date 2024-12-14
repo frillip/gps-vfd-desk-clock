@@ -21,6 +21,7 @@ extern "C" {
 #include "mcc_generated_files/uart1.h"
 #include "../common/enums.h"
 #include "gnss.h"
+#include "gnss_pps.h"
 #include "ui.h"
     
 #define UBX_HEADER_LENGTH               sizeof(struct _ubx_header)

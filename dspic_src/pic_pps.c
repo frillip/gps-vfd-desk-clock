@@ -157,7 +157,6 @@ void pic_pps_print_stats(void)
     printf("OC ADJ+:%lu OC ADJ-:%lu\n", oc_offset_correction_count_pos, oc_offset_correction_count_neg);
     // Raw timer values for both PPS and OC
     printf("PPS C:%lu OC C:%lu\n", pps_count, oc_count);
-    printf("PPS MISS: %u MISS C:%lu\n", pps_missing, pps_missing_count);
     // PPS sync status
     printf("PPS S: %i ADJ: %i\n", pps_sync, oc_adjust_in_progress);
     // Scheduler sync status

@@ -519,6 +519,7 @@ extern int32_t ubx_nav_posllh_lat;
 extern int32_t ubx_nav_posllh_lon;
 extern int32_t ubx_nav_posllh_height;
 extern int32_t ubx_nav_posllh_hmsl;
+extern uint32_t gnss_pps_count;
 
 void esp_tx_gnss(void)
 {
@@ -537,6 +538,8 @@ void esp_tx_gnss(void)
     esp_tx_buffer.fields.flags.fix_status = ubx_nav_status_gpsfix;
     
     esp_tx_buffer.fields.gnss = gnss;
+    
+    esp_tx_buffer.fields.gnss_pps_count = gnss_pps_count;
     
     esp_tx_buffer.fields.posllh_lat = ubx_nav_posllh_lat;
     esp_tx_buffer.fields.posllh_lon = ubx_nav_posllh_lon;

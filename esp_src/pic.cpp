@@ -35,6 +35,7 @@ bool pic_utc_valid = 0;
 bool pic_timemark_valid = 0;
 UBX_NAV_STATUS_GPSFIX pic_fix_status = GPSFIX_NO_FIX;
 time_t gnss = 0;
+uint32_t pic_gnss_pps_count;
 int32_t pic_posllh_lat = 0;
 int32_t pic_posllh_lon = 0;
 int16_t pic_posllh_height = 0;
@@ -643,6 +644,8 @@ void pic_process_gnss(void)
   
   gnss = pic_gnss_buffer.fields.gnss;
 
+  pic_gnss_pps_count = pic_gnss_buffer.fields.gnss_pps_count;
+
   pic_posllh_lat = pic_gnss_buffer.fields.posllh_lat;
   pic_posllh_lon = pic_gnss_buffer.fields.posllh_lon;
   pic_posllh_height = pic_gnss_buffer.fields.posllh_height;
@@ -710,6 +713,8 @@ void print_gnss_data(void)
     print_gnss_fix(pic_fix_status);
     Serial.printf("\n");
 
+    Serial.printf("PPS count: %u PPS Miss: %u\n", pic_gnss_pps_count, pic_pps_missing_count);
+
     Serial.printf("LAT: %12.7f\n", (float)pic_posllh_lat/10000000);
     Serial.printf("LON: %12.7f\n", (float)pic_posllh_lon/10000000);
     Serial.printf("Height: %4.0fm   mASL: %4.0fm\n", (float)pic_posllh_height, (float)pic_posllh_hmsl);
@@ -745,7 +750,6 @@ void print_offset_data(void)
   Serial.printf("Crystal freq: %9.6fMHz\n", (float)pic_fosc_freq / 1000000);
   Serial.printf("OC D: %i CLK D: %u CLK T: %i\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
   Serial.printf("OC events: %u Resync events: %u\n", pic_total_oc_seq_count, pic_sync_events);
-  Serial.printf("PPS count: %u PPS Miss: %u\n", pic_pps_seq_count, pic_pps_missing_count);
 }
 
 void pic_process_net(void)
