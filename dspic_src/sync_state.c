@@ -107,14 +107,17 @@ void sync_state_machine(void)
         if(sync_state_eval_time_counter==0)
         {
             sync_state_eval_time();
-            if(pps_seq_count == pps_seq_count_old)
+            if(clock_sync_state==SYNC_INTERVAL || clock_sync_state==SYNC_SYNC)
             {
-                pps_missing = 1;
-                pps_missing_count++;
-            }
-            else
-            {
-                pps_missing = 0;
+                if(pps_seq_count == pps_seq_count_old)
+                {
+                    pps_missing = 1;
+                    pps_missing_count++;
+                }
+                else
+                {
+                    pps_missing = 0;
+                }
             }
             esp_data_task_reset_cycle();
             esp_data_task();
@@ -910,7 +913,7 @@ void sync_state_print_stats(void)
     printf("CLK D: %li CLK T: %li\n",accumulated_clocks, accumulation_delta);
     printf("PPS D:%lu OC D:%li\n", pps_count_diff, oc_offset);
     printf("OC ADJ+:%lu OC ADJ-:%lu\n", oc_offset_correction_count_pos, oc_offset_correction_count_neg);
-    printf("PPS MISS: %u MISS C:%lu", pps_missing, pps_missing_count);
+    printf("PPS MISS: %u MISS C:%lu\n", pps_missing, pps_missing_count);
     printf("AVG D: %.1f\n", accumulated_clocks_diff_avg);
     printf("Sync cause: ");
     sync_state_print(clock_sync_state);
