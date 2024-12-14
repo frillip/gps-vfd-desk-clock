@@ -103,6 +103,8 @@ typedef union
     int32_t accumulated_clocks;
     time_t accumulation_delta : 32;
     uint32_t total_oc_seq_count;
+    uint32_t pps_seq_count;
+    uint32_t pps_missing_count;
     uint32_t sync_events;
   } fields;
   uint8_t raw[sizeof(struct _pic_offset_struct)];

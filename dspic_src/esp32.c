@@ -555,6 +555,8 @@ extern int32_t accumulated_clocks;
 extern time_t accumulation_delta;
 extern uint32_t fosc_freq;
 extern uint32_t total_oc_seq_count;
+extern uint32_t pps_seq_count;
+extern uint32_t pps_missing_count;
 extern uint32_t sync_events;
 
 void esp_tx_offset(void)
@@ -575,6 +577,8 @@ void esp_tx_offset(void)
     esp_tx_buffer.fields.accumulated_clocks = accumulated_clocks;
     esp_tx_buffer.fields.accumulation_delta = accumulation_delta;
     esp_tx_buffer.fields.total_oc_seq_count = total_oc_seq_count;
+    esp_tx_buffer.fields.pps_seq_count = pps_seq_count;
+    esp_tx_buffer.fields.pps_missing_count = pps_missing_count;
     esp_tx_buffer.fields.sync_events = sync_events;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));

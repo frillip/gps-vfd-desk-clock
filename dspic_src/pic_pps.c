@@ -122,13 +122,30 @@ void pic_pps_set_latch_cycles(uint32_t cycles)
     OC2RS = msb;
 }
 
+uint32_t oc_offset_correction_count_pos = 0;
+uint32_t oc_offset_correction_count_neg = 0;
+
 void pic_pps_calculate_oc_stats(void)
 {
     oc_count = (((uint32_t)ic4_val)<<16) + ic3_val; // Raw timer
     oc_count_diff = oc_count - oc_count_old; // Difference from last
     oc_offset = pps_count-oc_count; // Calculate the offset between PPS and OC
+    while(oc_offset<OC_OFFSET_NEGATIVE_LIMIT)
+    {
+        oc_offset += fosc_freq; // Account for missing GNSS events
+        oc_offset_correction_count_neg++;
+    }
+    while(oc_offset>OC_OFFSET_POSITIVE_LIMIT)
+    {
+        oc_offset -= fosc_freq; // Catch for if we're unsync'd and in the middle somewhere
+        oc_offset_correction_count_pos++;
+    }
     oc_count_old = oc_count; // Store the new value as old
 }
+
+extern uint32_t pps_seq_count_old;
+extern bool pps_missing;
+extern uint32_t pps_missing_count;
 
 void pic_pps_print_stats(void)
 {
@@ -137,8 +154,10 @@ void pic_pps_print_stats(void)
     double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
     printf("Crystal freq: %.06fMHz\n", fosc_freq_f);
     printf("PPS D:%lu OC D:%li\n", pps_count_diff, oc_offset);
+    printf("OC ADJ+:%lu OC ADJ-:%lu\n", oc_offset_correction_count_pos, oc_offset_correction_count_neg);
     // Raw timer values for both PPS and OC
     printf("PPS C:%lu OC C:%lu\n", pps_count, oc_count);
+    printf("PPS MISS: %u MISS C:%lu", pps_missing, pps_missing_count);
     // PPS sync status
     printf("PPS S: %i ADJ: %i\n", pps_sync, oc_adjust_in_progress);
     // Scheduler sync status
@@ -183,6 +202,8 @@ void pic_pps_resync(void)
     oc_adjust_in_progress = 1;
     accumulation_start = utc;
     accumulated_clocks = 0;
+    oc_offset_correction_count_neg = 0;
+    oc_offset_correction_count_pos = 0;
     memset(accumulated_clocks_diff, 0, FCYCLE_ACC_AVG_PERIOD);
     sync_events++;
 }

@@ -51,6 +51,8 @@ int32_t pic_oc_offset = 0;
 int32_t pic_accumulated_clocks = 0;
 time_t pic_accumulation_delta = 0;
 uint32_t pic_total_oc_seq_count = 0;
+uint32_t pic_pps_seq_count = 0;
+uint32_t pic_pps_missing_count = 0;
 uint32_t pic_sync_events = 0;
 
 const SERIAL_PROTO_HEADER pic_net_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_NETDATA};
@@ -728,6 +730,8 @@ void pic_process_offset(void)
   pic_accumulated_clocks = pic_offset_buffer.fields.accumulated_clocks;
   pic_accumulation_delta = pic_offset_buffer.fields.accumulation_delta;
   pic_total_oc_seq_count = pic_offset_buffer.fields.total_oc_seq_count;
+  pic_pps_seq_count = pic_offset_buffer.fields.pps_seq_count;
+  pic_pps_missing_count = pic_offset_buffer.fields.pps_missing_count;
   pic_sync_events = pic_offset_buffer.fields.sync_events;
 
   pic_offset_waiting = 0;
@@ -739,6 +743,7 @@ void print_offset_data(void)
   Serial.printf("Crystal freq: %9.6fMHz\n", (float)pic_fosc_freq / 1000000);
   Serial.printf("OC D: %i CLK D: %u CLK T: %i\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
   Serial.printf("OC events: %u Resync events: %u\n", pic_total_oc_seq_count, pic_sync_events);
+  Serial.printf("PPS count: %u PPS Miss: %u\n", pic_pps_seq_count, pic_pps_missing_count);
 }
 
 void pic_process_net(void)

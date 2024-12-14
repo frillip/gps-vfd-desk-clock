@@ -24,6 +24,7 @@ bool esp_ntp_detected = 0;
 extern bool gnss_detected;
 
 extern uint32_t pps_seq_count;
+extern uint32_t pps_seq_count_old;
 
 extern bool oc_event;
 extern bool ic_event;
@@ -45,6 +46,9 @@ extern uint32_t fosc_freq;
 extern uint32_t pps_count;
 extern uint32_t pps_count_diff;
 extern uint32_t pps_seq_count;
+extern uint32_t pps_seq_count_old;
+extern bool pps_missing;
+extern uint32_t pps_missing_count;
 
 extern int32_t accumulated_clocks;
 extern time_t accumulation_start;
@@ -103,6 +107,15 @@ void sync_state_machine(void)
         if(sync_state_eval_time_counter==0)
         {
             sync_state_eval_time();
+            if(pps_seq_count == pps_seq_count_old)
+            {
+                pps_missing = 1;
+                pps_missing_count++;
+            }
+            else
+            {
+                pps_missing = 0;
+            }
             esp_data_task_reset_cycle();
             esp_data_task();
 #ifdef DEBUG_MESSAGES
@@ -889,11 +902,19 @@ CLOCK_SYNC_STATUS pic_pps_evaluate_sync(void)
     return SYNC_SYNC;
 }
 
+extern uint32_t oc_offset_correction_count_pos;
+extern uint32_t oc_offset_correction_count_neg;
+
 void sync_state_print_stats(void)
 {
     printf("CLK D: %li CLK T: %li\n",accumulated_clocks, accumulation_delta);
-    printf("PPS D:%lu OC D:%li\n\n", pps_count_diff, oc_offset);
+    printf("PPS D:%lu OC D:%li\n", pps_count_diff, oc_offset);
+    printf("OC ADJ+:%lu OC ADJ-:%lu\n", oc_offset_correction_count_pos, oc_offset_correction_count_neg);
+    printf("PPS MISS: %u MISS C:%lu", pps_missing, pps_missing_count);
     printf("AVG D: %.1f\n", accumulated_clocks_diff_avg);
+    printf("Sync cause: ");
+    sync_state_print(clock_sync_state);
+    printf("\n\n");
 }
 
 void sync_state_eval_time(void)

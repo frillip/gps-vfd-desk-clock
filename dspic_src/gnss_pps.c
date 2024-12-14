@@ -9,6 +9,9 @@ uint32_t pps_count = 0;
 uint32_t pps_count_diff = 0;
 uint32_t pps_count_old = 0;
 uint32_t pps_seq_count = 0;
+uint32_t pps_seq_count_old = 0;
+bool pps_missing = 0;
+uint32_t pps_missing_count = 0;
 int32_t accumulated_clocks = 0;
 int32_t accumulated_clocks_old = 0;
 int32_t accumulated_clocks_diff[FCYCLE_ACC_AVG_PERIOD] = {};
@@ -85,6 +88,9 @@ void calculate_pps_stats(void)
 void reset_pps_stats(void)
 {
     pps_seq_count = 0;
+    pps_seq_count_old = 0;
+    pps_missing = 0;
+    pps_missing_count = 0;
     accumulation_start = utc;
     accumulated_clocks = 0;
     accumulation_delta = 0;
@@ -116,6 +122,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC1Interrupt( void )
 {	
     if(IFS0bits.IC1IF)
     {
+        pps_seq_count_old = pps_seq_count;
         pps_seq_count++; // Increment our PPS counter
         gnss++;
         ic_event = 1;    // Flag we've had an IC event on GNSS

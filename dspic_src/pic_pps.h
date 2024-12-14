@@ -24,6 +24,10 @@ extern "C" {
 #include "sync_state.h"
 #include "esp32.h"
     
+#define OC_OFFSET_LIMIT_SCALAR (5)
+#define OC_OFFSET_POSITIVE_LIMIT (FCYCLE_ACC_RESET_POSITIVE * OC_OFFSET_LIMIT_SCALAR)  // Adjust to an expected max offset
+#define OC_OFFSET_NEGATIVE_LIMIT (FCYCLE_ACC_RESET_NEGATIVE * OC_OFFSET_LIMIT_SCALAR) // Adjust to an expected min offset
+    
 void pic_pps_init(void);
 void OC1_Initialize(void);
 void OC2_Initialize(void);
