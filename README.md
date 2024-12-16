@@ -110,6 +110,7 @@ It is possible to send commands over the ESP UART to perform some actions, or pr
 | --- | --- |
 | pic-info | Show info directly from PIC |
 | pic-reset | Resets the PIC |
+| pic-resync | Manually resync PIC to GNSS |
 | pic-set-rtc [n] | Set PIC delta epoch to [n] unix epoch time |
 | pic-set-tz-offset [n] | Set timezone offset to [n] in seconds, rounds to nearest 15 minutes |
 | pic-set-dst-offset [n] | Set dst offset to [n] in seconds, rounds to nearest 15 minutes |
