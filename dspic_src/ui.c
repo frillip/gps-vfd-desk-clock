@@ -581,12 +581,12 @@ void ui_update_display(void)
     }
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_YYYY)
     {
-        display_yyyy(&utc);
+        display_yyyy(&display);
         display_latch();
     }
     if(ui_state_current==UI_DISPLAY_STATE_CLOCK_MMDD)
     {
-        display_mmdd(&utc);
+        display_mmdd(&display);
         display_latch();
     }
     if(ui_state_current==UI_DISPLAY_STATE_DELTA)
