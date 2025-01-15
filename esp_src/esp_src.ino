@@ -148,7 +148,7 @@ void loop()
         scheduler_reset_sync();
       }
     }
-    if(timeStatus() == timeSync) 
+    if(timeStatus() == timeSync && WiFi.status() == WL_CONNECTED)
     {
       digitalWrite(STATUS_LED_PIN, 1);
     }
