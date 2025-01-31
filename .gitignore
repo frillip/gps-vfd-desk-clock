@@ -7,4 +7,13 @@
 /dspic_src/Makefile
 /dspic_src/mcc-manifest*
 /dspic_src/defmplabxtrace*
+/dspic_bootloader/nbproject/
+/dspic_bootloader/dist/
+/dspic_bootloader/build/
+/dspic_bootloader/debug/
+/dspic_bootloader/mcc_generated_files/docs/
+/dspic_bootloader/.generated_files/
+/dspic_bootloader/Makefile
+/dspic_bootloader/mcc-manifest*
+/dspic_bootloader/defmplabxtrace*
 /esp_src/build/
