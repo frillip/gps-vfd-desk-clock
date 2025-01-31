@@ -93,7 +93,8 @@ It is possible to send commands over the ESP UART to perform some actions, or pr
 | esp-set-interval [n] | Set NTP interval to [n] (min 300, max 43200) |
 | esp-set-server [s] | Set the NTP server to [s] |
 | esp-resync | Force NTP sync |
-| esp-wifi-show | Print WiFi info |
+| esp-wifi-info | Print WiFi info |
+| esp-wifi-scan | Scan for WiFi networks and print results |
 | esp-wifi-connect | Force WiFi connect |
 | esp-wifi-disconnect | Force WiFi disconnect |
 | esp-wifi-ssid [s] | Set the saved SSID to [s] |
