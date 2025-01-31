@@ -536,7 +536,7 @@ void sercon_print_wifi(Stream *output)
   {
       output->printf("SSID: %s\n", cachedConfig.ap.ssid);
       output->printf("PSK: %s\n", cachedConfig.ap.password);
-      output->printf("IP: %s\n", WiFi.localIP().toString());
+      output->printf("IP: %s\n", WiFi.localIP().toString().c_str());
   }
   else
   {
