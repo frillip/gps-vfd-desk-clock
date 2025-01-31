@@ -85,6 +85,10 @@ void telnet_console_task(void) // Not a true stream, only triggered on new line
       }
       */
 
+      // Check if it's an exit command
+      if(strcmp(telnet_cmd_buf, "quit") == 0) telnet.disconnectClient();
+      else if(strcmp(telnet_cmd_buf, "exit") == 0) telnet.disconnectClient();
+
       cmd_type = serial_console_check_1(telnet_cmd_buf);
       switch(cmd_type)
       {
