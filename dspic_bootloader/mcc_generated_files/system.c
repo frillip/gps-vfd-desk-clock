@@ -78,11 +78,11 @@
 #include "clock.h"
 #include "system.h"
 #include "system_types.h"
+#include "uart1.h"
+#include "boot/boot_process.h"
 #include "memory/flash.h"
 #include "interrupt_manager.h"
 #include "traps.h"
-#include "uart1.h"
-#include "boot/boot_process.h"
 
 void SYSTEM_Initialize(void)
 {

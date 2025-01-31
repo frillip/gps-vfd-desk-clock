@@ -50,9 +50,6 @@ const static struct IMAGE images[] =
     {
         .startAddress = 0x2000
     },
-    {
-        .startAddress = 0x16000
-    },
 };
 
 #define FLASH_ERASE_MASK (~((FLASH_ERASE_PAGE_SIZE_IN_INSTRUCTIONS*2UL) - 1)) 
@@ -210,109 +207,6 @@ NVM_RETURN_STATUS BOOT_Read16Data (uint16_t *destinationData,  uint32_t nvmAddre
 }
 
 
-/* 
- * Copy keys used to unlock the flash write/erase operations.  Two keys are used
- * so that invalid jumps (due to bad code, miss-execution, etc.) have a lowered
- * risk of being able to perform the write/erase operation.  See the 
- * "Flash Erase/Write Operation Security" in the help file located in the 
- * MCC: Bootloader-16: Bootloader module for more details about how these two 
- * keys are used to reduce risk of invalid flash writes/erases.
- */
-#define COPY_KEY_PART_1 (FLASH_UNLOCK_KEY + COPY_KEY_PART_2)
-#define COPY_KEY_PART_2 (0x91C2B473u)
-#define COPY_KEY_LOCK   (0u)
-
-static volatile uint32_t copyKey = COPY_KEY_LOCK;
-
-
-
-void BOOT_CopyLock(void)
-{
-    copyKey = COPY_KEY_LOCK;
-    FLASH_Lock();
-}
-
-void BOOT_CopyUnlock(void)
-{
-    copyKey = COPY_KEY_PART_1;
-}
-
-static bool EraseImage(uint32_t imageAddress)
-{
-    uint32_t dataOffset;
-    bool status = true;
-
-    for(dataOffset=0; dataOffset<BOOT_IMAGE_SIZE; dataOffset+=FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS)
-    {
-        if(FLASH_ErasePage(imageAddress + dataOffset) == false)
-        {
-            status = false;
-            break;
-        }
-    }
-
-    return status;
-}
-
-static bool ImageDataCopy(uint32_t imageAddressTo, uint32_t imageAddressFrom)
-{
-    uint32_t instructionToCopy[MINIMUM_WRITE_BLOCK_SIZE/sizeof(uint32_t)];
-    uint32_t dataOffset;
-    bool status = true;
-
-    for(dataOffset=0; dataOffset<BOOT_IMAGE_SIZE; dataOffset+=(MINIMUM_WRITE_BLOCK_SIZE/2))
-    {
-        instructionToCopy[0] = FLASH_ReadWord24(imageAddressFrom + dataOffset);
-        instructionToCopy[1] = FLASH_ReadWord24(imageAddressFrom + dataOffset + 2);
-        if(FLASH_WriteDoubleWord24(imageAddressTo + dataOffset, instructionToCopy[0], instructionToCopy[1] ) == false)
-        {
-            status = false;
-            break;
-        }
-    }
-
-    return status;
-}
-
-bool BOOT_ImageCopy(enum BOOT_IMAGE destinationImage, enum BOOT_IMAGE sourceImage)
-{
-    bool status;
-
-    if((sourceImage >= BOOT_IMAGE_COUNT) || 
-       (destinationImage >= BOOT_IMAGE_COUNT) ||
-       (sourceImage == destinationImage))
-    {
-        status = false;
-    }
-    else
-    {
-        FLASH_Unlock(copyKey - COPY_KEY_PART_2);
-        status = EraseImage(images[destinationImage].startAddress);
-        if(status == true)
-        {
-            status = ImageDataCopy(images[destinationImage].startAddress, images[sourceImage].startAddress);
-        }
-    }
-
-    return status;
-}
-
-bool BOOT_ImageErase(enum BOOT_IMAGE image)
-{
-    bool status;
-
-    if(image >= BOOT_IMAGE_COUNT)
-    {
-        status = false;
-    }
-    else
-    {
-        FLASH_Unlock(copyKey - COPY_KEY_PART_2);
-        status = EraseImage(images[image].startAddress);
-    }
-
-    return status;
-}
         
    
    

@@ -46,7 +46,7 @@
 #include "boot_image.h"
 #include "boot_process.h"
 
-#define DOWNLOADED_IMAGE    1u
+#define DOWNLOADED_IMAGE    0u
 #define EXECUTION_IMAGE     0u
 
 static bool inBootloadMode = false;
@@ -60,45 +60,6 @@ void BOOT_DEMO_Initialize(void)
     
 }
 
-/*******************************************************************************
- *  Anti-rollback is disabled, but there is a separate download image.  We need
- *  to determine if an update is required or not.  If you have a user input
- *  available, you might allow the customer to select if they want to copy
- *  the download version or not.  
- *
- *  This demo will assume that if there is a valid download image available,
- *  then it will always be "installed" and then the download will be deleted
- *  so it doesn't get copied again.
- ******************************************************************************/
-static bool IsUpdateRequired(void)
-{
-    return BOOT_ImageVerify(DOWNLOADED_IMAGE);
-}
-
-static void UpdateFromDownload(void)
-{
-    BOOT_CopyUnlock();
-    if( IsUpdateRequired() == true )
-    {
-        /* We've updated the application image.  It needs to be re-verified
-         * after being copied. */
-        executionImageRequiresValidation = true;
-
-        BOOT_ImageCopy(EXECUTION_IMAGE, DOWNLOADED_IMAGE);
-
-        /* If anti-rollback is disabled but we have a download image, we need
-         * to make sure we don't copy it on every device reset.  Since we aren't
-         * using the version number, we need either a user input or we need to
-         * destroy the download image.  We will destroy the download image in
-         * this example, but it if you have a user input method, it might be
-         * worth while to keep the download image as a backup.  But make sure
-         * to only copy the download image when the user selects to, otherwise
-         * it will copy the download image on every device reset.
-         */
-         BOOT_ImageErase(DOWNLOADED_IMAGE);
-    }
-    BOOT_CopyLock();
-}
 
 void BOOT_DEMO_Tasks(void)
 {
@@ -110,8 +71,6 @@ void BOOT_DEMO_Tasks(void)
         }
         else
         {
-            UpdateFromDownload();
-
             if( executionImageRequiresValidation == true )
             {
                 executionImageValid = BOOT_ImageVerify(EXECUTION_IMAGE);

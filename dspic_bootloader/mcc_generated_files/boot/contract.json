@@ -9,7 +9,7 @@
   "version": "1.6",
   "bootloaderEndAddressExclusive": 8192,
   "applicationStartAddress": 8192,
-  "applicationEndAddress": 90110,
+  "applicationEndAddress": 174078,
   "userIvtTableAddress": 8704,
   "interrupts": [
     {
@@ -1108,7 +1108,7 @@
   "bootloaderFoscValue": 40000000,
   "isCodeProtectEnabled": false,
   "isAntiRollBackEnabled": false,
-  "downloadStartAddress": 90112,
-  "downloadEndAddress": 172030,
+  "downloadStartAddress": 8192,
+  "downloadEndAddress": 174078,
   "flashErasePageSizeInInstructions": 1024
 }

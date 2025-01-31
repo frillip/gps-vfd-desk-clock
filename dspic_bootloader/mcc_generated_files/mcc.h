@@ -53,13 +53,13 @@
 #include "system_types.h"
 #include "reset.h"
 
-#include "watchdog.h"
-#include "memory/flash.h"
+#include "uart1.h"
 #include "reset.h"
+#include "watchdog.h"
+#include "boot/boot_process.h"
+#include "memory/flash.h"
 #include "interrupt_manager.h"
 #include "traps.h"
-#include "uart1.h"
-#include "boot/boot_process.h"
 
 #warning "This file will be removed in future MCC releases. Use system.h instead."
 

@@ -57,7 +57,7 @@
    <tokenMap class="java.util.TreeMap">
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="16-bit Bootloader" name="state"/>
-         <value>{&quot;commProtocol&quot;:{&quot;name&quot;:&quot;UART1&quot;,&quot;libraryName&quot;:&quot;PIC24 / dsPIC33 / PIC32MM MCUs&quot;,&quot;id&quot;:&quot;UART1 PIC24 / dsPIC33 / PIC32MM MCUs&quot;},&quot;feature&quot;:{&quot;implementChecksum&quot;:true},&quot;interrupts&quot;:{&quot;software&quot;:[],&quot;traps&quot;:[]},&quot;applicationImageConfiguration&quot;:{&quot;imageCount&quot;:2,&quot;downloadImage&quot;:1},&quot;demoOptions&quot;:{&quot;antiRollBack&quot;:false}}</value>
+         <value>{&quot;commProtocol&quot;:{&quot;name&quot;:&quot;UART1&quot;,&quot;libraryName&quot;:&quot;PIC24 / dsPIC33 / PIC32MM MCUs&quot;,&quot;id&quot;:&quot;UART1 PIC24 / dsPIC33 / PIC32MM MCUs&quot;},&quot;feature&quot;:{&quot;implementChecksum&quot;:true},&quot;interrupts&quot;:{&quot;software&quot;:[],&quot;traps&quot;:[]},&quot;applicationImageConfiguration&quot;:{&quot;imageCount&quot;:1,&quot;downloadImage&quot;:0},&quot;demoOptions&quot;:{&quot;antiRollBack&quot;:false}}</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="FLASH" name="DemoCodeGeneration"/>
@@ -185,7 +185,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="CLOCK_PRIMARY"/>
-         <value>10000000</value>
+         <value>40000000</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="CLOCK_USB"/>
@@ -397,7 +397,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="PllPrescaler"/>
-         <value>1:2</value>
+         <value>1:8</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="Pll_Dependent_Clock_Switching"/>
@@ -469,7 +469,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="UpdatePllPrescalerOptions"/>
-         <value>[1:12, 1:11, 1:10, 1:9, 1:8, 1:7, 1:6, 1:5, 1:4, 1:3, 1:2]</value>
+         <value>[1:33, 1:32, 1:31, 1:30, 1:29, 1:28, 1:27, 1:26, 1:25, 1:24, 1:23, 1:22, 1:21, 1:20, 1:19, 1:18, 1:17, 1:16, 1:15, 1:14, 1:13, 1:12, 1:11, 1:10, 1:9, 1:8, 1:7, 1:6, 1:5]</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="INTERNAL OSCILLATOR" name="UpdatePllfbDivisorClock"/>
@@ -1373,7 +1373,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV"/>
-         <value>12608</value>
+         <value>12614</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CORCON"/>
@@ -1429,7 +1429,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV" settingAlias="PLLPRE"/>
-         <value>2</value>
+         <value>8</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="INTERNAL OSCILLATOR" registerAlias="CLKDIV" settingAlias="RCDIV"/>
@@ -4369,7 +4369,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="CNPUC"/>
-         <value>0</value>
+         <value>192</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="LATA"/>
@@ -4381,7 +4381,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="LATC"/>
-         <value>0</value>
+         <value>128</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="Pin Module" registerAlias="ODCA"/>
@@ -4941,11 +4941,11 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNPUC" settingAlias="CNPUC6"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNPUC" settingAlias="CNPUC7"/>
-         <value>disabled</value>
+         <value>enabled</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="CNPUC" settingAlias="CNPUC8"/>
@@ -5085,7 +5085,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="LATC" settingAlias="LATC7"/>
-         <value>clear</value>
+         <value>set</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="Pin Module" registerAlias="LATC" settingAlias="LATC8"/>
@@ -6435,11 +6435,11 @@
       </entry>
       <entry>
          <file>mcc_generated_files\boot\boot_config.h</file>
-         <hash>4afff96e6f6e36ede6b339a7f46aea37bb49261635c1a0e18b9550a0706b4d12</hash>
+         <hash>fc035a0bcfb2a8388209049e5341ea36192c8194985e8c02a87b09fbf6fecc56</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\boot\boot_demo.c</file>
-         <hash>e67158f1632fbbaa26eb22a6674980f0e5c3355a7ca659bd96f48c24ed914563</hash>
+         <hash>40748d0faa93e70bdf3c426e1b3d392e02cad82dbe0be958d5fa63c87a0c3bcf</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\boot\boot_demo.h</file>
@@ -6447,11 +6447,11 @@
       </entry>
       <entry>
          <file>mcc_generated_files\boot\boot_image.c</file>
-         <hash>9ad6ce784c47f84fe6c30160403e0653a93ceed1315d31fef2be921f1a4ba4f5</hash>
+         <hash>02fbe85b3c035b26226a032e37038558fd69b9ed95f3ce42e50df3278d9ed4ee</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\boot\boot_image.h</file>
-         <hash>14178618e1d5b399a56bdbefbb3a459e52f4d08ef5ee9eccd5e6a9be9150eafd</hash>
+         <hash>7bf14f9d9cdda39fe171b97985165ae01dfa7a58a738f534d53d329f6593c919</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\boot\boot_private.h</file>
@@ -6479,7 +6479,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\boot\contract.json</file>
-         <hash>5fcd4c6a2d21b252065785d708f5ce5e9ff26ff730c5b32ebe91546ff487e2e5</hash>
+         <hash>d92b8c684afa7b5e39e93c55c4a5d3c7adbc2fa150e768374862e6f2cb90c928</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\boot\hardware_interrupt_table.S</file>
@@ -6495,7 +6495,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\clock.c</file>
-         <hash>44ab0846c9ecbf873b952b9ecaa6a712ae1ee2dba82ebe47e4636798961b6e0d</hash>
+         <hash>01de09f98f0a7ce9e8077242d681bbb47edded82a206b8e6b837c081ef265b0b</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\clock.h</file>
@@ -6515,7 +6515,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\mcc.h</file>
-         <hash>97f25b464366a6b2da3767843bdb312246c65ee22ac5b27fced2bafa445c0d98</hash>
+         <hash>afa9d8f24db0fe99a16c08fbad6be88d2aa3c2a5eb672ac6968281c7fda3456a</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\memory\flash.h</file>
@@ -6527,7 +6527,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.c</file>
-         <hash>897caee2b0e169fbc4b4673e377c940ec2689d67ca50e6715a7c4ac0b1d4e891</hash>
+         <hash>cafa6499d5e88130538a7ab498fb0465f2ee23792c62495db0bc1deee401e8f9</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.h</file>
@@ -6547,7 +6547,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\system.c</file>
-         <hash>09292b44f1ad3bcc9cf43c8aa1e2ae28c9ab04df2ee8e945c727ed806f44d300</hash>
+         <hash>684fb0ebaf4183adcb44a6d79dd06876ee9b33960761a682c788d1631fceba75</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\system.h</file>

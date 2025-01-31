@@ -63,7 +63,7 @@ void PIN_MANAGER_Initialize (void)
      ***************************************************************************/
     LATA = 0x0000;
     LATB = 0x0000;
-    LATC = 0x0000;
+    LATC = 0x0080;
 
     /****************************************************************************
      * Setting the GPIO Direction SFR(s)
@@ -80,7 +80,7 @@ void PIN_MANAGER_Initialize (void)
     CNPDC = 0x0000;
     CNPUA = 0x0000;
     CNPUB = 0x0000;
-    CNPUC = 0x0000;
+    CNPUC = 0x00C0;
 
     /****************************************************************************
      * Setting the Open Drain SFR(s)

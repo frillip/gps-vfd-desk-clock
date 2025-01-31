@@ -38,8 +38,8 @@
 #include <stdint.h>
 #include "boot_config.h"
 
-#define DOWNLOAD_IMAGE_NUMBER 1u
-#define BOOT_IMAGE_COUNT 2
+#define DOWNLOAD_IMAGE_NUMBER 0u
+#define BOOT_IMAGE_COUNT 1
 #define BOOT_IMAGE_SIZE ((unsigned long)BOOT_CONFIG_DOWNLOAD_HIGH - (unsigned long)BOOT_CONFIG_DOWNLOAD_LOW + (unsigned long)2)
 
 #define EXECUTABLE_IMAGE_FIRST_ADDRESS BOOT_CONFIG_PROGRAMMABLE_ADDRESS_LOW
@@ -47,7 +47,6 @@
 
 enum BOOT_IMAGE{
     BOOT_IMAGE_0 = 0,
-    BOOT_IMAGE_1 = 1,
 };
 
 typedef enum NVM_RETURN_STATUS {
@@ -61,9 +60,6 @@ typedef enum NVM_RETURN_STATUS {
 
 bool IsLegalRange(uint32_t startRangeToCheck, uint32_t endRangeToCheck);
 bool BOOT_ImageErase(enum BOOT_IMAGE image);
-void BOOT_CopyLock(void);
-void BOOT_CopyUnlock(void);
-bool BOOT_ImageCopy(enum BOOT_IMAGE destinationImage, enum BOOT_IMAGE sourceImage);
 
 bool BOOT_ImageVerify(enum BOOT_IMAGE image);
 uint32_t BOOT_ImageAddressGet(enum BOOT_IMAGE image, uint32_t addressInExecutableImage);
