@@ -13,6 +13,7 @@
 #include "gnss_pps_esp.h"
 #include "pic.h"
 #include <HardwareSerial.h>
+#include "updater.h"
 
 #define USER_CMD_STAGE_1_ESP_STRING "esp-"
 #define USER_CMD_STAGE_1_PIC_STRING "pic-"
@@ -40,6 +41,8 @@
 #define USER_CMD_ESP_WIFI_CLEAR_STRING "esp-wifi-clear"
 #define USER_CMD_ESP_WIFI_SETUP_STRING "esp-wifi-setup"
 #define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
+#define USER_CMD_ESP_UPDATE_CHECK_STRING "esp-update-check"
+#define USER_CMD_ESP_UPDATE_DO_STRING "esp-update-do"
 #define USER_CMD_ESP_SAVE_STRING "esp-save"
 #define USER_CMD_PIC_INFO_STRING "pic-info"
 #define USER_CMD_PIC_RESYNC_STRING "pic-resync"

@@ -18,6 +18,9 @@ esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
 esp-wifi-clear = Clear saved WiFi config
 esp-wifi-setup = Enable WiFi setup AP mode
 
+esp-update-check = Check for an OTA update
+esp-update-do = Check for and perform an OTA update if available
+
 esp-clear-all = Clear all settings
 esp-save = Save settings
 
@@ -158,6 +161,17 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     {
       return USER_CMD_ESP_RESYNC;
     }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_CHECK_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_CHECK;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_DO_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_DO;
+    }
+
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
     {
       return USER_CMD_ESP_CLEAR_ALL;
@@ -411,6 +425,14 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
         wm.resetSettings(); // Delete WiFi credentials
         ESP.restart(); // And reset
       }
+      break;
+
+    case USER_CMD_ESP_UPDATE_CHECK:
+      updater_check(output);
+      break;
+
+    case USER_CMD_ESP_UPDATE_DO:
+      output->printf("Not implemented yet :(\n");
       break;
 
     case USER_CMD_ESP_CLEAR_ALL:

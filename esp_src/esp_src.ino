@@ -27,6 +27,8 @@ extern int8_t t100ms2;
 extern int8_t t100ms3;
 extern int8_t t1s0;
 
+#include "updater.h"
+
 WiFiManager wm;
 
 #define CLOCK_NTP_SERVER "rubidium.darksky.io"
@@ -123,6 +125,7 @@ void setup()
   }
 
   telnet_init();
+  updater_push_init(UPDATER_PUSH_PORT_DEFAULT, wifi_hostname.c_str(), UPDATER_PUSH_PASSWORD_DEFAULT);
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   digitalWrite(STATUS_LED_PIN, 0);
@@ -167,6 +170,7 @@ void loop()
   if(user_uart_char_available()) user_uart_task();
   if(pic_uart_char_available()) pic_uart_rx();
 
+  ArduinoOTA.handle();
   wm.process();
   events();
   telnet.loop();
