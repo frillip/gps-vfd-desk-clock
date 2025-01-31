@@ -1,13 +1,36 @@
+/*
 #include "updater_push.h"
 
-void updater_push_init(uint16_t port, const char* hostname, const char* password)
+bool updater_push_enabled = 0;
+uint16_t updater_push_port = UPDATER_PUSH_PORT_DEFAULT;
+const char* updater_push_password = UPDATER_PUSH_PASSWORD_DEFAULT;
+
+bool updater_push_running(void)
 {
+  return updater_push_enabled;
+}
 
-  ArduinoOTA.setPort(port);
-  ArduinoOTA.setHostname(hostname);
-  ArduinoOTA.setPassword(password);
+void print_updater_push_info(Stream *output)
+{
+  if(updater_push_enabled)
+  {
+    output->printf("ArduinoOTA RUNNING on %s \(%s:%s\)\n", WiFi.getHostname(), WiFi.localIP().toString().c_str(), updater_push_port);
+  }
+  else output->printf("ArduinoOTA NOT RUNNING\n");
+}
 
+void updater_push_disable(void)
+{
+  ArduinoOTA.end();
+  updater_push_enabled = 0;
+}
 
+void updater_push_enable(void)
+{
+  extern String wifi_hostname;
+  ArduinoOTA.setPort(updater_push_port);
+  ArduinoOTA.setHostname(wifi_hostname.c_str());
+  ArduinoOTA.setPassword(updater_push_password);
   ArduinoOTA
     .onStart([]() {
       String type;
@@ -40,6 +63,7 @@ void updater_push_init(uint16_t port, const char* hostname, const char* password
         Serial.println("End Failed");
       }
     });
-
   ArduinoOTA.begin();
+  updater_push_enabled = 1;
 }
+*/

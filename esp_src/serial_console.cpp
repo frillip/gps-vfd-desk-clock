@@ -19,7 +19,9 @@ esp-wifi-clear = Clear saved WiFi config
 esp-wifi-setup = Enable WiFi setup AP mode
 
 esp-update-check = Check for an OTA update
-esp-update-do = Check for and perform an OTA update if available
+esp-update-pull = Check for and perform an OTA update if available
+esp-update-set-server = Set update server hostname
+esp-update-set-path = Set update server path
 
 esp-clear-all = Clear all settings
 esp-save = Save settings
@@ -147,19 +149,19 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
       return USER_CMD_ESP_RESET;
     }
 
-    if(strcmp(cmd_buf, USER_CMD_ESP_SET_INTERVAL_STRING) == 0)
+    if(strcmp(cmd_buf, USER_CMD_ESP_NTP_SET_INTERVAL_STRING) == 0)
     {
-      return USER_CMD_ESP_SET_INTERVAL;
+      return USER_CMD_ESP_NTP_SET_INTERVAL;
     }
 
-    if(strcmp(cmd_buf, USER_CMD_ESP_SET_SERVER_STRING) == 0)
+    if(strcmp(cmd_buf, USER_CMD_ESP_NTP_SET_SERVER_STRING) == 0)
     {
-      return USER_CMD_ESP_SET_SERVER;
+      return USER_CMD_ESP_NTP_SET_SERVER;
     }
 
-    if(strcmp(cmd_buf, USER_CMD_ESP_RESYNC_STRING) == 0)
+    if(strcmp(cmd_buf, USER_CMD_ESP_NTP_RESYNC_STRING) == 0)
     {
-      return USER_CMD_ESP_RESYNC;
+      return USER_CMD_ESP_NTP_RESYNC;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_CHECK_STRING) == 0)
@@ -167,9 +169,29 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
       return USER_CMD_ESP_UPDATE_CHECK;
     }
 
-    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_DO_STRING) == 0)
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_PULL_STRING) == 0)
     {
-      return USER_CMD_ESP_UPDATE_DO;
+      return USER_CMD_ESP_UPDATE_PULL;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_SET_SERVER_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_SET_SERVER;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_SET_PATH_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_SET_PATH;
+    }
+    
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_PUSH_ENABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_PUSH_ENABLE;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_PUSH_DISABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_PUSH_DISABLE;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
@@ -347,7 +369,7 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       ESP.restart(); // And reset
       break;
 
-    case USER_CMD_ESP_SET_INTERVAL:
+    case USER_CMD_ESP_NTP_SET_INTERVAL:
       uint32_t ntp_interval_new;
       if(serial_console_validate_uint32(arg_buf, &ntp_interval_new))
       {
@@ -358,11 +380,11 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       }
       break;
 
-    case USER_CMD_ESP_SET_SERVER:
+    case USER_CMD_ESP_NTP_SET_SERVER:
       output->printf("Not implemented yet :(\n");
       break;
 
-    case USER_CMD_ESP_RESYNC:
+    case USER_CMD_ESP_NTP_RESYNC:
       output->printf("Manual NTP resync\n");
       updateNTP();
       break;
@@ -431,8 +453,26 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       updater_check(output);
       break;
 
-    case USER_CMD_ESP_UPDATE_DO:
+    case USER_CMD_ESP_UPDATE_PULL:
+      updater_pull(output);
+      break;
+
+    case USER_CMD_ESP_UPDATE_SET_SERVER:
       output->printf("Not implemented yet :(\n");
+      break;
+
+    case USER_CMD_ESP_UPDATE_SET_PATH:
+      output->printf("Not implemented yet :(\n");
+      break;
+
+    case USER_CMD_ESP_UPDATE_PUSH_ENABLE:
+      //updater_push_enable();
+      //print_updater_push_info(output);
+      break;
+
+    case USER_CMD_ESP_UPDATE_PUSH_DISABLE:
+      //updater_push_disable();
+      //print_updater_push_info(output);
       break;
 
     case USER_CMD_ESP_CLEAR_ALL:

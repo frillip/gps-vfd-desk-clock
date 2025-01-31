@@ -2,33 +2,37 @@
 const char* updater_json_url = UPDATER_JSON_URL_DEFAULT;
 
 ESP32OTAPull ota;
+Stream *output_stream;
 
 bool updater_check(Stream *output)
 {
-  int ret = ota.CheckForOTAUpdate(updater_json_url, VERSION, ESP32OTAPull::DONT_DO_UPDATE);
+  int ret = ota.CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   String otaVersion = ota.GetVersion();
+  output->printf("ESP Version:           %s\n", ESP_VERSION);
   output->printf("OTA Version Available: %s\n", otaVersion.c_str());
+  return 0;
 }
 
-/*
-output->printf("Check for update and download it, but don't reboot.  Display dots.\n");
-ret = ota
-  .SetCallback(callback_dots)
-  .CheckForOTAUpdate(JSON_URL, VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
-output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, errtext(ret));
+void updater_pull(Stream *output)
+{
+  output_stream = output;
+  int ret = ota
+    .SetCallback(updater_callback_percent)
+    .CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
+  output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
+  output->printf("Use esp-reset to finish update.\n");
+}
 
-delay(3000);
-
-// Example 3
-output->printf("Download and install downgrade, but only if the configuration string matches.  Display percentages.\n");
-ret = ota
-  .SetCallback(callback_percent)
-  .AllowDowngrades(true)
-//.SetConfig("4MB RAM")
-  .CheckForOTAUpdate(JSON_URL, VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
-output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, errtext(ret));
-*/
+void updater_pull_reboot(Stream *output)
+{
+  output_stream = output;
+  int ret = ota
+    .SetCallback(updater_callback_percent)
+    .CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
+  output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
+  output->printf("Rebooting...\n");
+}
 
 void updater_callback_percent(int offset, int totallength)
 {
@@ -36,7 +40,7 @@ void updater_callback_percent(int offset, int totallength)
 	int percent = 100 * offset / totallength;
 	if (percent != prev_percent)
 	{
-		Serial.printf("Updating %d of %d (%02d%%)...\n", offset, totallength, 100 * offset / totallength);
+		output_stream->printf("Updating %d of %d (%02d%%)...\n", offset, totallength, 100 * offset / totallength);
 		prev_percent = percent;
 	}
 }

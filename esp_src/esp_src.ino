@@ -45,6 +45,9 @@ int32_t dst_offset = 0;
 uint32_t esp_micros = 0;
 #define STATUS_LED_PIN 23
 
+String wifi_hostname;
+String wifi_id;
+
 void startNTPqueries(void)
 {
   updateNTP();
@@ -97,8 +100,8 @@ void setup()
   id &= 0xFFFFFF;
   char id_buf[6] = {0};
   sprintf(id_buf,"%06X", id);
-  String wifi_id = id_buf;
-  String wifi_hostname  = String("SMOL_CLOCK_" + wifi_id);
+  wifi_id = id_buf;
+  wifi_hostname  = String("SMOL_CLOCK_" + wifi_id);
   WiFi.setHostname(wifi_hostname.c_str());
   Serial.println(wifi_hostname);
 
@@ -125,7 +128,7 @@ void setup()
   }
 
   telnet_init();
-  updater_push_init(UPDATER_PUSH_PORT_DEFAULT, wifi_hostname.c_str(), UPDATER_PUSH_PASSWORD_DEFAULT);
+  //updater_push_enable();
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   digitalWrite(STATUS_LED_PIN, 0);
@@ -170,7 +173,7 @@ void loop()
   if(user_uart_char_available()) user_uart_task();
   if(pic_uart_char_available()) pic_uart_rx();
 
-  ArduinoOTA.handle();
+  //if(updater_push_running()) ArduinoOTA.handle();
   wm.process();
   events();
   telnet.loop();
