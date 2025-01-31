@@ -50,22 +50,22 @@ void gnss_timeout_incr(void)
   }
 }
 
-void print_gnss_pps_offset(void)
+void print_gnss_pps_offset(Stream *output)
 {
   int32_t gnss_offset_ms = gnss_pps_offset_ms;
   int32_t gnss_offset_micros = esp_micros - gnss_pps_micros;
-  Serial.printf("GNSS offset: ");
+  output->printf("GNSS offset: ");
   float gnss_offset_display = gnss_offset_micros;
   if(gnss_offset_display < -1000000) gnss_offset_display += 1000000;
   if(gnss_offset_display > 1000000) gnss_offset_display -= 1000000;
   if((gnss_offset_display < 1000) && (gnss_offset_display > -1000 ))
   {
-    Serial.printf("%3.0fus\n", gnss_offset_display);
+    output->printf("%3.0fus\n", gnss_offset_display);
   }
   else
   {
     gnss_offset_display = gnss_offset_display / 1000;
-    Serial.printf("%6.2fms\n", gnss_offset_display);
+    output->printf("%6.2fms\n", gnss_offset_display);
   }
 }
 

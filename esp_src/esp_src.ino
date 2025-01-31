@@ -8,6 +8,9 @@
 #include "serial_proto.h"
 #include "esp_pps.h"
 #include "serial_console.h"
+#include "user_uart.h"
+#include "telnet.h"
+extern ESPTelnetStream telnet;
 #include "pic.h"
 extern time_t pic;
 #include "gnss_pps_esp.h"
@@ -68,7 +71,7 @@ void reconnect_wifi(void)
 
 void setup()
 {
-  serial_console_init();
+  user_uart_init();
 
   /*
   // TO DO:
@@ -119,6 +122,8 @@ void setup()
     wm.setSaveConfigCallback(startNTPqueries);
   }
 
+  telnet_init();
+
   pinMode(STATUS_LED_PIN, OUTPUT);
   digitalWrite(STATUS_LED_PIN, 0);
 
@@ -154,16 +159,18 @@ void loop()
     }
     pic_uart_tx_timedata();
 
-    serial_console_second_changed(millis());
+    //serial_console_second_changed(millis());
     
     esp = UTC.now();
   }
 
-  if(serial_console_char_available()) serial_console_task();
+  if(user_uart_char_available()) user_uart_task();
   if(pic_uart_char_available()) pic_uart_rx();
 
   wm.process();
   events();
+  telnet.loop();
+  if(telnet_char_available()) telnet_console_task();
 
   if(WiFi.status() != WL_CONNECTED)
   {
@@ -192,10 +199,10 @@ void loop()
         digitalWrite(STATUS_LED_PIN, 0);
       }
     }
-    if(serial_console_print_local_available())
-    {
-      serial_console_print_local();
-    }
+    //if(serial_console_print_local_available())
+    //{
+    //  serial_console_print_local();
+    //}
   }
   if(t10ms0)
   {
@@ -210,9 +217,13 @@ void loop()
       pic_data_task();
     }
   }
-  if(t100ms0>=1)
+  if(t100ms0>=2)
   {
-    t100ms0=-4;
+    t100ms0=0;
+    if(!pic_output_buffer_empty() && pic_uart_output_finished())
+    {
+      pic_flush_output_buffer();
+    }
   }
   if(t100ms1>=1)
   {

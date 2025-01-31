@@ -1,3 +1,6 @@
+#ifndef SERIAL_CONSOLE_H
+#define	SERIAL_CONSOLE_H
+
 #include <Arduino.h>
 #include <stdint.h>
 #include <time.h>
@@ -10,10 +13,6 @@
 #include "gnss_pps_esp.h"
 #include "pic.h"
 #include <HardwareSerial.h>
-#include <ezTime.h>
-
-#define LOCAL_TIME_PRINT_DELAY 50
-#define SERIAL_CONSOLE_BUFFER_LENGTH 100
 
 #define USER_CMD_STAGE_1_ESP_STRING "esp-"
 #define USER_CMD_STAGE_1_PIC_STRING "pic-"
@@ -29,7 +28,7 @@
 #define USER_CMD_ESP_SET_SERVER_STRING "esp-set-server"
 #define USER_CMD_ESP_RESYNC_STRING "esp-resync"
 #define USER_CMD_ESP_WIFI_INFO_STRING "esp-wifi-info"
-#define USER_CMD_ESP_WIFI_SHOW_STRING "esp-wifi-show"
+#define USER_CMD_ESP_WIFI_SCAN_STRING "esp-wifi-scan"
 #define USER_CMD_ESP_WIFI_CONNECT_STRING "esp-wifi-connect"
 #define USER_CMD_ESP_WIFI_DISCONNECT_STRING "esp-wifi-disconnect"
 #define USER_CMD_ESP_WIFI_SSID_STRING "esp-wifi-ssid"
@@ -66,21 +65,19 @@
 #define USER_CMD_RESET_PIC_STRING "rst-pic"
 #define USER_CMD_HELP_STRING "help"
 
-#define DEBUG_UART  0
-#define DEBUG_BAUD  115200
 
-void serial_console_init();
-bool serial_console_char_available(void);
-void serial_console_task(void);
-USER_CMD_TYPE serial_console_check_1(void);
-USER_CMD serial_console_check_2_esp(void);
-USER_CMD serial_console_check_2_pic(void);
-USER_CMD serial_console_check_2_rst(void);
-USER_CMD serial_console_check_2_help(void);
-void serial_console_help(void);
-void serial_console_print_help_all(void);
-void serial_console_exec(USER_CMD cmd);
-void serial_console_print_info(void);
+USER_CMD_TYPE serial_console_check_1(const char *cmd_buf);
+USER_CMD serial_console_check_2_esp(const char *cmd_buf);
+USER_CMD serial_console_check_2_pic(const char *cmd_buf);
+USER_CMD serial_console_check_2_rst(const char *cmd_buf);
+USER_CMD serial_console_check_2_help(const char *cmd_buf);
+void serial_console_help(Stream *output);
+void serial_console_print_help_all(Stream *output);
+
+void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf);
+void sercon_print_wifi(Stream *output);
+void sercon_print_ssids(Stream *output);
+void serial_console_print_info(Stream *output);
 
 void serial_console_second_changed(uint32_t millis);
 bool serial_console_print_local_available(void);
@@ -88,3 +85,5 @@ void serial_console_print_local(void);
 
 bool serial_console_validate_uint32(const char* input, uint32_t* output);
 bool serial_console_validate_int32(const char* input, int32_t* output);
+
+#endif	/* SERIAL_CONSOLE_H */

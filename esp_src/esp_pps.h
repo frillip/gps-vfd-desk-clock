@@ -1,3 +1,6 @@
+#ifndef ESP_PPS_H
+#define	ESP_PPS_H
+
 #include <esp32-hal-timer.h>
 
 #define ESP_PPS_HW_TIMER 1
@@ -12,3 +15,5 @@ bool esp_pps_is_sync(void);
 void esp_pps_reset_sync(void);
 void esp_pps_unsync(void);
 void ARDUINO_ISR_ATTR esp_pps_out_intr(void);
+
+#endif	/* ESP_PPS_H */

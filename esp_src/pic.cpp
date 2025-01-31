@@ -1,6 +1,8 @@
 #include "pic.h"
 extern time_t esp;
 
+Stream *pic_output_stream = &Serial;
+
 uint8_t rx_stage = 0;
 uint16_t user_data_counter = 0;
 bool rx_ignore = 0;
@@ -11,6 +13,9 @@ char pic_string_buffer[SERIAL_PROTO_STRING_BUFFER_SIZE] = {0};
 PIC_MESSAGE_TYPE pic_incoming = PIC_NONE;
 PIC_MESSAGE_TYPE pic_waiting = PIC_NONE;
 uint8_t pic_bytes_remaining = 0;
+
+uint8_t pic_output_offset = 0;
+char pic_output_buffer[PIC_OUTPUT_BUFFER_LENGTH] = {0};
 
 
 const SERIAL_PROTO_HEADER pic_time_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_TIMEDATA};
@@ -158,40 +163,40 @@ void ARDUINO_ISR_ATTR pic_pps_in(void)
 }
 
 
-void print_pic_pps_offset(void)
+void print_pic_pps_offset(Stream *output)
 {
   extern uint32_t esp_micros;
   int32_t pic_offset_ms = pic_pps_offset_ms;
   int32_t pic_offset_micros = esp_micros - pic_pps_micros;
-  Serial.printf("PIC offset:  ");
+  output->printf("PIC offset:  ");
   float pic_offset_display = pic_offset_micros;
   if(pic_offset_display<-1000000) pic_offset_display += 1000000;
   if(pic_offset_display>1000000) pic_offset_display -= 1000000;
   if((pic_offset_display < 1000) && (pic_offset_display > -1000 ))
   {
-    Serial.printf("%3.0fus\n", pic_offset_display);
+    output->printf("%3.0fus\n", pic_offset_display);
   }
   else
   {
     pic_offset_display = pic_offset_display / 1000;
-    Serial.printf("%6.2fms\n", pic_offset_display,2);
+    output->printf("%6.2fms\n", pic_offset_display,2);
   }
 }
 
-void print_pic_pps_relative_offset(void)
+void print_pic_pps_relative_offset(Stream *output)
 {
-  Serial.printf("PPS offset:  ");
+  output->printf("PPS offset:  ");
   float pic_relative_offset_display = pic_oc_offset * 25;
   if(pic_relative_offset_display<-1000000000) pic_relative_offset_display += 1000000000;
   if(pic_relative_offset_display>1000000000) pic_relative_offset_display -= 1000000000;
   if((pic_relative_offset_display < 1000) && (pic_relative_offset_display > -1000 ))
   {
-    Serial.printf("%3.0fns\n", pic_relative_offset_display);
+    output->printf("%3.0fns\n", pic_relative_offset_display);
   }
   else
   {
     pic_relative_offset_display = pic_relative_offset_display / 1000;
-    Serial.printf("%6.2fus\n", pic_relative_offset_display,2);
+    output->printf("%6.2fus\n", pic_relative_offset_display,2);
   }
 }
 
@@ -205,6 +210,7 @@ bool pic_uart_char_available(void)
   return UARTPIC.available();
 }
 
+uint32_t pic_last_rx_millis = 0;
 
 void pic_uart_rx()
 {
@@ -213,7 +219,7 @@ void pic_uart_rx()
     while(UARTPIC.available())
     {
       char rx_char = UARTPIC.read();
-      //Serial.printf("%X ", rx_char);
+      //output->printf("%X ", rx_char);
 
       memmove(pic_check_buffer, pic_check_buffer+1, sizeof(SERIAL_PROTO_HEADER)-1);
       pic_check_buffer[sizeof(SERIAL_PROTO_HEADER)-1] = rx_char;
@@ -306,12 +312,40 @@ void pic_uart_rx()
       {
         if(rx_char != SERIAL_PROTO_HEADER_MAGIC && rx_char != SERIAL_PROTO_TYPE_PIC_TX)
         {
-          Serial.printf("%c", rx_char);
+          pic_last_rx_millis = millis();
+          pic_output_buffer[pic_output_offset] = rx_char;
+          pic_output_offset++;
+          if( pic_output_offset >= PIC_OUTPUT_BUFFER_LENGTH -1) // Leave a character for null terminator
+          {
+            pic_flush_output_buffer();
+          }
         }
       }
       pic_last_char_hold = 0;
     }
   }
+}
+
+
+
+bool pic_uart_output_finished(void)
+{
+  if(pic_last_rx_millis + PIC_UART_OUTPUT_TIMEOUT > millis()) return 1;
+  return 0;
+}
+
+bool pic_output_buffer_empty(void)
+{
+  if(pic_output_offset) return 0;
+  return 1;
+}
+
+void pic_flush_output_buffer(void)
+{
+  String output = String(pic_output_buffer);
+  pic_output_stream->printf("%s", output.c_str());
+  pic_output_offset = 0;
+  memset(pic_output_buffer, 0, PIC_OUTPUT_BUFFER_LENGTH);
 }
 
 void pic_copy_buffer(PIC_MESSAGE_TYPE message)
@@ -417,27 +451,27 @@ void pic_process_time()
 
   /*
   uint8_t i;
-  Serial.printf("\nTime_struct (%u bytes): ", sizeof(pic_time_buffer));
+  output->printf("\nTime_struct (%u bytes): ", sizeof(pic_time_buffer));
   for(i=0; i < sizeof(pic_time_buffer); i++)
   {
-    Serial.printf("%X-",pic_time_buffer.raw[i]);
+    output->printf("%X-",pic_time_buffer.raw[i]);
   }
 
-  Serial.printf("\nheader.magic:  %X\n", pic_time_buffer.fields.header.magic);
-  Serial.printf("  .type:       %X\n", pic_time_buffer.fields.header.type);
-  Serial.printf("  .datatype:   %X\n", pic_time_buffer.fields.header.datatype);
+  output->printf("\nheader.magic:  %X\n", pic_time_buffer.fields.header.magic);
+  output->printf("  .type:       %X\n", pic_time_buffer.fields.header.type);
+  output->printf("  .datatype:   %X\n", pic_time_buffer.fields.header.datatype);
 
-  Serial.printf("utc_source:    %X\n", pic_time_buffer.fields.utc_source);
-  Serial.printf("utc:           %X\n", pic_time_buffer.fields.utc);
+  output->printf("utc_source:    %X\n", pic_time_buffer.fields.utc_source);
+  output->printf("utc:           %X\n", pic_time_buffer.fields.utc);
 
-  Serial.printf("tz_flags.set:  %X\n", pic_time_buffer.fields.tz_flags.tz_set);
-  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.tz_flags.tz_offset);
+  output->printf("tz_flags.set:  %X\n", pic_time_buffer.fields.tz_flags.tz_set);
+  output->printf("  .offset:     %X\n", pic_time_buffer.fields.tz_flags.tz_offset);
 
-  Serial.printf("dst_flags.set: %X\n", pic_time_buffer.fields.dst_flags.dst_set);
-  Serial.printf("  .active:     %X\n", pic_time_buffer.fields.dst_flags.dst_active);
-  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.dst_flags.dst_offset);
+  output->printf("dst_flags.set: %X\n", pic_time_buffer.fields.dst_flags.dst_set);
+  output->printf("  .active:     %X\n", pic_time_buffer.fields.dst_flags.dst_active);
+  output->printf("  .offset:     %X\n", pic_time_buffer.fields.dst_flags.dst_offset);
 
-  //Serial.printf("checksum:      %X\n", pic_time_buffer.fields.checksum);
+  //output->printf("checksum:      %X\n", pic_time_buffer.fields.checksum);
 
   memset(pic_time_buffer.raw, 0xFF, sizeof(pic_time_buffer));
 
@@ -453,27 +487,27 @@ void pic_process_time()
   pic_time_buffer.fields.dst_flags.dst_offset = 0x3;
   //pic_time_buffer.fields.checksum = 0x0;
 
-  Serial.printf("\nTime_struct (%u bytes): ", sizeof(pic_time_buffer));
+  output->printf("\nTime_struct (%u bytes): ", sizeof(pic_time_buffer));
   for(i=0; i < sizeof(pic_time_buffer.raw); i++)
   {
-    Serial.printf("%X-",pic_time_buffer.raw[i]);
+    output->printf("%X-",pic_time_buffer.raw[i]);
   }
 
-  Serial.printf("\nheader.magic:  %X\n", pic_time_buffer.fields.header.magic);
-  Serial.printf("  .type:       %X\n", pic_time_buffer.fields.header.type);
-  Serial.printf("  .datatype:   %X\n", pic_time_buffer.fields.header.datatype);
+  output->printf("\nheader.magic:  %X\n", pic_time_buffer.fields.header.magic);
+  output->printf("  .type:       %X\n", pic_time_buffer.fields.header.type);
+  output->printf("  .datatype:   %X\n", pic_time_buffer.fields.header.datatype);
 
-  Serial.printf("utc_source:    %X\n", pic_time_buffer.fields.utc_source);
-  Serial.printf("utc:           %X\n", pic_time_buffer.fields.utc);
+  output->printf("utc_source:    %X\n", pic_time_buffer.fields.utc_source);
+  output->printf("utc:           %X\n", pic_time_buffer.fields.utc);
 
-  Serial.printf("tz_flags.set:  %X\n", pic_time_buffer.fields.tz_flags.tz_set);
-  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.tz_flags.tz_offset);
+  output->printf("tz_flags.set:  %X\n", pic_time_buffer.fields.tz_flags.tz_set);
+  output->printf("  .offset:     %X\n", pic_time_buffer.fields.tz_flags.tz_offset);
 
-  Serial.printf("dst_flags.set: %X\n", pic_time_buffer.fields.dst_flags.dst_set);
-  Serial.printf("  .active:     %X\n", pic_time_buffer.fields.dst_flags.dst_active);
-  Serial.printf("  .offset:     %X\n", pic_time_buffer.fields.dst_flags.dst_offset);
+  output->printf("dst_flags.set: %X\n", pic_time_buffer.fields.dst_flags.dst_set);
+  output->printf("  .active:     %X\n", pic_time_buffer.fields.dst_flags.dst_active);
+  output->printf("  .offset:     %X\n", pic_time_buffer.fields.dst_flags.dst_offset);
 
-  //Serial.printf("checksum:      %X\n", pic_time_buffer.fields.checksum);
+  //output->printf("checksum:      %X\n", pic_time_buffer.fields.checksum);
   */
 
   dst_active = pic_dst_active;
@@ -502,7 +536,7 @@ void pic_process_time()
             esp_pps_unsync();
             scheduler_unsync();
             if(pic_us_offset > 500000) pic_us_offset = pic_us_offset - 1000000;
-            Serial.printf("ESP resync: %lius\n", pic_us_offset);
+            pic_output_stream->printf("ESP resync: %lius\n", pic_us_offset);
           }
         }
         pic_new_pps = 0;
@@ -514,7 +548,7 @@ void pic_process_time()
 }
 
 
-void print_local_time(time_t now)
+void print_local_time(Stream *output, time_t now)
 {
   extern int32_t tz_offset;
   extern bool dst_active;
@@ -526,125 +560,125 @@ void print_local_time(time_t now)
   struct tm *iso_time; // Allocate buffer
   iso_time = gmtime(&local);
   strftime(buf, 32, "%Y-%m-%dT%H:%M:%S", iso_time);
-  Serial.printf(buf);
-  print_local_offset((int32_t)(local - now));
+  output->printf(buf);
+  print_local_offset(output, (int32_t)(local - now));
 }
 
-void print_local_offset(int32_t total_offset)
+void print_local_offset(Stream *output, int32_t total_offset)
 {
   char buf[10] = {0};
   if((total_offset)>=0)
   {
-      Serial.printf("+"); 
+      output->printf("+"); 
   }
   else
   {
-      Serial.printf("-"); 
+      output->printf("-"); 
       total_offset = total_offset*-1;
   }
   uint32_t total_offset_hours = total_offset/3600;
   uint32_t total_offset_minutes = (total_offset-(total_offset_hours*3600))/60;
   sprintf(buf,"%02lu:%02lu",total_offset_hours,total_offset_minutes);
-  Serial.printf(buf);
+  output->printf(buf);
 }
 
 
-void print_iso8601_string(time_t time)
+void print_iso8601_string(Stream *output, time_t time)
 {
   char buf[32] = {0}; // Allocate buffer
   struct tm *iso_time; // Allocate buffer
   iso_time = gmtime(&time);
   strftime(buf, 32, "%Y-%m-%dT%H:%M:%SZ", iso_time);
-  Serial.printf(buf);
+  output->printf(buf);
 }
 
 
-void print_pic_time(void)
+void print_pic_time(Stream *output)
 {
-  Serial.printf("UTC:   ");
-  print_iso8601_string(pic);
+  output->printf("UTC:   ");
+  print_iso8601_string(output, pic);
 
-  Serial.printf("\nGNSS:  ");
-  print_iso8601_string(gnss);
+  output->printf("\nGNSS:  ");
+  print_iso8601_string(output, gnss);
   if(!pic_gnss_detected)
   {
-    Serial.printf(" - MISSING");
+    output->printf(" - MISSING");
   }
 
   time_t now = UTC.now();
-  Serial.printf("\nESP:   ");
-  print_iso8601_string(now);
+  output->printf("\nESP:   ");
+  print_iso8601_string(output, now);
 
-  Serial.printf("\nNTP:   ");
-  print_iso8601_string(now);
+  output->printf("\nNTP:   ");
+  print_iso8601_string(output, now);
   if(WiFi.status() != WL_CONNECTED)
   {
-    Serial.printf(" - NO WIFI");
+    output->printf(" - NO WIFI");
   }
   else if(timeStatus() != timeSync)
   {
-    Serial.printf(" - NO NTP SYNC");
+    output->printf(" - NO NTP SYNC");
   }
 
-  Serial.printf("\nRTC:   ");
-  print_iso8601_string(pic_rtc);
+  output->printf("\nRTC:   ");
+  print_iso8601_string(output, pic_rtc);
   if(!pic_rtc_detected)
   {
-    Serial.printf(" - MISSING");
+    output->printf(" - MISSING");
   }
   else if(!pic_rtc_valid)
   {
-    Serial.printf(" - INVALID");
+    output->printf(" - INVALID");
   }
 
-  Serial.printf("\nLocal: ");
-  print_local_time(pic);
-  Serial.printf("\nTZ:    ");
-  print_local_offset(pic_tz_offset);
+  output->printf("\nLocal: ");
+  print_local_time(output, pic);
+  output->printf("\nTZ:    ");
+  print_local_offset(output, pic_tz_offset);
   
-  Serial.printf("\nDST:   ");
+  output->printf("\nDST:   ");
   if(pic_dst_active)
   {
-      print_local_offset(pic_dst_offset);
-      Serial.printf(" (active)");
+      print_local_offset(output, pic_dst_offset);
+      output->printf(" (active)");
   }
   else
   {
-      Serial.printf("Inactive");
+      output->printf("Inactive");
   }
 
-  Serial.printf("\nUTC source: ");
-  print_clock_source(pic_utc_source);
-  Serial.printf("\n");
+  output->printf("\nUTC source: ");
+  print_clock_source(output, pic_utc_source);
+  output->printf("\n");
 }
 
 
-void print_clock_source(CLOCK_SOURCE source)
+void print_clock_source(Stream *output, CLOCK_SOURCE source)
 {
     switch(source)
     {
         case CLOCK_SOURCE_NONE:
-            Serial.printf("NONE");
+            output->printf("NONE");
             break;
             
         case CLOCK_SOURCE_RTC:
-            Serial.printf("RTC");
+            output->printf("RTC");
             break;
             
         case CLOCK_SOURCE_ESP:
-            Serial.printf("ESP");
+            output->printf("ESP");
             break;
             
         case CLOCK_SOURCE_NTP:
-            Serial.printf("NTP");
+            output->printf("NTP");
             break;
             
         case CLOCK_SOURCE_GNSS:
-            Serial.printf("GNSS");
+            output->printf("GNSS");
             break;
             
         default:
-            Serial.printf("UNKNOWN SOURCE!");
+            output->printf("UNKNOWN SOURCE!");
             break;
     }
 }
@@ -685,60 +719,60 @@ void pic_process_gnss(void)
 }
 
 
-void print_gnss_fix(UBX_NAV_STATUS_GPSFIX fix_status)
+void print_gnss_fix(Stream *output, UBX_NAV_STATUS_GPSFIX fix_status)
 {
   switch (fix_status)
   {
     case GPSFIX_NO_FIX:
-      Serial.printf("No fix");
+      output->printf("No fix");
       break;
         
     case GPSFIX_DR_ONLY:
-      Serial.printf("Dead reckoning only");
+      output->printf("Dead reckoning only");
       break;
 
     case GPSFIX_2D:
-      Serial.printf("2D-fix");
+      output->printf("2D-fix");
       break;
 
     case GPSFIX_3D:
-      Serial.printf("3D-fix");
+      output->printf("3D-fix");
       break;
 
     case GPSFIX_GPS_DR:
-      Serial.printf("GNSS + dead reckoning combined");
+      output->printf("GNSS + dead reckoning combined");
       break;
 
     case GPSFIX_TIME_ONLY:
-      Serial.printf("Time only fix");
+      output->printf("Time only fix");
       break;
         
     default:
-      Serial.printf("Unknown");
+      output->printf("Unknown");
       break;
   }
 }
 
-void print_gnss_data(void)
+void print_gnss_data(Stream *output)
 {
   if(pic_gnss_detected)
   {
-    Serial.printf("\n=== GNSS ===\n");
-    Serial.printf("Fix: %u  OK: %u  UTC: %u  TM: %u\n", pic_gnss_fix, pic_fix_ok, pic_utc_valid, pic_timemark_valid);
+    output->printf("\n=== GNSS ===\n");
+    output->printf("Fix: %u  OK: %u  UTC: %u  TM: %u\n", pic_gnss_fix, pic_fix_ok, pic_utc_valid, pic_timemark_valid);
 
-    Serial.printf("Fix type: %02X - ", pic_fix_status);
-    print_gnss_fix(pic_fix_status);
-    Serial.printf("\n");
+    output->printf("Fix type: %02X - ", pic_fix_status);
+    print_gnss_fix(output, pic_fix_status);
+    output->printf("\n");
 
-    Serial.printf("PPS count: %u PPS Miss: %u\n", pic_gnss_pps_count, pic_pps_missing_count);
+    output->printf("PPS count: %u PPS Miss: %u\n", pic_gnss_pps_count, pic_pps_missing_count);
 
-    Serial.printf("LAT: %12.7f\n", (float)pic_posllh_lat/10000000);
-    Serial.printf("LON: %12.7f\n", (float)pic_posllh_lon/10000000);
-    Serial.printf("Height: %4.0fm   mASL: %4.0fm\n", (float)pic_posllh_height, (float)pic_posllh_hmsl);
+    output->printf("LAT: %12.7f\n", (float)pic_posllh_lat/10000000);
+    output->printf("LON: %12.7f\n", (float)pic_posllh_lon/10000000);
+    output->printf("Height: %4.0fm   mASL: %4.0fm\n", (float)pic_posllh_height, (float)pic_posllh_hmsl);
   }
   else
   {
-    Serial.printf("\n=== NO GNSS DETECTED ===\n");
+    output->printf("\n=== NO GNSS DETECTED ===\n");
   }
 }
 
@@ -761,12 +795,12 @@ void pic_process_offset(void)
   pic_offset_waiting = 0;
 }
 
-void print_offset_data(void)
+void print_offset_data(Stream *output)
 {
-  Serial.printf("\n=== Clock and PPS stats ===\n");
-  Serial.printf("Crystal freq: %9.6fMHz\n", (float)pic_fosc_freq / 1000000);
-  Serial.printf("OC D: %i CLK D: %u CLK T: %i\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
-  Serial.printf("OC events: %u Resync events: %u\n", pic_total_oc_seq_count, pic_sync_events);
+  output->printf("\n=== Clock and PPS stats ===\n");
+  output->printf("Crystal freq: %9.6fMHz\n", (float)pic_fosc_freq / 1000000);
+  output->printf("OC D: %i CLK D: %u CLK T: %i\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
+  output->printf("OC events: %u Resync events: %u\n", pic_total_oc_seq_count, pic_sync_events);
 }
 
 void pic_process_net(void)
@@ -774,7 +808,6 @@ void pic_process_net(void)
   extern WiFiManager wm;
   if(pic_net_buffer.fields.flags.reset_config)
   {
-    Serial.printf("Resetting WiFi credentials...\n");
     wm.resetSettings(); // Delete WiFi credentials
     ESP.restart(); // And reset
   }
@@ -794,29 +827,29 @@ void pic_process_rtc(void)
 }
 
 
-void pic_print_rtc(void)
+void print_rtc_data(Stream *output)
 {
   if(pic_rtc_detected)
   {
-    Serial.printf("\n=== RTC ===\n");
+    output->printf("\n=== RTC ===\n");
     if(pic_rtc_type==RTC_DS1307)
     {
-      Serial.printf("DS1307: ");
+      output->printf("DS1307: ");
     }
     else if(pic_rtc_type==RTC_PCF8563)
     {
-      Serial.printf("PCF8563: ");
+      output->printf("PCF8563: ");
     }
     else
     {
-      Serial.printf("Undefined: ");
+      output->printf("Undefined: ");
     }
-    print_iso8601_string(pic_rtc);
-    Serial.printf("\nValid: %u Sync: %u\n", pic_rtc_valid, pic_rtc_sync);
+    print_iso8601_string(output, pic_rtc);
+    output->printf("\nValid: %u Sync: %u\n", pic_rtc_valid, pic_rtc_sync);
   }
   else
   {
-    Serial.printf("\n=== NO RTC DETECTED ===\n");
+    output->printf("\n=== NO RTC DETECTED ===\n");
   }
 }
 
@@ -836,32 +869,32 @@ void pic_process_sensor(void)
 }
 
 
-void print_veml_data(void)
+void print_veml_data(Stream *output)
 {
     if(pic_veml6040_detected)
     {
-        Serial.printf("\n=== VEML6040 LUX DATA ===\n");
-        Serial.printf("LUX: %5.1f  BRI: %u/4000\n", pic_lux, pic_brightness);
+        output->printf("\n=== VEML6040 LUX DATA ===\n");
+        output->printf("LUX: %5.1f  BRI: %u/4000\n", pic_lux, pic_brightness);
     }
     else
     {
-        Serial.printf("\n=== NO VEML6040 DETECTED ===\n");
+        output->printf("\n=== NO VEML6040 DETECTED ===\n");
     }
 }
 
 
-void print_bme_data()
+void print_bme_data(Stream *output)
 {
   if(pic_bme280_detected)
   {
-    Serial.printf("\n=== BME280 env data ===\n");
-    Serial.printf("T: %5.2fC (%5.2fC board)\n", pic_temp, pic_temp_raw);
-    Serial.printf("P: %6.1fmB\n", pic_pres);
-    Serial.printf("H: %6.2f%%\n", pic_hum);
+    output->printf("\n=== BME280 env data ===\n");
+    output->printf("T: %5.2fC (%5.2fC board)\n", pic_temp, pic_temp_raw);
+    output->printf("P: %6.1fmB\n", pic_pres);
+    output->printf("H: %6.2f%%\n", pic_hum);
   }
   else
   {
-    Serial.printf("\n=== NO BME280 DETECTED ===\n");
+    output->printf("\n=== NO BME280 DETECTED ===\n");
   }
 }
 
@@ -886,133 +919,133 @@ void pic_process_display(void)
 }
 
 
-void print_sync_state_machine(void)
+void print_sync_state_machine(Stream *output)
 {
-    Serial.printf("\n=== STATE MACHINE ===\n");
-    Serial.printf("STATE: ");
-    sync_state_print(pic_clock_sync_state);
-    Serial.printf(" LAST: ");
-    sync_state_print(pic_clock_sync_state_last);
-    Serial.printf("\nLAST SYNC CAUSE: ");
-    sync_state_print(pic_last_sync_cause);
-    Serial.printf("\n");
+    output->printf("\n=== STATE MACHINE ===\n");
+    output->printf("STATE: ");
+    sync_state_print(output, pic_clock_sync_state);
+    output->printf(" LAST: ");
+    sync_state_print(output, pic_clock_sync_state_last);
+    output->printf("\nLAST SYNC CAUSE: ");
+    sync_state_print(output, pic_last_sync_cause);
+    output->printf("\n");
 }
 
 
-void sync_state_print(CLOCK_SYNC_STATUS sync_state)
+void sync_state_print(Stream *output, CLOCK_SYNC_STATUS sync_state)
 {
     switch(sync_state)
     {
         case SYNC_POWER_ON:
-            Serial.printf("SYNC_POWER_ON");
+            output->printf("SYNC_POWER_ON");
             break;
             
         case SYNC_RTC_DETECT:
-            Serial.printf("SYNC_RTC_DETECT");
+            output->printf("SYNC_RTC_DETECT");
             break;
             
         case SYNC_NTP_DETECT:
-            Serial.printf("SYNC_NTP_DETECT");
+            output->printf("SYNC_NTP_DETECT");
             break;
             
         case SYNC_GNSS_DETECT:
-            Serial.printf("SYNC_GNSS_DETECT");
+            output->printf("SYNC_GNSS_DETECT");
             break;
             
         case SYNC_GNSS_WAIT_FOR_FIX:
-            Serial.printf("SYNC_GNSS_WAIT_FOR_FIX");
+            output->printf("SYNC_GNSS_WAIT_FOR_FIX");
             break;
             
         case SYNC_STARTUP:
-            Serial.printf("SYNC_STARTUP");
+            output->printf("SYNC_STARTUP");
             break;
             
         case SYNC_NOSYNC:
-            Serial.printf("SYNC_NOSYNC");
+            output->printf("SYNC_NOSYNC");
             break;
             
         case SYNC_ADJUST_STAGE_1:
-            Serial.printf("SYNC_ADJUST_STAGE_1");
+            output->printf("SYNC_ADJUST_STAGE_1");
             break;
             
         case SYNC_ADJUST_STAGE_2:
-            Serial.printf("SYNC_ADJUST_STAGE_2");
+            output->printf("SYNC_ADJUST_STAGE_2");
             break;
             
         case SYNC_PPS_SYNC:
-            Serial.printf("SYNC_PPS_SYNC");
+            output->printf("SYNC_PPS_SYNC");
             break;
             
         case SYNC_SCHED_SYNC:
-            Serial.printf("SYNC_SCHED_SYNC");
+            output->printf("SYNC_SCHED_SYNC");
             break;
             
         case SYNC_MIN_INTERVAL:
-            Serial.printf("SYNC_MIN_INTERVAL");
+            output->printf("SYNC_MIN_INTERVAL");
             break;
             
         case SYNC_INTERVAL:
-            Serial.printf("SYNC_INTERVAL");
+            output->printf("SYNC_INTERVAL");
             break;
             
         case SYNC_SYNC:
-            Serial.printf("SYNC_SYNC");
+            output->printf("SYNC_SYNC");
             break;
             
         case SYNC_NOSYNC_MINOR:
-            Serial.printf("SYNC_NOSYNC_MINOR");
+            output->printf("SYNC_NOSYNC_MINOR");
             break;
             
         case SYNC_NOSYNC_MINOR_OC:
-            Serial.printf("SYNC_NOSYNC_MINOR_OC");
+            output->printf("SYNC_NOSYNC_MINOR_OC");
             break;
             
         case SYNC_NOSYNC_MAJOR:
-            Serial.printf("SYNC_NOSYNC_MAJOR");
+            output->printf("SYNC_NOSYNC_MAJOR");
             break;
             
         case SYNC_NOSYNC_MAJOR_OC:
-            Serial.printf("SYNC_NOSYNC_MAJOR_OC");
+            output->printf("SYNC_NOSYNC_MAJOR_OC");
             break;
             
         case SYNC_NOSYNC_FREQ:
-            Serial.printf("SYNC_NOSYNC_FREQ");
+            output->printf("SYNC_NOSYNC_FREQ");
             break;
             
         case SYNC_NOSYNC_FREQ_ONLY:
-            Serial.printf("SYNC_NOSYNC_FREQ_ONLY");
+            output->printf("SYNC_NOSYNC_FREQ_ONLY");
             break;
             
         case SYNC_NOSYNC_GNSS:
-            Serial.printf("SYNC_NOSYNC_GNSS");
+            output->printf("SYNC_NOSYNC_GNSS");
             break;
             
         case SYNC_NOSYNC_MANUAL:
-            Serial.printf("SYNC_NOSYNC_MANUAL");
+            output->printf("SYNC_NOSYNC_MANUAL");
             break;
 
         case SYNC_NO_CLOCK:
-            Serial.printf("SYNC_NO_CLOCK");
+            output->printf("SYNC_NO_CLOCK");
             break;
 
         case SYNC_RTC:
-            Serial.printf("SYNC_RTC");
+            output->printf("SYNC_RTC");
             break;
 
         case SYNC_NTP:
-            Serial.printf("SYNC_NTP");
+            output->printf("SYNC_NTP");
             break;
 
         case SYNC_NTP_ADJUST:
-            Serial.printf("SYNC_NTP_ADJUST");
+            output->printf("SYNC_NTP_ADJUST");
             break;
             
         case SYNC_NTP_NO_NETWORK:
-            Serial.printf("SYNC_NTP_NO_NETWORK");
+            output->printf("SYNC_NTP_NO_NETWORK");
             break;
             
         default:
-            Serial.printf("UNKNOWN SYNC STATE!");
+            output->printf("UNKNOWN SYNC STATE!");
             break;
     }
 }
@@ -1160,7 +1193,7 @@ void pic_uart_tx_displaydata()
   size_t bytesSent = UARTPIC.write(display_data_tx.raw, sizeof(display_data_tx));
 }
 
-void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg)
+void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg, Stream *output)
 {
   SERIAL_PROTO_DATA_ESP_USER user_data_tx = {};
   memset(user_data_tx.raw, 0, sizeof(user_data_tx));
@@ -1173,4 +1206,6 @@ void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg)
   user_data_tx.fields.arg = arg;
 
   size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx));
+
+  pic_output_stream = output;
 }

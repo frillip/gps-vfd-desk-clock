@@ -1,3 +1,6 @@
+#ifndef GNSS_PPS_ESP_H
+#define	GNSS_PPS_ESP_H
+
 #include <Arduino.h>
 #include <esp32-hal-timer.h>
 
@@ -13,7 +16,9 @@ void gnss_pps_init(void);
 void ARDUINO_ISR_ATTR gnss_pps_in(void);
 bool gnss_is_detected(void);
 void gnss_timeout_incr(void);
-void print_gnss_pps_offset(void);
+void print_gnss_pps_offset(Stream *output);
 
 void gnss_uart_init(void);
 bool gnss_uart_char_available(void);
+
+#endif	/* GNSS_PPS_ESP_H */
