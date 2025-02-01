@@ -2,6 +2,10 @@
    <usedPackages class="java.util.ArrayList"/>
    <usedClasses class="java.util.TreeMap">
       <entry>
+         <string>16-bit Bootloader</string>
+         <string>class com.microchip.bootloader16.mcc.application.ApplicationModule</string>
+      </entry>
+      <entry>
          <string>DELAY</string>
          <string>class com.microchip.mcc.foundationservices.modules.softwaredriver.delay.DELAY</string>
       </entry>
@@ -61,8 +65,13 @@
    <usedLibraries class="java.util.ArrayList">
       <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.mcu16.Mcu16PeripheralLibrary" version="1.170.0"/>
       <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.mcc.foundationservices.library.FoundationServicesLibrary" version="0.2.3"/>
+      <ILibraryFile class="com.microchip.mcc.core.library.BaseLibraryFile" libraryClass="com.microchip.bootloader16.mcc.Library" version="1.26.0"/>
    </usedLibraries>
    <tokenMap class="java.util.TreeMap">
+      <entry>
+         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="16-bit Bootloader" name="state"/>
+         <value>{&quot;contractPath&quot;:&quot;..\\dspic_bootloader&quot;,&quot;applicationVersionNumberMinor&quot;:1}</value>
+      </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="DELAY" name="usecaseComboSettings"/>
          <value>None</value>
@@ -2312,23 +2321,7 @@
          <value>ON</value>
       </entry>
       <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="SCL%aux3"/>
-         <value>ON</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="SCL%aux5"/>
-         <value>ON</value>
-      </entry>
-      <entry>
          <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="SDA%aux0"/>
-         <value>ON</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="SDA%aux2"/>
-         <value>ON</value>
-      </entry>
-      <entry>
-         <key class="com.microchip.mcc.core.tokenManager.CustomKey" moduleName="Pin Module" name="SDA%aux4"/>
          <value>ON</value>
       </entry>
       <entry>
@@ -6665,7 +6658,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="System Module" registerAlias="FOSC"/>
-         <value>96</value>
+         <value>64</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.RegisterKey" moduleName="System Module" registerAlias="FOSCSEL"/>
@@ -6701,7 +6694,7 @@
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="System Module" registerAlias="FOSC" settingAlias="IOL1WAY"/>
-         <value>ON</value>
+         <value>OFF</value>
       </entry>
       <entry>
          <key class="com.microchip.mcc.core.tokenManager.SettingKey" moduleName="System Module" registerAlias="FOSC" settingAlias="OSCIOFCN"/>
@@ -7698,6 +7691,46 @@
          <hash>2bf7184af98e4ba83cbc2e040fd43050bb13ce8e2f2b31ec0858d581d342a190</hash>
       </entry>
       <entry>
+         <file>mcc_generated_files\boot\application_header.S</file>
+         <hash>d9179c25f6aed8c5c2d5b272dfcbdc82ab088aee4710669862f19f8896fb3244</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\boot_config.h</file>
+         <hash>22331b1ff7aeac4564fbb03f36089df672fdc858e08953c6a53c3e04878b6087</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\combineAppAndBootloaderHex.bat</file>
+         <hash>85595ba3e6b17756abf030a0a29ef50a5f477029a17bc4a8ddd0ecc3e0a02879</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\combineAppAndBootloaderHex.sh</file>
+         <hash>a656f0cc9d32c3b7214e9312f23c94052cef6563160b79ef9153f994743ea1b0</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\hardware_interrupt_table.S</file>
+         <hash>d09e85b6589f46e9fc64af6f10c90edd6243bc9d94eda8bea8ee3a9e40e4baa4</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\interrupts.S</file>
+         <hash>9787574aefd4779b605f07c8db94421eae5065e0c16939701bcb0223c9d26f6b</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\memory_partition.S</file>
+         <hash>c169752e6c6bccfa3677c7da6bcd8e65406aabe1c74af6727059dec132824331</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\postBuild.bat</file>
+         <hash>5712ab185e66dc451ab696ef808e131b58991d888cd311e258521985d52ebcad</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\postBuild.sh</file>
+         <hash>7316415b83d34309d58271a5edcafa45700456e97e28ac857c2ec6beaa1723d0</hash>
+      </entry>
+      <entry>
+         <file>mcc_generated_files\boot\user_interrupt_table.S</file>
+         <hash>6b2d2caa60d9d27515c9591fe551de65ac9b7d535e8e3ef80f4fff930413f1a0</hash>
+      </entry>
+      <entry>
          <file>mcc_generated_files\clock.c</file>
          <hash>6fd24c1f515d73756e00e13edfb215eee4c1fb277de2458850929fdfb9a42df0</hash>
       </entry>
@@ -7719,7 +7752,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\i2c1.c</file>
-         <hash>154f290cb1bb7f0de2684c384ec9a796e4407606cf39689ce9d033086a3a9e9c</hash>
+         <hash>960ab61439f37a387e5de995f1a9cde1a5030aa80c51760c83434996c6f0cfc6</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\i2c1.h</file>
@@ -7739,11 +7772,11 @@
       </entry>
       <entry>
          <file>mcc_generated_files\mcc.h</file>
-         <hash>a6de0033e0c0f8750c63f7ba1c473785186ce1256cf1d8b7a8c2359e8ac86d0f</hash>
+         <hash>a009955e566eb076fb8eb3cec56c522487b39e61c14260a47958db55890cda5a</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.c</file>
-         <hash>b14f291e6e145b126880402cd40c6bd76d0582acf44a614911136c608f1b9f27</hash>
+         <hash>5fc2ef95e5724caa8d7f496e9be44b5b8c3b61df5898e00b4c40747660b82b0a</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\pin_manager.h</file>
@@ -7771,7 +7804,7 @@
       </entry>
       <entry>
          <file>mcc_generated_files\system.c</file>
-         <hash>dd5ce7e044ca1f674554d166f06954ed756ab2fa3c16f1a527a0848d304cf98f</hash>
+         <hash>91f1a2cede066e64233fb8eda7cb61edfa01279d4598be92a2155f59f5a5c452</hash>
       </entry>
       <entry>
          <file>mcc_generated_files\system.h</file>

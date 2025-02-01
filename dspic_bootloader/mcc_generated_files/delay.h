@@ -1,26 +1,10 @@
 /**
-  @Generated PIC24 / dsPIC33 / PIC32MM MCUs Header File
-
-  @Company:
-    Microchip Technology Inc.
-
-  @File Name:
-    mcc.h
-
-  @Summary:
-    This is the mcc.h file generated using PIC24 / dsPIC33 / PIC32MM MCUs
-
-  @Description:
-    This file will be removed in future MCC releases. Use system.h instead.
-    Generation Information :
-        Product Revision  :  PIC24 / dsPIC33 / PIC32MM MCUs - 1.171.5
-        Device            :  dsPIC33EP256GP504
-    The generated drivers are tested against the following:
-        Compiler          :  XC16 v2.10
-        MPLAB             :  MPLAB X v6.05
-*/
-
-/*
+\file
+\defgroup doc_driver_delay_code Delay Driver Source Code Reference
+\ingroup doc_driver_delay
+\brief This file contains the API to generate delays in the millisecond and microsecond ranges.
+\copyright (c) 2020 Microchip Technology Inc. and its subsidiaries.
+\page License
     (c) 2020 Microchip Technology Inc. and its subsidiaries. You may use this
     software and any derivatives exclusively with Microchip products.
 
@@ -42,29 +26,12 @@
     TERMS.
 */
 
-#ifndef MCC_H
-#define	MCC_H
-#include <xc.h>
-#include "system.h"
-#include "clock.h"
-#include "pin_manager.h"
+#ifndef _DELAY_H
+#define _DELAY_H
+
 #include <stdint.h>
-#include <stdbool.h>
-#include "system_types.h"
-#include "reset.h"
 
-#include "watchdog.h"
-#include "boot/boot_process.h"
-#include "memory/flash.h"
-#include "interrupt_manager.h"
-#include "traps.h"
-#include "reset.h"
-#include "delay.h"
-#include "uart1.h"
+void DELAY_milliseconds(uint16_t milliseconds);
+void DELAY_microseconds(uint16_t microseconds);
 
-#warning "This file will be removed in future MCC releases. Use system.h instead."
-
-#endif	/* MCC_H */
-/**
- End of File
-*/
+#endif	// _DELAY_H

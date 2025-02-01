@@ -41,10 +41,14 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 #include "boot_config.h"
 #include "boot_application_header.h"
 #include "boot_image.h"
 #include "boot_process.h"
+#include "../pin_manager.h"
+#include "../../../common/enums.h"
+#include "../../../common/serial_proto.h"
 
 #define DOWNLOADED_IMAGE    0u
 #define EXECUTION_IMAGE     0u
@@ -63,6 +67,7 @@ void BOOT_DEMO_Initialize(void)
 
 void BOOT_DEMO_Tasks(void)
 {
+    STATUS_LED_SetHigh();
     if(inBootloadMode == false)
     {
         if( EnterBootloadMode() == true )
@@ -101,7 +106,8 @@ void BOOT_DEMO_Tasks(void)
                  */
 
                 #warning "Return device to reset state before starting the application.  Click on this warning for additional information to consider."
-				 
+                
+                STATUS_LED_SetLow();
                 BOOT_StartApplication();
             }
         }
@@ -110,12 +116,22 @@ void BOOT_DEMO_Tasks(void)
     (void)BOOT_ProcessCommand();
 }
 
+
+
 static bool EnterBootloadMode(void)
 {
     #warning "Update this function to return 'true' when you want to stay in the boot loader, and 'false' when you want to allow a release to the application code"
  
-    /* NOTE: This might be a a push button status on power up, a command from a peripheral, 
-     * or whatever is specific to your boot loader implementation */    
-
+    uint32_t bootloader_timeout = 0;
+    STATUS_LED_SetHigh();
+    while(bootloader_timeout < 1000000)
+    {
+        DELAY_microseconds(1);
+        if(BOOT_ProcessCommand() == BOOT_COMMAND_SUCCESS)
+        {
+            return true;
+        }
+        bootloader_timeout++;
+    }
     return false;
 }

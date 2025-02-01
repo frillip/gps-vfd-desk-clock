@@ -63,7 +63,7 @@
 // FOSC
 #pragma config POSCMD = EC    //Primary Oscillator Mode Select bits->EC (External Clock) Mode
 #pragma config OSCIOFNC = ON    //OSC2 Pin Function bit->OSC2 is general purpose digital I/O pin
-#pragma config IOL1WAY = ON    //Peripheral pin select configuration->Allow only one reconfiguration
+#pragma config IOL1WAY = OFF    //Peripheral pin select configuration->Allow multiple reconfigurations
 #pragma config FCKSM = CSECMD    //Clock Switching Mode bits->Clock switching is enabled,Fail-safe Clock Monitor is disabled
 
 // FOSCSEL

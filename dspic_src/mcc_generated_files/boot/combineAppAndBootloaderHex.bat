@@ -1,0 +1,1 @@
+hexmate r0-3FFF,..\..\..\dspic_bootloader\dist\default\production\dspic_bootloader.production.hex r4000-54FFF,..\..\dist\default\production\dspic_src.production.hex r55000-FFFFFFFF,..\..\..\dspic_bootloader\dist\default\production\dspic_bootloader.production.hex -O..\..\dist\default\production\combined.production.hex

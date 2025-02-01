@@ -1,0 +1,73 @@
+/**
+ * Generated 16-bit Bootloader Source File
+ * 
+ * @file     user_interrupt_table.S
+ * 
+ * @brief    Generates a hardware IVT table that matches what the bootloader is
+ *           using when an IVT is shared between the bootloader and application.
+ *
+ * @skipline @version    16-bit Bootloader - 1.26.0
+ *
+ * @skipline             Device : dsPIC33EP256GP504
+*/
+/*
+    (c) [2025] Microchip Technology Inc. and its subsidiaries.
+
+    Subject to your compliance with these terms, you may use Microchip 
+    software and any derivatives exclusively with Microchip products. 
+    You are responsible for complying with 3rd party license terms  
+    applicable to your use of 3rd party software (including open source  
+    software) that may accompany Microchip software. SOFTWARE IS "AS IS." 
+    NO WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS 
+    SOFTWARE, INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT,  
+    MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT 
+    WILL MICROCHIP BE LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, 
+    INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, COST OR EXPENSE OF ANY 
+    KIND WHATSOEVER RELATED TO THE SOFTWARE, HOWEVER CAUSED, EVEN IF 
+    MICROCHIP HAS BEEN ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE 
+    FORESEEABLE. TO THE FULLEST EXTENT ALLOWED BY LAW, MICROCHIP?S 
+    TOTAL LIABILITY ON ALL CLAIMS RELATED TO THE SOFTWARE WILL NOT 
+    EXCEED AMOUNT OF FEES, IF ANY, YOU PAID DIRECTLY TO MICROCHIP FOR 
+    THIS SOFTWARE.
+*/
+
+/* This file fills the hardware IVT table with the address of the corresponding
+ * user remapped interrupt table.  Thus when a hardware interrupt occurs, 
+ * the hardware interrupt vector will jump to the appropriate location in the 
+ * user/application interrupt table.  That table will have a "goto _handler"
+ * call that will call the appropriate handler function for the interrupt.
+ */
+
+#include "boot_config.h"
+    
+/* If you have reached this line, then an interrupt triggered that should only
+ * be available in the boot loader, not in the application.
+ */
+__bootload_interrupt_error:
+    bra $
+    
+/* This section defines the interrupt vector table in hardware to map to the 
+ * user remap table.
+ */
+    .equ remap_offset, 4
+    
+    .macro remap_to_application NAME
+    .pword BOOT_CONFIG_USER_IVT_TABLE_ADDRESS+remap_offset
+    .equ remap_offset, remap_offset+4
+    .endm
+    
+    .macro keep_in_bootloader NAME
+    .pword __bootload_interrupt_error
+    .endm
+    
+    .macro remap_to_application_default NAME
+    .pword BOOT_CONFIG_USER_IVT_TABLE_ADDRESS
+    .endm
+    
+/*
+ * IVT section information.
+ */
+    .section .ivt, code, address(0x4), keep
+    
+    #define REMAP_TABLE
+    .include "mcc_generated_files/boot/interrupts.S"
