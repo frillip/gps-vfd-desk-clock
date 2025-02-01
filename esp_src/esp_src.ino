@@ -12,6 +12,7 @@
 #include "telnet.h"
 extern ESPTelnetStream telnet;
 #include "pic.h"
+#include "pic_bootloader.h"
 extern time_t pic;
 #include "gnss_pps_esp.h"
 

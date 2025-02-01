@@ -190,6 +190,7 @@ typedef enum
     ESP_SENSOR,
     ESP_DISPLAY,
     ESP_USER,
+    ESP_BOOTLOADER,
 } ESP_MESSAGE_TYPE;
 
 typedef enum
@@ -203,6 +204,7 @@ typedef enum
     PIC_SENSOR,
     PIC_DISPLAY,
     PIC_USER,
+    PIC_BOOTLOADER,
 } PIC_MESSAGE_TYPE;
 
 typedef enum
@@ -228,6 +230,8 @@ typedef enum
     USER_CMD_PIC_SHOW_CONFIG,
     USER_CMD_PIC_CLEAR_ALL,
     USER_CMD_PIC_SAVE,
+    USER_CMD_PIC_BOOTLOADER_ENTER,
+    USER_CMD_PIC_BOOTLOADER_EXIT,
 
     USER_CMD_ESP_RESET,
 
@@ -278,6 +282,13 @@ typedef enum
     USER_CMD_SRC_TELNET,
 } USER_CMD_SRC;
 
+typedef enum
+{
+    BOOTLOADER_CMD_NONE = 0,
+    BOOTLOADER_CMD_ENTER,
+    BOOTLOADER_CMD_START,
+    BOOTLOADER_CMD_EXIT,
+} BOOTLOADER_CMD;
 
 #ifdef	__cplusplus
 }

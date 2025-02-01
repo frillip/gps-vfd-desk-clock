@@ -14,6 +14,7 @@
 #include <HardwareSerial.h>
 #include <esp32-hal-timer.h>
 #include "telnet.h"
+#include "pic_bootloader.h"
 
 #define PIC_UART    2
 #define PIC_BAUD    115200
@@ -28,6 +29,8 @@
 #define PIC_OUTPUT_BUFFER_LENGTH 100
 
 #define PIC_UART_OUTPUT_TIMEOUT 100
+
+#define PIC_TZ_BT_PIN 32
 
 void pic_init(void);
 bool pic_is_detected(void);
@@ -81,5 +84,8 @@ void pic_uart_tx_rtcdata(void);
 void pic_uart_tx_sensordata(void);
 void pic_uart_tx_displaydata(void);
 void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg, Stream *output);
+
+void pic_enter_bootloader(Stream *output);
+void pic_exit_bootloader(Stream *output);
 
 #endif	/* PIC_H */

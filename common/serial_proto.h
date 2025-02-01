@@ -27,6 +27,7 @@ extern "C" {
 #define SERIAL_PROTO_DATATYPE_DISPLAYDATA 0xF6
 #define SERIAL_PROTO_DATATYPE_MISCDATA 0xF7
 #define SERIAL_PROTO_DATATYPE_USERDATA 0xF8
+#define SERIAL_PROTO_DATATYPE_BOOTLOADERDATA 0xFA
 
 #pragma pack(push, 1)
 
@@ -209,6 +210,19 @@ typedef union
 } SERIAL_PROTO_DATA_PIC_USER;
 
 
+typedef union
+{
+  struct __attribute__((packed)) _pic_bootloader_struct
+  {
+    SERIAL_PROTO_HEADER header;
+    
+    BOOTLOADER_CMD cmd : 8;
+    uint8_t padding;
+    uint32_t arg;
+  } fields;
+  uint8_t raw[sizeof(struct _pic_bootloader_struct)];
+} SERIAL_PROTO_DATA_PIC_BOOTLOADER;
+
 
 // Structs for ESP data
 
@@ -337,6 +351,21 @@ typedef union
   } fields;
   uint8_t raw[sizeof(struct _esp_user_struct)];
 } SERIAL_PROTO_DATA_ESP_USER;
+
+
+typedef union
+{
+  struct __attribute__((packed)) _esp_bootloader_struct
+  {
+    SERIAL_PROTO_HEADER header;
+    
+    BOOTLOADER_CMD cmd : 8;
+    uint8_t padding;
+    uint32_t arg;
+  } fields;
+  uint8_t raw[sizeof(struct _esp_bootloader_struct)];
+} SERIAL_PROTO_DATA_ESP_BOOTLOADER;
+
 
 #pragma pack(pop)
 

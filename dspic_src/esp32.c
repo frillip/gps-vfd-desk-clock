@@ -57,6 +57,10 @@ SERIAL_PROTO_DATA_ESP_USER esp_user_buffer;
 bool esp_user_waiting = 0;
 const SERIAL_PROTO_HEADER esp_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
 
+SERIAL_PROTO_DATA_ESP_BOOTLOADER esp_bootloader_buffer;
+bool esp_bootloader_waiting = 0;
+const SERIAL_PROTO_HEADER esp_bootloader_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_BOOTLOADERDATA};
+
 time_t esp;
 time_t ntp;
 extern time_t utc;
@@ -170,6 +174,11 @@ void esp_rx(void)
                     esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_USER) - sizeof(SERIAL_PROTO_HEADER);
                     memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
+                    
+                case ESP_BOOTLOADER:
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_BOOTLOADER) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
+                    break;
         
                 default:
                     break;
@@ -211,6 +220,11 @@ void esp_copy_buffer(ESP_MESSAGE_TYPE message)
             memcpy(esp_user_buffer.raw, esp_string_buffer, sizeof(esp_user_buffer));
             esp_user_waiting=1;
             break;
+            
+        case ESP_BOOTLOADER:
+            memcpy(esp_bootloader_buffer.raw, esp_string_buffer, sizeof(esp_bootloader_buffer));
+            esp_bootloader_waiting=1;
+            break;
 
         default:
             esp_waiting=ESP_NONE;
@@ -226,6 +240,7 @@ ESP_MESSAGE_TYPE esp_check_incoming(void)
     if(memcmp(esp_check_buffer, &esp_sensor_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_SENSOR;
     if(memcmp(esp_check_buffer, &esp_display_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_DISPLAY;
     if(memcmp(esp_check_buffer, &esp_user_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_USER;
+    if(memcmp(esp_check_buffer, &esp_bootloader_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_BOOTLOADER;
     return ESP_NONE;
 }
 
@@ -430,6 +445,23 @@ void esp_process_user(void)
     esp_user_waiting = 0;
 }
 
+void esp_process_bootloader(void)
+{
+    BOOTLOADER_CMD bootloader_cmd = esp_bootloader_buffer.fields.cmd;
+    uint32_t bootloader_arg = esp_bootloader_buffer.fields.arg;
+    
+    if(bootloader_cmd == BOOTLOADER_CMD_ENTER)
+    {   // If our command and key match and the PPS input is held high, enter bootloader
+        if(bootloader_arg == 0xA5A5A5A5) 
+        {
+            pic_reset();                // Reset
+        }
+    }                           
+    
+    memset(esp_bootloader_buffer.raw, 0, sizeof(esp_bootloader_buffer));
+    esp_bootloader_waiting = 0;
+}
+
 uint8_t esp_data_task_cycle = 0;
 
 void esp_data_task(void)
@@ -440,6 +472,7 @@ void esp_data_task(void)
     if(esp_sensor_waiting) esp_process_sensor();
     if(esp_display_waiting) esp_process_display();
     if(esp_user_waiting) esp_process_user();
+    if(esp_bootloader_waiting) esp_process_bootloader();
     
     switch(esp_data_task_cycle)
     {
@@ -700,6 +733,21 @@ void esp_tx_user_stop(void)
 {
     char esp_tx_buffer[3] = { 0x80, 0x70, 0x83 };
     esp_tx(esp_tx_buffer,3);
+}
+
+void esp_tx_bootloader(void)
+{
+    SERIAL_PROTO_DATA_PIC_BOOTLOADER esp_tx_buffer;
+    memset(esp_tx_buffer.raw, 0, sizeof(esp_tx_buffer));
+
+    esp_tx_buffer.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
+    esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
+    esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_BOOTLOADERDATA;
+    
+    esp_bootloader_buffer.fields.cmd = BOOTLOADER_CMD_ENTER;
+    esp_bootloader_buffer.fields.arg = 0x5A5A5A5A;
+
+    esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }
 
 void print_esp_data(void)

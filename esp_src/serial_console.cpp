@@ -45,6 +45,8 @@ pic-show-eeprom = show settings stored in EEPROM
 pic-show-config = show running config settings
 pic-clear-all = Clear all settings to defaults
 pic-save = Save settings
+pic-bootloader-enter = Enter bootloader on PIC
+pic-bootloader-exit = Exit bootloader on PIC
 
 rst-all = Reset both
 rst-pic = Same as pic-reset
@@ -310,6 +312,17 @@ USER_CMD serial_console_check_2_pic(const char *cmd_buf)
     {
       return USER_CMD_PIC_SAVE;
     }
+
+    if(strcmp(cmd_buf, USER_CMD_PIC_BOOTLOADER_ENTER_STRING) == 0)
+    {
+      return USER_CMD_PIC_BOOTLOADER_ENTER;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_PIC_BOOTLOADER_EXIT_STRING) == 0)
+    {
+      return USER_CMD_PIC_BOOTLOADER_EXIT;
+    }
+
   return USER_CMD_NONE;
 }
 
@@ -591,6 +604,14 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
 
     case USER_CMD_PIC_SAVE:
       pic_uart_tx_userdata(cmd, 0, output);
+      break;
+
+    case USER_CMD_PIC_BOOTLOADER_ENTER:
+      pic_enter_bootloader(output);
+      break;
+
+    case USER_CMD_PIC_BOOTLOADER_EXIT:
+      pic_exit_bootloader(output);
       break;
 
     case USER_CMD_RESET_ALL:

@@ -203,6 +203,7 @@ void print_pic_pps_relative_offset(Stream *output)
 void pic_uart_init(void)
 {
   UARTPIC.begin(PIC_BAUD, SERIAL_8N1, PIC_RXD, PIC_TXD);
+  pinMode(PIC_TZ_BT_PIN, INPUT);
 }
 
 bool pic_uart_char_available(void)
@@ -1208,4 +1209,34 @@ void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg, Stream *output)
   size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx));
 
   pic_output_stream = output;
+}
+
+void pic_enter_bootloader(Stream *output)
+{
+  SERIAL_PROTO_DATA_ESP_BOOTLOADER bootloader_data_tx = {};
+  memset(bootloader_data_tx.raw, 0, sizeof(bootloader_data_tx));
+
+  bootloader_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
+  bootloader_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  bootloader_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_BOOTLOADERDATA;
+
+  bootloader_data_tx.fields.cmd = BOOTLOADER_CMD_ENTER;
+  bootloader_data_tx.fields.arg = 0xA5A5A5A5;
+
+  size_t bytesSent = UARTPIC.write(bootloader_data_tx.raw, sizeof(bootloader_data_tx));
+  output->printf("Entering PIC bootloader... ");
+
+  extern bool pic_bootloader_active;
+  pic_bootloader_active = pic_bootloader_entry(&UARTPIC);
+  if(pic_bootloader_active) output->printf("SUCCESS!\n");
+  else  output->printf("FAIL!\n");
+}
+
+void pic_exit_bootloader(Stream *output)
+{
+  output->printf("Exit PIC bootloader... ");
+  extern bool pic_bootloader_active;
+  pic_bootloader_active = !pic_bootloader_exit(&UARTPIC);
+  if(!pic_bootloader_active) output->printf("SUCCESS!\n");
+  else  output->printf("FAIL!\n");
 }

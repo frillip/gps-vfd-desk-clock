@@ -74,6 +74,7 @@ void esp_tx_sensor(void);
 void esp_tx_display(void);
 void esp_tx_user_start(void);
 void esp_tx_user_stop(void);
+void esp_tx_bootloader(void);
 
 void print_esp_data(void);
 
