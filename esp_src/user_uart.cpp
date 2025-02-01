@@ -31,7 +31,7 @@ void user_uart_task(void)
       Serial.print(c);
     }
 
-    if(c == 0x0A) // new line char
+    if(c == 0x0A || c == 0x0D) // new line char
     {
       USER_CMD_TYPE cmd_type = USER_CMD_TYPE_NONE;
       USER_CMD exec = USER_CMD_NONE;
@@ -63,12 +63,11 @@ void user_uart_task(void)
       {
         memcpy(user_uart_cmd_buf, user_uart_buffer, i);
       }
-      /*
+
       if(user_uart_buffer_offset==0 && last_rx_char!=0x0A)
       {
         serial_console_print_info(&Serial);
       }
-      */
 
       cmd_type = serial_console_check_1(user_uart_cmd_buf);
       switch(cmd_type)
@@ -90,7 +89,7 @@ void user_uart_task(void)
           break;
 
         case USER_CMD_TYPE_NONE:
-          if(user_uart_buffer_offset==0) serial_console_print_info(&Serial);
+          if(user_uart_buffer_offset==1) serial_console_print_info(&Serial);
           break;
       }
 
@@ -115,7 +114,7 @@ void user_uart_task(void)
       user_uart_buffer[user_uart_buffer_offset] = 0x00;
       if(user_uart_buffer_offset > 0) user_uart_buffer_offset--;
     }
-    else if(c == 0x0D) return;
+    //else if(c == 0x0D) return;
     else
     {
       user_uart_buffer[user_uart_buffer_offset] = c;
