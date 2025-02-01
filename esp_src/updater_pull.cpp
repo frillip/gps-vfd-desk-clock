@@ -24,11 +24,12 @@ void updater_pull(Stream *output)
   output->printf("Use esp-reset to finish update.\n");
 }
 
-void updater_pull_reboot(Stream *output)
+void updater_force(Stream *output)
 {
   output_stream = output;
   int ret = ota
     .SetCallback(updater_callback_percent)
+    .AllowDowngrades(true)
     .CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   output->printf("Rebooting...\n");

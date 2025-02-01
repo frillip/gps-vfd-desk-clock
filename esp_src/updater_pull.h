@@ -10,7 +10,7 @@
 
 bool updater_check(Stream *output);
 void updater_pull(Stream *output);
-void updater_pull_reboot(Stream *output);
+void updater_force(Stream *output);
 void updater_callback_percent(int offset, int totallength);
 const char *updater_errtext(int code);
 

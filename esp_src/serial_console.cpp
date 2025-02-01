@@ -20,6 +20,7 @@ esp-wifi-setup = Enable WiFi setup AP mode
 
 esp-update-check = Check for an OTA update
 esp-update-pull = Check for and perform an OTA update if available
+esp-update-force = Force and OTA update, regardless of version, and install immediately
 esp-update-set-server = Set update server hostname
 esp-update-set-path = Set update server path
 
@@ -174,6 +175,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
       return USER_CMD_ESP_UPDATE_PULL;
     }
 
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_FORCE_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_FORCE;
+    }
+
     if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_SET_SERVER_STRING) == 0)
     {
       return USER_CMD_ESP_UPDATE_SET_SERVER;
@@ -183,7 +189,7 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     {
       return USER_CMD_ESP_UPDATE_SET_PATH;
     }
-    
+    /*
     if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_PUSH_ENABLE_STRING) == 0)
     {
       return USER_CMD_ESP_UPDATE_PUSH_ENABLE;
@@ -193,7 +199,7 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     {
       return USER_CMD_ESP_UPDATE_PUSH_DISABLE;
     }
-
+    */
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
     {
       return USER_CMD_ESP_CLEAR_ALL;
@@ -457,6 +463,10 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       updater_pull(output);
       break;
 
+    case USER_CMD_ESP_UPDATE_FORCE:
+      updater_force(output);
+      break;
+
     case USER_CMD_ESP_UPDATE_SET_SERVER:
       output->printf("Not implemented yet :(\n");
       break;
@@ -464,16 +474,17 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
     case USER_CMD_ESP_UPDATE_SET_PATH:
       output->printf("Not implemented yet :(\n");
       break;
-
+    /*
     case USER_CMD_ESP_UPDATE_PUSH_ENABLE:
-      //updater_push_enable();
-      //print_updater_push_info(output);
+      updater_push_enable();
+      print_updater_push_info(output);
       break;
 
     case USER_CMD_ESP_UPDATE_PUSH_DISABLE:
-      //updater_push_disable();
-      //print_updater_push_info(output);
+      updater_push_disable();
+      print_updater_push_info(output);
       break;
+    */
 
     case USER_CMD_ESP_CLEAR_ALL:
       {

@@ -43,6 +43,8 @@
 #define USER_CMD_PIC_SHOW_EEPROM_STRING "pic-show-eeprom"
 #define USER_CMD_PIC_CLEAR_ALL_STRING "pic-clear-all"
 #define USER_CMD_PIC_SAVE_STRING "pic-save"
+#define USER_CMD_PIC_BOOTLOADER_ENTER_STRING "pic-bootloader-enter"
+#define USER_CMD_PIC_BOOTLOADER_EXIT_STRING "pic-bootloader-exit"
 
 #define USER_CMD_ESP_RESET_STRING "esp-reset"
 
@@ -65,10 +67,11 @@
 
 #define USER_CMD_ESP_UPDATE_CHECK_STRING "esp-update-check"
 #define USER_CMD_ESP_UPDATE_PULL_STRING "esp-update-pull"
+#define USER_CMD_ESP_UPDATE_FORCE_STRING "esp-update-force"
 #define USER_CMD_ESP_UPDATE_SET_SERVER_STRING "esp-update-set-server"
 #define USER_CMD_ESP_UPDATE_SET_PATH_STRING "esp-update-set-path"
-#define USER_CMD_ESP_UPDATE_PUSH_ENABLE_STRING "esp-update-push-enable"
-#define USER_CMD_ESP_UPDATE_PUSH_DISABLE_STRING "esp-update-push-disable"
+//#define USER_CMD_ESP_UPDATE_PUSH_ENABLE_STRING "esp-update-push-enable"
+//#define USER_CMD_ESP_UPDATE_PUSH_DISABLE_STRING "esp-update-push-disable"
 
 #define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
 #define USER_CMD_ESP_SAVE_STRING "esp-save"
