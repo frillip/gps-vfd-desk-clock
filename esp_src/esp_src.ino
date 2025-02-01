@@ -144,6 +144,7 @@ void loop()
 {
   if(secondChanged())
   {
+    delayMicroseconds(10);
     //esp_task_wdt_reset();
     esp_micros = micros();
     if(!esp_pps_is_sync())
