@@ -144,19 +144,16 @@ void loop()
 {
   if(secondChanged())
   {
-    delayMicroseconds(10);
     //esp_task_wdt_reset();
     esp_micros = micros();
-    if(!esp_pps_is_sync())
+    esp = UTC.now();
+    if(timeStatus() != timeNotSet)
     {
-      if(timeStatus() != timeNotSet && !UTC.ms())
+      if(!esp_pps_is_sync())
       {
         esp_pps_reset_sync();
       }
-    }
-    if(!scheduler_is_sync())
-    {
-      if(timeStatus() != timeNotSet && !UTC.ms())
+      if(!scheduler_is_sync())
       {
         scheduler_reset_sync();
       }
@@ -168,8 +165,6 @@ void loop()
     pic_uart_tx_timedata();
 
     //serial_console_second_changed(millis());
-    
-    esp = UTC.now();
   }
 
   if(user_uart_char_available()) user_uart_task();
@@ -196,14 +191,14 @@ void loop()
     t1ms0=0;
     if(esp_pps_out_state())
     {
-      if(UTC.ms()) 
+      if(micros() - esp_micros > 1000) 
       {
         esp_pps_out_clear();
       }
     }
     if(digitalRead(STATUS_LED_PIN))
     {
-      if(UTC.ms()>=100) 
+      if(micros() - esp_micros > 100000)
       {
         digitalWrite(STATUS_LED_PIN, 0);
       }
