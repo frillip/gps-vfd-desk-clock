@@ -1416,53 +1416,24 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             ui_print_iso8601_string_local(settings.fields.delta.epoch);
             printf(" / %lu\n",arg);
             break;
-            
-        // Brightness up on 'B'
-        case 0x42:
-            display_brightness_set_manual();
-            display_brightness_up(DISPLAY_BRIGHTNESS_STEP);
-            printf("BRI: %u\n", display_brightness);
-            break;
 
-        // Brightness down on 'b'
-        case 0x62:
-            display_brightness_set_manual();
-            display_brightness_down(DISPLAY_BRIGHTNESS_STEP);
-            printf("BRI: %u\n", display_brightness);
-            break;
-
-        // Max brightness on 'M'
-        case 0x4D:
-            display_brightness_set_manual();
-            display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
-            printf("BRI: %u\n", display_brightness);
-            break;
-
-        // Min brightness on 'm'
-        case 0x6D:
-            display_brightness_set_manual();
-            display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
-            printf("BRI: %u\n", display_brightness);
-            break;
-
-        // Full brightness
-        case 0x4F:
-            display_brightness_set_manual();
-            display_brightness_on();
-            printf("BRI: %u\n", display_brightness);
-            break;
-
-        // Display off
-        case 0x6F:
-            display_brightness_set_manual();
-            display_brightness_off();
-            printf("BRI: %u\n", display_brightness);
-            break;
-            
-        // Auto brightness down on 'a'
         case USER_CMD_PIC_SET_BRIGHTNESS_AUTO:
             display_brightness_set_auto();
             printf("Display brightness auto\n");
+            break;
+
+        // Full brightness
+        case USER_CMD_PIC_SET_BRIGHTNESS:
+            if((uint16_t)arg>DISPLAY_BRIGHTNESS_PR+1)
+            {
+                printf("Range: 0 - %u\nBrightness unchanged\n", DISPLAY_BRIGHTNESS_PR+1);
+            }
+            else
+            {
+                display_brightness_set_manual();
+                display_brightness_set((uint16_t)arg);
+            }
+            printf("BRI: %u\n", display_brightness);
             break;
             
         case USER_CMD_PIC_SHOW_EEPROM:

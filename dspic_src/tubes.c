@@ -133,11 +133,20 @@ void display_brightness_max(void)
 
 void display_brightness_set(uint16_t brightness)
 {
-    if(brightness>DISPLAY_BRIGHTNESS_MAX) brightness = DISPLAY_BRIGHTNESS_MAX;
-    if(brightness<DISPLAY_BRIGHTNESS_MIN) brightness = DISPLAY_BRIGHTNESS_MIN;
-    OC3R = brightness;
-    display_brightness = brightness;
-    if(!display_brightness_oc_running) OC3_Initialize();
+    if(brightness>DISPLAY_BRIGHTNESS_MAX)
+    {
+        display_brightness_on();
+    }
+    else if(brightness<DISPLAY_BRIGHTNESS_MIN)
+    {
+        display_brightness_off();
+    }
+    else
+    {
+        OC3R = brightness;
+        display_brightness = brightness;
+        if(!display_brightness_oc_running) OC3_Initialize();
+    }
 }
 
 void display_brightness_set_manual(void)
@@ -154,6 +163,17 @@ void display_brightness_set_auto(void)
     display_brightness_manual = 0;
     if(veml6040_detected)
     {
+        if(!display_brightness_oc_running)
+        {
+            if(display_brightness>DISPLAY_BRIGHTNESS_MAX)
+            {
+                display_brightness_set(DISPLAY_BRIGHTNESS_MAX);
+            }
+            else if(display_brightness<DISPLAY_BRIGHTNESS_MIN)
+            {
+                display_brightness_set(DISPLAY_BRIGHTNESS_MIN);
+            }
+        }
         display_brightness_set_target(veml_brightness);
     }
     else display_brightness_set_target(DISPLAY_BRIGHTNESS_DEFAULT);
@@ -201,7 +221,7 @@ void display_brightness_update(void)
 {
     if(!display_brightness_manual)
     {
-        if(!veml6040_detected && !esp_detected)
+        if(!veml6040_detected)
         {
             display_brightness_set_target(DISPLAY_BRIGHTNESS_DEFAULT);
         }

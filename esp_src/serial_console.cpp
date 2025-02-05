@@ -587,7 +587,11 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_PIC_SET_BRIGHTNESS:
-      output->printf("Not implemented yet :(\n");
+      uint32_t brightness;
+      if(serial_console_validate_uint32(arg_buf, &brightness))
+      {
+        pic_uart_tx_userdata(cmd, brightness, output);
+      }
       break;
 
     case USER_CMD_PIC_SHOW_EEPROM:
