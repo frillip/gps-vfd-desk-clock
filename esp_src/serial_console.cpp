@@ -632,34 +632,47 @@ void sercon_print_wifi(Stream *output)
       
   if( configResult == ESP_OK )
   {
+      output->printf("WiFi: %s%s%s\n",
+               (WiFi.status() == WL_CONNECTED) ? ANSI_BLACK_GREEN : ANSI_BLACK_RED,
+               (WiFi.status() == WL_CONNECTED) ? "CONNECTED" : "DISCONNECTED",
+               ANSI_RESET);
       output->printf("SSID: %s\n", cachedConfig.ap.ssid);
       output->printf("PSK: %s\n", cachedConfig.ap.password);
       output->printf("IP: %s\n", WiFi.localIP().toString().c_str());
   }
   else
   {
-      output->printf( "Nope; esp_wifi_get_config returned %i", configResult );
+      output->printf( "esp_wifi_get_config returned %i", configResult );
   }
   output->printf("\n");
 }
 
 void sercon_print_ssids(Stream *output)
 {
+  wifi_config_t cachedConfig;
+  esp_err_t configResult = esp_wifi_get_config( (wifi_interface_t)ESP_IF_WIFI_STA, &cachedConfig );
+
   output->printf("Scan start\n");
   // WiFi.scanNetworks will return the number of networks found
   int n = WiFi.scanNetworks();
   output->print("Scan done\n");
+
   if (n == 0)
   {
     output->printf("No networks found\n");
   } else
   {
-    output->printf("%i networks found\n",n);
+    output->printf("%i networks found:\n",n);
     for (int i = 0; i < n; ++i)
     {
+      bool connected_network = 0;
+      if(strcmp((const char*)cachedConfig.ap.ssid, WiFi.SSID(i).c_str()) == 0)
+      {
+        connected_network = 1;
+      }
       // Print SSID and RSSI for each network found
-      output->printf("%u: %s", i + 1, WiFi.SSID(i).c_str());
-      output->printf(" (%i)", WiFi.RSSI(i));
+      if(connected_network) output->printf("%s", ANSI_BLACK_GREEN);
+      output->printf(" %s (%i)", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
 
       switch(WiFi.encryptionType(i))
       {
@@ -706,6 +719,7 @@ void sercon_print_ssids(Stream *output)
           output->printf("   OTHER");
           break;
       }
+      if(connected_network) output->printf(" (connected)%s", ANSI_RESET);
       output->printf("\n");
     }
   }

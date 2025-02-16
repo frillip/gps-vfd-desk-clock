@@ -80,6 +80,34 @@
 #define USER_CMD_RESET_PIC_STRING "rst-pic"
 #define USER_CMD_HELP_STRING "help"
 
+// ANSI things
+// Reset
+#define ANSI_RESET "\x1b[0m"
+#define ANSI_BOLD "\x1b[1m"
+#define ANSI_ITALIC "\x1b[3m"
+#define ANSI_UNDERLINE "\x1b[4m"
+#define ANSI_STRIKETHROUGH "\x1b[9m"
+
+// White Text on Colored Backgrounds
+#define ANSI_WHITE_BLACK   "\x1b[37;40m"
+#define ANSI_WHITE_RED     "\x1b[37;41m"
+#define ANSI_WHITE_GREEN   "\x1b[37;42m"
+#define ANSI_WHITE_YELLOW  "\x1b[37;43m"
+#define ANSI_WHITE_BLUE    "\x1b[37;44m"
+#define ANSI_WHITE_MAGENTA "\x1b[37;45m"
+#define ANSI_WHITE_CYAN    "\x1b[37;46m"
+#define ANSI_WHITE_WHITE   "\x1b[37;47m"
+
+// Black Text on Colored Backgrounds
+#define ANSI_BLACK_BLACK   "\x1b[30;40m"
+#define ANSI_BLACK_RED     "\x1b[30;41m"
+#define ANSI_BLACK_GREEN   "\x1b[30;42m"
+#define ANSI_BLACK_YELLOW  "\x1b[30;43m"
+#define ANSI_BLACK_BLUE    "\x1b[30;44m"
+#define ANSI_BLACK_MAGENTA "\x1b[30;45m"
+#define ANSI_BLACK_CYAN    "\x1b[30;46m"
+#define ANSI_BLACK_WHITE   "\x1b[30;47m"
+
 
 USER_CMD_TYPE serial_console_check_1(const char *cmd_buf);
 USER_CMD serial_console_check_2_esp(const char *cmd_buf);
