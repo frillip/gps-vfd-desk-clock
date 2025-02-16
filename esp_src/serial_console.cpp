@@ -682,7 +682,7 @@ void sercon_print_ssids(Stream *output)
 
         case WIFI_AUTH_WPA2_WPA3_PSK:
         case WIFI_AUTH_WPA3_PSK:
-          output->printf("  OPEN");
+          output->printf("  WPA3-PSK");
           break;
 
         case WIFI_AUTH_ENTERPRISE:
