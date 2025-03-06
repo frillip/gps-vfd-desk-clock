@@ -1,10 +1,12 @@
 #include "serial_console.h"
 
+extern String ntp_server;
+
 const char* serial_console_help_text = R"literal(
 esp-reset = Reset the ESP
-esp-set-interval [n] = Set NTP interval to [n] (min 300, max 43200)
-esp-set-server [s] = Set the NTP server to [s]
-esp-resync = Force NTP sync
+esp-ntp-set-interval [n] = Set NTP interval to [n] (min 300, max 43200)
+esp-ntp-set-server [s] = Set the NTP server to [s]
+esp-ntp-resync = Force NTP sync
 esp-wifi-info = Print WiFi info
 esp-wifi-scan = Scan for and print WiFi networks
 esp-wifi-connect = Force WiFi connect
@@ -150,6 +152,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_RESET_STRING) == 0)
     {
       return USER_CMD_ESP_RESET;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_NTP_INFO_STRING) == 0)
+    {
+      return USER_CMD_ESP_NTP_INFO;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_NTP_SET_INTERVAL_STRING) == 0)
@@ -378,6 +385,8 @@ void serial_console_print_help_all(Stream *output)
 
 void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
 {
+  time_t now;
+
   switch(cmd)
   {
     case USER_CMD_NONE:
@@ -386,6 +395,26 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
     case USER_CMD_ESP_RESET:
       output->println("ESP resetting");
       ESP.restart(); // And reset
+      break;
+
+    case USER_CMD_ESP_NTP_INFO:
+      now = UTC.now();
+      extern uint32_t ntp_interval;
+      output->printf("NTP:   ");
+      print_iso8601_string(output, now);
+      if(WiFi.status() != WL_CONNECTED)
+      {
+        output->printf(" - NO WIFI");
+      }
+      else if(timeStatus() != timeSync)
+      {
+        output->printf(" - NO NTP SYNC");
+      }
+      output->printf("\nNTP server: %s\n", ntp_server.c_str());
+      output->printf("NTP interval: %u\n", ntp_interval);
+      output->printf("NTP last sync: ");
+      print_iso8601_string(output, lastNtpUpdateTime());
+      output->printf("\n");
       break;
 
     case USER_CMD_ESP_NTP_SET_INTERVAL:
@@ -400,7 +429,9 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_NTP_SET_SERVER:
-      output->printf("Not implemented yet :(\n");
+      ntp_server = arg_buf;
+      setServer(ntp_server);
+      output->printf("New NTP server: %s\n", arg_buf);
       break;
 
     case USER_CMD_ESP_NTP_RESYNC:
@@ -481,11 +512,13 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_UPDATE_SET_SERVER:
-      output->printf("Not implemented yet :(\n");
+      updater_set_server(arg_buf);
+      output->printf("New update server: %s\n", arg_buf);
       break;
 
     case USER_CMD_ESP_UPDATE_SET_PATH:
-      output->printf("Not implemented yet :(\n");
+      updater_set_path(arg_buf);
+      output->printf("New update path: %s\n", arg_buf);
       break;
     /*
     case USER_CMD_ESP_UPDATE_PUSH_ENABLE:

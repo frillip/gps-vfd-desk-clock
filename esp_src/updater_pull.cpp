@@ -1,12 +1,33 @@
 #include "updater_pull.h"
-const char* updater_json_url = UPDATER_JSON_URL_DEFAULT;
+String updater_json_https = UPDATER_JSON_HTTPS_DEFAULT;
+String updater_json_server = UPDATER_JSON_SERVER_DEFAULT;
+String updater_json_path = UPDATER_JSON_PATH_DEFAULT;
+String updater_json_url = updater_json_https + updater_json_server + updater_json_path;
 
 ESP32OTAPull ota;
 Stream *output_stream;
 
+void updater_set_server(const char* new_server)
+{
+  updater_json_server = new_server;
+  updater_regenerate_url();
+}
+
+void updater_set_path(const char* new_path)
+{
+  updater_json_path = new_path;
+  if(updater_json_path.charAt(0) != '/') updater_json_path = String("/") + updater_json_path;
+  updater_regenerate_url();
+}
+
+void updater_regenerate_url(void)
+{
+  updater_json_url = updater_json_https + updater_json_server + updater_json_path;
+}
+
 bool updater_check(Stream *output)
 {
-  int ret = ota.CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
+  int ret = ota.CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   String otaVersion = ota.GetVersion();
   output->printf("ESP Version:           %s\n", ESP_VERSION);
@@ -19,7 +40,7 @@ void updater_pull(Stream *output)
   output_stream = output;
   int ret = ota
     .SetCallback(updater_callback_percent)
-    .CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
+    .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   output->printf("Use esp-reset to finish update.\n");
 }
@@ -30,7 +51,7 @@ void updater_force(Stream *output)
   int ret = ota
     .SetCallback(updater_callback_percent)
     .AllowDowngrades(true)
-    .CheckForOTAUpdate(updater_json_url, ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
+    .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   output->printf("Rebooting...\n");
 }

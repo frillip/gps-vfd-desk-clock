@@ -48,6 +48,7 @@
 
 #define USER_CMD_ESP_RESET_STRING "esp-reset"
 
+#define USER_CMD_ESP_NTP_INFO_STRING "esp-ntp-info"
 #define USER_CMD_ESP_NTP_SET_INTERVAL_STRING "esp-ntp-set-interval"
 #define USER_CMD_ESP_NTP_SET_SERVER_STRING "esp-ntp-set-server"
 #define USER_CMD_ESP_NTP_RESYNC_STRING "esp-ntp-resync"
