@@ -429,9 +429,18 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_NTP_SET_SERVER:
+      time_t tmp;
+      uint32_t tmp2;
       ntp_server = arg_buf;
-      setServer(ntp_server);
-      output->printf("New NTP server: %s\n", arg_buf);
+      if(queryNTP(ntp_server, tmp, tmp2))
+      {
+        setServer(ntp_server);
+        output->printf("New NTP server: %s\n", arg_buf);
+      }
+      else
+      {
+        output->printf("NTP error: %s\nNTP server unchanged!\n", errorString(error(true)).c_str());
+      }
       break;
 
     case USER_CMD_ESP_NTP_RESYNC:
