@@ -20,6 +20,12 @@ esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
 esp-wifi-clear = Clear saved WiFi config
 esp-wifi-setup = Enable WiFi setup AP mode
 
+esp-tzinfo-check = Pull timezone information from the tzinfo server but don't update anything
+esp-tzinfo-update = Update the timezone information from the tzinfo server
+esp-tzinfo-set-server = Set the tzinfo server hostname
+esp-tzinfo-set-path = Set the tzinfo server request path
+esp-tzinfo-set-acc = Set the precision of GNSS coordinates sent to the server in decimal places (0 to disable)
+
 esp-update-check = Check for an OTA update
 esp-update-pull = Check for and perform an OTA update if available
 esp-update-force = Force and OTA update, regardless of version, and install immediately
@@ -198,11 +204,32 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     {
       return USER_CMD_ESP_UPDATE_SET_PATH;
     }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_CHECK_STRING) == 0)
     {
+      return USER_CMD_ESP_TZINFO_CHECK;
     }
 
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_UPDATE_STRING) == 0)
     {
+      return USER_CMD_ESP_TZINFO_UPDATE;
     }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_SET_SERVER_STRING) == 0)
+    {
+      return USER_CMD_ESP_TZINFO_SET_SERVER;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_SET_PATH_STRING) == 0)
+    {
+      return USER_CMD_ESP_TZINFO_SET_PATH;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_SET_ACC_STRING) == 0)
+    {
+      return USER_CMD_ESP_TZINFO_SET_ACC;
+    }
+
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
     {
       return USER_CMD_ESP_CLEAR_ALL;
@@ -523,8 +550,46 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       updater_set_path(arg_buf);
       output->printf("New update path: %s\n", arg_buf);
       break;
+
+    case USER_CMD_ESP_TZINFO_CHECK:
+      remote_tzinfo_check(output);
       break;
 
+    case USER_CMD_ESP_TZINFO_UPDATE:
+      remote_tzinfo_check(output);
+      output->printf("Not implemented yet :(\n");
+      break;
+
+    case USER_CMD_ESP_TZINFO_SET_SERVER:
+      remote_tzinfo_set_server(arg_buf);
+      output->printf("New tzinfo server: %s\n", arg_buf);
+      break;
+
+    case USER_CMD_ESP_TZINFO_SET_PATH:
+      remote_tzinfo_set_path(arg_buf);
+      output->printf("New tzinfo path: %s\n", arg_buf);
+      break;
+
+    case USER_CMD_ESP_TZINFO_SET_ACC:
+      uint32_t remote_tzinfo_gnss_accuracy_new;
+      if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_gnss_accuracy_new))
+      {
+        extern uint32_t remote_tzinfo_gnss_accuracy;
+        if(remote_tzinfo_gnss_accuracy_new == 0)
+        {
+          output->printf("GNSS information for tzinfo disabled\n");
+          remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
+        }
+        else if((remote_tzinfo_gnss_accuracy_new > 0) && (remote_tzinfo_gnss_accuracy_new <= 8))
+        {
+          output->printf("Setting tzinfo accuracy to %u decimal places\n", remote_tzinfo_gnss_accuracy_new);
+          remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
+        }
+        else
+        {
+          output->printf("Invalid accuracy range (1-8 decimal places, or 0 to disable)\n");
+        }
+      }
       break;
 
     case USER_CMD_ESP_CLEAR_ALL:

@@ -14,6 +14,7 @@
 #include "pic.h"
 #include <HardwareSerial.h>
 #include "updater.h"
+#include "remote_tzinfo.h"
 
 #define USER_CMD_STAGE_1_ESP_STRING "esp-"
 #define USER_CMD_STAGE_1_PIC_STRING "pic-"
@@ -48,6 +49,7 @@
 
 #define USER_CMD_ESP_RESET_STRING "esp-reset"
 
+
 #define USER_CMD_ESP_NTP_INFO_STRING "esp-ntp-info"
 #define USER_CMD_ESP_NTP_SET_INTERVAL_STRING "esp-ntp-set-interval"
 #define USER_CMD_ESP_NTP_SET_SERVER_STRING "esp-ntp-set-server"
@@ -71,6 +73,12 @@
 #define USER_CMD_ESP_UPDATE_FORCE_STRING "esp-update-force"
 #define USER_CMD_ESP_UPDATE_SET_SERVER_STRING "esp-update-set-server"
 #define USER_CMD_ESP_UPDATE_SET_PATH_STRING "esp-update-set-path"
+
+#define USER_CMD_ESP_TZINFO_CHECK_STRING "esp-tzinfo-check"
+#define USER_CMD_ESP_TZINFO_UPDATE_STRING "esp-tzinfo-update"
+#define USER_CMD_ESP_TZINFO_SET_SERVER_STRING "esp-tzinfo-set-server"
+#define USER_CMD_ESP_TZINFO_SET_PATH_STRING "esp-tzinfo-set-path"
+#define USER_CMD_ESP_TZINFO_SET_ACC_STRING "esp-tzinfo-set-acc"
 
 #define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
 #define USER_CMD_ESP_SAVE_STRING "esp-save"
