@@ -71,8 +71,6 @@
 #define USER_CMD_ESP_UPDATE_FORCE_STRING "esp-update-force"
 #define USER_CMD_ESP_UPDATE_SET_SERVER_STRING "esp-update-set-server"
 #define USER_CMD_ESP_UPDATE_SET_PATH_STRING "esp-update-set-path"
-//#define USER_CMD_ESP_UPDATE_PUSH_ENABLE_STRING "esp-update-push-enable"
-//#define USER_CMD_ESP_UPDATE_PUSH_DISABLE_STRING "esp-update-push-disable"
 
 #define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
 #define USER_CMD_ESP_SAVE_STRING "esp-save"

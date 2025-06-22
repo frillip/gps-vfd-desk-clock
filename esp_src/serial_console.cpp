@@ -198,17 +198,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     {
       return USER_CMD_ESP_UPDATE_SET_PATH;
     }
-    /*
-    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_PUSH_ENABLE_STRING) == 0)
     {
-      return USER_CMD_ESP_UPDATE_PUSH_ENABLE;
     }
 
-    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_PUSH_DISABLE_STRING) == 0)
     {
-      return USER_CMD_ESP_UPDATE_PUSH_DISABLE;
     }
-    */
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
     {
       return USER_CMD_ESP_CLEAR_ALL;
@@ -529,17 +523,9 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       updater_set_path(arg_buf);
       output->printf("New update path: %s\n", arg_buf);
       break;
-    /*
-    case USER_CMD_ESP_UPDATE_PUSH_ENABLE:
-      updater_push_enable();
-      print_updater_push_info(output);
       break;
 
-    case USER_CMD_ESP_UPDATE_PUSH_DISABLE:
-      updater_push_disable();
-      print_updater_push_info(output);
       break;
-    */
 
     case USER_CMD_ESP_CLEAR_ALL:
       {
