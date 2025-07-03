@@ -168,6 +168,10 @@ void pic_pps_print_stats(void)
     else accumulated_clocks_diff_total_avg = 0;
     printf("AVG D: %.1f AVG D10: %.1f\n", accumulated_clocks_diff_total_avg, accumulated_clocks_diff_avg);
     
+    // Do not print Kalman values
+    //extern int32_t filtered_pps_kf;
+    //printf("Kal_val: %li\n", filtered_pps_kf);
+    
     uint32_t run_time = utc - power_on_time;
     uint16_t days = (run_time/86400);
     run_time = run_time - ((uint32_t)days*86400);

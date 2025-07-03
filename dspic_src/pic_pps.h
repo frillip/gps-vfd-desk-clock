@@ -23,6 +23,7 @@ extern "C" {
 #include "ui.h"
 #include "sync_state.h"
 #include "esp32.h"
+#include "kalman.h"
     
 #define OC_OFFSET_LIMIT_SCALAR (5)
 #define OC_OFFSET_POSITIVE_LIMIT (FCYCLE_ACC_RESET_POSITIVE * OC_OFFSET_LIMIT_SCALAR)  // Adjust to an expected max offset

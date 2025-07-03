@@ -17,10 +17,13 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <math.h>
 #include <xc.h>
     
 #include "freq.h"
-
+#include "kalman.h"
+#include "allan_dev.h"
+    
 void gnss_pps_init(void);
 void IC1_Initialize (void);
 void IC2_Initialize (void);

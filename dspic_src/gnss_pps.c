@@ -1,5 +1,4 @@
 #include "gnss_pps.h"
-#include <math.h>
 
 uint16_t ic1_val = 0;
 uint16_t ic1_val_old = 0;
@@ -28,12 +27,24 @@ extern time_t gnss;
 extern uint16_t counter;
 extern uint32_t fosc_freq;
 
+KalmanFilter pps_kf;
+KalmanFilter_f pps_kf_f;
+int32_t filtered_pps_kf;
+float filtered_pps_kf_f;
+
+int32_t filtered_pps_buffer[MAX_PPS_SAMPLES];
+int32_t pps_buffer[MAX_PPS_SAMPLES];
+uint16_t pps_index = 0;
+
 void gnss_pps_init(void)
 {
     // Init IC2 first
     IC2_Initialize();
     // Then IC1
     IC1_Initialize();
+    
+    kalman_init(&pps_kf, XTAL_FREQ, 50, 5);
+    kalman_init_f(&pps_kf_f, XTAL_FREQ, 50, 5);
 }
 
 void IC1_Initialize (void)
@@ -82,6 +93,25 @@ void calculate_pps_stats(void)
     accumulated_clocks_old = accumulated_clocks;
     if(accumulation_start) accumulation_delta = utc - accumulation_start;
     else accumulation_delta = 0;
+    
+    if(pps_seq_count > PPS_SEQ_COUNT_MIN)
+    {
+        pps_index++;
+        if (pps_index < MAX_PPS_SAMPLES)
+        {
+            pps_index = 0;
+        }
+        pps_buffer[pps_index++] = pps_count_diff;
+
+        // Do not calculate kalman filtered pps values
+        // filtered_pps_kf = kalman_update(&pps_kf, (int32_t)pps_count_diff);
+        // filtered_pps_kf_f = kalman_update_f(&pps_kf_f, (int32_t)pps_count_diff);
+        // filtered_pps_buffer[pps_index++] = filtered_pps_kf;
+    }
+    
+    // Do not print kalman filtered pps values
+    // printf("D: %li K: %li K_f: %6.0f\n", pps_count_diff, filtered_pps_kf, filtered_pps_kf_f);
+    
     ic1_val = 0;
     ic2_val = 0;
 }
@@ -98,6 +128,13 @@ void reset_pps_stats(void)
     memset(accumulated_clocks_diff, 0, FCYCLE_ACC_AVG_PERIOD);
     accumulated_clocks_diff_index = 0;
     accumulated_clocks_diff_avg = 0.0;
+    kalman_init(&pps_kf, fosc_freq, 5, 50);
+    kalman_init_f(&pps_kf_f, fosc_freq, 5, 50);
+    filtered_pps_kf = fosc_freq;
+    filtered_pps_kf_f = fosc_freq;
+    memset(pps_buffer, 0 ,sizeof(pps_buffer));
+    memset(filtered_pps_buffer, 0 ,sizeof(filtered_pps_buffer));
+    pps_index = 0;
 }
 
 void recalculate_fosc_freq(void)
