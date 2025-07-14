@@ -25,10 +25,10 @@ extern "C" {
 #define SERIAL_PROTO_DATATYPE_RTCDATA 0xF4
 #define SERIAL_PROTO_DATATYPE_SENSORDATA 0xF5
 #define SERIAL_PROTO_DATATYPE_DISPLAYDATA 0xF6
-#define SERIAL_PROTO_DATATYPE_MISCDATA 0xF7
+#define SERIAL_PROTO_DATATYPE_TZINFODATA 0xF7
 #define SERIAL_PROTO_DATATYPE_USERDATA 0xF8
 #define SERIAL_PROTO_DATATYPE_BOOTLOADERDATA 0xFA
-
+    
 #pragma pack(push, 1)
 
 // Structs for PIC data
@@ -49,16 +49,20 @@ typedef union
     CLOCK_SOURCE utc_source : 8;
     time_t utc : 32;
     
+    int32_t tz_offset : 16;
+    int32_t dst_offset : 16;
     struct __attribute__((packed))
     {
+        uint8_t tz_auto : 1;
         uint8_t tz_set : 1;
-        int8_t tz_offset: 7;
+        uint8_t padding: 6;
     } tz_flags;
     struct __attribute__((packed))
     {
+        uint8_t dst_auto : 1;
         uint8_t dst_set : 1;
         uint8_t dst_active : 1;
-        int8_t dst_offset: 4;
+        uint8_t padding: 5;
     } dst_flags;
   } fields;
   uint8_t raw[sizeof(struct _pic_time_struct)];
@@ -240,16 +244,21 @@ typedef union
         uint8_t scheduler_sync : 1;
     } flags;
     time_t utc : 32;
+
+    int32_t tz_offset : 16;
+    int32_t dst_offset : 16;
     struct __attribute__((packed))
     {
+        uint8_t tz_auto : 1;
         uint8_t tz_set : 1;
-        int8_t tz_offset: 7;
+        uint8_t padding: 6;
     } tz_flags;
     struct __attribute__((packed))
     {
+        uint8_t dst_auto : 1;
         uint8_t dst_set : 1;
         uint8_t dst_active : 1;
-        int8_t dst_offset: 4;
+        uint8_t padding: 5;
     } dst_flags;
   } fields;
   uint8_t raw[sizeof(struct _esp_time_struct)];
@@ -337,6 +346,43 @@ typedef union
   } fields;
   uint8_t raw[sizeof(struct _esp_display_struct)];
 } SERIAL_PROTO_DATA_ESP_DISPLAY;
+
+
+typedef union
+{
+  struct __attribute__((packed)) _esp_tzinfo_struct
+  {
+    SERIAL_PROTO_HEADER header;
+    
+    struct __attribute__((packed))
+    {
+        uint8_t tzinfo_available : 1;
+        uint8_t tzinfo_pending : 1;
+        uint8_t tz_available : 1;
+        uint8_t dst_available : 1;
+        TZINFO_SOURCE tzinfo_source: 4;
+    } tzinfo_flags;
+
+    int32_t tz_offset : 16;
+    int32_t dst_offset : 16;
+    time_t dst_next : 32;
+
+    struct __attribute__((packed))
+    {
+        uint8_t tz_auto : 1;
+        uint8_t tz_set : 1;
+        uint8_t padding: 6;
+    } tz_flags;
+    struct __attribute__((packed))
+    {
+        uint8_t dst_auto : 1;
+        uint8_t dst_set : 1;
+        uint8_t dst_active : 1;
+        uint8_t padding: 5;
+    } dst_flags;
+  } fields;
+  uint8_t raw[sizeof(struct _esp_tzinfo_struct)];
+} SERIAL_PROTO_DATA_ESP_TZINFO;
 
 
 typedef union

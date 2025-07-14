@@ -242,11 +242,25 @@ void loop()
   if(t100ms3>=87)
   {
     t100ms3=-13;
-    //pic_uart_tx_rtcdata();
+    pic_uart_tx_tzinfodata();
   }
   if(t1s0)
   {
     t1s0=0;
+
+    extern bool remote_tzinfo_enabled;
+    if(remote_tzinfo_enabled)
+    {
+      extern uint32_t remote_tzinfo_interval_count;
+      extern uint32_t remote_tzinfo_interval;
+      remote_tzinfo_interval_count++;
+      if(remote_tzinfo_interval_count > remote_tzinfo_interval)
+      {
+        remote_tzinfo_check(&Serial);
+        remote_tzinfo_interval_count = 0;
+      }
+    }
+
     ntp_interval_count++;
     if(ntp_interval_count > ntp_interval)
     {

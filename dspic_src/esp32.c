@@ -53,6 +53,26 @@ bool esp_brightness_updated = 0;
 uint8_t esp_display_state = 0;
 uint8_t esp_menu_state = 0;
 
+SERIAL_PROTO_DATA_ESP_TZINFO esp_tzinfo_buffer;
+bool esp_tzinfo_waiting = 0;
+const SERIAL_PROTO_HEADER esp_tzinfo_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_TZINFODATA};
+
+bool esp_tzinfo_available = 0;
+bool esp_tzinfo_pending = 0;
+bool esp_tzinfo_tz_available = 0;
+bool esp_tzinfo_dst_available = 0;
+TZINFO_SOURCE esp_tzinfo_source = 0;
+
+int16_t esp_tzinfo_tz_offset = 0;
+int16_t esp_tzinfo_dst_offset = 0;
+time_t esp_tzinfo_dst_next = 0;
+
+bool esp_tzinfo_tz_auto = 0;
+bool esp_tzinfo_tz_set = 0;
+bool esp_tzinfo_dst_auto = 0;
+bool esp_tzinfo_dst_set = 0;
+bool esp_tzinfo_dst_active = 0;
+
 SERIAL_PROTO_DATA_ESP_USER esp_user_buffer;
 bool esp_user_waiting = 0;
 const SERIAL_PROTO_HEADER esp_user_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_ESP_TX, .datatype = SERIAL_PROTO_DATATYPE_USERDATA};
@@ -169,6 +189,11 @@ void esp_rx(void)
                     esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_DISPLAY) - sizeof(SERIAL_PROTO_HEADER);
                     memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
                     break;
+                    
+                case ESP_TZINFO:
+                    esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_TZINFO) - sizeof(SERIAL_PROTO_HEADER);
+                    memcpy(esp_string_buffer, esp_check_buffer, sizeof(SERIAL_PROTO_HEADER));
+                    break;
 
                 case ESP_USER:
                     esp_bytes_remaining = sizeof(SERIAL_PROTO_DATA_ESP_USER) - sizeof(SERIAL_PROTO_HEADER);
@@ -215,6 +240,11 @@ void esp_copy_buffer(ESP_MESSAGE_TYPE message)
             memcpy(esp_display_buffer.raw, esp_string_buffer, sizeof(esp_display_buffer));
             esp_display_waiting=1;
             break;
+            
+        case ESP_TZINFO:
+            memcpy(esp_tzinfo_buffer.raw, esp_string_buffer, sizeof(esp_tzinfo_buffer));
+            esp_tzinfo_waiting=1;
+            break;
 
         case ESP_USER:
             memcpy(esp_user_buffer.raw, esp_string_buffer, sizeof(esp_user_buffer));
@@ -239,6 +269,7 @@ ESP_MESSAGE_TYPE esp_check_incoming(void)
     if(memcmp(esp_check_buffer, &esp_rtc_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_RTC;
     if(memcmp(esp_check_buffer, &esp_sensor_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_SENSOR;
     if(memcmp(esp_check_buffer, &esp_display_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_DISPLAY;
+    if(memcmp(esp_check_buffer, &esp_tzinfo_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_TZINFO;
     if(memcmp(esp_check_buffer, &esp_user_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_USER;
     if(memcmp(esp_check_buffer, &esp_bootloader_string, sizeof(SERIAL_PROTO_HEADER))==0) return ESP_BOOTLOADER;
     return ESP_NONE;
@@ -436,6 +467,29 @@ void esp_process_display(void)
     esp_display_waiting = 0;
 }
 
+void esp_process_tzinfo(void)
+{
+    esp_tzinfo_available = esp_tzinfo_buffer.fields.tzinfo_flags.tzinfo_available;
+    esp_tzinfo_pending = esp_tzinfo_buffer.fields.tzinfo_flags.tzinfo_pending;
+    esp_tzinfo_tz_available = esp_tzinfo_buffer.fields.tzinfo_flags.tz_available;
+    esp_tzinfo_dst_available = esp_tzinfo_buffer.fields.tzinfo_flags.dst_available;
+    esp_tzinfo_source = esp_tzinfo_buffer.fields.tzinfo_flags.tzinfo_source;
+    
+    esp_tzinfo_tz_offset = esp_tzinfo_buffer.fields.tz_offset;
+    esp_tzinfo_dst_offset = esp_tzinfo_buffer.fields.dst_offset;
+    esp_tzinfo_dst_next = esp_tzinfo_buffer.fields.dst_next;
+            
+    esp_tzinfo_tz_auto = esp_tzinfo_buffer.fields.tz_flags.tz_auto;
+    esp_tzinfo_tz_set = esp_tzinfo_buffer.fields.tz_flags.tz_set;
+
+    esp_tzinfo_dst_auto = esp_tzinfo_buffer.fields.dst_flags.dst_auto;
+    esp_tzinfo_dst_set = esp_tzinfo_buffer.fields.dst_flags.dst_set;
+    esp_tzinfo_dst_active = esp_tzinfo_buffer.fields.dst_flags.dst_active;
+    
+    memset(esp_tzinfo_buffer.raw, 0, sizeof(esp_tzinfo_buffer));
+    esp_tzinfo_waiting = 0;
+}
+
 void esp_process_user(void)
 {
     USER_CMD user_cmd = esp_user_buffer.fields.cmd;
@@ -471,6 +525,7 @@ void esp_data_task(void)
     if(esp_rtc_waiting) esp_process_rtc();
     if(esp_sensor_waiting) esp_process_sensor();
     if(esp_display_waiting) esp_process_display();
+    if(esp_tzinfo_waiting) esp_process_tzinfo();
     if(esp_user_waiting) esp_process_user();
     if(esp_bootloader_waiting) esp_process_bootloader();
     
@@ -535,11 +590,11 @@ void esp_tx_time(void)
     esp_tx_buffer.fields.utc_source = utc_source;
     esp_tx_buffer.fields.utc = utc;
     esp_tx_buffer.fields.tz_flags.tz_set = 0; // Unused
-    esp_tx_buffer.fields.tz_flags.tz_offset = settings.fields.tz.offset / 900;
+    esp_tx_buffer.fields.tz_offset = settings.fields.tz.offset;
     
     esp_tx_buffer.fields.dst_flags.dst_set = 0;
     esp_tx_buffer.fields.dst_flags.dst_active = dst_active;
-    esp_tx_buffer.fields.dst_flags.dst_offset = (settings.fields.dst.offset / 900);
+    esp_tx_buffer.fields.dst_offset = settings.fields.dst.offset;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));  
 }
@@ -759,9 +814,50 @@ void print_esp_data(void)
         ui_print_iso8601_string(ntp);
         printf("\nWiFi: %01u Sync: %01u\n", esp_wifi_status, esp_ntp_status);
         print_esp_offset();
+        printf("TZINFO available: %01u\n", esp_tzinfo_available);
+        printf("TZ offset: %i\n", esp_tzinfo_tz_offset);
+        if(esp_tzinfo_dst_offset && esp_tzinfo_dst_next)
+        {
+            printf("DST active: %01u DST offset: %i\n", esp_tzinfo_dst_active, esp_tzinfo_dst_offset);
+            printf("Next DST: ");
+            ui_print_iso8601_string(esp_tzinfo_dst_next);
+            printf("\nSource: ");
+            print_tzinfo_source(esp_tzinfo_source);
+            printf("\n");
+        }
+        else
+        {
+            printf("No DST for zone\n");
+        }
     }
     else
     {
         printf("\n=== NO ESP32 DETECTED ===\n");
     }
+}
+
+void print_tzinfo_source(TZINFO_SOURCE source)
+{
+  switch(source)
+  {
+    case TZINFO_SOURCE_NONE:
+      printf("NONE");
+      break;
+    
+    case TZINFO_SOURCE_CACHE:
+      printf("CACHE");
+      break;
+    
+    case TZINFO_SOURCE_GEOIP:
+      printf("GEOIP");
+      break;
+    
+    case TZINFO_SOURCE_GNSS:
+      printf("GNSS");
+      break;
+    
+    default:
+      printf("UNKNOWN");
+      break;
+  }
 }

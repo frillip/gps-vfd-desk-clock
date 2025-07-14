@@ -15,6 +15,7 @@
 #include <esp32-hal-timer.h>
 #include "telnet.h"
 #include "pic_bootloader.h"
+#include "remote_tzinfo.h"
 
 #define PIC_UART    2
 #define PIC_BAUD    115200
@@ -83,6 +84,7 @@ void pic_uart_tx_netdata(void);
 void pic_uart_tx_rtcdata(void);
 void pic_uart_tx_sensordata(void);
 void pic_uart_tx_displaydata(void);
+void pic_uart_tx_tzinfodata(void);
 void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg, Stream *output);
 
 void pic_enter_bootloader(Stream *output);

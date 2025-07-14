@@ -23,11 +23,13 @@ bool pic_time_waiting = 0;
 SERIAL_PROTO_DATA_PIC_TIME pic_time_buffer;
 time_t pic = 0;
 CLOCK_SOURCE pic_utc_source = CLOCK_SOURCE_NONE;
+bool pic_tz_auto = 0;
 bool pic_tz_set = 0;
 int32_t pic_tz_offset = 0;
-bool pic_dst_set;
-bool pic_dst_active;
-int32_t pic_dst_offset;
+bool pic_dst_auto = 0;
+bool pic_dst_set = 0;
+bool pic_dst_active = 0;
+int32_t pic_dst_offset = 0;
 
 
 const SERIAL_PROTO_HEADER pic_gnss_string = { .magic = SERIAL_PROTO_HEADER_MAGIC, .type = SERIAL_PROTO_TYPE_PIC_TX, .datatype = SERIAL_PROTO_DATATYPE_GNSSDATA};
@@ -442,13 +444,15 @@ void pic_process_time()
 
   pic = pic_time_buffer.fields.utc;
 
-  pic_tz_set = pic_time_buffer.fields.tz_flags.tz_set; // Unused
-  pic_tz_offset = pic_time_buffer.fields.tz_flags.tz_offset * 900;
+  pic_tz_auto = pic_time_buffer.fields.tz_flags.tz_auto;
+  pic_tz_set = pic_time_buffer.fields.tz_flags.tz_set;
+  pic_tz_offset = pic_time_buffer.fields.tz_offset;
   tz_offset = pic_tz_offset;
   
+  pic_dst_auto = pic_time_buffer.fields.dst_flags.dst_auto;
   pic_dst_set = pic_time_buffer.fields.dst_flags.dst_set;
   pic_dst_active = pic_time_buffer.fields.dst_flags.dst_active;
-  pic_dst_offset = pic_time_buffer.fields.dst_flags.dst_offset * 900;
+  pic_dst_offset = pic_time_buffer.fields.dst_offset;
 
   /*
   uint8_t i;
@@ -1069,12 +1073,14 @@ void pic_uart_tx_timedata()
 
   time_data_tx.fields.utc = UTC.now();
 
+  time_data_tx.fields.tz_flags.tz_auto = 0;
   time_data_tx.fields.tz_flags.tz_set = 0;
-  time_data_tx.fields.tz_flags.tz_offset = 0;
+  time_data_tx.fields.tz_offset = 0;
 
+  time_data_tx.fields.dst_flags.dst_auto = 0;
   time_data_tx.fields.dst_flags.dst_set = 0;
   time_data_tx.fields.dst_flags.dst_active = 0;
-  time_data_tx.fields.dst_flags.dst_offset = 3600/900;
+  time_data_tx.fields.dst_offset = 0;
 
   size_t bytesSent = UARTPIC.write(time_data_tx.raw, sizeof(time_data_tx));
 }
@@ -1192,6 +1198,36 @@ void pic_uart_tx_displaydata()
   display_data_tx.fields.menu_state = UI_MENU_STATE_ROOT;
 
   size_t bytesSent = UARTPIC.write(display_data_tx.raw, sizeof(display_data_tx));
+}
+
+void pic_uart_tx_tzinfodata()
+{
+  extern bool remote_tzinfo_enabled;
+  extern bool tzinfo_available;
+  extern int32_t tzinfo_offset;
+  extern int32_t tzinfo_dst_offset;
+  extern time_t tzinfo_dst_next;
+  extern bool tzinfo_dst_active;
+  extern TZINFO_SOURCE tzinfo_source;
+
+  SERIAL_PROTO_DATA_ESP_TZINFO tzinfo_data_tx = {};
+  memset(tzinfo_data_tx.raw, 0, sizeof(tzinfo_data_tx));
+
+  tzinfo_data_tx.fields.header.magic = SERIAL_PROTO_HEADER_MAGIC;
+  tzinfo_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
+  tzinfo_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_TZINFODATA;
+
+  if(remote_tzinfo_enabled)
+  {
+    tzinfo_data_tx.fields.tzinfo_flags.tzinfo_available = tzinfo_available;
+    tzinfo_data_tx.fields.tzinfo_flags.tzinfo_source = tzinfo_source;
+    tzinfo_data_tx.fields.tz_offset = tzinfo_offset;
+    tzinfo_data_tx.fields.dst_offset = tzinfo_dst_offset;
+    tzinfo_data_tx.fields.dst_next = tzinfo_dst_next;
+    tzinfo_data_tx.fields.dst_flags.dst_active = tzinfo_dst_active;
+  }
+
+  size_t bytesSent = UARTPIC.write(tzinfo_data_tx.raw, sizeof(tzinfo_data_tx));
 }
 
 void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg, Stream *output)

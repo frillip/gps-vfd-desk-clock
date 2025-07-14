@@ -48,6 +48,7 @@ typedef union
             uint16_t padding : 14;
         } flags;
         int32_t offset;
+		time_t next;
     } dst;
     struct __attribute__ ((packed))
     {

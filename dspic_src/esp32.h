@@ -77,6 +77,7 @@ void esp_tx_user_stop(void);
 void esp_tx_bootloader(void);
 
 void print_esp_data(void);
+void print_tzinfo_source(TZINFO_SOURCE source);
 
 #ifdef	__cplusplus
 }

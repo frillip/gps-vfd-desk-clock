@@ -20,11 +20,13 @@ esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
 esp-wifi-clear = Clear saved WiFi config
 esp-wifi-setup = Enable WiFi setup AP mode
 
+esp-tzinfo-enable [b] = Enable remote timezone information functionality (0 / 1)
 esp-tzinfo-check = Pull timezone information from the tzinfo server but don't update anything
 esp-tzinfo-update = Update the timezone information from the tzinfo server
 esp-tzinfo-set-server = Set the tzinfo server hostname
 esp-tzinfo-set-path = Set the tzinfo server request path
-esp-tzinfo-set-acc = Set the precision of GNSS coordinates sent to the server in decimal places (0 to disable)
+esp-tzinfo-set-interval [n] = Set the tzinfo checking interval to [n] seconds (300 - 86400)
+esp-tzinfo-set-acc [n] = Set the precision of GNSS coordinates sent to the server in decimal places (1 - 8, or 0 to disable)
 
 esp-update-check = Check for an OTA update
 esp-update-pull = Check for and perform an OTA update if available
@@ -203,6 +205,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_SET_PATH_STRING) == 0)
     {
       return USER_CMD_ESP_UPDATE_SET_PATH;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_ENABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_TZINFO_ENABLE;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_CHECK_STRING) == 0)
@@ -553,13 +560,36 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       output->printf("New update path: %s\n", arg_buf);
       break;
 
+    case USER_CMD_ESP_TZINFO_ENABLE:
+      uint32_t remote_tzinfo_enabled_new;
+      if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_enabled_new))
+      {
+        extern bool remote_tzinfo_enabled;
+        if(remote_tzinfo_enabled_new == 1)
+        {
+          output->printf("Remote tzinfo enabled\n");
+          remote_tzinfo_enabled = remote_tzinfo_enabled_new;
+        }
+        else if(remote_tzinfo_enabled_new == 0)
+        {
+          output->printf("Remote tzinfo disabled\n");
+          remote_tzinfo_enabled = remote_tzinfo_enabled_new;
+        }
+        else
+        {
+          output->printf("Invalid range (0 - 1)\n");
+        }
+      }
+      break;
+
     case USER_CMD_ESP_TZINFO_CHECK:
       remote_tzinfo_check(output);
+      extern bool tzinfo_available;
+      tzinfo_available = 0;
       break;
 
     case USER_CMD_ESP_TZINFO_UPDATE:
       remote_tzinfo_check(output);
-      output->printf("Not implemented yet :(\n");
       break;
 
     case USER_CMD_ESP_TZINFO_SET_SERVER:
@@ -570,6 +600,23 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
     case USER_CMD_ESP_TZINFO_SET_PATH:
       remote_tzinfo_set_path(arg_buf);
       output->printf("New tzinfo path: %s\n", arg_buf);
+      break;
+
+    case USER_CMD_ESP_TZINFO_SET_INTERVAL:
+      uint32_t remote_tzinfo_interval_new;
+      if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_interval_new))
+      {
+        extern uint32_t remote_tzinfo_interval;
+        if((remote_tzinfo_interval_new >= 300) && (remote_tzinfo_interval_new <= 86400))
+        {
+          output->printf("Setting tzinfo interval to %us\n", remote_tzinfo_interval_new);
+          remote_tzinfo_interval = remote_tzinfo_interval_new;
+        }
+        else
+        {
+          output->printf("Invalid range (300 - 86400)\n");
+        }
+      }
       break;
 
     case USER_CMD_ESP_TZINFO_SET_ACC:
@@ -842,6 +889,7 @@ void serial_console_print_info(Stream *output)
   
   print_offset_data(output);
   print_gnss_data(output);
+  print_remote_tzinfo(output);
   print_rtc_data(output);
   print_veml_data(output);
   print_bme_data(output);
