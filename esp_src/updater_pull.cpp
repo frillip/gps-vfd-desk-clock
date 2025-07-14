@@ -7,6 +7,8 @@ String updater_json_url = updater_json_https + updater_json_server + updater_jso
 ESP32OTAPull ota;
 Stream *output_stream;
 
+extern uint8_t esp_pps_sync_ignore_counter;
+
 void updater_set_server(const char* new_server)
 {
   updater_json_server = new_server;
@@ -27,6 +29,7 @@ void updater_regenerate_url(void)
 
 bool updater_check(Stream *output)
 {
+  esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   int ret = ota.CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   String otaVersion = ota.GetVersion();
@@ -37,6 +40,7 @@ bool updater_check(Stream *output)
 
 void updater_pull(Stream *output)
 {
+  esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   output_stream = output;
   int ret = ota
     .SetCallback(updater_callback_percent)
@@ -47,6 +51,7 @@ void updater_pull(Stream *output)
 
 void updater_force(Stream *output)
 {
+  esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   output_stream = output;
   int ret = ota
     .SetCallback(updater_callback_percent)

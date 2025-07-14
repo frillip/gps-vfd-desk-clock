@@ -130,7 +130,6 @@ void setup()
   }
 
   telnet_init();
-  //updater_push_enable();
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   digitalWrite(STATUS_LED_PIN, 0);
@@ -150,7 +149,7 @@ void loop()
     esp = UTC.now();
     if(timeStatus() != timeNotSet)
     {
-      if(!esp_pps_is_sync())
+      if(!esp_pps_check_sync())
       {
         esp_pps_reset_sync();
       }
@@ -249,7 +248,7 @@ void loop()
   {
     t1s0=0;
     ntp_interval_count++;
-    if(ntp_interval_count>ntp_interval)
+    if(ntp_interval_count > ntp_interval)
     {
       updateNTP();
       Serial.printf("NTP RESYNC\n");

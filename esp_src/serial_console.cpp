@@ -467,6 +467,8 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
     case USER_CMD_ESP_NTP_RESYNC:
       output->printf("Manual NTP resync\n");
       updateNTP();
+      scheduler_unsync();
+      esp_pps_unsync();
       break;
 
     case USER_CMD_ESP_WIFI_INFO:
