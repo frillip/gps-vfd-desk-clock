@@ -166,6 +166,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC1Interrupt( void )
         gnss++;
         ic_event = 1;    // Flag we've had an IC event on GNSS
         ic1_val = IC1BUF; // Read the IC1 timer
+        ic2_val = IC2BUF; // Read the IC2 timer
         IFS0bits.IC1IF = 0; // Clear the interrupt flag
     }
 }
@@ -175,7 +176,8 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC2Interrupt( void )
 {	
     if(IFS0bits.IC2IF)
     {
-        ic2_val = IC2BUF; // Read the IC2 timer
+        // Moved to IC1 ISR
+        //ic2_val = IC2BUF; // Read the IC2 timer
         IFS0bits.IC2IF = 0; // Clear the interrupt flag
     }
 }

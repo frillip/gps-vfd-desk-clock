@@ -30,6 +30,7 @@ extern "C" {
 #define OC_OFFSET_NEGATIVE_LIMIT (FCYCLE_ACC_RESET_NEGATIVE * OC_OFFSET_LIMIT_SCALAR) // Adjust to an expected min offset
     
 void pic_pps_init(void);
+//void pic_pps_timer_init(void);
 void OC1_Initialize(void);
 void OC2_Initialize(void);
 void IC3_Initialize(void);

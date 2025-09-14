@@ -63,7 +63,35 @@ void pic_pps_init(void)
     pic_pps_set_latch_cycles(fosc_freq); // Set up our R & RS registers for OC1 & OC2
     OC2_Initialize();
     OC1_Initialize();
+    //pic_pps_timer_init();
 }
+
+/* 32-bit timer experiment
+
+void pic_pps_timer_init(void)
+{
+    T5CONbits.TON = 0; // Stop any 16-bit Timer3 operation
+    T4CONbits.TON = 0; // Stop any 16/32-bit Timer3 operation
+    T4CONbits.T32 = 1; // Enable 32-bit Timer mode
+    T4CONbits.TCS = 0; // Select internal instruction cycle clock
+    T4CONbits.TGATE = 0; // Disable Gated Timer mode
+    T4CONbits.TCKPS = 0b00; // Select 1:1 Prescaler
+    TMR5 = 0x00; // Clear 32-bit Timer (msw)
+    TMR4 = 0x00; // Clear 32-bit Timer (lsw)
+    PR5 = 0x0262; // Load 32-bit period value (msw)
+    PR4 = 0x59FF; // Load 32-bit period value (lsw)
+    IPC7bits.T5IP = 0x01; // Set Timer3 Interrupt Priority Level
+    IFS1bits.T5IF = 0; // Clear Timer3 Interrupt Flag
+    IEC1bits.T5IE = 1; // Enable Timer3 interrupt
+    T4CONbits.TON = 1; // Start 32-bit Timer
+}
+
+void __attribute__((__interrupt__, no_auto_psv)) _T5Interrupt(void)
+{
+    //STATUS_LED_Toggle();
+    IFS1bits.T5IF = 0; //Clear Timer3 interrupt flag
+}
+*/
 
 void OC1_Initialize (void)
 {
@@ -296,6 +324,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC3Interrupt( void )
         gnss_invalidate_data();
         esp_reset_sync_timer(); // Reset our esp32 sync timer
         ic3_val = IC3BUF; // Read the IC3 timer
+        ic4_val = IC4BUF; // Read the IC4 timer
         IFS2bits.IC3IF = 0;
     }
 }
@@ -304,7 +333,8 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC4Interrupt( void )
 {	
     if(IFS2bits.IC4IF)
     {
-        ic4_val = IC4BUF; // Read the IC4 timer
+        // Moved to IC3 ISR
+        //ic4_val = IC4BUF; // Read the IC4 timer
         IFS2bits.IC4IF = 0;
     }
 }
