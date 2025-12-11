@@ -36,6 +36,9 @@ int32_t filtered_pps_buffer[MAX_PPS_SAMPLES];
 int32_t pps_buffer[MAX_PPS_SAMPLES];
 uint16_t pps_index = 0;
 
+extern EEPROM_DATA_STRUCT settings;
+extern bool fosc_pending_eeprom_write;
+
 void gnss_pps_init(void)
 {
     // Init IC2 first
@@ -147,12 +150,20 @@ void recalculate_fosc_freq(void)
     new_fosc_freq = (new_fosc_freq_f + 0.5); //DIRTY ROUNDL() EQUIVALENT
     fosc_freq = new_fosc_freq;
     if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
+    
+    //Save new value to EEPROM
+    settings.fields.pps.fosc_freq = fosc_freq;
+    fosc_pending_eeprom_write = 1;
 }
 
 void recalculate_fosc_freq_short(void)
 {
     fosc_freq = fosc_freq + (accumulated_clocks_diff_avg + 0.5); //DIRTY ROUNDL() EQUIVALENT
     if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
+        
+    //Save new value to EEPROM
+    settings.fields.pps.fosc_freq = fosc_freq;
+    fosc_pending_eeprom_write = 1;
 }
 
 // IC1 ISR

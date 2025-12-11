@@ -18,12 +18,14 @@ extern "C" {
 #include <stdbool.h>
 #include <time.h>
 #include "../common/enums.h"
+#include "freq.h"
 #include "tubes.h"
 #include "ui.h"
     
 #include "mcc_generated_files/memory/flash.h"
     
 #define EEPROM_HEADER_VALUE 0xC0FFEEEE
+#define EEPROM_MINIMUM_FOSC_WRITE_INTERVAL 86400UL
     
 typedef union
 {
@@ -48,8 +50,17 @@ typedef union
             uint16_t padding : 14;
         } flags;
         int32_t offset;
-		time_t next;
+        // Store the next 4 auto DST transitions
+        // TO DO: Add terminal command to set these manually
+        // TO DO: Once the DST transition has passed, move DST transitions
+        // to next element, so index 0 is always the incoming transition
+		time_t next[4];
     } dst;
+    struct __attribute__ ((packed))
+    {
+        // TO DO: Add terminal command to set this manually.
+		uint32_t fosc_freq;
+    } pps;
     struct __attribute__ ((packed))
     {
         struct __attribute__ ((packed))
@@ -110,6 +121,7 @@ void eeprom_reset_settings(void);
 void eeprom_clear_pending_changes(void);
 void eeprom_print_settings(void);
 void eeprom_print_stored_settings(void);
+void eeprom_write_fosc(void);
 
 
 #ifdef	__cplusplus

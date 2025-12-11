@@ -4,6 +4,10 @@ EEPROM_DATA_STRUCT stored = { .raw ={0} };
 EEPROM_DATA_STRUCT settings = { .raw ={0} };
 EEPROM_DATA_STRUCT modified = { .raw ={0} };
 
+bool fosc_pending_eeprom_write = 0;
+time_t last_fosc_eeprom_write = 0;
+extern time_t utc;
+
 // Reserve some program memory for setting 'eeprom' data
 static __prog__  uint8_t eeprom_flash_page[FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS] __attribute__((space(prog),aligned(FLASH_ERASE_PAGE_SIZE_IN_PC_UNITS)));
 
@@ -83,6 +87,8 @@ void eeprom_write(void)
     eeprom_write_flash();
     eeprom_clear_pending_changes();
     //eeprom_print_settings();
+    fosc_pending_eeprom_write = 0;  // Clear the flag
+    last_fosc_eeprom_write = utc;   // Update last written time
 }
 
 bool eeprom_check_settings(void)
@@ -98,6 +104,9 @@ bool eeprom_check_settings(void)
     
     check_passed &= (settings.fields.dst.offset <= UI_DST_OFFSET_MAX);
     check_passed &= (settings.fields.dst.offset >= UI_DST_OFFSET_MIN);
+
+    check_passed &= settings.fields.pps.fosc_freq < FCYCLE_UPPER_LIM;
+    check_passed &= settings.fields.pps.fosc_freq > FCYCLE_LOWER_LIM;
     
     check_passed &= (settings.fields.alarm.offset <= UI_ALARM_OFFSET_MAX);
     check_passed &= (settings.fields.alarm.offset >= UI_ALARM_OFFSET_MIN);
@@ -125,6 +134,8 @@ void eeprom_reset_settings(void)
     settings.fields.dst.flags.automatic = UI_DST_AUTOMATIC_DEFAULT;
     settings.fields.dst.flags.active = UI_DST_ACTIVE_DEFAULT;
     settings.fields.dst.offset = UI_DST_OFFSET_DEFAULT;
+    
+    settings.fields.pps.fosc_freq = FCYCLE;
 
     settings.fields.alarm.flags.enabled = UI_ALARM_ENABLED_DEFAULT;
     settings.fields.alarm.offset = UI_ALARM_OFFSET_DEFAULT;
@@ -154,6 +165,7 @@ void eeprom_print_settings(void)
     printf("dst.flags.automatic: %u\n", settings.fields.dst.flags.automatic);
     printf("dst.flags.active: %u\n", settings.fields.dst.flags.active);
     printf("dst.offset: %li\n", settings.fields.dst.offset);
+    printf("pps.fosc_freq: %lu\n", settings.fields.pps.fosc_freq);
     printf("alarm.flags.enabled: %u\n", settings.fields.alarm.flags.enabled);
     printf("alarm.offset: %lu\n", settings.fields.alarm.offset);
     printf("delta.epoch: %lu\n", settings.fields.delta.epoch);
@@ -173,6 +185,7 @@ void eeprom_print_stored_settings(void)
     printf("dst.flags.automatic: %u\n", stored.fields.dst.flags.automatic);
     printf("dst.flags.active: %u\n", stored.fields.dst.flags.active);
     printf("dst.offset: %li\n", stored.fields.dst.offset);
+    printf("pps.fosc_freq: %lu\n", stored.fields.pps.fosc_freq);
     printf("alarm.flags.enabled: %u\n", stored.fields.alarm.flags.enabled);
     printf("alarm.offset: %lu\n", stored.fields.alarm.offset);
     printf("delta.epoch: %lu\n", stored.fields.delta.epoch);
@@ -182,4 +195,20 @@ void eeprom_print_stored_settings(void)
     printf("reset.flags.wifi: %u\n", stored.fields.reset.flags.wifi);
     printf("reset.flags.settings: %u\n", stored.fields.reset.flags.settings);
     printf("reset.flags.all: %u\n", stored.fields.reset.flags.all);
+}
+
+
+void eeprom_write_fosc(void)
+{
+    if(fosc_pending_eeprom_write)
+    {
+        // Limit unnecessary writing of EEPROM to update fosc_freq
+        // to once per interval (default 86400s)
+        // Expected endurance at default >27 years
+        // An update to any settings will also trigger this write
+        if((last_fosc_eeprom_write + EEPROM_MINIMUM_FOSC_WRITE_INTERVAL) < utc)
+        {
+            eeprom_write();
+        }
+    }
 }

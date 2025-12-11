@@ -100,6 +100,8 @@ extern int32_t bme280_temperature;
 extern uint32_t bme280_pressure;
 extern int32_t bme280_humidity;
 
+extern EEPROM_DATA_STRUCT settings;
+
 int main(void)
 {
     // initialize the device
@@ -121,6 +123,10 @@ int main(void)
 #endif
     
     eeprom_init();
+    // Load last stored fosc_freq estimate from EEPROM 
+    fosc_freq = settings.fields.pps.fosc_freq;
+    // Sanity check just in case
+    if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
     
     veml6040_detected = VEML6040_init();
     if(veml6040_detected)
@@ -201,6 +207,7 @@ int main(void)
         if(t10ms1>=2)
         {
             t10ms1=0;
+            eeprom_write_fosc();
             ui_button_task();
             ui_buzzer_task();
             ui_display_task();
