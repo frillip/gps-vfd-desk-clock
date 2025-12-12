@@ -697,6 +697,10 @@ void print_sync_state_machine(void)
 
 CLOCK_SYNC_STATUS sync_select_best_clock(void)
 {
+    // Switching clock, so reset sync status
+    pic_pps_reset_sync_ntp();
+    pic_pps_reset_sync();
+    
     if(ubx_gnss_time_valid())
     {
 #ifdef DEBUG_MESSAGES
