@@ -1410,6 +1410,19 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
             }
             break;
 
+        case USER_CMD_PIC_SET_FOSC_FREQ:
+            ; // Empty statement
+            uint32_t fosc_freq_new = arg;
+            if((fosc_freq_new < FCYCLE_UPPER_LIM) && (fosc_freq_new > FCYCLE_LOWER_LIM))
+            {
+                settings.fields.pps.fosc_freq = fosc_freq_new;
+                fosc_freq = settings.fields.pps.fosc_freq;
+                printf("New Fosc frequency: ");
+                printf("%lu\n", fosc_freq);
+            }
+            else printf("Invalid Fosc frequency\n");
+            break;
+
         case USER_CMD_PIC_SET_DELTA:
             settings.fields.delta.epoch = (time_t)arg;
             printf("Delta mode epoch set to: ");

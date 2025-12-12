@@ -293,6 +293,11 @@ USER_CMD serial_console_check_2_pic(const char *cmd_buf)
       return USER_CMD_PIC_SET_DST_ACTIVE;
     }
 
+    if(strcmp(cmd_buf, USER_CMD_PIC_SET_FOSC_FREQ_STRING) == 0)
+    {
+      return USER_CMD_PIC_SET_FOSC_FREQ;
+    }
+    
     if(strcmp(cmd_buf, USER_CMD_PIC_SET_ALARM_ENABLED_STRING) == 0)
     {
       return USER_CMD_PIC_SET_ALARM_ENABLED;
@@ -697,6 +702,14 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
 
     case USER_CMD_PIC_SET_DST_ACTIVE:
       output->printf("Not implemented yet :(\n");
+      break;
+
+    case USER_CMD_PIC_SET_FOSC_FREQ:
+      uint32_t fosc_freq_val_new;
+      if(serial_console_validate_uint32(arg_buf, &fosc_freq_val_new))
+      {
+        pic_uart_tx_userdata(cmd, fosc_freq_val_new, output);
+      }
       break;
 
     case USER_CMD_PIC_SET_ALARM_ENABLED:

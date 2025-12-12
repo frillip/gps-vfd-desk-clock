@@ -58,7 +58,6 @@ typedef union
     } dst;
     struct __attribute__ ((packed))
     {
-        // TO DO: Add terminal command to set this manually.
 		uint32_t fosc_freq;
     } pps;
     struct __attribute__ ((packed))
