@@ -69,7 +69,7 @@ extern "C" {
 
 #define UI_DST_OFFSET_DEFAULT 3600L
 #define UI_DST_OFFSET_STEP_SIZE 900L // 15 minutes
-#define UI_DST_OFFSET_MAX 3600L // 1 hour
+#define UI_DST_OFFSET_MAX 7200L // 2 hours
 #define UI_DST_OFFSET_MIN 0L // 0 hours
 #define UI_DST_AUTOMATIC_DEFAULT 1
 #define UI_DST_ACTIVE_DEFAULT 0
