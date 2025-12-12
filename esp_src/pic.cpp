@@ -803,7 +803,9 @@ void pic_process_offset(void)
 void print_offset_data(Stream *output)
 {
   output->printf("\n=== Clock and PPS stats ===\n");
-  output->printf("Crystal freq: %9.6fMHz\n", (float)pic_fosc_freq / 1000000);
+  uint32_t pic_fosc_freq_i = pic_fosc_freq  / 1000000UL;
+  uint32_t pic_fosc_freq_f = pic_fosc_freq  - (pic_fosc_freq_i * 1000000UL);
+  output->printf("Crystal freq: %lu.%06luMHz\n", pic_fosc_freq_i, pic_fosc_freq_f);
   output->printf("OC D: %i CLK D: %u CLK T: %i\n", pic_oc_offset, (uint32_t)pic_accumulation_delta, pic_accumulated_clocks);
   output->printf("OC events: %u Resync events: %u\n", pic_total_oc_seq_count, pic_sync_events);
 }
