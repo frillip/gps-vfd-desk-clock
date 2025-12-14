@@ -1,0 +1,15 @@
+[submodule "esp_src/libraries/ezTime"]
+	path = esp_src/libraries/ezTime
+	url = https://github.com/frillip/ezTime
+[submodule "esp_src/libraries/WiFiManager"]
+	path = esp_src/libraries/WiFiManager
+	url = https://github.com/tzapu/WiFiManager.git
+[submodule "esp_src/libraries/ESPTelnet"]
+	path = esp_src/libraries/ESPTelnet
+	url = https://github.com/LennartHennigs/ESPTelnet.git
+[submodule "esp_src/libraries/ArduinoJson"]
+	path = esp_src/libraries/ArduinoJson
+	url = https://github.com/bblanchon/ArduinoJson.git
+[submodule "esp_src/libraries/ESP32-OTA-Pull"]
+	path = esp_src/libraries/ESP32-OTA-Pull
+	url = https://github.com/mrcodetastic/ESP32-OTA-Pull.git
