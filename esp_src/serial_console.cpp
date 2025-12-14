@@ -38,6 +38,7 @@ esp-clear-all = Clear all settings
 esp-save = Save settings
 
 pic-info = Show info directly from PIC
+pic-resync = Force resync of the PIC with GNSS PPS or NTP
 pic-reset = Resets the PIC
 pic-set-rtc [n] = Set PIC delta epoch to [n] unix epoch time
 pic-set-tz-offset [n] = Set timezone offset to [n] in seconds, rounds to nearest 15 minutes
