@@ -4,8 +4,14 @@ String updater_json_server = UPDATER_JSON_SERVER_DEFAULT;
 String updater_json_path = UPDATER_JSON_PATH_DEFAULT;
 String updater_json_url = updater_json_https + updater_json_server + updater_json_path;
 
+bool updater_auto_enabled = UPDATE_AUTO_ENABLED_DEFAULT;
+uint16_t updater_auto_check_interval = UPDATE_AUTO_CHECK_INTERVAL_DEFAULT;
+bool updater_auto_checked_today = 1;    // Start as 1, so we don't immediately check for updates on boot, ie, after an update.
+uint8_t updater_auto_check_local_time = UPDATE_AUTO_CHECK_LOCAL_TIME_DEFAULT;
+
 ESP32OTAPull ota;
-Stream *output_stream;
+extern Stream *last_output_stream;
+Stream *output_callback;
 
 extern uint8_t esp_pps_sync_ignore_counter;
 
@@ -66,10 +72,72 @@ void updater_regenerate_url(void)
   updater_json_url = updater_json_https + updater_json_server + updater_json_path;
 }
 
+void updater_auto_check(void)
+{
+  if(updater_auto_enabled)
+  {
+    extern int32_t tz_offset;
+    extern bool dst_active;
+    extern int32_t dst_offset;
+    extern time_t esp;
+    time_t local = esp;
+    local += tz_offset;
+    if(dst_active) local += dst_offset;
+    struct tm *local_tm; // Allocate buffer
+    local_tm = gmtime(&local);
+
+    uint8_t updater_auto_check_reset_time = 23; // Initialise as 23:00
+    if(updater_auto_check_local_time)  // If this is a value after midnight
+    {
+      updater_auto_check_reset_time = updater_auto_check_local_time - 1; // modify accordingly
+    }
+
+    if(local_tm->tm_hour == updater_auto_check_reset_time)
+    {
+      updater_auto_checked_today = 0;
+    }
+
+    if(updater_auto_checked_today == 1)
+    {
+      return;
+    }
+    else
+    {
+      if(local_tm->tm_hour == updater_auto_check_local_time)
+      {
+        last_output_stream->printf("Checking for update...\n");
+        updater_auto();
+      }
+      return;
+    }
+  }
+  return;
+}
+
+bool updater_auto(void)
+{
+  esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
+  ota.SetRootCA(root_ca_progmem);
+  int ret = ota.CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
+  if(ret == ESP32OTAPull::UPDATE_AVAILABLE)
+  {
+    last_output_stream->printf("Update available... Updating\n\n", ret, updater_errtext(ret));
+    output_callback = last_output_stream;
+    ret = ota
+      .SetCallback(updater_callback_percent)
+      .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
+    last_output_stream->printf("Rebooting...\n");
+    return 1;    
+  }
+  last_output_stream->printf("No update found\n");
+  updater_auto_checked_today = 1;
+  return 0;
+}
+
 bool updater_check(Stream *output)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
-	ota.SetRootCA(root_ca_progmem);
+  ota.SetRootCA(root_ca_progmem);
   int ret = ota.CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   String otaVersion = ota.GetVersion();
@@ -81,63 +149,66 @@ bool updater_check(Stream *output)
 void updater_pull(Stream *output)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
-  output_stream = output;
-	ota.SetRootCA(root_ca_progmem);
+  output_callback = output;
+  ota.SetRootCA(root_ca_progmem);
   int ret = ota
     .SetCallback(updater_callback_percent)
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
-  output->printf("Use esp-reset to finish update.\n");
+  if(ret == ESP32OTAPull::UPDATE_OK)
+  {
+    output->printf("Use esp-reset to finish update.\n");
+  }
 }
 
 void updater_force(Stream *output)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
-  output_stream = output;
-	ota.SetRootCA(root_ca_progmem);
+  output_callback = output;
+  ota.SetRootCA(root_ca_progmem);
   int ret = ota
     .SetCallback(updater_callback_percent)
     .AllowDowngrades(true)
-    .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
+    .CheckForOTAUpdate(updater_json_url.c_str(), "0.0.0", ESP32OTAPull::UPDATE_AND_BOOT);
   output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
   output->printf("Rebooting...\n");
 }
 
 void updater_callback_percent(int offset, int totallength)
 {
-	static int prev_percent = -1;
-	int percent = 100 * offset / totallength;
-	if (percent != prev_percent)
-	{
-		output_stream->printf("Updating %d of %d (%02d%%)...\n", offset, totallength, 100 * offset / totallength);
-		prev_percent = percent;
-	}
+  static int prev_percent = -1;
+  int percent = 100 * offset / totallength;
+  if (percent != prev_percent)
+  {
+    output_callback->printf("Updating %d of %d (%02d%%)...\n", offset, totallength, 100 * offset / totallength);
+    prev_percent = percent;
+  }
 }
 
 const char *updater_errtext(int code)
 {
-	switch(code)
-	{
-		case ESP32OTAPull::UPDATE_AVAILABLE:
-			return "An update is available but wasn't installed";
-		case ESP32OTAPull::NO_UPDATE_PROFILE_FOUND:
-			return "No profile matches";
-		case ESP32OTAPull::NO_UPDATE_AVAILABLE:
-			return "Profile matched, but update not applicable";
-		case ESP32OTAPull::UPDATE_OK:
-			return "An update was done, but no reboot";
-		case ESP32OTAPull::HTTP_FAILED:
-			return "HTTP GET failure";
-		case ESP32OTAPull::WRITE_ERROR:
-			return "Write error";
-		case ESP32OTAPull::JSON_PROBLEM:
-			return "Invalid JSON";
-		case ESP32OTAPull::OTA_UPDATE_FAIL:
-			return "Update fail (no OTA partition?)";
-		default:
-			if (code > 0)
-				return "Unexpected HTTP response code";
-			break;
-	}
-	return "Unknown error";
+  switch(code)
+  {
+    case ESP32OTAPull::UPDATE_AVAILABLE:
+      return "An update is available but wasn't installed";
+    case ESP32OTAPull::NO_UPDATE_PROFILE_FOUND:
+      return "No profile matches";
+    case ESP32OTAPull::NO_UPDATE_AVAILABLE:
+      return "Profile matched, but update not applicable";
+    case ESP32OTAPull::UPDATE_OK:
+      return "An update was done, but no reboot";
+    case ESP32OTAPull::HTTP_FAILED:
+      return "HTTP GET failure";
+    case ESP32OTAPull::WRITE_ERROR:
+      return "Write error"; 
+    case ESP32OTAPull::JSON_PROBLEM:
+      return "Invalid JSON";
+    case ESP32OTAPull::OTA_UPDATE_FAIL:
+      return "Update fail (no OTA partition?)";
+    default:
+      if (code > 0)
+        return "Unexpected HTTP response code";
+      break;
+  }
+  return "Unknown error";
 }

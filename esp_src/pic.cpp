@@ -1,7 +1,7 @@
 #include "pic.h"
 extern time_t esp;
 
-Stream *pic_output_stream = &Serial;
+extern Stream *last_output_stream;
 
 uint8_t rx_stage = 0;
 uint16_t user_data_counter = 0;
@@ -346,7 +346,7 @@ bool pic_output_buffer_empty(void)
 void pic_flush_output_buffer(void)
 {
   String output = String(pic_output_buffer);
-  pic_output_stream->printf("%s", output.c_str());
+  last_output_stream->printf("%s", output.c_str());
   pic_output_offset = 0;
   memset(pic_output_buffer, 0, PIC_OUTPUT_BUFFER_LENGTH);
 }
@@ -541,7 +541,7 @@ void pic_process_time()
             esp_pps_unsync();
             scheduler_unsync();
             if(pic_us_offset > 500000) pic_us_offset = pic_us_offset - 1000000;
-            pic_output_stream->printf("ESP resync: %lius\n", pic_us_offset);
+            last_output_stream->printf("ESP resync: %lius\n", pic_us_offset);
           }
         }
         pic_new_pps = 0;
@@ -1246,7 +1246,7 @@ void pic_uart_tx_userdata(USER_CMD cmd, uint32_t arg, Stream *output)
 
   size_t bytesSent = UARTPIC.write(user_data_tx.raw, sizeof(user_data_tx));
 
-  pic_output_stream = output;
+  last_output_stream = output;
 }
 
 void pic_enter_bootloader(Stream *output)

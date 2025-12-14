@@ -17,18 +17,17 @@ extern time_t pic;
 #include "gnss_pps_esp.h"
 
 #include "scheduler.h"
-extern int8_t t1ms;
-extern int8_t t1ms0;
-extern int8_t t10ms;
-extern int8_t t10ms0;
-extern int8_t t100ms;
-extern int8_t t100ms0;
-extern int8_t t100ms1;
-extern int8_t t100ms2;
-extern int8_t t100ms3;
-extern int8_t t1s0;
+extern int16_t t1ms0;
+extern int16_t t10ms0;
+extern int16_t t100ms0;
+extern int16_t t100ms1;
+extern int16_t t100ms2;
+extern int16_t t100ms3;
+extern int16_t t1s0;
+extern int16_t t1s1;
 
 #include "updater.h"
+extern uint16_t updater_auto_check_interval;
 
 WiFiManager wm;
 
@@ -271,5 +270,10 @@ void loop()
       scheduler_unsync();
       esp_pps_unsync();
     }
+  }
+  if(t1s1 >= updater_auto_check_interval)
+  {
+    t1s1 = 0;
+    updater_auto_check();
   }
 }

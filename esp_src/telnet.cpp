@@ -1,6 +1,7 @@
 #include "telnet.h"
 
 ESPTelnetStream telnet;
+extern Stream *last_output_stream;
 
 char telnet_buffer[TELNET_BUFFER_LENGTH] = {0};
 uint8_t telnet_buffer_offset = 0;
@@ -21,19 +22,22 @@ void telnet_init(void)
 // (optional) callback functions for telnet events
 void onTelnetConnect(String ip)
 {
-  Serial.printf("- Telnet: %s connected", ip);
+  Serial.printf("\n- Telnet: %s connected\n", ip);
   telnet.printf("\nWelcome %s\n", telnet.getIP());
   telnet.printf("(type 'quit' or 'exit' to disconnect.)\n");
+  last_output_stream = &telnet; 
 }
 
 void onTelnetDisconnect(String ip)
 {
   Serial.printf("- Telnet: %s disconnected\n", ip);
+  last_output_stream = &Serial; 
 }
 
 void onTelnetReconnect(String ip)
 {
-  Serial.printf("- Telnet: %s reconnected\n", ip);
+  Serial.printf("\n- Telnet: %s reconnected\n", ip);
+  last_output_stream = &telnet; 
 }
 
 void onTelnetConnectionAttempt(String ip)
@@ -127,7 +131,7 @@ void telnet_console_task(void) // Not a true stream, only triggered on new line
       memset(telnet_cmd_buf, 0, TELNET_BUFFER_LENGTH);
       memset(telnet_arg_buf, 0, TELNET_BUFFER_LENGTH);
       telnet_buffer_offset = 0;
-      telnet.printf("> ");
+      telnet.printf("\n> ");
     }
     else if(c == 0x7F) // Backspace
     {

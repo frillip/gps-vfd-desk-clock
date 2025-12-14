@@ -2,16 +2,17 @@
 
 hw_timer_t *scheduler_timer = NULL;
 
-int8_t t1ms = 0;
-int8_t t1ms0 = 0;
-int8_t t10ms = 0;
-int8_t t10ms0 = 0;
-int8_t t100ms = 0;
-int8_t t100ms0 = 0;
-int8_t t100ms1 = 0;
-int8_t t100ms2 = 0;
-int8_t t100ms3 = 0;
-int8_t t1s0 = 0;
+int16_t t1ms = 0;
+int16_t t1ms0 = 0;
+int16_t t10ms = 0;
+int16_t t10ms0 = 0;
+int16_t t100ms = 0;
+int16_t t100ms0 = 0;
+int16_t t100ms1 = 0;
+int16_t t100ms2 = 0;
+int16_t t100ms3 = 0;
+int16_t t1s0 = 0;
+int16_t t1s1 = 0;
 
 bool scheduler_sync = 0;
 
@@ -69,6 +70,7 @@ void ARDUINO_ISR_ATTR scheduler_1ms()
       {
         t100ms=0;
         t1s0++;
+        t1s1++;
       }
     }
   }
@@ -86,4 +88,5 @@ void scheduler_reset()
   t100ms2 = 0;
   t100ms3 = 0;
   t1s0 = 0;
+  t1s1 = 0;
 }

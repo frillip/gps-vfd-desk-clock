@@ -2,6 +2,8 @@
 
 extern String ntp_server;
 
+Stream *last_output_stream = &Serial;
+
 const char* serial_console_help_text = R"literal(
 esp-reset = Reset the ESP
 esp-ntp-set-interval [n] = Set NTP interval to [n] (min 300, max 43200)
