@@ -13,7 +13,7 @@
 #define REMOTE_TZINFO_PATH_DEFAULT   "/smol_clock/v2/tzinfo"
 #define REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT 1
 #define REMOTE_TZINFO_ENABLED_DEFAULT 1
-#define REMOTE_TZINFO_INTERVAL_DEFAULT 900
+#define REMOTE_TZINFO_INTERVAL_DEFAULT 43200
 
 void remote_tzinfo_set_server(const char* new_server);
 void remote_tzinfo_set_path(const char* new_path);
