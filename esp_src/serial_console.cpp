@@ -15,7 +15,7 @@ esp-wifi-connect = Force WiFi connect
 esp-wifi-disconnect = Force WiFi disconnect
 esp-wifi-ssid [s] = Set the saved SSID to [s]
 esp-wifi-pass [s] = Set the saved passphrase to [s]
-esp-wifi-dhcp [b] = Enable/disable DHCP
+esp-wifi-dhcp [b] = Enable/disable DHCP (0 / 1)
 esp-wifi-ip [s] = Set static IP to [s], unless [s] is 'dhcp' or 'auto'
 esp-wifi-mask [s] = Set ip mask to [s], only valid with static IP
 esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
@@ -25,16 +25,19 @@ esp-wifi-setup = Enable WiFi setup AP mode
 esp-tzinfo-enable [b] = Enable remote timezone information functionality (0 / 1)
 esp-tzinfo-check = Pull timezone information from the tzinfo server but don't update anything
 esp-tzinfo-update = Update the timezone information from the tzinfo server
-esp-tzinfo-set-server = Set the tzinfo server hostname
-esp-tzinfo-set-path = Set the tzinfo server request path
+esp-tzinfo-set-server [s] = Set the tzinfo server hostname
+esp-tzinfo-set-path [s] = Set the tzinfo server request path
 esp-tzinfo-set-interval [n] = Set the tzinfo checking interval to [n] seconds (300 - 86400)
 esp-tzinfo-set-acc [n] = Set the precision of GNSS coordinates sent to the server in decimal places (1 - 8, or 0 to disable)
 
 esp-update-check = Check for an OTA update
 esp-update-pull = Check for and perform an OTA update if available
 esp-update-force = Force and OTA update, regardless of version, and install immediately
-esp-update-set-server = Set update server hostname
-esp-update-set-path = Set update server path
+esp-update-set-server [s] = Set update server hostname
+esp-update-set-path [s] = Set update server path
+esp-update-set-config [s] = Sets the specific config string (eg. development)
+esp-update-auto-enable [b] = Enables automatic updates (0 / 1)
+esp-update-auto-hour [n] = Sets the hour the ESP will check for and install updates (0 - 23)
 
 esp-clear-all = Clear all settings
 esp-save = Save settings
@@ -52,7 +55,7 @@ pic-set-alarm [n] = Set PIC alarm to [n] seconds past midnight
 pic-set-delta [n] = Set PIC delta epoch to [n] unix epoch time
 pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
-pic-set-brightness-auto [b] = Set display brightness to auto
+pic-set-brightness-auto = Set display brightness to auto
 pic-set-brightness [n] = Set display brightness to n / 4000
 pic-show-eeprom = show settings stored in EEPROM
 pic-show-config = show running config settings
@@ -208,6 +211,21 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_SET_PATH_STRING) == 0)
     {
       return USER_CMD_ESP_UPDATE_SET_PATH;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_SET_CONFIG_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_SET_CONFIG;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_AUTO_ENABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_AUTO_ENABLE;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_AUTO_HOUR_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_AUTO_HOUR;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_ENABLE_STRING) == 0)
@@ -568,25 +586,71 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       output->printf("New update path: %s\n", arg_buf);
       break;
 
+    case USER_CMD_ESP_UPDATE_SET_CONFIG:
+      updater_set_config(arg_buf);
+      output->printf("New update config: %s\n", arg_buf);
+      break;
+
+    case USER_CMD_ESP_UPDATE_AUTO_ENABLE:
+      bool updater_auto_enabled_new;
+      if(serial_console_validate_bool(arg_buf, &updater_auto_enabled_new))
+      {
+        extern bool updater_auto_enabled;
+        if(updater_auto_enabled_new)
+        {
+          output->printf("Auto update enabled\n");
+          updater_auto_enabled = updater_auto_enabled_new;
+        }
+        else
+        {
+          output->printf("Auto update disabled\n");
+          updater_auto_enabled = updater_auto_enabled_new;
+        }
+      }
+      else
+      {
+        output->printf("Boolean required [ 0 , 1 ]\n");
+      }
+      break;
+
+    case USER_CMD_ESP_UPDATE_AUTO_HOUR:
+      uint32_t updater_auto_check_local_hour_new;
+      if(serial_console_validate_uint32(arg_buf, &updater_auto_check_local_hour_new))
+      {
+        extern uint8_t updater_auto_check_local_hour;
+        if((updater_auto_check_local_hour_new >= 0) && (updater_auto_check_local_hour_new <= 23))
+        {
+          output->printf("Setting auto update time to %02u:00\n", updater_auto_check_local_hour_new);
+          updater_auto_check_local_hour = updater_auto_check_local_hour_new;
+        }
+        else
+        {
+          output->printf("Invalid range (0 - 23)\n");
+          updater_auto_check_local_hour = updater_auto_check_local_hour_new;
+        }
+      }
+      break;
+
+
     case USER_CMD_ESP_TZINFO_ENABLE:
-      uint32_t remote_tzinfo_enabled_new;
-      if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_enabled_new))
+      bool remote_tzinfo_enabled_new;
+      if(serial_console_validate_bool(arg_buf, &remote_tzinfo_enabled_new))
       {
         extern bool remote_tzinfo_enabled;
-        if(remote_tzinfo_enabled_new == 1)
+        if(remote_tzinfo_enabled_new)
         {
           output->printf("Remote tzinfo enabled\n");
           remote_tzinfo_enabled = remote_tzinfo_enabled_new;
         }
-        else if(remote_tzinfo_enabled_new == 0)
+        else
         {
           output->printf("Remote tzinfo disabled\n");
           remote_tzinfo_enabled = remote_tzinfo_enabled_new;
         }
-        else
-        {
-          output->printf("Invalid range (0 - 1)\n");
-        }
+      }
+      else
+      {
+        output->printf("Boolean required [ 0 , 1 ]\n");
       }
       break;
 
@@ -1009,4 +1073,29 @@ bool serial_console_validate_int32(const char* input, int32_t* output)
 
   // If parsing failed, return false
   return false;
+}
+
+bool serial_console_validate_bool(const char* input, bool* output)
+{
+  if (!input) return false;
+
+  if (!strcmp(input, "1") ||
+      !strcasecmp(input, "true") ||
+      !strcasecmp(input, "on") ||
+      !strcasecmp(input, "yes"))
+  {
+    *output = true;
+    return true;
+  }
+
+  if (!strcmp(input, "0") ||
+      !strcasecmp(input, "false") ||
+      !strcasecmp(input, "off") ||
+      !strcasecmp(input, "no"))
+  {
+    *output = false;
+    return true;
+  }
+
+  return false;  // rejected
 }

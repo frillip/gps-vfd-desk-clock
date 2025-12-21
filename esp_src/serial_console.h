@@ -74,6 +74,9 @@
 #define USER_CMD_ESP_UPDATE_FORCE_STRING "esp-update-force"
 #define USER_CMD_ESP_UPDATE_SET_SERVER_STRING "esp-update-set-server"
 #define USER_CMD_ESP_UPDATE_SET_PATH_STRING "esp-update-set-path"
+#define USER_CMD_ESP_UPDATE_SET_CONFIG_STRING "esp-update-set-config"
+#define USER_CMD_ESP_UPDATE_AUTO_ENABLE_STRING "esp-update-auto-enable"
+#define USER_CMD_ESP_UPDATE_AUTO_HOUR_STRING "esp-update-auto-hour"
 
 #define USER_CMD_ESP_TZINFO_ENABLE_STRING "esp-tzinfo-enable"
 #define USER_CMD_ESP_TZINFO_CHECK_STRING "esp-tzinfo-check"
@@ -138,5 +141,6 @@ void serial_console_print_local(void);
 
 bool serial_console_validate_uint32(const char* input, uint32_t* output);
 bool serial_console_validate_int32(const char* input, int32_t* output);
+bool serial_console_validate_bool(const char* input, bool* output);
 
 #endif	/* SERIAL_CONSOLE_H */
