@@ -70,7 +70,14 @@ void updater_set_path(const char* new_path)
 
 void updater_set_config(const char* new_config)
 {
-  updater_config_string = new_config;
+  if((strcmp(new_config, "default") == 0))
+  {
+    updater_config_string = UPDATER_CONFIG_STRING_DEFAULT;
+  }
+  else
+  {
+    updater_config_string = new_config;
+  }
 }
 
 void updater_regenerate_url(void)

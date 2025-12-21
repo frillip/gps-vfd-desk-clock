@@ -38,7 +38,7 @@ esp-update-pull = Check for and perform an OTA update if available
 esp-update-force = Force and OTA update, regardless of version, and install immediately
 esp-update-set-server [s] = Set update server hostname
 esp-update-set-path [s] = Set update server path
-esp-update-set-config [s] = Sets the specific config string (eg. development)
+esp-update-set-config [s] = Sets the specific config string (eg. development), use 'default' to remove
 esp-update-auto-enable [b] = Enables automatic updates (0 / 1)
 esp-update-auto-hour [n] = Sets the hour the ESP will check for and install updates (0 - 23)
 
