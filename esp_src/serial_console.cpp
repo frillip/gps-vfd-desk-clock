@@ -30,6 +30,9 @@ esp-tzinfo-set-path [s] = Set the tzinfo server request path
 esp-tzinfo-set-interval [n] = Set the tzinfo checking interval to [n] seconds (300 - 86400)
 esp-tzinfo-set-acc [n] = Set the precision of GNSS coordinates sent to the server in decimal places (1 - 8, or 0 to disable)
 
+esp-telnet-enable [b] = Enable or disable the telnet console (0 / 1)
+esp-telnet-port [n] = Change the telnet port number (1 - 65535)
+
 esp-update-check = Check for an OTA update
 esp-update-pull = Check for and perform an OTA update if available
 esp-update-force = Force and OTA update, regardless of version, and install immediately
@@ -256,6 +259,16 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_SET_ACC_STRING) == 0)
     {
       return USER_CMD_ESP_TZINFO_SET_ACC;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_ENABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_TELNET_ENABLE;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_PORT_STRING) == 0)
+    {
+      return USER_CMD_ESP_TELNET_PORT;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
@@ -709,6 +722,43 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
         else
         {
           output->printf("Invalid accuracy range (1-8 decimal places, or 0 to disable)\n");
+        }
+      }
+      break;
+
+    case USER_CMD_ESP_TELNET_ENABLE:
+      bool telnet_enable_new;
+      if(serial_console_validate_bool(arg_buf, &telnet_enable_new))
+      {
+        if(telnet_enable_new)
+        {
+          output->printf("Telnet enabled\n");
+          telnet_enable();
+        }
+        else
+        {
+          output->printf("Telnet disabled\n");
+          telnet_disable();
+        }
+      }
+      else
+      {
+        output->printf("Boolean required [ 0 , 1 ]\n");
+      }
+      break;
+
+    case USER_CMD_ESP_TELNET_PORT:
+      uint32_t telnet_port_new;
+      if(serial_console_validate_uint32(arg_buf, &telnet_port_new))
+      {
+        if((telnet_port_new >= 1) && (telnet_port_new <= 65535))
+        {
+          output->printf("Setting telnet port to %u\n", telnet_port_new);
+          telnet_set_port(telnet_port_new);
+        }
+        else
+        {
+          output->printf("Invalid port (1 - 65535)\n");
         }
       }
       break;

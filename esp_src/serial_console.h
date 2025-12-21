@@ -15,6 +15,7 @@
 #include <HardwareSerial.h>
 #include "updater.h"
 #include "remote_tzinfo.h"
+#include "telnet.h"
 
 #define USER_CMD_STAGE_1_ESP_STRING "esp-"
 #define USER_CMD_STAGE_1_PIC_STRING "pic-"
@@ -68,6 +69,9 @@
 #define USER_CMD_ESP_WIFI_GATEWAY_STRING "esp-wifi-gateway"
 #define USER_CMD_ESP_WIFI_CLEAR_STRING "esp-wifi-clear"
 #define USER_CMD_ESP_WIFI_SETUP_STRING "esp-wifi-setup"
+
+#define USER_CMD_ESP_TELNET_ENABLE_STRING "esp-telnet-enable"
+#define USER_CMD_ESP_TELNET_PORT_STRING "esp-telnet-port"
 
 #define USER_CMD_ESP_UPDATE_CHECK_STRING "esp-update-check"
 #define USER_CMD_ESP_UPDATE_PULL_STRING "esp-update-pull"

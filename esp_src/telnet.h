@@ -11,10 +11,15 @@
 #include <HardwareSerial.h>
 #include <ESPTelnetStream.h>
 
-#define TELNET_PORT 23
+#define TELNET_ENABLED_DEFAULT 1  // For now, enable by default FIX FOR PROD
+#define TELNET_PORT_DEFAULT 23    // Port 23 is standard
 #define TELNET_BUFFER_LENGTH 100
 
 void telnet_init(void);
+void telnet_stop(void);
+void telnet_enable(void);
+void telnet_disable(void);
+void telnet_set_port(uint16_t telnet_port_new);
 void onTelnetConnect(String ip);
 void onTelnetDisconnect(String ip);
 void onTelnetReconnect(String ip);

@@ -3,6 +3,9 @@
 ESPTelnetStream telnet;
 extern Stream *last_output_stream;
 
+bool telnet_enabled = TELNET_ENABLED_DEFAULT;
+bool telnet_running = 0;
+uint16_t telnet_port = TELNET_PORT_DEFAULT;
 char telnet_buffer[TELNET_BUFFER_LENGTH] = {0};
 uint8_t telnet_buffer_offset = 0;
 char telnet_cmd_buf[TELNET_BUFFER_LENGTH] = {0};
@@ -11,12 +14,64 @@ char telnet_last_rx_char;
 
 void telnet_init(void)
 {
-  telnet.begin(TELNET_PORT, false);
-  telnet.onConnect(onTelnetConnect);
-  telnet.onConnectionAttempt(onTelnetConnectionAttempt);
-  telnet.onReconnect(onTelnetReconnect);
-  telnet.onDisconnect(onTelnetDisconnect);
-  //telnet.onInputReceived(onTelnetInput);
+  if(telnet_enabled)
+  {
+    telnet.begin(telnet_port, false);
+    telnet.onConnect(onTelnetConnect);
+    telnet.onConnectionAttempt(onTelnetConnectionAttempt);
+    telnet.onReconnect(onTelnetReconnect);
+    telnet.onDisconnect(onTelnetDisconnect);
+    telnet_running = 1;
+    Serial.printf("Telnet running, connect on %s:%u\n", WiFi.localIP().toString().c_str(), telnet_port);
+    //telnet.onInputReceived(onTelnetInput);
+  }
+  else
+  {
+    Serial.printf("Telnet disabled, enable with \"esp-telnet-enable 1\"\n");
+  }
+}
+
+void telnet_stop(void)
+{
+  telnet.printf("\nTelnet server stopping.\nDisconnecting...\n\n");
+  telnet.stop(true);
+  telnet_running = 0;
+}
+
+void telnet_enable(void)
+{
+  if(!telnet_enabled)
+  {
+    telnet_enabled = 1;
+    telnet_init();
+  }
+  else
+  {
+    Serial.printf("Telnet already enabled and running on %s:%u\n", WiFi.localIP().toString().c_str(), telnet_port);
+  }
+}
+
+void telnet_disable(void)
+{
+  if(telnet_enabled)
+  {
+    telnet_enabled = 0;
+    telnet_stop();
+  }
+  else
+  {
+    Serial.printf("Telnet already disabled\n");
+  }
+}
+
+void telnet_set_port(uint16_t telnet_port_new)
+{
+  if(telnet_port_new && (telnet_port != telnet_port_new))
+  {
+    telnet_port = telnet_port_new;
+    telnet_stop();
+    telnet_init();
+  }
 }
 
 // (optional) callback functions for telnet events
