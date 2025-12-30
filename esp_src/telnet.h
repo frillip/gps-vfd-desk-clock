@@ -16,10 +16,11 @@
 #define TELNET_BUFFER_LENGTH 100
 
 void telnet_init(void);
-void telnet_stop(void);
-void telnet_enable(void);
-void telnet_disable(void);
-void telnet_set_port(uint16_t telnet_port_new);
+void telnet_start(Stream *output);
+void telnet_stop(Stream *output);
+void telnet_enable(Stream *output);
+void telnet_disable(Stream *output);
+void telnet_set_port(Stream *output, uint16_t telnet_port_new);
 void onTelnetConnect(String ip);
 void onTelnetDisconnect(String ip);
 void onTelnetReconnect(String ip);

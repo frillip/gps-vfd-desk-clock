@@ -30,7 +30,10 @@ esp-tzinfo-set-path [s] = Set the tzinfo server request path
 esp-tzinfo-set-interval [n] = Set the tzinfo checking interval to [n] seconds (300 - 86400)
 esp-tzinfo-set-acc [n] = Set the precision of GNSS coordinates sent to the server in decimal places (1 - 8, or 0 to disable)
 
-esp-telnet-enable [b] = Enable or disable the telnet console (0 / 1)
+esp-telnet-enable = Enable the telnet console
+esp-telnet-disable = Disable the telnet console
+esp-telnet-start = Start the telnet console
+esp-telnet-stop = Stop the telnet console
 esp-telnet-port [n] = Change the telnet port number (1 - 65535)
 
 esp-update-check = Check for an OTA update
@@ -264,6 +267,21 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_ENABLE_STRING) == 0)
     {
       return USER_CMD_ESP_TELNET_ENABLE;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_DISABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_TELNET_DISABLE;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_START_STRING) == 0)
+    {
+      return USER_CMD_ESP_TELNET_START;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_STOP_STRING) == 0)
+    {
+      return USER_CMD_ESP_TELNET_STOP;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_PORT_STRING) == 0)
@@ -727,24 +745,19 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_TELNET_ENABLE:
-      bool telnet_enable_new;
-      if(serial_console_validate_bool(arg_buf, &telnet_enable_new))
-      {
-        if(telnet_enable_new)
-        {
-          output->printf("Telnet enabled\n");
-          telnet_enable();
-        }
-        else
-        {
-          output->printf("Telnet disabled\n");
-          telnet_disable();
-        }
-      }
-      else
-      {
-        output->printf("Boolean required [ 0 , 1 ]\n");
-      }
+      telnet_enable(output);
+      break;
+
+    case USER_CMD_ESP_TELNET_DISABLE:
+      telnet_disable(output);
+      break;
+
+    case USER_CMD_ESP_TELNET_START:
+      telnet_start(output);
+      break;
+
+    case USER_CMD_ESP_TELNET_STOP:
+      telnet_stop(output);
       break;
 
     case USER_CMD_ESP_TELNET_PORT:
@@ -754,7 +767,7 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
         if((telnet_port_new >= 1) && (telnet_port_new <= 65535))
         {
           output->printf("Setting telnet port to %u\n", telnet_port_new);
-          telnet_set_port(telnet_port_new);
+          telnet_set_port(output, telnet_port_new);
         }
         else
         {

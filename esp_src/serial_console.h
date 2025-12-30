@@ -71,6 +71,9 @@
 #define USER_CMD_ESP_WIFI_SETUP_STRING "esp-wifi-setup"
 
 #define USER_CMD_ESP_TELNET_ENABLE_STRING "esp-telnet-enable"
+#define USER_CMD_ESP_TELNET_DISABLE_STRING "esp-telnet-disable"
+#define USER_CMD_ESP_TELNET_START_STRING "esp-telnet-start"
+#define USER_CMD_ESP_TELNET_STOP_STRING "esp-telnet-stop"
 #define USER_CMD_ESP_TELNET_PORT_STRING "esp-telnet-port"
 
 #define USER_CMD_ESP_UPDATE_CHECK_STRING "esp-update-check"
