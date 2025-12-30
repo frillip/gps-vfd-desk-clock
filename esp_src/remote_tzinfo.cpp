@@ -8,7 +8,7 @@ bool remote_tzinfo_enabled = REMOTE_TZINFO_ENABLED_DEFAULT;
 uint32_t remote_tzinfo_interval = REMOTE_TZINFO_INTERVAL_DEFAULT;
 uint32_t remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_DEFAULT;  // Trigger at power on
 
-uint32_t remote_tzinfo_gnss_accuracy = REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT;
+int32_t remote_tzinfo_gnss_accuracy = REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT;
 
 extern uint8_t esp_pps_sync_ignore_counter; // ignore for 5 seconds
 
@@ -60,7 +60,7 @@ void remote_tzinfo_check(Stream *output)
   http.addHeader("User-Agent", ESP_USER_AGENT_STRING);
 
   JsonDocument json_gnss_info;
-  if(remote_tzinfo_gnss_accuracy > 0)
+  if(remote_tzinfo_gnss_accuracy >= 0)
   {
     json_gnss_info["gnss_detected"] = pic_gnss_detected;
     json_gnss_info["gnss_lat"] = remote_tzinfo_round_acc(pic_posllh_lat);

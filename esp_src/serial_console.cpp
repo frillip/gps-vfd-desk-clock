@@ -28,7 +28,7 @@ esp-tzinfo-update = Update the timezone information from the tzinfo server
 esp-tzinfo-set-server [s] = Set the tzinfo server hostname
 esp-tzinfo-set-path [s] = Set the tzinfo server request path
 esp-tzinfo-set-interval [n] = Set the tzinfo checking interval to [n] seconds (300 - 86400)
-esp-tzinfo-set-acc [n] = Set the precision of GNSS coordinates sent to the server in decimal places (1 - 8, or 0 to disable)
+esp-tzinfo-set-acc [n] = Set the precision of GNSS coordinates sent to the server in decimal places (0 - 6, or -1 to disable)
 
 esp-telnet-enable = Enable the telnet console
 esp-telnet-disable = Disable the telnet console
@@ -723,23 +723,23 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_TZINFO_SET_ACC:
-      uint32_t remote_tzinfo_gnss_accuracy_new;
-      if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_gnss_accuracy_new))
+      int32_t remote_tzinfo_gnss_accuracy_new;
+      if(serial_console_validate_int32(arg_buf, &remote_tzinfo_gnss_accuracy_new))
       {
-        extern uint32_t remote_tzinfo_gnss_accuracy;
-        if(remote_tzinfo_gnss_accuracy_new == 0)
+        extern int32_t remote_tzinfo_gnss_accuracy;
+        if(remote_tzinfo_gnss_accuracy_new == -1)
         {
           output->printf("GNSS information for tzinfo disabled\n");
           remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
         }
-        else if((remote_tzinfo_gnss_accuracy_new > 0) && (remote_tzinfo_gnss_accuracy_new <= 8))
+        else if((remote_tzinfo_gnss_accuracy_new >= 0) && (remote_tzinfo_gnss_accuracy_new <= 6))
         {
           output->printf("Setting tzinfo accuracy to %u decimal places\n", remote_tzinfo_gnss_accuracy_new);
           remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
         }
         else
         {
-          output->printf("Invalid accuracy range (1-8 decimal places, or 0 to disable)\n");
+          output->printf("Invalid accuracy range (0-6 decimal places, or -1 to disable)\n");
         }
       }
       break;

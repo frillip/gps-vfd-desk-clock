@@ -11,7 +11,8 @@
 #define REMOTE_TZINFO_HTTPS_DEFAULT  "https://"
 #define REMOTE_TZINFO_SERVER_DEFAULT "rubidium.darksky.io"
 #define REMOTE_TZINFO_PATH_DEFAULT   "/smol_clock/v2/tzinfo"
-#define REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT 1
+#define REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT 1 // 11.1km uncertainty is sufficient for most use cases
+// 0 decimal places = 111km uncertainty // 2 decimal places = 1.11km uncertainty // 4 decimal places = 11.1m uncertainty
 #define REMOTE_TZINFO_ENABLED_DEFAULT 1
 #define REMOTE_TZINFO_INTERVAL_DEFAULT 43200
 
