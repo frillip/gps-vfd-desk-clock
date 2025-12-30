@@ -174,7 +174,7 @@ bool updater_check(Stream *output)
   int ret = ota
     .SetConfig(updater_config_string.c_str())
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
-  output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
+  output->printf("CheckForOTAUpdate returned %d (%s)\n", ret, updater_errtext(ret));
   String otaVersion = ota.GetVersion();
   output->printf("OTA Version Available: %s", otaVersion.c_str());
   if(!updater_config_string.isEmpty())
@@ -200,7 +200,7 @@ void updater_pull(Stream *output)
     .SetCallback(updater_callback_percent)
     .SetConfig(updater_config_string.c_str())
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
-  output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
+  output->printf("CheckForOTAUpdate returned %d (%s)\n", ret, updater_errtext(ret));
   if(ret == ESP32OTAPull::UPDATE_OK)
   {
     output->printf("Use esp-reset to finish update.\n");
@@ -222,7 +222,7 @@ void updater_force(Stream *output)
     .SetCallback(updater_callback_percent)
     .AllowDowngrades(true)
     .CheckForOTAUpdate(updater_json_url.c_str(), "0.0.0", ESP32OTAPull::UPDATE_AND_BOOT);
-  output->printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, updater_errtext(ret));
+  output->printf("CheckForOTAUpdate returned %d (%s)\n", ret, updater_errtext(ret));
   output->printf("Rebooting...\n");
 }
 
