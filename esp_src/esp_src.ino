@@ -29,6 +29,8 @@ extern int16_t t1s1;
 #include "updater.h"
 extern uint16_t updater_auto_check_interval;
 
+#include "user_prefs.h"
+
 WiFiManager wm;
 
 #include "ntp_settings.h"
@@ -107,6 +109,8 @@ void setup()
 
   pic_uart_init();
   gnss_uart_init();
+
+  user_prefs_init();
 
   setServer(ntp_server);
   setInterval(ntp_interval);

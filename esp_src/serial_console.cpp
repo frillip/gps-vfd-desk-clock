@@ -45,7 +45,9 @@ esp-update-set-config [s] = Sets the specific config string (eg. development), u
 esp-update-auto-enable [b] = Enables automatic updates (0 / 1)
 esp-update-auto-hour [n] = Sets the hour the ESP will check for and install updates (0 - 23)
 
-esp-clear-all = Clear all settings
+esp-config-show = Print all settings
+esp-config-clear = Clear user preferences in ESP
+esp-clear-all = Clear all ESP settings including WiFi
 esp-save = Save settings
 
 pic-info = Show info directly from PIC
@@ -287,6 +289,16 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_TELNET_PORT_STRING) == 0)
     {
       return USER_CMD_ESP_TELNET_PORT;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_CONFIG_SHOW_STRING) == 0)
+    {
+      return USER_CMD_ESP_CONFIG_SHOW;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_CONFIG_CLEAR_STRING) == 0)
+    {
+      return USER_CMD_ESP_CONFIG_CLEAR;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_CLEAR_ALL_STRING) == 0)
@@ -776,17 +788,37 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       }
       break;
 
+    case USER_CMD_ESP_CONFIG_SHOW:
+      user_prefs_sync();
+      user_prefs_print(output);
+      break;
+
+    case USER_CMD_ESP_CONFIG_CLEAR:
+      output->printf("ESP clearing user preferences\n");
+      user_prefs_reset();
+      user_prefs_print(output);
+      break;
+
     case USER_CMD_ESP_CLEAR_ALL:
       {
+        output->printf("ESP clearing user preferences\n");
+        user_prefs_reset();
+        user_prefs_print(output);
+        user_prefs_save();
+
         extern WiFiManager wm;
         output->printf("ESP clearing WiFi config\n");
         wm.resetSettings(); // Delete WiFi credentials
+
+        output->printf("Resetting...");
         ESP.restart(); // And reset
       }
       break;
 
     case USER_CMD_ESP_SAVE:
-      output->printf("Not implemented yet :(\n");
+      user_prefs_sync();
+      user_prefs_save();
+      output->printf("ESP user preferences saved\n");
       break;
 
     case USER_CMD_PIC_INFO:

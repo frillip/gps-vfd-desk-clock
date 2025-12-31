@@ -16,6 +16,7 @@
 #include "updater.h"
 #include "remote_tzinfo.h"
 #include "telnet.h"
+#include "user_prefs.h"
 
 #define USER_CMD_STAGE_1_ESP_STRING "esp-"
 #define USER_CMD_STAGE_1_PIC_STRING "pic-"
@@ -93,6 +94,8 @@
 #define USER_CMD_ESP_TZINFO_SET_INTERVAL_STRING "esp-tzinfo-set-interval"
 #define USER_CMD_ESP_TZINFO_SET_ACC_STRING "esp-tzinfo-set-acc"
 
+#define USER_CMD_ESP_CONFIG_SHOW_STRING "esp-config-show"
+#define USER_CMD_ESP_CONFIG_CLEAR_STRING "esp-config-clear"
 #define USER_CMD_ESP_CLEAR_ALL_STRING "esp-clear-all"
 #define USER_CMD_ESP_SAVE_STRING "esp-save"
 #define USER_CMD_RESET_ALL_STRING "rst-all"
