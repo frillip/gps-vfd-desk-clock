@@ -14,7 +14,7 @@
 #define UPDATER_CONFIG_STRING_DEFAULT         ""
 
 #define UPDATE_AUTO_ENABLED_DEFAULT           0
-#define UPDATE_AUTO_CHECK_INTERVAL_DEFAULT    1800
+#define UPDATE_AUTO_CHECK_INTERVAL_DEFAULT    1800 // Not used
 #define UPDATE_AUTO_CHECK_LOCAL_HOUR_DEFAULT  4
 
 void updater_set_server(const char* new_server);

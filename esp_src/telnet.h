@@ -11,7 +11,7 @@
 #include <HardwareSerial.h>
 #include <ESPTelnetStream.h>
 
-#define TELNET_ENABLED_DEFAULT 1  // For now, enable by default FIX FOR PROD
+#define TELNET_ENABLED_DEFAULT 0  // Disabled by default
 #define TELNET_PORT_DEFAULT 23    // Port 23 is standard
 #define TELNET_BUFFER_LENGTH 100
 
