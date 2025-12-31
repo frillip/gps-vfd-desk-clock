@@ -44,7 +44,7 @@ esp-update-set-server [s] = Set update server hostname
 esp-update-set-path [s] = Set update server path
 esp-update-set-config [s] = Sets the specific config string (eg. development), use 'default' to remove
 esp-update-auto-enable = Enables automatic updates
-esp-update-auto-enable = Disables automatic updates
+esp-update-auto-disable = Disables automatic updates
 esp-update-auto-hour [n] = Sets the hour the ESP will check for and install updates (0 - 23)
 
 esp-config-show = Print all settings
