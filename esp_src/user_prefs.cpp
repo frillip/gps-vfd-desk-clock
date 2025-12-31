@@ -34,6 +34,32 @@ bool user_prefs_validate(void)
     last_output_stream->printf("Invalid EEPROM header: %08lX\n", user_prefs.fields.header);
     return 0;
   }
+
+  // Entire uint16_t range is fine for telnet port, besides port 0
+  check_passed &= ( user_prefs.fields.telnet.port > 0 );
+
+  // cannot validate user_prefs.fields.ntp.server until network connects
+  // To do: check after succssful WiFi connection?
+  // How to tell the difference between bad ntp server string
+  // and non-functional network? Maybe leave it for now.
+  // V3 will have an RGB status LED that can indicate this
+
+  // Check NTP interval is sane and between limits
+  check_passed &= ( user_prefs.fields.ntp.interval <= CLOCK_NTP_INTERVAL_MAX );
+  check_passed &= ( user_prefs.fields.ntp.interval >= CLOCK_NTP_INTERVAL_MIN );
+
+  // Same problem as NTP server for remote_tzinfo server and path
+  // Check remote_tzinfo interval is sane and between limits
+  check_passed &= ( user_prefs.fields.rtzinfo.interval <= REMOTE_TZINFO_INTERVAL_MAX );
+  check_passed &= ( user_prefs.fields.rtzinfo.interval >= REMOTE_TZINFO_INTERVAL_MIN );
+  // Check remote_tzinfo gnss precision is sane and between limits
+  check_passed &= ( user_prefs.fields.rtzinfo.gnss_accuracy <= REMOTE_TZINFO_GNSS_ACCURACY_MAX );
+  check_passed &= ( user_prefs.fields.rtzinfo.gnss_accuracy >= REMOTE_TZINFO_GNSS_ACCURACY_MIN );
+
+  // Same problem as NTP server for update server and path
+  // Check auto update time is sane and between limits
+  check_passed &= ( user_prefs.fields.updater.flags.auto_time <= UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX );
+  check_passed &= ( user_prefs.fields.updater.flags.auto_time >= UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN );
   
   return check_passed;
 }
