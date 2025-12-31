@@ -22,7 +22,8 @@ esp-wifi-gateway [s] = Set gateway to [s], only valid with static IP
 esp-wifi-clear = Clear saved WiFi config
 esp-wifi-setup = Enable WiFi setup AP mode
 
-esp-tzinfo-enable [b] = Enable remote timezone information functionality (0 / 1)
+esp-tzinfo-enable = Enable remote timezone information functionality
+esp-tzinfo-disable = Disable remote timezone information functionality
 esp-tzinfo-check = Pull timezone information from the tzinfo server but don't update anything
 esp-tzinfo-update = Update the timezone information from the tzinfo server
 esp-tzinfo-set-server [s] = Set the tzinfo server hostname
@@ -42,7 +43,8 @@ esp-update-force = Force and OTA update, regardless of version, and install imme
 esp-update-set-server [s] = Set update server hostname
 esp-update-set-path [s] = Set update server path
 esp-update-set-config [s] = Sets the specific config string (eg. development), use 'default' to remove
-esp-update-auto-enable [b] = Enables automatic updates (0 / 1)
+esp-update-auto-enable = Enables automatic updates
+esp-update-auto-enable = Disables automatic updates
 esp-update-auto-hour [n] = Sets the hour the ESP will check for and install updates (0 - 23)
 
 esp-config-show = Print all settings
@@ -231,6 +233,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
       return USER_CMD_ESP_UPDATE_AUTO_ENABLE;
     }
 
+    if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_AUTO_DISABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_UPDATE_AUTO_DISABLE;
+    }
+
     if(strcmp(cmd_buf, USER_CMD_ESP_UPDATE_AUTO_HOUR_STRING) == 0)
     {
       return USER_CMD_ESP_UPDATE_AUTO_HOUR;
@@ -239,6 +246,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
     if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_ENABLE_STRING) == 0)
     {
       return USER_CMD_ESP_TZINFO_ENABLE;
+    }
+
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_DISABLE_STRING) == 0)
+    {
+      return USER_CMD_ESP_TZINFO_DISABLE;
     }
 
     if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_CHECK_STRING) == 0)
@@ -619,25 +631,15 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_UPDATE_AUTO_ENABLE:
-      bool updater_auto_enabled_new;
-      if(serial_console_validate_bool(arg_buf, &updater_auto_enabled_new))
-      {
-        extern bool updater_auto_enabled;
-        if(updater_auto_enabled_new)
-        {
-          output->printf("Auto update enabled\n");
-          updater_auto_enabled = updater_auto_enabled_new;
-        }
-        else
-        {
-          output->printf("Auto update disabled\n");
-          updater_auto_enabled = updater_auto_enabled_new;
-        }
-      }
-      else
-      {
-        output->printf("Boolean required [ 0 , 1 ]\n");
-      }
+      extern bool updater_auto_enabled;
+      output->printf("Auto update enabled\n");
+      updater_auto_enabled = 1;
+      break;
+
+    case USER_CMD_ESP_UPDATE_AUTO_DISABLE:
+      extern bool updater_auto_enabled;
+      output->printf("Auto update disabled\n");
+      updater_auto_enabled = 0;
       break;
 
     case USER_CMD_ESP_UPDATE_AUTO_HOUR:
@@ -660,25 +662,15 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
 
 
     case USER_CMD_ESP_TZINFO_ENABLE:
-      bool remote_tzinfo_enabled_new;
-      if(serial_console_validate_bool(arg_buf, &remote_tzinfo_enabled_new))
-      {
-        extern bool remote_tzinfo_enabled;
-        if(remote_tzinfo_enabled_new)
-        {
-          output->printf("Remote tzinfo enabled\n");
-          remote_tzinfo_enabled = remote_tzinfo_enabled_new;
-        }
-        else
-        {
-          output->printf("Remote tzinfo disabled\n");
-          remote_tzinfo_enabled = remote_tzinfo_enabled_new;
-        }
-      }
-      else
-      {
-        output->printf("Boolean required [ 0 , 1 ]\n");
-      }
+      extern bool remote_tzinfo_enabled;
+      output->printf("Remote tzinfo enabled\n");
+      remote_tzinfo_enabled = 1;
+      break;
+
+    case USER_CMD_ESP_TZINFO_DISABLE:
+      extern bool remote_tzinfo_enabled;
+      output->printf("Remote tzinfo disabled\n");
+      remote_tzinfo_enabled = 0;
       break;
 
     case USER_CMD_ESP_TZINFO_CHECK:

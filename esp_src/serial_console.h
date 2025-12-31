@@ -84,9 +84,11 @@
 #define USER_CMD_ESP_UPDATE_SET_PATH_STRING "esp-update-set-path"
 #define USER_CMD_ESP_UPDATE_SET_CONFIG_STRING "esp-update-set-config"
 #define USER_CMD_ESP_UPDATE_AUTO_ENABLE_STRING "esp-update-auto-enable"
+#define USER_CMD_ESP_UPDATE_AUTO_DISABLE_STRING "esp-update-auto-disable"
 #define USER_CMD_ESP_UPDATE_AUTO_HOUR_STRING "esp-update-auto-hour"
 
 #define USER_CMD_ESP_TZINFO_ENABLE_STRING "esp-tzinfo-enable"
+#define USER_CMD_ESP_TZINFO_DISABLE_STRING "esp-tzinfo-disable"
 #define USER_CMD_ESP_TZINFO_CHECK_STRING "esp-tzinfo-check"
 #define USER_CMD_ESP_TZINFO_UPDATE_STRING "esp-tzinfo-update"
 #define USER_CMD_ESP_TZINFO_SET_SERVER_STRING "esp-tzinfo-set-server"
