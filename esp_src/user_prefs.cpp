@@ -136,6 +136,8 @@ void user_prefs_sync(void)
 
 void user_prefs_reset(void)
 {
+  memset(&user_prefs.raw, 0, sizeof(user_prefs.raw));
+
   user_prefs.fields.header = USER_PREFS_HEADER_VALUE;
 
   // Telnet
@@ -143,15 +145,12 @@ void user_prefs_reset(void)
   user_prefs.fields.telnet.port          = TELNET_PORT_DEFAULT;
 
   // NTP
-  memset(user_prefs.fields.ntp.server, 0, PREFERENCES_STORED_STRING_SIZE);
   strlcpy(user_prefs.fields.ntp.server, CLOCK_NTP_SERVER_DEFAULT, PREFERENCES_STORED_STRING_SIZE);
   user_prefs.fields.ntp.interval = CLOCK_NTP_INTERVAL_DEFAULT;
 
   // Remote tzinfo
   user_prefs.fields.rtzinfo.flags.enabled   = REMOTE_TZINFO_ENABLED_DEFAULT;
-  memset(user_prefs.fields.rtzinfo.server, 0, PREFERENCES_STORED_STRING_SIZE);
   strlcpy(user_prefs.fields.rtzinfo.server, REMOTE_TZINFO_SERVER_DEFAULT, PREFERENCES_STORED_STRING_SIZE);
-  memset(user_prefs.fields.rtzinfo.path, 0, PREFERENCES_STORED_STRING_SIZE);
   strlcpy(user_prefs.fields.rtzinfo.path,   REMOTE_TZINFO_PATH_DEFAULT,   PREFERENCES_STORED_STRING_SIZE);
   user_prefs.fields.rtzinfo.interval      = REMOTE_TZINFO_INTERVAL_DEFAULT;
   user_prefs.fields.rtzinfo.gnss_accuracy = REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT;
@@ -159,11 +158,8 @@ void user_prefs_reset(void)
   // Updater
   user_prefs.fields.updater.flags.auto_enabled = UPDATE_AUTO_ENABLED_DEFAULT;
   user_prefs.fields.updater.flags.auto_time    = UPDATE_AUTO_CHECK_LOCAL_HOUR_DEFAULT;
-  memset(user_prefs.fields.updater.server, 0, PREFERENCES_STORED_STRING_SIZE);
   strlcpy(user_prefs.fields.updater.server, UPDATER_JSON_SERVER_DEFAULT,  PREFERENCES_STORED_STRING_SIZE);
-  memset(user_prefs.fields.updater.path, 0, PREFERENCES_STORED_STRING_SIZE);
   strlcpy(user_prefs.fields.updater.path,   UPDATER_JSON_PATH_DEFAULT,    PREFERENCES_STORED_STRING_SIZE);
-  memset(user_prefs.fields.updater.config, 0, PREFERENCES_STORED_STRING_SIZE);
   strlcpy(user_prefs.fields.updater.config, UPDATER_CONFIG_STRING_DEFAULT, PREFERENCES_STORED_STRING_SIZE);
 
   user_prefs_apply();
