@@ -273,6 +273,11 @@ USER_CMD serial_console_check_2_esp(const char *cmd_buf)
       return USER_CMD_ESP_TZINFO_SET_PATH;
     }
 
+    if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_SET_INTERVAL_STRING) == 0)
+    {
+      return USER_CMD_ESP_TZINFO_SET_INTERVAL;
+    }
+
     if(strcmp(cmd_buf, USER_CMD_ESP_TZINFO_SET_ACC_STRING) == 0)
     {
       return USER_CMD_ESP_TZINFO_SET_ACC;
