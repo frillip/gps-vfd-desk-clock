@@ -69,6 +69,8 @@ typedef union
   uint8_t raw[sizeof(struct _user_prefs_data_struct)];
 } USER_PREFS_DATA_STRUCT;
 
+static_assert(sizeof(USER_PREFS_DATA_STRUCT) % 2 == 0, "USER_PREFS_DATA_STRUCT must be 16-bit aligned");
+
 void user_prefs_init(void);
 bool user_prefs_validate(void);
 void user_prefs_apply(void);
