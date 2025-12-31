@@ -16,6 +16,8 @@
 #define UPDATE_AUTO_ENABLED_DEFAULT           0
 #define UPDATE_AUTO_CHECK_INTERVAL_DEFAULT    1800 // Not used
 #define UPDATE_AUTO_CHECK_LOCAL_HOUR_DEFAULT  4
+#define UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN      0
+#define UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX      23
 
 void updater_set_server(const char* new_server);
 void updater_set_path(const char* new_path);
