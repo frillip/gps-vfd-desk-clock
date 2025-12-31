@@ -31,8 +31,7 @@ extern uint16_t updater_auto_check_interval;
 
 WiFiManager wm;
 
-#define CLOCK_NTP_SERVER_DEFAULT "rubidium.darksky.io"
-#define CLOCK_NTP_INTERVAL_DEFAULT 1800
+#include "ntp_settings.h"
 String ntp_server = CLOCK_NTP_SERVER_DEFAULT;
 uint32_t ntp_interval = CLOCK_NTP_INTERVAL_DEFAULT;
 uint16_t ntp_interval_count = 0;

@@ -1,0 +1,9 @@
+#ifndef NTP_SETTINGS_H
+#define	NTP_SETTINGS_H
+
+#define CLOCK_NTP_SERVER_DEFAULT "rubidium.darksky.io"
+#define CLOCK_NTP_INTERVAL_DEFAULT 1800
+#define CLOCK_NTP_INTERVAL_MIN 300
+#define CLOCK_NTP_INTERVAL_MAX 86400
+
+#endif	/* NTP_SETTINGS_H */
