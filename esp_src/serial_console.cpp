@@ -495,23 +495,7 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_NTP_INFO:
-      now = UTC.now();
-      extern uint32_t ntp_interval;
-      output->printf("NTP:   ");
-      print_iso8601_string(output, now);
-      if(WiFi.status() != WL_CONNECTED)
-      {
-        output->printf(" - NO WIFI");
-      }
-      else if(timeStatus() != timeSync)
-      {
-        output->printf(" - NO NTP SYNC");
-      }
-      output->printf("\nNTP server: %s\n", ntp_server.c_str());
-      output->printf("NTP interval: %u\n", ntp_interval);
-      output->printf("NTP last sync: ");
-      print_iso8601_string(output, lastNtpUpdateTime());
-      output->printf("\n");
+      print_ntp_info(output);
       break;
 
     case USER_CMD_ESP_NTP_SET_INTERVAL:
@@ -794,9 +778,15 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_CONFIG_CLEAR:
+      bool telnet_enable_old;
+      telnet_enable_old = user_prefs.fields.telnet.flags.enabled;
       output->printf("ESP clearing user preferences\n");
       user_prefs_reset();
       user_prefs_print(output);
+      if(telnet_enable_old && !user_prefs.fields.telnet.flags.enabled)
+      {
+        output->printf("\nWARNING: telnet is now disabled!\nUse \"esp-telnet-enable\" to re-enable\n");
+      }
       break;
 
     case USER_CMD_ESP_CLEAR_ALL:
@@ -1044,6 +1034,28 @@ void sercon_print_ssids(Stream *output)
 }
 
 
+void print_ntp_info(Stream *output)
+{
+  time_t now = UTC.now();
+  //extern uint32_t ntp_interval;
+  output->printf("NTP time:  ");
+  print_iso8601_string(output, now);
+  if(WiFi.status() != WL_CONNECTED)
+  {
+    output->printf(" - NO WIFI");
+  }
+  else if(timeStatus() != timeSync)
+  {
+    output->printf(" - NO NTP SYNC");
+  }
+  output->printf("\nServer:    %s\n", user_prefs.fields.ntp.server);
+  output->printf("Interval:  %u\n", user_prefs.fields.ntp.interval);
+  output->printf("Last sync: ");
+  print_iso8601_string(output, lastNtpUpdateTime());
+  output->printf("\n");
+}
+
+
 void serial_console_print_info(Stream *output)
 {
   output->printf("\n");
@@ -1063,6 +1075,8 @@ void serial_console_print_info(Stream *output)
   }
   
   print_offset_data(output);
+  output->printf("\n=== NTP ===\n");
+  print_ntp_info(output);
   print_gnss_data(output);
   print_remote_tzinfo(output);
   print_rtc_data(output);

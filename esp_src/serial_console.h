@@ -144,6 +144,7 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf);
 void sercon_print_wifi(Stream *output);
 void sercon_print_ssids(Stream *output);
 void serial_console_print_info(Stream *output);
+void print_ntp_info(Stream *output);
 
 void serial_console_second_changed(uint32_t millis);
 bool serial_console_print_local_available(void);
