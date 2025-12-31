@@ -647,14 +647,14 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       if(serial_console_validate_uint32(arg_buf, &updater_auto_check_local_hour_new))
       {
         extern uint8_t updater_auto_check_local_hour;
-        if((updater_auto_check_local_hour_new >= 0) && (updater_auto_check_local_hour_new <= 23))
+        if((updater_auto_check_local_hour_new >= UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN) && (updater_auto_check_local_hour_new <= UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX))
         {
           output->printf("Setting auto update time to %02u:00\n", updater_auto_check_local_hour_new);
           updater_auto_check_local_hour = updater_auto_check_local_hour_new;
         }
         else
         {
-          output->printf("Invalid range (0 - 23)\n");
+          output->printf("Invalid range (%u - %u)\n", UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN, UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX);
           updater_auto_check_local_hour = updater_auto_check_local_hour_new;
         }
       }
@@ -698,7 +698,7 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_interval_new))
       {
         extern uint32_t remote_tzinfo_interval;
-        if((remote_tzinfo_interval_new >= 300) && (remote_tzinfo_interval_new <= 86400))
+        if((remote_tzinfo_interval_new >= REMOTE_TZINFO_INTERVAL_MIN) && (remote_tzinfo_interval_new <= REMOTE_TZINFO_INTERVAL_MAX))
         {
           output->printf("Setting tzinfo interval to %us\n", remote_tzinfo_interval_new);
           remote_tzinfo_interval = remote_tzinfo_interval_new;
@@ -715,19 +715,19 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       if(serial_console_validate_int32(arg_buf, &remote_tzinfo_gnss_accuracy_new))
       {
         extern int32_t remote_tzinfo_gnss_accuracy;
-        if(remote_tzinfo_gnss_accuracy_new == -1)
+        if(remote_tzinfo_gnss_accuracy_new == REMOTE_TZINFO_GNSS_ACCURACY_MIN)
         {
           output->printf("GNSS information for tzinfo disabled\n");
           remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
         }
-        else if((remote_tzinfo_gnss_accuracy_new >= 0) && (remote_tzinfo_gnss_accuracy_new <= 6))
+        else if((remote_tzinfo_gnss_accuracy_new > REMOTE_TZINFO_GNSS_ACCURACY_MIN) && (remote_tzinfo_gnss_accuracy_new <= REMOTE_TZINFO_GNSS_ACCURACY_MAX))
         {
           output->printf("Setting tzinfo accuracy to %u decimal places\n", remote_tzinfo_gnss_accuracy_new);
           remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
         }
         else
         {
-          output->printf("Invalid accuracy range (0-6 decimal places, or -1 to disable)\n");
+          output->printf("Invalid accuracy range (%i - %i decimal places, or %i to disable)\n", REMOTE_TZINFO_GNSS_ACCURACY_MIN + 1, REMOTE_TZINFO_GNSS_ACCURACY_MAX, REMOTE_TZINFO_GNSS_ACCURACY_MIN);
         }
       }
       break;
