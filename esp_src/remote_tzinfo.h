@@ -24,7 +24,7 @@
 // 5 decimal places = 1.11m uncertainty
 // 6 decimal places = 11.1cm uncertainty
 
-#define REMOTE_TZINFO_ENABLED_DEFAULT  1
+#define REMOTE_TZINFO_ENABLED_DEFAULT  0      // Default to disabled
 #define REMOTE_TZINFO_INTERVAL_DEFAULT 86400  // 1 day, sufficient for most use cases, low bandwidth
 #define REMOTE_TZINFO_INTERVAL_MIN     900    // useful for testing
 #define REMOTE_TZINFO_INTERVAL_MAX     604800 // 7 days, shortest DST interval is 29 days during Ramadan in Morocco, so this adequately covers that

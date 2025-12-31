@@ -10,6 +10,7 @@
 #include "serial_console.h"
 #include <HardwareSerial.h>
 #include <ESPTelnetStream.h>
+#include "user_prefs.h"
 
 #define TELNET_ENABLED_DEFAULT 0  // Disabled by default
 #define TELNET_PORT_DEFAULT 23    // Port 23 is standard

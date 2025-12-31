@@ -1,14 +1,15 @@
 #include "updater_pull.h"
-String updater_json_https = UPDATER_JSON_HTTPS_DEFAULT;
-String updater_json_server = UPDATER_JSON_SERVER_DEFAULT;
-String updater_json_path = UPDATER_JSON_PATH_DEFAULT;
-String updater_json_url = updater_json_https + updater_json_server + updater_json_path;
-String updater_config_string = UPDATER_CONFIG_STRING_DEFAULT;
 
-bool updater_auto_enabled = UPDATE_AUTO_ENABLED_DEFAULT;
+extern USER_PREFS_DATA_STRUCT user_prefs;
+
+static constexpr char UPDATER_JSON_URL_DEFAULT[] = UPDATER_JSON_HTTPS_DEFAULT UPDATER_JSON_SERVER_DEFAULT UPDATER_JSON_PATH_DEFAULT;
+String updater_json_url = UPDATER_JSON_URL_DEFAULT;
+
+// Every 30 minutes, check if we are in the update window
+// also sufficiently spreads checks out over the hour as reboot time is suitably random
+// Could be refined, but this works for now
 uint16_t updater_auto_check_interval = UPDATE_AUTO_CHECK_INTERVAL_DEFAULT;
 bool updater_auto_checked_today = 1;    // Start as 1, so we don't immediately check for updates on boot, ie, after an update.
-uint8_t updater_auto_check_local_hour = UPDATE_AUTO_CHECK_LOCAL_HOUR_DEFAULT;
 
 ESP32OTAPull ota;
 extern Stream *last_output_stream;
@@ -57,37 +58,46 @@ String getPROGMEMCertificate() {
 
 void updater_set_server(const char* new_server)
 {
-  updater_json_server = new_server;
+  memset(user_prefs.fields.updater.server, 0, sizeof(user_prefs.fields.updater.server));
+  strlcpy(user_prefs.fields.updater.server, new_server, sizeof(user_prefs.fields.updater.server));
   updater_regenerate_url();
 }
 
 void updater_set_path(const char* new_path)
 {
-  updater_json_path = new_path;
+  String updater_json_path = new_path;
   if(updater_json_path.charAt(0) != '/') updater_json_path = String("/") + updater_json_path;
+  memset(user_prefs.fields.updater.path, 0, sizeof(user_prefs.fields.updater.path));
+  strlcpy(user_prefs.fields.updater.path, updater_json_path.c_str(), sizeof(user_prefs.fields.updater.path));
   updater_regenerate_url();
 }
 
 void updater_set_config(const char* new_config)
 {
+  memset(user_prefs.fields.updater.config, 0, sizeof(user_prefs.fields.updater.config));
+  if(!new_config)
+  {
+    return;
+  }
+
   if((strcmp(new_config, "default") == 0))
   {
-    updater_config_string = UPDATER_CONFIG_STRING_DEFAULT;
+    strlcpy(user_prefs.fields.updater.config, UPDATER_CONFIG_STRING_DEFAULT, sizeof(user_prefs.fields.updater.config));
   }
-  else
+  else if(new_config[0] != '\0')
   {
-    updater_config_string = new_config;
+    strlcpy(user_prefs.fields.updater.config, new_config, sizeof(user_prefs.fields.updater.config));
   }
 }
 
 void updater_regenerate_url(void)
 {
-  updater_json_url = updater_json_https + updater_json_server + updater_json_path;
+  updater_json_url = String(UPDATER_JSON_HTTPS_DEFAULT) + String(user_prefs.fields.updater.server) + String(user_prefs.fields.updater.path);
 }
 
 void updater_auto_check(void)
 {
-  if(updater_auto_enabled)
+  if(user_prefs.fields.updater.flags.auto_enabled)
   {
     extern int32_t tz_offset;
     extern bool dst_active;
@@ -100,9 +110,9 @@ void updater_auto_check(void)
     local_tm = gmtime(&local);
 
     uint8_t updater_auto_check_reset_time = 23; // Initialise as 23:00
-    if(updater_auto_check_local_hour)  // If this is a value after midnight
+    if(user_prefs.fields.updater.flags.auto_time)  // If this is a value after midnight
     {
-      updater_auto_check_reset_time = updater_auto_check_local_hour - 1; // modify accordingly
+      updater_auto_check_reset_time = user_prefs.fields.updater.flags.auto_time - 1; // modify accordingly
     }
 
     if(local_tm->tm_hour == updater_auto_check_reset_time)
@@ -116,7 +126,7 @@ void updater_auto_check(void)
     }
     else
     {
-      if(local_tm->tm_hour == updater_auto_check_local_hour)
+      if(local_tm->tm_hour == user_prefs.fields.updater.flags.auto_time)
       {
         last_output_stream->printf("Checking for update...\n");
         updater_auto();
@@ -131,27 +141,27 @@ bool updater_auto(void)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   last_output_stream->printf("ESP Current Version:   %s", ESP_VERSION);
-  if(!updater_config_string.isEmpty())
+  if(user_prefs.fields.updater.config[0]) // not empty
   {
-    last_output_stream->printf("_%s", updater_config_string.c_str());
+    last_output_stream->printf("_%s", user_prefs.fields.updater.config);
   }
   last_output_stream->printf("\n");
   ota.SetRootCA(root_ca_progmem);
   int ret = ota
-    .SetConfig(updater_config_string.c_str())
+    .SetConfig(user_prefs.fields.updater.config)
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
   if(ret == ESP32OTAPull::UPDATE_AVAILABLE)
   {
     last_output_stream->printf("Update available");
-    if(!updater_config_string.isEmpty())
+    if(user_prefs.fields.updater.config[0])
     {
-      last_output_stream->printf("Config string: %s\n", updater_config_string.c_str());
+      last_output_stream->printf("Config string: %s\n", user_prefs.fields.updater.config);
     }
     last_output_stream->printf("... Updating\n\n");
     output_callback = last_output_stream;
     ret = ota
       .SetCallback(updater_callback_percent)
-      .SetConfig(updater_config_string.c_str())
+      .SetConfig(user_prefs.fields.updater.config)
       .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_AND_BOOT);
     last_output_stream->printf("Rebooting...\n");
     return 1;    
@@ -165,21 +175,21 @@ bool updater_check(Stream *output)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   output->printf("ESP Current Version:   %s", ESP_VERSION);
-  if(!updater_config_string.isEmpty())
+  if(user_prefs.fields.updater.config[0])
   {
-    output->printf("_%s", updater_config_string.c_str());
+    output->printf("_%s", user_prefs.fields.updater.config);
   }
   output->printf("\n");
   ota.SetRootCA(root_ca_progmem);
   int ret = ota
-    .SetConfig(updater_config_string.c_str())
+    .SetConfig(user_prefs.fields.updater.config)
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
   output->printf("CheckForOTAUpdate returned %d (%s)\n", ret, updater_errtext(ret));
   String otaVersion = ota.GetVersion();
   output->printf("OTA Version Available: %s", otaVersion.c_str());
-  if(!updater_config_string.isEmpty())
+  if(user_prefs.fields.updater.config[0])
   {
-    output->printf("_%s", updater_config_string.c_str());
+    output->printf("_%s", user_prefs.fields.updater.config);
   }
   output->printf("\n");
   return 0;
@@ -189,16 +199,16 @@ void updater_pull(Stream *output)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   output->printf("ESP Current Version:   %s", ESP_VERSION);
-  if(!updater_config_string.isEmpty())
+  if(!user_prefs.fields.updater.config[0])
   {
-    output->printf("_%s", updater_config_string.c_str());
+    output->printf("_%s", user_prefs.fields.updater.config);
   }
   output->printf("\n");
   output_callback = output;
   ota.SetRootCA(root_ca_progmem);
   int ret = ota
     .SetCallback(updater_callback_percent)
-    .SetConfig(updater_config_string.c_str())
+    .SetConfig(user_prefs.fields.updater.config)
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::UPDATE_BUT_NO_BOOT);
   output->printf("CheckForOTAUpdate returned %d (%s)\n", ret, updater_errtext(ret));
   if(ret == ESP32OTAPull::UPDATE_OK)
@@ -211,9 +221,9 @@ void updater_force(Stream *output)
 {
   esp_pps_sync_ignore_counter = 5; // ignore for 5 seconds
   output->printf("ESP Current Version:   %s", ESP_VERSION);
-  if(!updater_config_string.isEmpty())
+  if(user_prefs.fields.updater.config[0])
   {
-    output->printf("_%s", updater_config_string.c_str());
+    output->printf("_%s", user_prefs.fields.updater.config);
   }
   output->printf("\n");
   output_callback = output;

@@ -11,10 +11,12 @@
 #define UPDATER_JSON_HTTPS_DEFAULT            "https://"
 #define UPDATER_JSON_SERVER_DEFAULT           "rubidium.darksky.io"
 #define UPDATER_JSON_PATH_DEFAULT             "/smol_clock/v2/update.json"
+
 #define UPDATER_CONFIG_STRING_DEFAULT         ""
 
 #define UPDATE_AUTO_ENABLED_DEFAULT           0
-#define UPDATE_AUTO_CHECK_INTERVAL_DEFAULT    1800 // Not used
+#define UPDATE_AUTO_CHECK_INTERVAL_DEFAULT    1800  // Used as a counter value limit, 
+													// runs the update check checker every 30 minutes (probably a better way to do this)
 #define UPDATE_AUTO_CHECK_LOCAL_HOUR_DEFAULT  4
 #define UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN      0
 #define UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX      23

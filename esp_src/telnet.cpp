@@ -3,9 +3,9 @@
 ESPTelnetStream telnet;
 extern Stream *last_output_stream;
 
-bool telnet_enabled = TELNET_ENABLED_DEFAULT;
+extern USER_PREFS_DATA_STRUCT user_prefs;
+
 bool telnet_running = 0;
-uint16_t telnet_port = TELNET_PORT_DEFAULT;
 char telnet_buffer[TELNET_BUFFER_LENGTH] = {0};
 uint8_t telnet_buffer_offset = 0;
 char telnet_cmd_buf[TELNET_BUFFER_LENGTH] = {0};
@@ -18,7 +18,7 @@ void telnet_init(void)
   telnet.onConnectionAttempt(onTelnetConnectionAttempt);
   telnet.onReconnect(onTelnetReconnect);
   telnet.onDisconnect(onTelnetDisconnect);
-  if(telnet_enabled)
+  if(user_prefs.fields.telnet.flags.enabled)
   {
     telnet_start(&Serial);
   }
@@ -32,13 +32,13 @@ void telnet_start(Stream *output)
 {
   if(!telnet_running)
   {
-    telnet.begin(telnet_port, false);
+    telnet.begin(user_prefs.fields.telnet.port, false);
     telnet_running = 1;
-    output->printf("\nTelnet running, connect on %s:%u\n", WiFi.localIP().toString().c_str(), telnet_port);
+    output->printf("\nTelnet running, connect on %s:%u\n", WiFi.localIP().toString().c_str(), user_prefs.fields.telnet.port);
   }
   else
   {
-    output->printf("\nTelnet already running on %s:%u\n", WiFi.localIP().toString().c_str(), telnet_port);
+    output->printf("\nTelnet already running on %s:%u\n", WiFi.localIP().toString().c_str(), user_prefs.fields.telnet.port);
   }
 }
 
@@ -59,9 +59,9 @@ void telnet_stop(Stream *output)
 
 void telnet_enable(Stream *output)
 {
-  if(!telnet_enabled)
+  if(!user_prefs.fields.telnet.flags.enabled)
   {
-    telnet_enabled = 1;
+    user_prefs.fields.telnet.flags.enabled = 1;
     output->printf("\nTelnet enabled\n");
     if(!telnet_running)
     {
@@ -72,7 +72,7 @@ void telnet_enable(Stream *output)
   {
     if(telnet_running)
     {
-      output->printf("\nTelnet already enabled and running on %s:%u\n", WiFi.localIP().toString().c_str(), telnet_port);
+      output->printf("\nTelnet already enabled and running on %s:%u\n", WiFi.localIP().toString().c_str(), user_prefs.fields.telnet.port);
     }
     else
     {
@@ -83,10 +83,17 @@ void telnet_enable(Stream *output)
 
 void telnet_disable(Stream *output)
 {
-  if(telnet_enabled)
+  if(user_prefs.fields.telnet.flags.enabled)
   {
-    telnet_enabled = 0;
-    output->printf("\nTelnet disabled, but still running\nUse \"esp-telnet-stop\" to stop\n");
+    user_prefs.fields.telnet.flags.enabled = 0;
+    if(telnet_running)
+    {
+      output->printf("\nTelnet disabled but still running\nUse \"esp-telnet-stop\" to stop\n");
+    }
+    else
+    {
+      output->printf("\nTelnet disabled\n");
+    }
   }
   else
   {
@@ -96,9 +103,9 @@ void telnet_disable(Stream *output)
 
 void telnet_set_port(Stream *output, uint16_t telnet_port_new)
 {
-  if(telnet_port_new && (telnet_port != telnet_port_new))
+  if(telnet_port_new && (user_prefs.fields.telnet.port != telnet_port_new))
   {
-    telnet_port = telnet_port_new;
+    user_prefs.fields.telnet.port = telnet_port_new;
     telnet_stop(output);
     telnet_start(output);
   }

@@ -3,6 +3,8 @@ extern time_t esp;
 
 extern Stream *last_output_stream;
 
+extern USER_PREFS_DATA_STRUCT user_prefs;
+
 uint8_t rx_stage = 0;
 uint16_t user_data_counter = 0;
 bool rx_ignore = 0;
@@ -1204,7 +1206,6 @@ void pic_uart_tx_displaydata()
 
 void pic_uart_tx_tzinfodata()
 {
-  extern bool remote_tzinfo_enabled;
   extern bool tzinfo_available;
   extern int32_t tzinfo_offset;
   extern int32_t tzinfo_dst_offset;
@@ -1219,7 +1220,7 @@ void pic_uart_tx_tzinfodata()
   tzinfo_data_tx.fields.header.type = SERIAL_PROTO_TYPE_ESP_TX;
   tzinfo_data_tx.fields.header.datatype = SERIAL_PROTO_DATATYPE_TZINFODATA;
 
-  if(remote_tzinfo_enabled)
+  if(user_prefs.fields.rtzinfo.flags.enabled)
   {
     tzinfo_data_tx.fields.tzinfo_flags.tzinfo_available = tzinfo_available;
     tzinfo_data_tx.fields.tzinfo_flags.tzinfo_source = tzinfo_source;

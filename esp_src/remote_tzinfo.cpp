@@ -1,14 +1,10 @@
 #include "remote_tzinfo.h"
 
-String remote_tzinfo_json_https = REMOTE_TZINFO_HTTPS_DEFAULT;
-String remote_tzinfo_json_server = REMOTE_TZINFO_SERVER_DEFAULT;
-String remote_tzinfo_json_path = REMOTE_TZINFO_PATH_DEFAULT;
-String remote_tzinfo_json_url = remote_tzinfo_json_https + remote_tzinfo_json_server + remote_tzinfo_json_path;
-bool remote_tzinfo_enabled = REMOTE_TZINFO_ENABLED_DEFAULT;
-uint32_t remote_tzinfo_interval = REMOTE_TZINFO_INTERVAL_DEFAULT;
-uint32_t remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_MAX + 1;  // Trigger at power on
+extern USER_PREFS_DATA_STRUCT user_prefs;
 
-int32_t remote_tzinfo_gnss_accuracy = REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT;
+static constexpr char REMOTE_TZINFO_URL_DEFAULT[] = REMOTE_TZINFO_HTTPS_DEFAULT REMOTE_TZINFO_SERVER_DEFAULT REMOTE_TZINFO_PATH_DEFAULT;
+String remote_tzinfo_json_url = REMOTE_TZINFO_URL_DEFAULT;
+uint32_t remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_MAX + 1;  // Trigger at power on
 
 extern uint8_t esp_pps_sync_ignore_counter; // ignore for 5 seconds
 
@@ -27,26 +23,29 @@ TZINFO_SOURCE tzinfo_source = TZINFO_SOURCE_NONE;
 
 void remote_tzinfo_set_server(const char* new_server)
 {
-  remote_tzinfo_json_server = new_server;
+  memset(user_prefs.fields.rtzinfo.server, 0, sizeof(user_prefs.fields.rtzinfo.server));
+  strlcpy(user_prefs.fields.rtzinfo.server, new_server, sizeof(user_prefs.fields.rtzinfo.server));
   remote_tzinfo_regenerate_url();
 }
 
 void remote_tzinfo_set_path(const char* new_path)
 {
-  remote_tzinfo_json_path = new_path;
+  String remote_tzinfo_json_path = new_path;
   if(remote_tzinfo_json_path.charAt(0) != '/') remote_tzinfo_json_path = String("/") + remote_tzinfo_json_path;
+  memset(user_prefs.fields.rtzinfo.path, 0, sizeof(user_prefs.fields.rtzinfo.path));
+  strlcpy(user_prefs.fields.rtzinfo.path, remote_tzinfo_json_path.c_str(), sizeof(user_prefs.fields.rtzinfo.path));
   remote_tzinfo_regenerate_url();
 }
 
 void remote_tzinfo_regenerate_url(void)
 {
-  remote_tzinfo_json_url = remote_tzinfo_json_https + remote_tzinfo_json_server + remote_tzinfo_json_path;
+  remote_tzinfo_json_url = String(REMOTE_TZINFO_HTTPS_DEFAULT) + String(user_prefs.fields.rtzinfo.server) + String(user_prefs.fields.rtzinfo.path);
 }
 
 float remote_tzinfo_round_acc(int32_t value)
 {
   float scaled_value = (float)value / 10000000;
-  float multiplier = pow(10.0, remote_tzinfo_gnss_accuracy);
+  float multiplier = pow(10.0, user_prefs.fields.rtzinfo.gnss_accuracy);
   return roundf(scaled_value * multiplier) / multiplier;
 }
 
@@ -60,7 +59,7 @@ void remote_tzinfo_check(Stream *output)
   http.addHeader("User-Agent", ESP_USER_AGENT_STRING);
 
   JsonDocument json_gnss_info;
-  if(remote_tzinfo_gnss_accuracy >= 0)
+  if(user_prefs.fields.rtzinfo.gnss_accuracy >= 0)
   {
     json_gnss_info["gnss_detected"] = pic_gnss_detected;
     json_gnss_info["gnss_lat"] = remote_tzinfo_round_acc(pic_posllh_lat);
@@ -135,7 +134,7 @@ void print_remote_tzinfo(Stream *output)
 {
   output->printf("\n=== Remote tzinfo ===\n");
   output->printf("Enabled: ");
-  if(remote_tzinfo_enabled)
+  if(user_prefs.fields.rtzinfo.flags.enabled)
   {
     output->printf("True\n");
     output->printf("Available: ", tzinfo_available);

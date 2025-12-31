@@ -1,6 +1,6 @@
 #include "serial_console.h"
 
-extern String ntp_server;
+extern USER_PREFS_DATA_STRUCT user_prefs;
 
 Stream *last_output_stream = &Serial;
 
@@ -499,8 +499,6 @@ void serial_console_print_help_all(Stream *output)
 
 void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
 {
-  time_t now;
-
   switch(cmd)
   {
     case USER_CMD_NONE:
@@ -519,20 +517,20 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       uint32_t ntp_interval_new;
       if(serial_console_validate_uint32(arg_buf, &ntp_interval_new))
       {
-        extern uint32_t ntp_interval;
+        //extern uint32_t ntp_interval;
         output->printf("Setting NTP resync to %u\n", ntp_interval_new);
-        ntp_interval = ntp_interval_new;
-        setInterval(ntp_interval);
+        user_prefs.fields.ntp.interval = ntp_interval_new;
+        setInterval(user_prefs.fields.ntp.interval);
       }
       break;
 
     case USER_CMD_ESP_NTP_SET_SERVER:
       time_t tmp;
       uint32_t tmp2;
-      ntp_server = arg_buf;
-      if(queryNTP(ntp_server, tmp, tmp2))
+      strlcpy(user_prefs.fields.ntp.server, arg_buf, sizeof(user_prefs.fields.ntp.server));
+      if(queryNTP(String(user_prefs.fields.ntp.server), tmp, tmp2))
       {
-        setServer(ntp_server);
+        setServer(String(user_prefs.fields.ntp.server));
         output->printf("New NTP server: %s\n", arg_buf);
       }
       else
@@ -636,46 +634,41 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_UPDATE_AUTO_ENABLE:
-      extern bool updater_auto_enabled;
       output->printf("Auto update enabled\n");
-      updater_auto_enabled = 1;
+      user_prefs.fields.updater.flags.auto_enabled = 1;
       break;
 
     case USER_CMD_ESP_UPDATE_AUTO_DISABLE:
-      extern bool updater_auto_enabled;
       output->printf("Auto update disabled\n");
-      updater_auto_enabled = 0;
+      user_prefs.fields.updater.flags.auto_enabled = 0;
       break;
 
     case USER_CMD_ESP_UPDATE_AUTO_HOUR:
       uint32_t updater_auto_check_local_hour_new;
       if(serial_console_validate_uint32(arg_buf, &updater_auto_check_local_hour_new))
       {
-        extern uint8_t updater_auto_check_local_hour;
         if((updater_auto_check_local_hour_new >= UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN) && (updater_auto_check_local_hour_new <= UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX))
         {
           output->printf("Setting auto update time to %02u:00\n", updater_auto_check_local_hour_new);
-          updater_auto_check_local_hour = updater_auto_check_local_hour_new;
+          user_prefs.fields.updater.flags.auto_time = updater_auto_check_local_hour_new;
         }
         else
         {
           output->printf("Invalid range (%u - %u)\n", UPDATE_AUTO_CHECK_LOCAL_HOUR_MIN, UPDATE_AUTO_CHECK_LOCAL_HOUR_MAX);
-          updater_auto_check_local_hour = updater_auto_check_local_hour_new;
+          user_prefs.fields.updater.flags.auto_time = updater_auto_check_local_hour_new;
         }
       }
       break;
 
 
     case USER_CMD_ESP_TZINFO_ENABLE:
-      extern bool remote_tzinfo_enabled;
       output->printf("Remote tzinfo enabled\n");
-      remote_tzinfo_enabled = 1;
+      user_prefs.fields.rtzinfo.flags.enabled = 1;
       break;
 
     case USER_CMD_ESP_TZINFO_DISABLE:
-      extern bool remote_tzinfo_enabled;
       output->printf("Remote tzinfo disabled\n");
-      remote_tzinfo_enabled = 0;
+      user_prefs.fields.rtzinfo.flags.enabled = 0;
       extern uint32_t remote_tzinfo_interval_count;
       remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_MAX + 1; // Set this so that it checks immediately on enable
       break;
@@ -704,15 +697,14 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       uint32_t remote_tzinfo_interval_new;
       if(serial_console_validate_uint32(arg_buf, &remote_tzinfo_interval_new))
       {
-        extern uint32_t remote_tzinfo_interval;
         if((remote_tzinfo_interval_new >= REMOTE_TZINFO_INTERVAL_MIN) && (remote_tzinfo_interval_new <= REMOTE_TZINFO_INTERVAL_MAX))
         {
           output->printf("Setting tzinfo interval to %us\n", remote_tzinfo_interval_new);
-          remote_tzinfo_interval = remote_tzinfo_interval_new;
+          user_prefs.fields.rtzinfo.interval = remote_tzinfo_interval_new;
         }
         else
         {
-          output->printf("Invalid range (300 - 86400)\n");
+          output->printf("Invalid range (%u - %u)\n", REMOTE_TZINFO_INTERVAL_MIN, REMOTE_TZINFO_INTERVAL_MAX);
         }
       }
       break;
@@ -721,16 +713,15 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       int32_t remote_tzinfo_gnss_accuracy_new;
       if(serial_console_validate_int32(arg_buf, &remote_tzinfo_gnss_accuracy_new))
       {
-        extern int32_t remote_tzinfo_gnss_accuracy;
         if(remote_tzinfo_gnss_accuracy_new == REMOTE_TZINFO_GNSS_ACCURACY_MIN)
         {
           output->printf("GNSS information for tzinfo disabled\n");
-          remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
+          user_prefs.fields.rtzinfo.gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
         }
         else if((remote_tzinfo_gnss_accuracy_new > REMOTE_TZINFO_GNSS_ACCURACY_MIN) && (remote_tzinfo_gnss_accuracy_new <= REMOTE_TZINFO_GNSS_ACCURACY_MAX))
         {
           output->printf("Setting tzinfo accuracy to %u decimal places\n", remote_tzinfo_gnss_accuracy_new);
-          remote_tzinfo_gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
+          user_prefs.fields.rtzinfo.gnss_accuracy = remote_tzinfo_gnss_accuracy_new;
         }
         else
         {
@@ -772,7 +763,6 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_CONFIG_SHOW:
-      user_prefs_sync();
       user_prefs_print(output);
       break;
 
@@ -805,7 +795,6 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       break;
 
     case USER_CMD_ESP_SAVE:
-      user_prefs_sync();
       user_prefs_save();
       output->printf("ESP user preferences saved\n");
       break;

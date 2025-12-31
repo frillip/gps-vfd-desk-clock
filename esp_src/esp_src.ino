@@ -30,12 +30,13 @@ extern int16_t t1s1;
 extern uint16_t updater_auto_check_interval;
 
 #include "user_prefs.h"
+extern USER_PREFS_DATA_STRUCT user_prefs;
 
 WiFiManager wm;
 
 #include "ntp_settings.h"
-String ntp_server = CLOCK_NTP_SERVER_DEFAULT;
-uint32_t ntp_interval = CLOCK_NTP_INTERVAL_DEFAULT;
+//String ntp_server = CLOCK_NTP_SERVER_DEFAULT;
+//uint32_t ntp_interval = CLOCK_NTP_INTERVAL_DEFAULT;
 uint16_t ntp_interval_count = 0;
 uint32_t ntp_resync_count = 0;
 time_t esp = 0;
@@ -112,8 +113,8 @@ void setup()
 
   user_prefs_init();
 
-  setServer(ntp_server);
-  setInterval(ntp_interval);
+  setServer(String(user_prefs.fields.ntp.server));
+  setInterval(user_prefs.fields.ntp.interval);
 
   WiFi.mode(WIFI_STA);
   wm.setConfigPortalBlocking(false);
@@ -250,13 +251,11 @@ void loop()
   {
     t1s0=0;
 
-    extern bool remote_tzinfo_enabled;
-    if(remote_tzinfo_enabled)
+    if(user_prefs.fields.rtzinfo.flags.enabled)
     {
       extern uint32_t remote_tzinfo_interval_count;
-      extern uint32_t remote_tzinfo_interval;
       remote_tzinfo_interval_count++;
-      if(remote_tzinfo_interval_count > remote_tzinfo_interval)
+      if(remote_tzinfo_interval_count > user_prefs.fields.rtzinfo.interval)
       {
         remote_tzinfo_check(&Serial);
         remote_tzinfo_interval_count = 0;
@@ -264,7 +263,7 @@ void loop()
     }
 
     ntp_interval_count++;
-    if(ntp_interval_count > ntp_interval)
+    if(ntp_interval_count > user_prefs.fields.ntp.interval)
     {
       updateNTP();
       Serial.printf("NTP RESYNC\n");
