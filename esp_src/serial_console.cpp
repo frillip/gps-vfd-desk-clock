@@ -676,6 +676,8 @@ void serial_console_exec(Stream *output, USER_CMD cmd, const char *arg_buf)
       extern bool remote_tzinfo_enabled;
       output->printf("Remote tzinfo disabled\n");
       remote_tzinfo_enabled = 0;
+      extern uint32_t remote_tzinfo_interval_count;
+      remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_MAX + 1; // Set this so that it checks immediately on enable
       break;
 
     case USER_CMD_ESP_TZINFO_CHECK:

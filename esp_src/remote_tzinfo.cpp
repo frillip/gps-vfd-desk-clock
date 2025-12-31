@@ -6,7 +6,7 @@ String remote_tzinfo_json_path = REMOTE_TZINFO_PATH_DEFAULT;
 String remote_tzinfo_json_url = remote_tzinfo_json_https + remote_tzinfo_json_server + remote_tzinfo_json_path;
 bool remote_tzinfo_enabled = REMOTE_TZINFO_ENABLED_DEFAULT;
 uint32_t remote_tzinfo_interval = REMOTE_TZINFO_INTERVAL_DEFAULT;
-uint32_t remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_DEFAULT;  // Trigger at power on
+uint32_t remote_tzinfo_interval_count = REMOTE_TZINFO_INTERVAL_MAX + 1;  // Trigger at power on
 
 int32_t remote_tzinfo_gnss_accuracy = REMOTE_TZINFO_GNSS_ACCURACY_DEFAULT;
 
