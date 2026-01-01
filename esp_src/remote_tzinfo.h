@@ -2,6 +2,7 @@
 #define	REMOTE_TZINFO_H
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <math.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>

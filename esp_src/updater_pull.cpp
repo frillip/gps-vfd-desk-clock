@@ -17,7 +17,7 @@ Stream *output_callback;
 
 extern uint8_t esp_pps_sync_ignore_counter;
 
-const char root_ca_progmem[] PROGMEM = R"EOF(
+const char updater_root_ca_progmem[] PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
 TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
@@ -53,7 +53,7 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 
 // Function to use PROGMEM certificate
 String getPROGMEMCertificate() {
-    return String(root_ca_progmem);
+    return String(updater_root_ca_progmem);
 }
 
 void updater_set_server(const char* new_server)
@@ -146,7 +146,7 @@ bool updater_auto(void)
     last_output_stream->printf("_%s", user_prefs.fields.updater.config);
   }
   last_output_stream->printf("\n");
-  ota.SetRootCA(root_ca_progmem);
+  ota.SetRootCA(updater_root_ca_progmem);
   int ret = ota
     .SetConfig(user_prefs.fields.updater.config)
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
@@ -180,7 +180,7 @@ bool updater_check(Stream *output)
     output->printf("_%s", user_prefs.fields.updater.config);
   }
   output->printf("\n");
-  ota.SetRootCA(root_ca_progmem);
+  ota.SetRootCA(updater_root_ca_progmem);
   int ret = ota
     .SetConfig(user_prefs.fields.updater.config)
     .CheckForOTAUpdate(updater_json_url.c_str(), ESP_VERSION, ESP32OTAPull::DONT_DO_UPDATE);
@@ -205,7 +205,7 @@ void updater_pull(Stream *output)
   }
   output->printf("\n");
   output_callback = output;
-  ota.SetRootCA(root_ca_progmem);
+  ota.SetRootCA(updater_root_ca_progmem);
   int ret = ota
     .SetCallback(updater_callback_percent)
     .SetConfig(user_prefs.fields.updater.config)
@@ -227,7 +227,7 @@ void updater_force(Stream *output)
   }
   output->printf("\n");
   output_callback = output;
-  ota.SetRootCA(root_ca_progmem);
+  ota.SetRootCA(updater_root_ca_progmem);
   int ret = ota
     .SetCallback(updater_callback_percent)
     .AllowDowngrades(true)
