@@ -102,6 +102,10 @@ extern "C" {
 #define DISPLAY_BRIGHTNESS_STEP         200
 #define DISPLAY_BRIGHTNESS_TARGET_STEP  20
 
+#define DISPLAY_BRIGHTNESS_MANUAL_MIN   0
+#define DISPLAY_BRIGHTNESS_MANUAL_MAX   4000
+#define DISPLAY_BRIGHTNESS_MANUAL_DEFAULT 0
+
 void spi2_dma_init(void);
 void OC3_Initialize(void);
 void display_init(void);
@@ -109,7 +113,7 @@ void display_brightness_off(void);
 void display_brightness_min(void);
 void display_brightness_max(void);
 void display_brightness_set(uint16_t brightness);
-void display_brightness_set_manual(void);
+void display_brightness_set_manual(uint16_t brightness);
 void display_brightness_set_auto(void);
 void display_brightness_set_target(uint16_t target);
 void display_brightness_up_step(void);

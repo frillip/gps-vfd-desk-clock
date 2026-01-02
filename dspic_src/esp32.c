@@ -744,7 +744,6 @@ void esp_tx_sensor(void)
 }
 
 extern bool display_update_pending;
-extern bool display_brightness_manual;
 extern bool display_brightness_oc_running;
 extern uint16_t display_brightness;
 extern uint16_t display_brightness_target;
@@ -762,7 +761,7 @@ void esp_tx_display(void)
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_DISPLAYDATA;
 
     esp_tx_buffer.fields.flags.update_pending = display_update_pending;
-    esp_tx_buffer.fields.flags.brightness_manual = display_brightness_manual;
+    esp_tx_buffer.fields.flags.brightness_manual = settings.fields.display.brightness.manual;
     esp_tx_buffer.fields.flags.oc_running = display_brightness_oc_running;
     esp_tx_buffer.fields.flags.pwr_stat = PWR_STAT_GetValue();
     esp_tx_buffer.fields.flags.switch_state = ui_switch_input_state();

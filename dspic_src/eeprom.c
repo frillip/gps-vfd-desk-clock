@@ -111,6 +111,9 @@ bool eeprom_check_settings(void)
     check_passed &= (settings.fields.alarm.offset <= UI_ALARM_OFFSET_MAX);
     check_passed &= (settings.fields.alarm.offset >= UI_ALARM_OFFSET_MIN);
     
+    check_passed &= (settings.fields.display.brightness.manual >= DISPLAY_BRIGHTNESS_MANUAL_MIN);
+    check_passed &= (settings.fields.display.brightness.level <= DISPLAY_BRIGHTNESS_MANUAL_MAX);
+    
     check_passed &= (settings.fields.display.selected >= UI_DISPLAY_STATE_CLOCK_HHMM);
     check_passed &= (settings.fields.display.selected < UI_DISPLAY_STATE_DASHES);
     
@@ -146,6 +149,8 @@ void eeprom_reset_settings(void)
     
     settings.fields.display.flags.hour_12_format = UI_DISPLAY_HOUR_FORMAT_DEFAULT;
     settings.fields.display.selected = UI_DISPLAY_STATE_CLOCK_HHMM;
+    settings.fields.display.brightness.manual = DISPLAY_BRIGHTNESS_MANUAL_DEFAULT;
+    settings.fields.display.brightness.level = DISPLAY_BRIGHTNESS_DEFAULT;
     
     settings.fields.reset.flags.wifi = UI_RESET_WIFI_DEFAULT;
     settings.fields.reset.flags.settings = UI_RESET_SETTINGS_DEFAULT;
@@ -172,6 +177,8 @@ void eeprom_print_settings(void)
     printf("beep.flags.enabled: %u\n", settings.fields.beep.flags.enabled);
     printf("display.flags.hour_12_format: %u\n", settings.fields.display.flags.hour_12_format);
     printf("display.selected: %u\n", settings.fields.display.selected);
+    printf("display.brightness.manual %u\n", settings.fields.display.brightness.manual);
+    printf("display.brightness.level %u\n", settings.fields.display.brightness.level);
     printf("reset.flags.wifi: %u\n", settings.fields.reset.flags.wifi);
     printf("reset.flags.settings: %u\n", settings.fields.reset.flags.settings);
     printf("reset.flags.all: %u\n", settings.fields.reset.flags.all);
@@ -192,6 +199,8 @@ void eeprom_print_stored_settings(void)
     printf("beep.flags.enabled: %u\n", stored.fields.beep.flags.enabled);
     printf("display.flags.hour_12_format: %u\n", stored.fields.display.flags.hour_12_format);
     printf("display.selected: %u\n", stored.fields.display.selected);
+    printf("display.brightness.manual %u\n", stored.fields.display.brightness.manual);
+    printf("display.brightness.level %u\n", stored.fields.display.brightness.level);
     printf("reset.flags.wifi: %u\n", stored.fields.reset.flags.wifi);
     printf("reset.flags.settings: %u\n", stored.fields.reset.flags.settings);
     printf("reset.flags.all: %u\n", stored.fields.reset.flags.all);

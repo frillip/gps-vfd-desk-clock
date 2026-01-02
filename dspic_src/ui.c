@@ -1437,14 +1437,13 @@ void ui_user_cmd(USER_CMD cmd, uint32_t arg)
 
         // Full brightness
         case USER_CMD_PIC_SET_BRIGHTNESS:
-            if((uint16_t)arg>DISPLAY_BRIGHTNESS_PR+1)
+            if((uint16_t)arg > DISPLAY_BRIGHTNESS_MANUAL_MAX)
             {
                 printf("Range: 0 - %u\nBrightness unchanged\n", DISPLAY_BRIGHTNESS_PR+1);
             }
             else
             {
-                display_brightness_set_manual();
-                display_brightness_set((uint16_t)arg);
+                display_brightness_set_manual((uint16_t)arg);
             }
             printf("BRI: %u\n", display_brightness);
             break;

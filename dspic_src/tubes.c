@@ -5,7 +5,6 @@ uint32_t characters[] = {DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4, DIGIT_5, D
 bool dash_display = 0;
 bool display_blinking = 0;
 bool display_update_pending = 0;
-bool display_brightness_manual = 0;
 uint16_t display_brightness = DISPLAY_BRIGHTNESS_DEFAULT;
 uint16_t display_brightness_target = DISPLAY_BRIGHTNESS_DEFAULT;
 bool display_brightness_oc_running = 0;
@@ -102,7 +101,14 @@ void OC3_Initialize(void)
 void display_init(void)
 {
     uint64_t driver_buffer = 0x00000000; // Set a blank buffer
-    display_brightness_set(DISPLAY_BRIGHTNESS_DEFAULT);
+    if(settings.fields.display.brightness.manual)
+    {
+        display_brightness_set(settings.fields.display.brightness.level);
+    }
+    else
+    {
+        display_brightness_set(DISPLAY_BRIGHTNESS_DEFAULT);
+    }
     OC3_Initialize();
     //BLANK_SetLow(); // Disable the blanking function
     //spi2_dma_init();
@@ -149,18 +155,19 @@ void display_brightness_set(uint16_t brightness)
     }
 }
 
-void display_brightness_set_manual(void)
+void display_brightness_set_manual(uint16_t brightness)
 {
-    display_brightness_manual = 1;
-    display_brightness = display_brightness+(DISPLAY_BRIGHTNESS_STEP/2);
+    settings.fields.display.brightness.manual = 1;
+    settings.fields.display.brightness.level = brightness;
+    /*display_brightness = display_brightness+(DISPLAY_BRIGHTNESS_STEP/2);
     display_brightness /= DISPLAY_BRIGHTNESS_STEP;
-    display_brightness *= DISPLAY_BRIGHTNESS_STEP;
-    display_brightness_set(display_brightness);
+    display_brightness *= DISPLAY_BRIGHTNESS_STEP;*/
+    display_brightness_set(brightness);
 }
 
 void display_brightness_set_auto(void)
 {
-    display_brightness_manual = 0;
+    settings.fields.display.brightness.manual = 0;
     if(veml6040_detected)
     {
         if(!display_brightness_oc_running)
@@ -219,7 +226,7 @@ void display_brightness_on(void)
 
 void display_brightness_update(void)
 {
-    if(!display_brightness_manual)
+    if(!settings.fields.display.brightness.manual)
     {
         if(!veml6040_detected)
         {

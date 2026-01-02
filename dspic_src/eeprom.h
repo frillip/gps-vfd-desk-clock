@@ -90,8 +90,14 @@ typedef union
         struct __attribute__ ((packed))
         {
             bool hour_12_format : 1;
-            uint16_t padding: 15;
+            bool display_brightness_manual : 1;
+            uint16_t padding: 14;
         } flags;
+        struct __attribute__ ((packed))
+        {
+            bool manual : 1;
+            uint16_t level: 15;
+        } brightness;
         UI_DISPLAY_STATE current : 8;
         UI_DISPLAY_STATE selected : 8;
     } display;
