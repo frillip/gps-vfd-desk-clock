@@ -4,7 +4,7 @@ extern USER_PREFS_DATA_STRUCT user_prefs;
 
 Stream *last_output_stream = &Serial;
 
-const char* serial_console_help_text = R"literal(
+const char* serial_console_help_text = R"EOF(
 esp-reset = Reset the ESP
 esp-ntp-set-interval [n] = Set NTP interval to [n] (min 300, max 43200)
 esp-ntp-set-server [s] = Set the NTP server to [s]
@@ -63,13 +63,14 @@ pic-set-dst-active [b] = Enable/disable dst (pic-set-dst-auto must be off)
 pic-set-alarm-enabled [b] = Enable/disable alarm
 pic-set-alarm [n] = Set PIC alarm to [n] seconds past midnight
 pic-set-delta [n] = Set PIC delta epoch to [n] unix epoch time
+pic-set-fosc-freq [n] = Manually set PIC Fosc frequency to n
 pic-set-beeps [b] = Enable/disable beeping
 pic-set-display [e] = Set pic display to [e]: 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD
 pic-set-brightness-auto = Set display brightness to auto
 pic-set-brightness [n] = Set display brightness to n / 4000
-pic-show-eeprom = show settings stored in EEPROM
-pic-show-config = show running config settings
-pic-clear-all = Clear all settings to defaults
+pic-eeprom-show = show settings stored in EEPROM
+pic-config-show = show running config settings
+pic-config-clear = Clear all settings to defaults
 pic-save = Save settings
 pic-bootloader-enter = Enter bootloader on PIC
 pic-bootloader-exit = Exit bootloader on PIC
@@ -82,7 +83,7 @@ help = show this text
 help x = Print help for the command x
 
 \n = print available data
-)literal";
+)EOF";
 
 USER_CMD_TYPE serial_console_check_1(const char *cmd_buf)
 {
