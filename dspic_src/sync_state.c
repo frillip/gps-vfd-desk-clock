@@ -26,8 +26,8 @@ extern bool gnss_detected;
 extern uint32_t pps_seq_count;
 extern uint32_t pps_seq_count_old;
 
-extern bool oc_event;
-extern bool ic_event;
+extern volatile bool oc_event;
+extern volatile bool ic_event;
 
 bool state_new_oc = 0;
 bool state_new_ic = 0;

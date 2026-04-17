@@ -20,7 +20,7 @@ double accumulated_clocks_diff_avg = 0.0;
 time_t accumulation_start = 0;
 time_t accumulation_delta = 0;
 
-bool ic_event = 0;
+volatile bool ic_event = 0;
 
 extern time_t utc;
 extern time_t gnss;

@@ -8,7 +8,7 @@ uint32_t oc_count = 0;
 int32_t oc_offset = 0;
 uint32_t oc_count_diff = 0;
 uint32_t oc_count_old = 0;
-bool oc_event = 0;
+volatile bool oc_event = 0;
 uint32_t total_oc_seq_count = 0;
 uint32_t sync_events = 0;
 
