@@ -100,7 +100,7 @@ void calculate_pps_stats(void)
     if(pps_seq_count > PPS_SEQ_COUNT_MIN)
     {
         pps_index++;
-        if (pps_index < MAX_PPS_SAMPLES)
+        if (pps_index >= MAX_PPS_SAMPLES)
         {
             pps_index = 0;
         }
