@@ -1,5 +1,8 @@
 #include "ds1307.h"
 
+extern bool rtc_detected;
+extern bool rtc_valid;
+
 time_t DS1307_read(void)
 {
     time_t rtc;
@@ -12,8 +15,20 @@ time_t DS1307_read(void)
 
     I2C1_MasterWrite(pdata_write, 1, DS1307_ADDRESS, &status);
     // at this point, your status will probably be I2C2_MESSAGE_PENDING
-    while (status == I2C1_MESSAGE_PENDING); // wait for status to to change
+    while (status == I2C1_MESSAGE_PENDING) // wait for status to to change
+    {
+        i2c_timeout++;
+        if(i2c_timeout>40000)
+        {
+            status = I2C1_MESSAGE_FAIL;
+            rtc_detected = 0;
+            rtc_valid = 0;
+            rtc = 0;
+            break;
+        }
+    }
     if (status == I2C1_MESSAGE_COMPLETE) {
+        i2c_timeout = 0;
         I2C1_MasterRead(pdata_read, 7, DS1307_ADDRESS, &status);
         while (status == I2C1_MESSAGE_PENDING)
         {
