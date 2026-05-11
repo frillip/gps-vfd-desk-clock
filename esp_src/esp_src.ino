@@ -130,6 +130,7 @@ void setup()
     Serial.println("Configportal running");
     Serial.println(WiFi.localIP());
     wm.setSaveConfigCallback(startNTPqueries);
+    esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
   }
 
   telnet_init();
