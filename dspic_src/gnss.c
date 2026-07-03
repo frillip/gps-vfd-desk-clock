@@ -44,112 +44,176 @@ bool gnss_calendar_sync = 0;
 
 bool gnss_detected = 0;
 
+volatile uint32_t gnss_rx_byte_count = 0;
+volatile uint32_t gnss_valid_packet_count = 0;
+
 void gnss_init(void)
 {
     UART2_Initialize();
-    memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
-    memset(gnss_check_buffer, 0, GNSS_CHECK_BUFFER_SIZE);
+    gnss_rx_reset();
     UART2_SetRxInterruptHandler(gnss_rx);
 }
+
+void gnss_rx_reset_message_only(void)
+{
+    gnss_incoming = GNSS_NONE;
+    gnss_waiting = GNSS_NONE;
+    gnss_bytes_remaining = 0;
+    gnss_offset = 0;
+
+    memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
+}
+
+void gnss_rx_reset(void)
+{
+    gnss_rx_reset_message_only();
+
+    memset(gnss_check_buffer, 0, GNSS_CHECK_BUFFER_SIZE);
+
+    while(UART2_IsRxReady())
+    {
+        (void)UART2_Read();
+    }
+}
+
+static void gnss_append_rx_char(char rx_char);
+static void gnss_start_message(GNSS_MESSAGE_TYPE message_type);
+static void gnss_copy_buffer(GNSS_MESSAGE_TYPE message);
+static GNSS_MESSAGE_TYPE gnss_check_incoming(void);
 
 void gnss_rx(void)
 {
     char rx_char = 0;
-    
-    while(UART2_IsRxReady()) 
+
+    while(UART2_IsRxReady())
     {
-        // Read the character from the UART
         rx_char = UART2_Read();
-        // Shuffle our check buffer along
-        memmove(gnss_check_buffer, gnss_check_buffer+1, GNSS_CHECK_BUFFER_SIZE-1);
-        // Add the new character to the end of the buffer
-        gnss_check_buffer[GNSS_CHECK_BUFFER_SIZE-1] = rx_char;
-        
-        // Add the character to the end of the main buffer
-        // if we're still receiving a message
-        if(gnss_incoming!=GNSS_NONE)
+        gnss_rx_byte_count++;
+
+        // Shuffle buffer along
+        memmove(gnss_check_buffer,
+                gnss_check_buffer + 1,
+                GNSS_CHECK_BUFFER_SIZE - 1);
+
+        gnss_check_buffer[GNSS_CHECK_BUFFER_SIZE - 1] = rx_char;
+
+        // Append character if we are in a message
+        gnss_append_rx_char(rx_char);
+
+        // Copy out the buffer if we're done
+        if(gnss_waiting != GNSS_NONE)
         {
-            gnss_detected = 1;
-            gnss_string_buffer[gnss_offset] = rx_char;
-            gnss_offset++;
-            gnss_bytes_remaining--;
-            // If we've reached the end of our buffer
-            // then we're getting unknown messages
-            // Discard anything that doesn't fit
-            // and flag the incoming message as waiting
-            if(gnss_offset>=GNSS_STRING_BUFFER_SIZE-1 || gnss_bytes_remaining==0)
-            {
-                gnss_waiting = gnss_incoming;
-                gnss_incoming = GNSS_NONE;
-            }
-        }
-        
-        // Do we have a message that's finished coming in?
-        if(gnss_waiting!=GNSS_NONE)
-        {
-            // if so, copy it to the right buffer
             gnss_copy_buffer(gnss_waiting);
-            // Then reset the message buffer
+
             memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
-            // Reset the message waiting flag
-            gnss_waiting=GNSS_NONE;
+            gnss_waiting = GNSS_NONE;
+            gnss_offset = 0;
+            gnss_bytes_remaining = 0;
         }
-        
-        // Check if the check buffer matches any of our magic strings
-        // But don't do anything with it yet as there may still
-        // old message data in the buffer
-        
+
+        // Check if we have a match for a new message
         GNSS_MESSAGE_TYPE gnss_check_res = gnss_check_incoming();
+
         if(gnss_check_res != GNSS_NONE)
         {
-            gnss_waiting = gnss_incoming;
-            gnss_incoming = gnss_check_res;
-            switch (gnss_incoming)
-            {
-                case GNSS_UBX_NAV_CLOCK:
-                    gnss_bytes_remaining = sizeof(ubx_nav_clock_buffer) - sizeof(UBX_HEADER);
-                    gnss_offset = sizeof(UBX_HEADER);
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-        
-                case GNSS_UBX_NAV_POSLLH:
-                    gnss_bytes_remaining = sizeof(ubx_nav_posllh_buffer) - sizeof(UBX_HEADER);
-                    gnss_offset = sizeof(UBX_HEADER);
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
+            gnss_valid_packet_count++;
 
-                case GNSS_UBX_NAV_STATUS:
-                    gnss_bytes_remaining = sizeof(ubx_nav_status_buffer) - sizeof(UBX_HEADER);
-                    gnss_offset = sizeof(UBX_HEADER);
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
+            // Reset the existing message if we have a new match
+            gnss_rx_reset_message_only();
 
-                case GNSS_UBX_NAV_TIMEUTC:
-                    gnss_bytes_remaining = sizeof(ubx_nav_timeutc_buffer) - sizeof(UBX_HEADER);
-                    gnss_offset = sizeof(UBX_HEADER);
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-        
-                case GNSS_UBX_TIM_TM2:
-                    gnss_bytes_remaining = sizeof(ubx_tim_tm2_buffer) - sizeof(UBX_HEADER);
-                    gnss_offset = sizeof(UBX_HEADER);
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-
-                case GNSS_GNRMC:
-                    gnss_bytes_remaining = GNSS_STRING_BUFFER_SIZE - GNSS_CHECK_BUFFER_SIZE;
-                    gnss_offset = GNSS_CHECK_BUFFER_SIZE;
-                    memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
-                    break;
-        
-                default:
-                    break;
-            }
+            // Begin assembling new message
+            gnss_start_message(gnss_check_res);
         }
     }
 }
 
-void gnss_copy_buffer(GNSS_MESSAGE_TYPE message)
+static void gnss_append_rx_char(char rx_char)
+{
+    if(gnss_incoming == GNSS_NONE)
+    {
+        return;
+    }
+
+    gnss_detected = 1;
+
+    // bounds check, reset if we're past it
+    if(gnss_offset >= GNSS_STRING_BUFFER_SIZE)
+    {
+        gnss_rx_reset_message_only();
+        return;
+    }
+
+    gnss_string_buffer[gnss_offset] = rx_char;
+    gnss_offset++;
+
+    if(gnss_bytes_remaining > 0)
+    {
+        gnss_bytes_remaining--;
+    }
+    else
+    {
+        // If we end up here, something is wrong, reset and try again
+        gnss_rx_reset_message_only();
+        return;
+    }
+
+    // Message complete, so set flag to copy complete message out of buffer
+    if((gnss_bytes_remaining == 0) || (gnss_offset >= (GNSS_STRING_BUFFER_SIZE - 1)))
+    {
+        gnss_waiting = gnss_incoming;
+        gnss_incoming = GNSS_NONE;
+    }
+}
+
+static void gnss_start_message(GNSS_MESSAGE_TYPE message_type)
+{
+    gnss_incoming = message_type;
+
+    switch(message_type)
+    {
+        case GNSS_UBX_NAV_CLOCK:
+            gnss_bytes_remaining = sizeof(ubx_nav_clock_buffer) - sizeof(UBX_HEADER);
+            gnss_offset = sizeof(UBX_HEADER);
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+            break;
+
+        case GNSS_UBX_NAV_POSLLH:
+            gnss_bytes_remaining = sizeof(ubx_nav_posllh_buffer) - sizeof(UBX_HEADER);
+            gnss_offset = sizeof(UBX_HEADER);
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+            break;
+
+        case GNSS_UBX_NAV_STATUS:
+            gnss_bytes_remaining = sizeof(ubx_nav_status_buffer) - sizeof(UBX_HEADER);
+            gnss_offset = sizeof(UBX_HEADER);
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+            break;
+
+        case GNSS_UBX_NAV_TIMEUTC:
+            gnss_bytes_remaining = sizeof(ubx_nav_timeutc_buffer) - sizeof(UBX_HEADER);
+            gnss_offset = sizeof(UBX_HEADER);
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+            break;
+
+        case GNSS_UBX_TIM_TM2:
+            gnss_bytes_remaining = sizeof(ubx_tim_tm2_buffer) - sizeof(UBX_HEADER);
+            gnss_offset = sizeof(UBX_HEADER);
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+            break;
+
+        case GNSS_GNRMC:
+            gnss_bytes_remaining = GNSS_STRING_BUFFER_SIZE - GNSS_CHECK_BUFFER_SIZE;
+            gnss_offset = GNSS_CHECK_BUFFER_SIZE;
+            memcpy(gnss_string_buffer, gnss_check_buffer, GNSS_CHECK_BUFFER_SIZE);
+            break;
+
+        default:
+            gnss_rx_reset_message_only();
+            break;
+    }
+}
+
+static void gnss_copy_buffer(GNSS_MESSAGE_TYPE message)
 {
     switch (message)
     {
@@ -189,7 +253,7 @@ void gnss_copy_buffer(GNSS_MESSAGE_TYPE message)
     }
 }
 
-GNSS_MESSAGE_TYPE gnss_check_incoming(void)
+static GNSS_MESSAGE_TYPE gnss_check_incoming(void)
 {
     if(memcmp(gnss_check_buffer, ubx_tim_tm2_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_TIM_TM2;
     if(memcmp(gnss_check_buffer, ubx_nav_timeutc_string.raw, sizeof(UBX_HEADER))==0) return GNSS_UBX_NAV_TIMEUTC;

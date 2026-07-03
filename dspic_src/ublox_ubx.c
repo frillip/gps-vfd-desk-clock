@@ -2,9 +2,12 @@
 
 extern time_t utc;
 extern time_t gnss;
+time_t ubx;
 
 extern bool gnss_detected;
-
+volatile uint32_t ubx_nav_timeutc_process_count = 0;
+extern volatile uint32_t gnss_rx_byte_count;
+extern volatile uint32_t gnss_valid_packet_count;
 
 UBX_NAV_CLOCK ubx_nav_clock_buffer;
 UBX_HEADER ubx_nav_clock_string = {
@@ -295,6 +298,8 @@ time_t process_ubx_nav_timeutc(void)
         else if(ubx_diff >= GNSS_EPOCH_WARN_S) ubx_nav_timeutc_epoch_warn_count++;
     }
     
+    ubx_nav_timeutc_process_count++;
+    
     return ubx_time;
 }
 
@@ -304,13 +309,14 @@ void print_ubx_nav_timeutc_data(void)
     if(print_ubx_nav_timeutc)
     {
         printf("UTC: ");
-        ui_print_iso8601_string(gnss);
+        ui_print_iso8601_string(ubx);
         printf("\nAcc: %luns Val: %i\n",ubx_nav_timeutc_accuracy_ns, ubx_nav_timeutc_valid);
         if(ubx_nav_timeutc_epoch_error) printf("EPOCH MISMATCH!\n");
         printf("Wrn: %lu Err: %lu\n", ubx_nav_timeutc_epoch_warn_count, ubx_nav_timeutc_epoch_error_count);
         printf("AGE: %ums", ubx_nav_timeutc_message_age * 100);
         if(ubx_nav_timeutc_message_age < UBX_NAV_TIMEUTC_TIMEOUT_100MS) printf(" - VALID\n");
         else printf(" - EXPIRED\n");
+        printf("Rx: %lu Pkt: %lu Cnt: %lu\n", gnss_rx_byte_count, gnss_valid_packet_count, ubx_nav_timeutc_process_count);
     }
     else
     {
@@ -452,7 +458,8 @@ void ubx_data_task(void)
     if(ubx_nav_timeutc_waiting)
     {
         ubx_nav_timeutc_waiting = 0;
-        gnss = process_ubx_nav_timeutc();
+        ubx = process_ubx_nav_timeutc();
+        gnss = ubx;
         ubx_nav_timeutc_message_age = 0;
         print_ubx_nav_timeutc = 1;
         esp_gnss_data_updated = 1;

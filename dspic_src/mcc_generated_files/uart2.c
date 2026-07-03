@@ -80,8 +80,8 @@ static bool volatile rxOverflowed;
  * when head == tail.  So full will result in head/tail being off by one due to
  * the extra byte.
  */
-#define UART2_CONFIG_TX_BYTEQ_LENGTH (128+1)
-#define UART2_CONFIG_RX_BYTEQ_LENGTH (128+1)
+#define UART2_CONFIG_TX_BYTEQ_LENGTH (1023+1)
+#define UART2_CONFIG_RX_BYTEQ_LENGTH (1023+1)
 
 /** UART Driver Queue
 
@@ -196,36 +196,42 @@ void UART2_SetRxInterruptHandler(void (* interruptHandler)(void))
     }
 }
 
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _U2RXInterrupt( void )
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _U2RXInterrupt(void)
 {
+    if(U2STAbits.OERR)
+    {
+        U2STAbits.OERR = 0;
+        rxOverflowed = true;
+        // optionally increment a public counter here
+    }
+
+    IFS1bits.U2RXIF = 0;
+
+    while(U2STAbits.URXDA == 1)
+    {
+        uint8_t data = U2RXREG;
+
+        uint8_t *nextTail = rxTail + 1;
+        if(nextTail == (rxQueue + UART2_CONFIG_RX_BYTEQ_LENGTH))
+        {
+            nextTail = rxQueue;
+        }
+
+        if(nextTail != rxHead)
+        {
+            *rxTail = data;
+            rxTail = nextTail;
+        }
+        else
+        {
+            rxOverflowed = true;
+            // byte discarded
+        }
+    }
+
     if(UART2_RxDefaultInterruptHandler)
     {
         UART2_RxDefaultInterruptHandler();
-    }
-    
-    IFS1bits.U2RXIF = 0;
-	
-    while((U2STAbits.URXDA == 1))
-    {
-        *rxTail = U2RXREG;
-
-        // Will the increment not result in a wrap and not result in a pure collision?
-        // This is most often condition so check first
-        if ( ( rxTail    != (rxQueue + UART2_CONFIG_RX_BYTEQ_LENGTH-1)) &&
-             ((rxTail+1) != rxHead) )
-        {
-            rxTail++;
-        } 
-        else if ( (rxTail == (rxQueue + UART2_CONFIG_RX_BYTEQ_LENGTH-1)) &&
-                  (rxHead !=  rxQueue) )
-        {
-            // Pure wrap no collision
-            rxTail = rxQueue;
-        } 
-        else // must be collision
-        {
-            rxOverflowed = true;
-        }
     }
 }
 
@@ -408,8 +414,8 @@ unsigned int __attribute__((deprecated)) UART2_WriteBuffer( uint8_t *buffer , un
 UART2_TRANSFER_STATUS __attribute__((deprecated)) UART2_TransferStatusGet (void )
 {
     UART2_TRANSFER_STATUS status = 0;
-    uint8_t rx_count = UART2_RxDataAvailable();
-    uint8_t tx_count = UART2_TxDataAvailable();
+    uint16_t rx_count = UART2_RxDataAvailable();
+    uint16_t tx_count = UART2_TxDataAvailable();
     
     switch(rx_count)
     {

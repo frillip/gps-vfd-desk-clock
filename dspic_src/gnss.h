@@ -26,17 +26,17 @@ extern "C" {
     
 #include "../common/enums.h"
     
-#define GNSS_STRING_BUFFER_SIZE 100
+#define GNSS_STRING_BUFFER_SIZE 200
 #define GNSS_CHECK_BUFFER_SIZE 6
     
 #define GNSS_DETECT_LIMIT 300
 #define GNSS_FIX_LIMIT 3000
 
 void gnss_init(void);
+void gnss_rx_reset(void);
+void gnss_rx_reset_message_only();
 
 void gnss_rx(void);
-void gnss_copy_buffer(GNSS_MESSAGE_TYPE gnss_waiting);
-GNSS_MESSAGE_TYPE gnss_check_incoming(void);
 
 void gnss_set_calendar(void);
 bool gnss_is_calendar_sync(time_t utc);
