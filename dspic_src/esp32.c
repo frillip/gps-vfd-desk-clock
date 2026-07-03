@@ -771,7 +771,7 @@ void esp_tx_display(void)
     esp_tx_buffer.fields.brightness_target = display_brightness_target;
     
     esp_tx_buffer.fields.display_state.current = ui_state_current;
-    esp_tx_buffer.fields.display_state.current = ui_state_selected;
+    esp_tx_buffer.fields.display_state.selected = ui_state_selected;
     esp_tx_buffer.fields.menu_state = ui_menu_current;
     
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
@@ -798,8 +798,8 @@ void esp_tx_bootloader(void)
     esp_tx_buffer.fields.header.type = SERIAL_PROTO_TYPE_PIC_TX;
     esp_tx_buffer.fields.header.datatype = SERIAL_PROTO_DATATYPE_BOOTLOADERDATA;
     
-    esp_bootloader_buffer.fields.cmd = BOOTLOADER_CMD_ENTER;
-    esp_bootloader_buffer.fields.arg = 0x5A5A5A5A;
+    esp_tx_buffer.fields.cmd = BOOTLOADER_CMD_ENTER;
+    esp_tx_buffer.fields.arg = 0x5A5A5A5A;
 
     esp_tx(esp_tx_buffer.raw,sizeof(esp_tx_buffer));
 }

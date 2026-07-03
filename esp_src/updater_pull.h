@@ -1,5 +1,5 @@
-//#ifndef UPDATER_PULL_H
-//#define	UPDATER_PULL_H
+#ifndef UPDATER_PULL_H
+#define	UPDATER_PULL_H
 
 #include <Arduino.h>
 #include <stdint.h>
@@ -33,4 +33,4 @@ void updater_force(Stream *output);
 void updater_callback_percent(int offset, int totallength);
 const char *updater_errtext(int code);
 
-//#endif	/* UPDATER_PULL_H */
+#endif	/* UPDATER_PULL_H */

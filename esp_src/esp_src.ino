@@ -101,7 +101,7 @@ void setup()
     id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
   }
   id &= 0xFFFFFF;
-  char id_buf[6] = {0};
+  char id_buf[7] = {0};
   sprintf(id_buf,"%06X", id);
   wifi_id = id_buf;
   wifi_hostname  = String("SMOL_CLOCK_" + wifi_id);

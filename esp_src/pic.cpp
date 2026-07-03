@@ -335,8 +335,7 @@ void pic_uart_rx()
 
 bool pic_uart_output_finished(void)
 {
-  if(pic_last_rx_millis + PIC_UART_OUTPUT_TIMEOUT > millis()) return 1;
-  return 0;
+    return (uint32_t)(millis() - pic_last_rx_millis) >= PIC_UART_OUTPUT_TIMEOUT;
 }
 
 bool pic_output_buffer_empty(void)
@@ -920,9 +919,9 @@ void pic_process_display(void)
   pic_brightness = pic_display_buffer.fields.brightness;
   pic_brightness_target = pic_display_buffer.fields.brightness_target;
 
-  UI_DISPLAY_STATE pic_display_state_current = pic_display_buffer.fields.display_state.current;
-  UI_DISPLAY_STATE pic_display_state_selected = pic_display_buffer.fields.display_state.selected;
-  UI_MENU_STATE pic_menu_state = pic_display_buffer.fields.menu_state;
+  pic_display_state_current = pic_display_buffer.fields.display_state.current;
+  pic_display_state_selected = pic_display_buffer.fields.display_state.selected;
+  pic_menu_state = pic_display_buffer.fields.menu_state;
 
   pic_display_waiting = 0;
 }

@@ -33,7 +33,7 @@
 void remote_tzinfo_set_server(const char* new_server);
 void remote_tzinfo_set_path(const char* new_path);
 void remote_tzinfo_regenerate_url(void);
-float remote_tzinfo_round_acc(float value);
+float remote_tzinfo_round_acc(int32_t value);
 void remote_tzinfo_check(Stream *output);
 void print_remote_tzinfo(Stream *output);
 void print_tzinfo_source(Stream *output, TZINFO_SOURCE source);

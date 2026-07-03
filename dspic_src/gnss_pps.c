@@ -99,17 +99,18 @@ void calculate_pps_stats(void)
     
     if(pps_seq_count > PPS_SEQ_COUNT_MIN)
     {
+        pps_buffer[pps_index] = pps_count_diff;
+
+        // Do not calculate kalman filtered pps values
+        // filtered_pps_kf = kalman_update(&pps_kf, (int32_t)pps_count_diff);
+        // filtered_pps_kf_f = kalman_update_f(&pps_kf_f, (int32_t)pps_count_diff);
+        // filtered_pps_buffer[pps_index] = filtered_pps_kf;
+        
         pps_index++;
         if (pps_index >= MAX_PPS_SAMPLES)
         {
             pps_index = 0;
         }
-        pps_buffer[pps_index++] = pps_count_diff;
-
-        // Do not calculate kalman filtered pps values
-        // filtered_pps_kf = kalman_update(&pps_kf, (int32_t)pps_count_diff);
-        // filtered_pps_kf_f = kalman_update_f(&pps_kf_f, (int32_t)pps_count_diff);
-        // filtered_pps_buffer[pps_index++] = filtered_pps_kf;
     }
     
     // Do not print kalman filtered pps values
@@ -128,7 +129,7 @@ void reset_pps_stats(void)
     accumulation_start = utc;
     accumulated_clocks = 0;
     accumulation_delta = 0;
-    memset(accumulated_clocks_diff, 0, FCYCLE_ACC_AVG_PERIOD);
+    memset(accumulated_clocks_diff, 0, sizeof(accumulated_clocks_diff));
     accumulated_clocks_diff_index = 0;
     accumulated_clocks_diff_avg = 0.0;
     kalman_init(&pps_kf, fosc_freq, 5, 50);
