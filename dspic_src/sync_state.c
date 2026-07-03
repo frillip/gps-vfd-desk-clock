@@ -328,6 +328,10 @@ void sync_state_machine(void)
                 }
                 state_new_oc = 0;
             }
+            if(!ubx_gnss_time_valid())
+            {
+                sync_state_machine_set_state(sync_select_best_clock());
+            }
             break;
         
         case SYNC_SCHED_SYNC:

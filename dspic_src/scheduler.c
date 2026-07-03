@@ -30,7 +30,7 @@ void scheduler_init(void)
     // Enable T2 interrupts
     IEC0bits.T2IE = true;
     // Set interrupt priority
-    IPC1bits.T2IP = 1;
+    IPC1bits.T2IP = 2;
 }
 
 

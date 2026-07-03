@@ -44,7 +44,16 @@ extern "C" {
 #define UBX_NAV_STATUS_PAYLOAD_LENGTH   sizeof(struct _ubx_nav_status_payload)
 #define UBX_NAV_TIMEUTC_PAYLOAD_LENGTH  sizeof(struct _ubx_nav_timeutc_payload)
 #define UBX_TIM_TM2_PAYLOAD_LENGTH      sizeof(struct _ubx_tim_tm2_payload)
-
+    
+#define UBX_NAV_CLOCK_TIMEOUT_100MS     30
+#define UBX_NAV_POSLLH_TIMEOUT_100MS    30
+#define UBX_NAV_STATUS_TIMEOUT_100MS    30
+#define UBX_NAV_TIMEUTC_TIMEOUT_100MS   30
+#define UBX_TIM_TM2_TIMEOUT_100MS       30
+#define UBX_TIMEOUT_MAX_VAL             100
+    
+#define GNSS_EPOCH_WARN_S               1
+#define GNSS_EPOCH_FAIL_S               2
 
 typedef union
 {
@@ -235,14 +244,13 @@ void print_ubx_tim_tm2_data(void);
 
 void print_ubx_data(void);
 
-bool ubx_gnss_available(void);
-void ubx_update_gnss_time(void);
 bool ubx_gnss_time_valid(void);
 
 bool ubx_timemark_waiting(void);
 void ubx_update_timemark(void);
 
 void ubx_data_task(void);
+void ubx_age_data(void);
 void ubx_invalidate_data(void);
 
 #ifdef	__cplusplus

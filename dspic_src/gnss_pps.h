@@ -24,7 +24,10 @@ extern "C" {
 #include "kalman.h"
 #include "allan_dev.h"
 #include "eeprom.h"
-    
+
+#define GNSS_PPS_TIMEOUT_100MS          20
+#define GNSS_PPS_TIMEOUT_MAX_VAL        100
+
 void gnss_pps_init(void);
 void IC1_Initialize (void);
 void IC2_Initialize (void);
@@ -32,6 +35,7 @@ void calculate_pps_stats(void);
 void reset_pps_stats(void);
 void recalculate_fosc_freq(void);
 void recalculate_fosc_freq_short(void);
+void gnss_pps_age_data(void);
 void print_gnss_pps_info(void);
 
 #ifdef	__cplusplus

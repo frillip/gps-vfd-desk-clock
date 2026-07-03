@@ -216,6 +216,11 @@ int main(void)
         {
             t100ms0 = 0;
             STATUS_LED_Toggle();
+            if(gnss_detected)
+            {
+                gnss_pps_age_data();
+                ubx_age_data();
+            }
             if(veml6040_detected)
             {
                 veml_ambient_light = VEML6040_get_lux();

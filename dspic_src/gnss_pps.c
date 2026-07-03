@@ -36,6 +36,8 @@ int32_t filtered_pps_buffer[MAX_PPS_SAMPLES];
 int32_t pps_buffer[MAX_PPS_SAMPLES];
 uint16_t pps_index = 0;
 
+uint16_t gnss_pps_age = GNSS_PPS_TIMEOUT_MAX_VAL;
+
 extern EEPROM_DATA_STRUCT settings;
 extern bool fosc_pending_eeprom_write;
 
@@ -179,6 +181,7 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC1Interrupt( void )
         ic_event = 1;    // Flag we've had an IC event on GNSS
         ic1_val = IC1BUF; // Read the IC1 timer
         ic2_val = IC2BUF; // Read the IC2 timer
+        gnss_pps_age = 0;
         IFS0bits.IC1IF = 0; // Clear the interrupt flag
     }
 }
@@ -194,6 +197,11 @@ void __attribute__ ( ( interrupt, no_auto_psv ) ) _ISR _IC2Interrupt( void )
     }
 }
 
+void gnss_pps_age_data(void)
+{
+    if(gnss_pps_age < GNSS_PPS_TIMEOUT_MAX_VAL) gnss_pps_age++;
+}
+
 void print_gnss_pps_info(void)
 {
     extern int32_t oc_offset;
@@ -201,6 +209,10 @@ void print_gnss_pps_info(void)
     printf("\n=== GNSS PPS ===\n");
     printf("PPS SEQ: %lu TOTAL:%lu\n", pps_seq_count, gnss_pps_count);
     printf("MISSING: %u COUNT:%lu\n", pps_missing, pps_missing_count);
+    printf("AGE: %ums", gnss_pps_age * 100);
+    if(gnss_pps_age < GNSS_PPS_TIMEOUT_100MS) printf(" - VALID\n");
+    else printf(" - EXPIRED\n");
+        
     int32_t oc_offset_ns = oc_offset * 25;
     if(oc_offset_ns>1000)
     {
