@@ -197,32 +197,39 @@ void UART1_SetRxInterruptHandler(void (* interruptHandler)(void))
     }
 }
 
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _U1RXInterrupt( void )
+void __attribute__ ( ( interrupt, no_auto_psv ) ) _U1RXInterrupt(void)
 {
-    IFS0bits.U1RXIF = 0;
-	
-    while((U1STAbits.URXDA == 1))
+    if(U1STAbits.OERR)
     {
-        *rxTail = U1RXREG;
+        U1STAbits.OERR = 0;
+        rxOverflowed = true;
+        // optionally increment a public counter here
+    }
 
-        // Will the increment not result in a wrap and not result in a pure collision?
-        // This is most often condition so check first
-        if ( ( rxTail    != (rxQueue + UART1_CONFIG_RX_BYTEQ_LENGTH-1)) &&
-             ((rxTail+1) != rxHead) )
+    IFS0bits.U1RXIF = 0;
+
+    while(U1STAbits.URXDA == 1)
+    {
+        uint8_t data = U1RXREG;
+
+        uint8_t *nextTail = rxTail + 1;
+        if(nextTail == (rxQueue + UART1_CONFIG_RX_BYTEQ_LENGTH))
         {
-            rxTail++;
-        } 
-        else if ( (rxTail == (rxQueue + UART1_CONFIG_RX_BYTEQ_LENGTH-1)) &&
-                  (rxHead !=  rxQueue) )
+            nextTail = rxQueue;
+        }
+
+        if(nextTail != rxHead)
         {
-            // Pure wrap no collision
-            rxTail = rxQueue;
-        } 
-        else // must be collision
+            *rxTail = data;
+            rxTail = nextTail;
+        }
+        else
         {
             rxOverflowed = true;
+            // byte discarded
         }
     }
+
     if(UART1_RxDefaultInterruptHandler)
     {
         UART1_RxDefaultInterruptHandler();
