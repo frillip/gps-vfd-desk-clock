@@ -36,6 +36,7 @@ void reset_pps_stats(void);
 void recalculate_fosc_freq(void);
 void recalculate_fosc_freq_short(void);
 void gnss_pps_age_data(void);
+bool gnss_pps_data_expired(void);
 void print_gnss_pps_info(void);
 
 #ifdef	__cplusplus

@@ -220,6 +220,21 @@ int main(void)
             {
                 gnss_pps_age_data();
                 ubx_age_data();
+                
+                static bool ubx_recovery_latch = false;
+                
+                if(ubx_gnss_recovery_expired() && !gnss_pps_data_expired())
+                {
+                    if(!ubx_recovery_latch)
+                    {
+                        gnss_rx_reset();
+                        ubx_recovery_latch = 1;
+                    }
+                }
+                else
+                {
+                    ubx_recovery_latch = 0;
+                }
             }
             if(veml6040_detected)
             {

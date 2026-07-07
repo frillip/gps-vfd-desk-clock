@@ -47,6 +47,9 @@ bool gnss_detected = 0;
 volatile uint32_t gnss_rx_byte_count = 0;
 volatile uint32_t gnss_valid_packet_count = 0;
 
+volatile uint32_t gnss_rx_reset_count = 0;
+volatile uint32_t ubx_recovery_reset_count = 0;
+
 void gnss_init(void)
 {
     UART2_Initialize();
@@ -62,6 +65,8 @@ void gnss_rx_reset_message_only(void)
     gnss_offset = 0;
 
     memset(gnss_string_buffer, 0, GNSS_STRING_BUFFER_SIZE);
+    
+    ubx_recovery_reset_count++;
 }
 
 void gnss_rx_reset(void)
@@ -74,6 +79,8 @@ void gnss_rx_reset(void)
     {
         (void)UART2_Read();
     }
+    
+    gnss_rx_reset_count++;
 }
 
 static void gnss_append_rx_char(char rx_char);

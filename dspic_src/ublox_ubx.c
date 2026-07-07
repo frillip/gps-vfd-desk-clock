@@ -118,6 +118,9 @@ bool print_ubx_nav_status = 0;
 bool print_ubx_nav_posllh = 0;
 
 
+extern volatile uint32_t gnss_rx_reset_count;
+extern volatile uint32_t ubx_recovery_reset_count;
+
 void process_ubx_nav_clock(void)
 {
     ubx_nav_clock_tow_ms = ubx_nav_clock_buffer.fields.payload.itow;
@@ -316,7 +319,6 @@ void print_ubx_nav_timeutc_data(void)
         printf("AGE: %ums", ubx_nav_timeutc_message_age * 100);
         if(ubx_nav_timeutc_message_age < UBX_NAV_TIMEUTC_TIMEOUT_100MS) printf(" - VALID\n");
         else printf(" - EXPIRED\n");
-        printf("Rx: %lu Pkt: %lu Cnt: %lu\n", gnss_rx_byte_count, gnss_valid_packet_count, ubx_nav_timeutc_process_count);
     }
     else
     {
@@ -403,6 +405,14 @@ void print_ubx_tim_tm2_data(void)
 }
 
 
+void print_ubx_stats(void)
+{
+    printf("\n=== UBX-STATS ===\n");
+    printf("Rx: %lu Rst: %lu\n", gnss_rx_byte_count, gnss_rx_reset_count);
+    printf("Pkt: %lu UTCcnt: %lu\n", gnss_valid_packet_count, ubx_nav_timeutc_process_count);
+}
+
+
 void print_ubx_data(void)
 {
     if(gnss_detected)
@@ -413,6 +423,7 @@ void print_ubx_data(void)
         print_ubx_nav_clock_data();
         print_ubx_nav_posllh_data();
         print_ubx_tim_tm2_data();
+        print_ubx_stats();
     }
     else
     {
@@ -435,6 +446,14 @@ bool ubx_gnss_time_valid(void)
     //if(ubx_nav_timeutc_epoch_error) return 0;
     if(gnss_pps_age >= GNSS_PPS_TIMEOUT_100MS ) return 0;
     
+    return 1;
+}
+
+bool ubx_gnss_recovery_expired(void)
+{
+    if(ubx_nav_status_message_age < UBX_TIMEOUT_MAX_VAL ) return 0;
+    if(ubx_nav_timeutc_message_age < UBX_TIMEOUT_MAX_VAL ) return 0;
+
     return 1;
 }
 

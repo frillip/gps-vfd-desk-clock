@@ -202,6 +202,12 @@ void gnss_pps_age_data(void)
     if(gnss_pps_age < GNSS_PPS_TIMEOUT_MAX_VAL) gnss_pps_age++;
 }
 
+bool gnss_pps_data_expired(void)
+{
+    if(gnss_pps_age >= GNSS_PPS_TIMEOUT_100MS) return 1;
+    return 0;
+}
+
 void print_gnss_pps_info(void)
 {
     extern int32_t oc_offset;

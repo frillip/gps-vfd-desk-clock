@@ -242,6 +242,8 @@ void print_ubx_nav_timeutc_data(void);
 void process_ubx_tim_tm2(void);
 void print_ubx_tim_tm2_data(void);
 
+void print_ubx_stats(void);
+
 void print_ubx_data(void);
 
 bool ubx_gnss_time_valid(void);
@@ -251,6 +253,7 @@ void ubx_update_timemark(void);
 
 void ubx_data_task(void);
 void ubx_age_data(void);
+bool ubx_gnss_recovery_expired(void);
 void ubx_invalidate_data(void);
 
 #ifdef	__cplusplus
