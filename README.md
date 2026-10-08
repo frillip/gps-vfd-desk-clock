@@ -10,8 +10,6 @@ Apparently some people don't have access to a Rubidium frequency standard? Who k
 
 # What?
 
-<img width="1329" height="573" alt="image" src="https://github.com/user-attachments/assets/7ac8c3ad-8a94-4397-b105-5bd9c55a9ebd" />
-
 ## Overall design
 
 The last PCB and associated components were somewhat sprawling for a layout that favoured debugging. This design is an evolution based on things learned from the last clock, and significantly reduces the footprint by stacking boards on top of each other. The bottom board holds most of the electronics, the top board holds the tubes and the drivers, connected via a 4x2 2.54mm header. The top board is also supported by a series of 20mm M3 standoffs. The clock is designed to function with or without a GNSS module populated on the board, as this represents a significant cost, and also many people do not want to have GNSS antennas strung around their house (what?).
@@ -307,5 +305,7 @@ A better oscillator is still the most direct hardware improvement: an OCXO or TC
 Temperature compensation is another possibility, although the BME280 first needs to become more than a decorative witness to the power supplies warming up. Its position and relationship to the oscillator temperature matter more than simply having a temperature reading available.
 
 Using a dual core dsPIC33CH device, with the secondary core as a dedicated 'timing domain', while the main core handles the tedious tasks such as user input and UART communication, is another avenue that is being actively explored. The increased clock speed from 40MIPS to 100MIPS will also reduce quantisation uncertainty.
+
+<img width="1329" height="573" alt="image" src="https://github.com/user-attachments/assets/7ac8c3ad-8a94-4397-b105-5bd9c55a9ebd" />
 
 The V2+ work above is where the software timing improvements are currently being tested. However, the 'real' limit of displayed accuracy here is still the persistent afterglow of the VFD tubes, hence why [really fancy clocks use Nixie tubes](https://www.daliborfarny.com/project/calibration-display-for-nasa/).
