@@ -2,6 +2,8 @@
 
 _A small desk clock with an unreasonable interest in what time it is._
 
+<img width="1600" height="551" alt="image" src="https://github.com/user-attachments/assets/8335cbd0-ec97-4ee4-bd6c-85db791557a4" />
+
 # Why?
 
 Apparently some people don't have access to a Rubidium frequency standard? Who knew? But this doesn't make them any less deserving of a precision timekeeping solution!
