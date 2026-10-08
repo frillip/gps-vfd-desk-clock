@@ -10,6 +10,8 @@ Apparently some people don't have access to a Rubidium frequency standard? Who k
 
 # What?
 
+<img width="1329" height="573" alt="image" src="https://github.com/user-attachments/assets/7ac8c3ad-8a94-4397-b105-5bd9c55a9ebd" />
+
 ## Overall design
 
 The last PCB and associated components were somewhat sprawling for a layout that favoured debugging. This design is an evolution based on things learned from the last clock, and significantly reduces the footprint by stacking boards on top of each other. The bottom board holds most of the electronics, the top board holds the tubes and the drivers, connected via a 4x2 2.54mm header. The top board is also supported by a series of 20mm M3 standoffs. The clock is designed to function with or without a GNSS module populated on the board, as this represents a significant cost, and also many people do not want to have GNSS antennas strung around their house (what?).
