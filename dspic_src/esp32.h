@@ -17,7 +17,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "bme280.h"
+#include "drivers/bme280.h"
 #include "eeprom.h"
 #include "gnss_pps.h"
 #include "mcc_generated_files/pin_manager.h"

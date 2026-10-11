@@ -17,9 +17,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include "mcc_generated_files/i2c1.h"
-#include "tubes.h"
-#include "ui.h"
+#include "../mcc_generated_files/i2c1.h"
+#include "../tubes.h"
+#include "../ui.h"
     
 #define VEML6040_ADDR               0x10
 

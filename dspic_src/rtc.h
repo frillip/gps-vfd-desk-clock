@@ -20,10 +20,10 @@ extern "C" {
 //#define RTC_SOURCE_DS1307
 
 #ifdef RTC_SOURCE_DS1307
-    #include "ds1307.h"
+    #include "drivers/ds1307.h"
 #else
     #ifdef RTC_SOURCE_PCF8563
-        #include "pcf8563.h"
+        #include "drivers/pcf8563.h"
     #endif
 #endif
 

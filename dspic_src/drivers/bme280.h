@@ -13,10 +13,10 @@ extern "C" {
 #endif
 
     
-#include "mcc_generated_files/system.h"
-#include "mcc_generated_files/pin_manager.h"    
-#include "mcc_generated_files/i2c1.h"
-#include "mcc_generated_files/delay.h"
+#include "../mcc_generated_files/system.h"
+#include "../mcc_generated_files/pin_manager.h"    
+#include "../mcc_generated_files/i2c1.h"
+#include "../mcc_generated_files/delay.h"
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>

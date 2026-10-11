@@ -14,22 +14,22 @@
 #include <time.h>
 #include <xc.h>
 
-#include "bme280.h"
+#include "drivers/bme280.h"
 #include "eeprom.h"
 #include "esp32.h"
 #include "freq.h"
 #include "gnss.h"
 #include "gnss_pps.h"
-#include "pcf8563.h"
+#include "drivers/pcf8563.h"
 #include "rtc.h"
 #include "pic_pps.h"
 #include "scheduler.h"
-#include "sht30.h"
+#include "drivers/sht30.h"
 #include "sync_state.h"
 #include "tubes.h"
 #include "ublox_ubx.h"
 #include "ui.h"
-#include "veml6040.h"
+#include "drivers/veml6040.h"
 
 //#define DEBUG_MESSAGES
 

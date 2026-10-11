@@ -17,7 +17,7 @@ extern "C" {
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include "mcc_generated_files/i2c1.h"
+#include "../mcc_generated_files/i2c1.h"
 
 #define PCF8563_ADDRESS 0x51
 

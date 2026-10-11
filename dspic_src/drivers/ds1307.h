@@ -17,7 +17,7 @@ extern "C" {
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include "mcc_generated_files/i2c1.h"
+#include "../mcc_generated_files/i2c1.h"
 
 #define DS1307_ADDRESS 0x68
 #define DS1307_TIME 0x00
