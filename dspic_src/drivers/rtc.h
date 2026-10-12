@@ -20,14 +20,14 @@ extern "C" {
 //#define RTC_SOURCE_DS1307
 
 #ifdef RTC_SOURCE_DS1307
-    #include "drivers/ds1307.h"
+    #include "ds1307.h"
 #else
     #ifdef RTC_SOURCE_PCF8563
-        #include "drivers/pcf8563.h"
+        #include "pcf8563.h"
     #endif
 #endif
 
-#include "ui.h"
+#include "../ui/ui.h"
 
 #define RTC_DETECT_LIMIT 30
     

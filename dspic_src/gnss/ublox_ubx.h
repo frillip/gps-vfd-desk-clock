@@ -17,12 +17,12 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "mcc_generated_files/uart2.h"
-#include "mcc_generated_files/uart1.h"
-#include "../common/enums.h"
+#include "../mcc_generated_files/uart2.h"
+#include "../mcc_generated_files/uart1.h"
+#include "../../common/enums.h"
 #include "gnss.h"
-#include "gnss_pps.h"
-#include "ui.h"
+#include "../timing/gnss_pps.h"
+#include "../ui/ui.h"
     
 #define UBX_HEADER_LENGTH               sizeof(struct _ubx_header)
 #define UBX_CHECKSUM_LENGTH             sizeof(struct _ubx_checksum)

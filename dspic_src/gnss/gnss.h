@@ -17,14 +17,14 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "mcc_generated_files/uart2.h"
-#include "mcc_generated_files/uart1.h"
-#include"mcc_generated_files/system.h"
-#include"mcc_generated_files/clock.h"
-#include "ui.h"
+#include "../mcc_generated_files/uart2.h"
+#include "../mcc_generated_files/uart1.h"
+#include "../mcc_generated_files/system.h"
+#include "../mcc_generated_files/clock.h"
+#include "../ui/ui.h"
 #include "ublox_ubx.h"
     
-#include "../common/enums.h"
+#include "../../common/enums.h"
     
 #define GNSS_STRING_BUFFER_SIZE 200
 #define GNSS_CHECK_BUFFER_SIZE 6

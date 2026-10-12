@@ -17,12 +17,12 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "../common/enums.h"
-#include "freq.h"
-#include "tubes.h"
-#include "ui.h"
+#include "../../common/enums.h"
+#include "../timing/freq.h"
+#include "../drivers/tubes.h"
+#include "../ui/ui.h"
     
-#include "mcc_generated_files/memory/flash.h"
+#include "../drivers/flash.h"
     
 #define EEPROM_HEADER_VALUE 0xC0FFEEEE
 #define EEPROM_MINIMUM_FOSC_WRITE_INTERVAL 86400UL

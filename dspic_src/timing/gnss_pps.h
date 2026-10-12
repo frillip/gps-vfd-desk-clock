@@ -23,7 +23,7 @@ extern "C" {
 #include "freq.h"
 #include "kalman.h"
 #include "allan_dev.h"
-#include "eeprom.h"
+#include "../settings/eeprom.h"
 
 #define GNSS_PPS_TIMEOUT_100MS          20
 #define GNSS_PPS_TIMEOUT_MAX_VAL        100

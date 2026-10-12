@@ -17,20 +17,20 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "drivers/bme280.h"
-#include "eeprom.h"
-#include "gnss_pps.h"
-#include "mcc_generated_files/pin_manager.h"
-#include "mcc_generated_files/uart2.h"
-#include "mcc_generated_files/uart1.h"
-#include "mcc_generated_files/system.h"
-#include "mcc_generated_files/clock.h"
-#include "pic_pps.h"
-#include "sync_state.h"
-#include "ui.h"
-#include "ublox_ubx.h"
-#include "../common/enums.h"
-#include "../common/serial_proto.h"
+#include "../drivers/bme280.h"
+#include "../settings/eeprom.h"
+#include "../timing/gnss_pps.h"
+#include "../mcc_generated_files/pin_manager.h"
+#include "../mcc_generated_files/uart2.h"
+#include "../mcc_generated_files/uart1.h"
+#include "../mcc_generated_files/system.h"
+#include "../mcc_generated_files/clock.h"
+#include "../timing/pic_pps.h"
+#include "../timing/sync_state.h"
+#include "../ui/ui.h"
+#include "../gnss/ublox_ubx.h"
+#include "../../common/enums.h"
+#include "../../common/serial_proto.h"
     
 #define ESP_DETECT_LIMIT 300
 #define ESP_NTP_LIMIT 500

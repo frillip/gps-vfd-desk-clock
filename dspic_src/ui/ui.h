@@ -17,15 +17,16 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "mcc_generated_files/pin_manager.h"
-#include "mcc_generated_files/uart1.h"
-#include "gnss_pps.h"
-#include "pic_pps.h"
-#include "rtc.h"
-#include "tubes.h"
-#include "sync_state.h"
-#include "../common/enums.h"
-#include "eeprom.h"
+#include "../mcc_generated_files/pin_manager.h"
+#include "../mcc_generated_files/uart1.h"
+#include "../timing/gnss_pps.h"
+#include "../timing/pic_pps.h"
+#include "../drivers/rtc.h"
+#include "../drivers/tubes.h"
+#include "../timing/sync_state.h"
+#include "../../common/enums.h"
+#include "../settings/eeprom.h"
+#include "../services/timezone.h"
 
 #define UI_BUTTON_SHORT_PRESS_COUNT 2
 #define UI_BUTTON_LONG_PRESS_COUNT 50

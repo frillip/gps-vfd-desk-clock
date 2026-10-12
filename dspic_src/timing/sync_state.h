@@ -12,14 +12,14 @@
 extern "C" {
 #endif
 
-#include"mcc_generated_files/system.h"
-#include"mcc_generated_files/clock.h"
-#include"mcc_generated_files/pin_manager.h"
-#include"mcc_generated_files/interrupt_manager.h"
-#include"mcc_generated_files/i2c1.h"
-#include"mcc_generated_files/spi2.h"
-#include"mcc_generated_files/uart1.h"
-#include"mcc_generated_files/uart2.h"
+#include"../mcc_generated_files/system.h"
+#include"../mcc_generated_files/clock.h"
+#include"../mcc_generated_files/pin_manager.h"
+#include"../mcc_generated_files/interrupt_manager.h"
+#include"../mcc_generated_files/i2c1.h"
+#include"../mcc_generated_files/spi2.h"
+#include"../mcc_generated_files/uart1.h"
+#include"../mcc_generated_files/uart2.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -28,21 +28,21 @@ extern "C" {
 #include <time.h>
 #include <xc.h>
 
-#include "eeprom.h"
-#include "esp32.h"
-#include "freq.h"
-#include "gnss.h"
-#include "gnss_pps.h"
-#include "drivers/pcf8563.h"
-#include "rtc.h"
-#include "pic_pps.h"
-#include "scheduler.h"
-#include "drivers/sht30.h"
-#include "sync_state.h"
-#include "tubes.h"
-#include "ublox_ubx.h"
-#include "ui.h"
-#include "../common/enums.h"
+#include "../settings/eeprom.h"
+#include "../esp/esp32.h"
+#include "../timing/freq.h"
+#include "../gnss/gnss.h"
+#include "../timing/gnss_pps.h"
+#include "../drivers/pcf8563.h"
+#include "../drivers/rtc.h"
+#include "../timing/pic_pps.h"
+#include "../scheduler.h"
+#include "../drivers/sht30.h"
+#include "../timing/sync_state.h"
+#include "../drivers/tubes.h"
+#include "../gnss/ublox_ubx.h"
+#include "../ui/ui.h"
+#include "../../common/enums.h"
 
 void sync_state_machine(void);
 void sync_state_machine_set_state(CLOCK_SYNC_STATUS state);

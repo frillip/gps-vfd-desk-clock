@@ -12,18 +12,18 @@
 extern "C" {
 #endif
 
-#include "mcc_generated_files/system.h"
-#include "mcc_generated_files/pin_manager.h"    
-#include "mcc_generated_files/spi2.h"
-#include "mcc_generated_files/delay.h"
+#include "../mcc_generated_files/system.h"
+#include "../mcc_generated_files/pin_manager.h"    
+#include "../mcc_generated_files/spi2.h"
+#include "../mcc_generated_files/delay.h"
 #include <time.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
     
-#include "ui.h"
-#include "../common/enums.h"
-#include "eeprom.h"
+#include "../ui/ui.h"
+#include "../../common/enums.h"
+#include "../settings/eeprom.h"
 
 // Digit offsets
 #define TUBE_4_OFFSET   33
@@ -146,8 +146,6 @@ void display_all(void);
 void display_blank(void);
 void display_latch(void);
 void display_local_time(time_t time);
-bool isDST(const time_t *tod);
-time_t get_local_time(time_t utc);
 void display_timezone_decr(void);
 
 #ifdef	__cplusplus

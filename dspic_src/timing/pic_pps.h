@@ -19,10 +19,10 @@ extern "C" {
 #include <stdio.h>
     
 #include "freq.h"
-#include "scheduler.h"
-#include "ui.h"
+#include "../scheduler.h"
+#include "../ui/ui.h"
 #include "sync_state.h"
-#include "esp32.h"
+#include "../esp/esp32.h"
 #include "kalman.h"
     
 #define OC_OFFSET_LIMIT_SCALAR (5)
