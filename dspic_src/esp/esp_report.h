@@ -1,0 +1,41 @@
+/*
+ * The clock's state as SML payloads for the ESP: one builder per PIC -> ESP
+ * message, filling the native struct that sml_encode() puts on the wire
+ * (common/SML_PROTOCOL.md has each field's meaning).
+ *
+ * Firmware enums never reach the wire as they are: the mapping functions
+ * below translate them to the frozen SML_* codes.
+ */
+#ifndef ESP_REPORT_H
+#define ESP_REPORT_H
+
+#include <stdint.h>
+
+#include "../sync/sync.h"
+#include "../timing/epoch_control.h"
+#include "../ui/display.h"
+#include "sml_proto.h"
+
+// Mappings to wire codes.
+uint8_t esp_report_lock(SyncState state, uint32_t epochs);
+uint8_t esp_report_sync(SyncState state, uint32_t epochs);
+uint8_t esp_report_cause(uint8_t reason);                   // SyncReason
+uint8_t esp_report_source(uint8_t source, uint32_t epochs); // SyncSourceId
+uint8_t esp_report_control(EpochSyncState state);
+uint8_t esp_report_display(DisplayMode mode, bool time_known);
+
+// From the latest epoch: snapshot and update are those of sync_update().
+void esp_report_time_auth(SML_TIME_AUTH_PAYLOAD *payload);
+void esp_report_time_pic(const TimingSnapshot *snapshot, const SyncUpdate *update,
+                         SML_TIME_PIC_PAYLOAD *payload);
+void esp_report_time_ctrl(const TimingSnapshot *snapshot, const SyncUpdate *update,
+                          SML_TIME_CTRL_PAYLOAD *payload);
+void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *update, uint32_t now_ms,
+                          SML_TIME_MEAS_PAYLOAD *payload);
+void esp_report_time_gnss(uint32_t now_ms, SML_TIME_GNSS_PAYLOAD *payload);
+void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload);
+
+// Every module's full diagnostics, for SML_USER_INFO.
+void esp_report_print_all(uint32_t now_ms);
+
+#endif // ESP_REPORT_H

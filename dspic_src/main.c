@@ -1,263 +1,171 @@
-#include"mcc_generated_files/system.h"
-#include"mcc_generated_files/clock.h"
-#include"mcc_generated_files/pin_manager.h"
-#include"mcc_generated_files/interrupt_manager.h"
-#include"mcc_generated_files/i2c1.h"
-#include"mcc_generated_files/spi2.h"
-#include"mcc_generated_files/uart1.h"
-#include"mcc_generated_files/uart2.h"
-
-#include <stdint.h>
+/*
+ * Smol Clock V2+: disciplines the T2/T3 epoch timer, and with it the OC1
+ * epoch output, to the best available time source, shows local time on the
+ * tubes and reports every second to the ESP32 and the console.
+ *
+ * Where things are: the task list below and scheduler.h; source selection
+ * and time of day in sync/ (sync/sync.h); the timing hardware and control
+ * loop in timing/ (timing/timing_config.h); the GNSS receiver link in gnss/
+ * (gnss/gnss.h); the ESP32 link in esp/ (esp/esp_link.h, SML protocol); the
+ * tubes in ui/display.h and local time in ui/timezone.h.
+ */
 #include <stdbool.h>
-#include <string.h>
 #include <stdio.h>
-#include <time.h>
-#include <xc.h>
 
-#include "drivers/bme280.h"
-#include "settings/eeprom.h"
-#include "esp/esp32.h"
-#include "timing/freq.h"
+#include "esp/esp_link.h"
 #include "gnss/gnss.h"
-#include "timing/gnss_pps.h"
-#include "drivers/pcf8563.h"
-#include "drivers/rtc.h"
-#include "timing/pic_pps.h"
+#include "platform/system.h"
 #include "scheduler.h"
-#include "drivers/sht30.h"
-#include "timing/sync_state.h"
-#include "drivers/tubes.h"
-#include "gnss/ublox_ubx.h"
-#include "ui/ui.h"
-#include "drivers/veml6040.h"
+#include "sync/sync.h"
+#include "sync/sync_report.h"
+#include "timing/timing.h"
+#include "timing/timing_report.h"
+#include "ui/console.h"
+#include "ui/display.h"
+#include "ui/timezone.h"
 
-//#define DEBUG_MESSAGES
+// Full diagnostics, once a minute each, in different epochs, late in the
+// second: they use printf, which costs ~1.5 ms a call here (70-80 ms a
+// report), so they stay clear of the epoch work and the GNSS burst that
+// follows each navigation solution. The per-epoch lines use ui/text.h.
+#define REPORT_SLOT            600U
+#define FULL_REPORT_EPOCHS     60U
+#define SCHEDULER_REPORT_EPOCH 15U // ... at this epoch of each minute
+#define GNSS_REPORT_EPOCH      30U
+#define SYNC_REPORT_EPOCH      45U
 
-extern bool print_data;
-extern bool disable_manual_print;
-extern uint8_t resync_interval;
+// ---- The task list --------------------------------------------------------
+// Periodic tasks keep their phase on the epoch timeline; slot tasks run at a
+// fixed point in every epoch. See scheduler.h.
 
-extern bool scheduler_sync;
-extern bool scheduler_adjust_in_progress;
-extern uint8_t t1ms0;
-extern uint8_t t10ms0;
-extern uint8_t t10ms1;
-extern uint8_t t100ms0;
-extern uint8_t t100ms1;
-extern uint8_t t100ms2;
+// The UART2 ring holds ~44 ms of GNSS data at 115200, the UART1 ring ~22 ms
+// of ESP data.
+static SchedulerTask every_10ms = SCHEDULER_EVERY("10 ms", 10U);
+// After the epoch pulse has closed the tube drivers' latch.
+static SchedulerTask display_load = SCHEDULER_AT_SLOT("display load", DISPLAY_LOAD_SLOT);
+// The full reports, clear of the epoch work and the GNSS burst.
+static SchedulerTask minute_report = SCHEDULER_AT_SLOT("minute report", REPORT_SLOT);
+// The epoch's work, started by timing_snapshot(): timed only.
+static SchedulerTask epoch_work = SCHEDULER_SECTION("epoch");
 
-bool sync_state_machine_run = 0;
+// The GNSS receiver link, with the latest PPS edge for labelling.
+static void service_gnss(void)
+{
+    GnssPpsReference reference;
+    PpsEdge edge;
 
-// time_t to store UTC, GNSS, RTC and local time
-time_t utc;
-time_t local;
-bool dst_active;
+    pps_capture_gnss_edge(&edge);
+    reference.sequence = edge.sequence;
+    reference.observed_ms = edge.observed_ms;
+    reference.valid = edge.valid;
+    gnss_service(scheduler_now_ms(), reference);
+}
 
-extern time_t rtc;
-extern bool rtc_detected;
 
-extern time_t gnss;
-extern bool gnss_detected;
+// The time of day for the display, as the synchroniser keeps it.
+static void prepare_display(void)
+{
+    const SyncStatus *status = sync_status();
+    DisplayClock clock;
 
-extern time_t ntp;
-extern bool esp_detected;
+    clock.known = status->time.known;
+    clock.synchronised = sync_is_synchronised();
+    clock.utc_seconds = status->time.utc_seconds;
+    clock.leap_second = status->time.leap_second;
+    clock.leap = status->time.leap;
+    display_prepare(&clock);
+}
 
-extern time_t display;
 
-extern int32_t tz_offset;
-extern int32_t dst_offset;
+// Once per epoch, 1 ms after it: measure, steer, label the second, tell the
+// ESP, render the next second, and report.
+static void run_epoch(const TimingSnapshot *snapshot)
+{
+    SyncUpdate update;
 
-uint32_t fosc_freq = FCYCLE;
+    update = sync_update(snapshot, epoch_timer_ms());
+    esp_link_epoch(snapshot, &update, epoch_timer_ms());
+    prepare_display();
 
-extern bool oc_adjust_in_progress;
+    timing_report_epoch(snapshot, &update.loop);
+    gnss_print_edge(snapshot->capture.gnss_edge_sequence, epoch_timer_ms());
+    sync_report_epoch(&update);
+}
 
-extern int32_t oc_offset;
-extern bool oc_event;
-extern bool state_new_oc;
-extern bool state_new_ic;
 
-extern bool ic_event;
+// One of the full reports, by the epoch's place in the minute.
+static void report_minute(void)
+{
+    uint32_t minute_epoch = scheduler_epoch() % FULL_REPORT_EPOCHS;
 
-extern bool pps_sync;
-extern bool gnss_fix;
+    if (minute_epoch == SCHEDULER_REPORT_EPOCH)
+    {
+        scheduler_print();
+    }
+    if (minute_epoch == GNSS_REPORT_EPOCH)
+    {
+        gnss_print(epoch_timer_ms());
+    }
+    if (minute_epoch == SYNC_REPORT_EPOCH)
+    {
+        sync_report_status();
+        display_print();
+        timezone_print(sync_status()->time.utc_seconds);
+        esp_link_print();
+    }
+}
 
-extern bool esp_gnss_data_updated;
-extern bool esp_brightness_updated;
-extern uint16_t esp_brightness;
-
-extern CLOCK_SYNC_STATUS clock_sync_state;
-extern CLOCK_SYNC_STATUS clock_sync_state_old;
-extern CLOCK_SYNC_STATUS clock_sync_state_last;
-
-extern UI_DISPLAY_STATE ui_state_current;
-
-extern bool veml6040_detected;
-extern uint16_t veml_ambient_light;
-extern uint16_t veml_brightness;
-
-extern bool bme280_detected;
-extern int32_t bme280_temperature;
-extern uint32_t bme280_pressure;
-extern int32_t bme280_humidity;
-
-extern EEPROM_DATA_STRUCT settings;
 
 int main(void)
 {
-    // initialize the device
-    PIN_MANAGER_Initialize();
-    CLOCK_Initialize();
-    INTERRUPT_Initialize();
-    UART2_Initialize();
-    I2C1_Initialize();
-    SPI2_Initialize();
-    UART1_Initialize();
-    INTERRUPT_GlobalEnable();
-    SYSTEM_CORCONModeOperatingSet(CORCON_MODE_PORVALUES);
+    PpsCaptureSync capture_sync;
 
-#ifdef DEBUG_MESSAGES
-    printf("\033[2J\033[1;1H"); // Clear the terminal window
-    printf("\nHELLO!\n\n"); // And say hello!
-    double fosc_freq_f = ((float)fosc_freq * XTAL_FREQ_MHZ)/FCYCLE;
-    printf("Running @ 80MHz on %.06fMHz XTAL\n", fosc_freq_f);
-#endif
-    
-    eeprom_init();
-    // Load last stored fosc_freq estimate from EEPROM 
-    fosc_freq = settings.fields.pps.fosc_freq;
-    // Sanity check just in case
-    if(fosc_freq>FCYCLE_UPPER_LIM||fosc_freq<FCYCLE_LOWER_LIM) fosc_freq = FCYCLE;
-    
-    veml6040_detected = VEML6040_init();
-    if(veml6040_detected)
-    {
-        veml_ambient_light = VEML6040_get_lux();
-        veml_brightness = VEML_calc_brightness(veml_ambient_light);
-        display_brightness_set_target(veml_brightness);
-    }
-    
-    bme280_detected = BME280_init();
-    if(bme280_detected)
-    {
-        BME280_write_settings();
-    }
-        
-    DELAY_microseconds(10000);
-    
+    system_init();
+    console_init(FCY);
+    esp_link_init();
+    printf("\033[2J\033[1;1H");
+
+    sync_init();
+    timing_init(&capture_sync);
+    timing_report_sync(&capture_sync);
+    gnss_init(FCY, epoch_timer_ms());
+    timezone_init();
+    display_init();
     scheduler_init();
-    sync_state_machine_run = 1;
-    
-    ui_init();
 
-    // Enable WDT (set to 32s timeout non-windowed mode)
-    RCONbits.SWDTEN = 1;
-    
     while (1)
     {
-        if(t1ms0)
+        TimingSnapshot snapshot;
+
+        scheduler_pass();
+
+        // Every pass. The status LED is lit for the 100 ms epoch pulse: a
+        // heartbeat on the second. The epoch interrupt lights it, so its
+        // rising edge also marks the interrupt's latency on a scope.
+        STATUS_LED_SET(DISPLAY_LATCH_OC_GET_VALUE());
+
+        // Every epoch, at the measurement slot (set by the T4 scheduler
+        // interrupt, so the captures of the epoch are read together).
+        if (timing_snapshot(&snapshot))
         {
-            t1ms0=0;
+            scheduler_section(&epoch_work);
+            run_epoch(&snapshot);
         }
 
-        if(t10ms0)
+        if (scheduler_due(&every_10ms))
         {
-            t10ms0=0;
-            
-            if(ui_state_current==UI_DISPLAY_STATE_CLOCK_SSMM)
-            {
-                display_ssmm(&utc);
-                display_latch();
-            }
-            
-            if(sync_state_machine_run)
-            {
-                sync_state_machine();
-            }
-
-            // Run our UBX data task if we have GNSS module
-            if(gnss_detected) 
-            {
-                ubx_data_task();
-            }
-            
-            // Check for any bytes on UART1
-            if(esp_detected)
-            {
-                esp_data_task();
-            }
-            
-            display_brightness_update();
-
-            // Print some statistics if required
-            if(print_data)
-            {
-                print_clocks();
-                pic_pps_print_stats();
-                print_ubx_data();
-                print_esp_data();
-                print_rtc_data();
-                print_veml_data();
-                print_bme280_data();
-                print_sync_state_machine();
-                printf("\n");
-                print_data = 0;
-            }
+            service_gnss();
+            esp_link_service(scheduler_now_ms());
         }
 
-        if(t10ms1>=2)
+        if (scheduler_due(&display_load))
         {
-            t10ms1=0;
-            eeprom_write_fosc();
-            ui_button_task();
-            ui_buzzer_task();
-            ui_display_task();
+            display_service();
         }
-        if(t100ms0)
+
+        if (scheduler_due(&minute_report))
         {
-            t100ms0 = 0;
-            STATUS_LED_Toggle();
-            if(gnss_detected)
-            {
-                gnss_pps_age_data();
-                ubx_age_data();
-                
-                static bool ubx_recovery_latch = false;
-                
-                if(ubx_gnss_recovery_expired() && !gnss_pps_data_expired())
-                {
-                    if(!ubx_recovery_latch)
-                    {
-                        gnss_rx_reset();
-                        ubx_recovery_latch = 1;
-                    }
-                }
-                else
-                {
-                    ubx_recovery_latch = 0;
-                }
-            }
-            if(veml6040_detected)
-            {
-                veml_ambient_light = VEML6040_get_lux();
-                veml_brightness = VEML_calc_brightness(veml_ambient_light);
-                display_brightness_set_target(veml_brightness);
-            }
-        }
-        
-        if(t100ms2==3)
-        {
-            t100ms2 = -2;
-        }
-        
-        if(t100ms1==9)
-        {
-            t100ms1 = -1;
-            display_local_time(utc+1);
-            BME280_read_all();
-            // Re-enable manual printing
-            disable_manual_print = 0;
-            
+            report_minute();
         }
     }
-    return 1; 
 }

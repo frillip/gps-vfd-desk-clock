@@ -1,10 +1,10 @@
 #include <HardwareSerial.h>
 
 #define DEBUG_UART  0
-#define DEBUG_BAUD  115200
+#define DEBUG_BAUD  921600
 
 #define PIC_UART    2
-#define PIC_BAUD    115200
+#define PIC_BAUD    921600
 #define PIC_RXD     13
 #define PIC_TXD     12
 #define PIC_PPS_PIN 27

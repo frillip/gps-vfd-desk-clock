@@ -1,91 +1,220 @@
 #include "scheduler.h"
 
-uint8_t t1ms=0;
-uint8_t t1ms0=0;
-uint8_t t1ms1=0;
-uint8_t t10ms=0;
-uint16_t t10ms_display=0;
-uint8_t t10ms0=0;
-uint8_t t10ms1=0;
-uint8_t t100ms=0;
-uint8_t t100ms0=0;
-uint8_t t100ms1=0;
-uint8_t t100ms2=0;
-uint8_t t1s0=0;
-uint8_t t1s1=0;
+#include <stddef.h>
+#include <stdio.h>
 
-bool scheduler_sync = 0;
-extern bool print_data;
+#include "platform/time_ms.h"
+#include "timing/epoch_timer.h"
+
+static uint32_t now_ms;
+static uint32_t epoch;
+static uint16_t slot;
+static bool passed;
+static uint32_t pass_start_ms;
+static uint16_t pass_max_ms;
+static uint32_t passes;
+static SchedulerTask *tasks;   // every task seen, in order of first use
+static SchedulerTask *running; // timed until the next call in
+static uint32_t running_since_ms;
+static uint32_t report_start_ms;
+
+static void enrol(SchedulerTask *task)
+{
+    SchedulerTask **end = &tasks;
+
+    while (*end != NULL)
+    {
+        end = &(*end)->next;
+    }
+    *end = task;
+    task->next = NULL;
+    task->started = true;
+    task->next_ms = now_ms + task->interval;
+    task->last_epoch = epoch - 1U; // due in this epoch
+}
+
+
+// Ends the timing of whatever ran since the last call into the scheduler.
+static void stop_running(void)
+{
+    if (running != NULL)
+    {
+        uint32_t busy = time_ms_elapsed(epoch_timer_ms(), running_since_ms);
+        running->busy_ms += busy;
+        if (busy > running->busy_max)
+        {
+            running->busy_max = busy > UINT16_MAX ? UINT16_MAX : (uint16_t)busy;
+        }
+        running = NULL;
+    }
+}
+
+
+static void start_running(SchedulerTask *task)
+{
+    task->runs++;
+    running = task;
+    running_since_ms = epoch_timer_ms();
+}
+
+
+static void note_lateness(SchedulerTask *task, uint32_t late)
+{
+    if (late > task->late_max)
+    {
+        task->late_max = late > UINT16_MAX ? UINT16_MAX : (uint16_t)late;
+    }
+}
+
+
+static bool periodic_due(SchedulerTask *task)
+{
+    uint32_t late;
+
+    if ((int32_t)(now_ms - task->next_ms) < 0)
+    {
+        return false; // not yet: wrap-safe for half the 49-day range
+    }
+    late = time_ms_elapsed(now_ms, task->next_ms);
+    note_lateness(task, late);
+    // Whole periods that went by entirely are skipped, not run in a burst.
+    task->missed += late / task->interval;
+    task->next_ms += task->interval * (late / task->interval + 1U);
+    return true;
+}
+
+
+static bool slot_due(SchedulerTask *task)
+{
+    uint32_t epochs = epoch - task->last_epoch;
+
+    if (epochs == 0U || slot < task->interval)
+    {
+        return false;
+    }
+    note_lateness(task, (uint32_t)(slot - task->interval));
+    task->missed += epochs - 1U;
+    task->last_epoch = epoch;
+    return true;
+}
+
 
 void scheduler_init(void)
 {
-    //TMR2 0; 
-    TMR2 = 0x00;
-    //Period = 0.001 s; Frequency = 40000000 Hz; PR2 4999; 
-    PR2 = 0x1387;
-    //TCKPS 1:8; T32 16 Bit; TON enabled; TSIDL disabled; TCS FOSC/2; TGATE disabled; 
-    T2CON = 0x8010;
-    // Clear T2 interrupt flag
-    IFS0bits.T2IF = false;
-    // Enable T2 interrupts
-    IEC0bits.T2IE = true;
-    // Set interrupt priority
-    IPC1bits.T2IP = 2;
+    tasks = NULL;
+    running = NULL;
+    passed = false;
+    passes = 0;
+    pass_max_ms = 0;
+    scheduler_pass();
+    report_start_ms = now_ms;
 }
 
 
-// Sync the scheduler when called
-void scheduler_align(uint32_t fosc)
+void scheduler_pass(void)
 {
-    uint16_t new_tmr2_pr = (((fosc + SCHEDULER_PRECISION)>>3)/1000);
-    PR2 = new_tmr2_pr-1; // Readjust our scheduler timer
-    TMR2 = new_tmr2_pr/2; // Set the timer counter to expire in 500us
-    STATUS_LED_SetHigh(); // Drive the LED high for no reason
-    t1ms=0;
-    t1ms0=0;
-    t1ms1=0;
-    t10ms=0;
-    t10ms_display=0;
-    t10ms0=0;
-    t10ms1=0;
-    t100ms=0;
-    t100ms0=0;
-    t100ms1=0;
-    t100ms2=0;
-    t1s0=0;
-    t1s1=0; // Reset the scheduler variables
-    scheduler_sync = 1; // Say that we're done
-#ifdef DEBUG_MESSAGES
-    print_data = 1;
-#endif
-}
-
-void __attribute__ ( ( interrupt, no_auto_psv ) ) _T2Interrupt (  )
-{
-    t1ms++;
-    t1ms0++;
-    t1ms1++;
-    if(t1ms==10)
+    stop_running();
+    now_ms = epoch_timer_ms();
+    epoch_timer_position(&epoch, &slot);
+    if (passed)
     {
-        t1ms=0;
-        t10ms++;
-        t10ms_display++;
-        t10ms0++;
-        t10ms1++;
-        if(t10ms==10)
+        uint32_t pass_ms = time_ms_elapsed(now_ms, pass_start_ms);
+        if (pass_ms > pass_max_ms)
         {
-            t10ms=0;
-            t100ms++;
-            t100ms0++;
-            t100ms1++;
-            t100ms2++;
-            if(t100ms==10)
-            {
-                t100ms=0;
-                t1s0++;
-                t1s1++;
-            }
+            pass_max_ms = pass_ms > UINT16_MAX ? UINT16_MAX : (uint16_t)pass_ms;
         }
     }
-    IFS0bits.T2IF = false;
+    passed = true;
+    pass_start_ms = now_ms;
+    passes++;
+}
+
+
+bool scheduler_due(SchedulerTask *task)
+{
+    bool due;
+
+    stop_running();
+    if (!task->started)
+    {
+        enrol(task);
+    }
+    due = task->kind == SCHEDULER_SLOT ? slot_due(task) : periodic_due(task);
+    if (due)
+    {
+        start_running(task);
+    }
+    return due;
+}
+
+
+void scheduler_section(SchedulerTask *section)
+{
+    stop_running();
+    if (!section->started)
+    {
+        enrol(section);
+    }
+    start_running(section);
+}
+
+
+uint32_t scheduler_now_ms(void)
+{
+    return now_ms;
+}
+
+
+uint32_t scheduler_epoch(void)
+{
+    return epoch;
+}
+
+
+uint16_t scheduler_slot(void)
+{
+    return slot;
+}
+
+
+// Share of the reporting window, in tenths of a percent.
+static uint32_t permille(uint32_t part, uint32_t whole)
+{
+    return whole == 0U ? 0U : (part * 1000U + whole / 2U) / whole;
+}
+
+
+void scheduler_print(void)
+{
+    SchedulerTask *task;
+    uint32_t window_ms;
+
+    stop_running();
+    window_ms = time_ms_elapsed(epoch_timer_ms(), report_start_ms);
+    printf("Scheduler: %lu passes in %lu ms, longest %u ms\r\n", (unsigned long)passes,
+           (unsigned long)window_ms, pass_max_ms);
+    for (task = tasks; task != NULL; task = task->next)
+    {
+        uint32_t share = permille(task->busy_ms, window_ms);
+
+        if (task->kind == SCHEDULER_SECTION_KIND)
+        {
+            printf("  %-14s section       : %lu runs", task->name, (unsigned long)task->runs);
+        }
+        else
+        {
+            printf("  %-14s %s %4u ms: %lu runs, %lu %s, worst %u ms late", task->name,
+                   task->kind == SCHEDULER_SLOT ? "at slot" : "every  ", task->interval,
+                   (unsigned long)task->runs, (unsigned long)task->missed,
+                   task->kind == SCHEDULER_SLOT ? "epochs missed" : "periods skipped",
+                   task->late_max);
+        }
+        printf("; busy max %u ms, %lu.%lu%%\r\n", task->busy_max, (unsigned long)(share / 10U),
+               (unsigned long)(share % 10U));
+        task->busy_ms = 0;
+        task->busy_max = 0;
+    }
+    passes = 0;
+    pass_max_ms = 0;
+    report_start_ms = epoch_timer_ms();
 }

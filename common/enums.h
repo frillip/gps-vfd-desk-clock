@@ -1,8 +1,25 @@
-/* 
+// Version: 2026-10-19T15:15:00+01:00
+/*
  * File:   enums.h
  * Author: Frillip
  *
  * Created on 13 April 2024, 19:33
+ *
+ * Application enums shared by name between the dsPIC and ESP32 sources.
+ * None of these values goes on the wire: SML (serial_proto.h) carries fixed
+ * SML_* codes, and each side maps its enums onto them with explicit tables.
+ *
+ * 2026-10-19, SML 1.1: removed the enums the protocol now defines as wire
+ * codes, and those that duplicated u-blox definitions:
+ *   CLOCK_SOURCE        -> SML_SOURCE_* (values differ: INIT 0, NONE 1, ...)
+ *   CLOCK_SYNC_STATUS   -> SML_SYNC_*, SML_CAUSE_*, SML_LOCK_* (V2+ sync/)
+ *   TZINFO_SOURCE       -> SML_TZ_SOURCE_*
+ *   PIC_RTC_TYPE        -> SML_RTC_*
+ *   ESP_/PIC_MESSAGE_TYPE, BOOTLOADER_CMD -> SML classes and IDs
+ *   GNSS_MESSAGE_TYPE, UBX_NAV_STATUS_GPSFIX, UBX_NAV_TIMEUTC_VALID_UTCSTANDARD,
+ *   UBX_TIM_TM2_FLAGS_TIMEBASE -> ubx_proto.h (UBX_FIX_*, UBX_TIMEUTC_*, UBX_TM2_*)
+ * esp_src/ keeps its own legacy copies of enums.h and serial_proto.h until
+ * the ESP is ported to SML.
  */
 
 #ifndef ENUMS_H
@@ -12,103 +29,7 @@
 extern "C" {
 #endif
 
-typedef enum
-{
-    GNSS_NONE = 0,
-    GNSS_UBX_TIM_TM2,
-    GNSS_UBX_NAV_TIMEUTC,
-    GNSS_UBX_NAV_CLOCK,
-    GNSS_UBX_NAV_STATUS,
-    GNSS_UBX_NAV_POSLLH,
-    GNSS_GNRMC,
-} GNSS_MESSAGE_TYPE;
-
-typedef enum
-{
-    GPSFIX_NO_FIX = 0,
-    GPSFIX_DR_ONLY = 1,
-    GPSFIX_2D = 2,
-    GPSFIX_3D = 3,
-    GPSFIX_GPS_DR = 4,
-    GPSFIX_TIME_ONLY = 5,
-} UBX_NAV_STATUS_GPSFIX;
-
-typedef enum
-{
-    UTC_INA = 0,
-    UTC_CRL = 1,
-    UTC_NIST = 2,
-    UTC_USNO = 3,
-    UTC_BIPM = 4,
-    UTC_EL = 5,
-    UTC_SU = 6,
-    UTC_NTSC = 7,
-    UTC_NPLI = 8,
-    UTC_UNKNOWN = 15,
-} UBX_NAV_TIMEUTC_VALID_UTCSTANDARD;
-
-typedef enum
-{
-    TIMEBASE_RECV = 0,
-    TIMEBASE_GNSS = 1,
-    TIMEBASE_UTC = 2,
-} UBX_TIM_TM2_FLAGS_TIMEBASE;
-
-typedef enum
-{
-    SYNC_POWER_ON = 0,
-    SYNC_RTC_DETECT,
-    SYNC_NTP_DETECT,
-    SYNC_GNSS_DETECT,
-    SYNC_GNSS_WAIT_FOR_FIX,
-    SYNC_STARTUP,
-    SYNC_NOSYNC,
-    SYNC_ADJUST_STAGE_1,
-    SYNC_ADJUST_STAGE_2,
-    SYNC_PPS_SYNC,
-    SYNC_SCHED_SYNC,
-    SYNC_MIN_INTERVAL,
-    SYNC_INTERVAL,
-    SYNC_SYNC,
-    SYNC_NOSYNC_MINOR,
-    SYNC_NOSYNC_MINOR_OC,
-    SYNC_NOSYNC_MAJOR,
-    SYNC_NOSYNC_MAJOR_OC,
-    SYNC_NOSYNC_FREQ,
-    SYNC_NOSYNC_FREQ_ONLY,
-    SYNC_NOSYNC_GNSS,
-    SYNC_NOSYNC_MANUAL,
-    SYNC_NO_CLOCK,
-    SYNC_RTC,
-    SYNC_NTP,
-    SYNC_NTP_ADJUST,
-    SYNC_NTP_NO_NETWORK,
-} CLOCK_SYNC_STATUS;
-
-typedef enum
-{
-    CLOCK_SOURCE_NONE = 0,
-    CLOCK_SOURCE_RTC,
-    CLOCK_SOURCE_ESP,
-    CLOCK_SOURCE_NTP,
-    CLOCK_SOURCE_GNSS,
-} CLOCK_SOURCE;
-
-typedef enum
-{
-    TZINFO_SOURCE_NONE = 0,
-    TZINFO_SOURCE_CACHE,
-    TZINFO_SOURCE_GEOIP,
-    TZINFO_SOURCE_GNSS,
-} TZINFO_SOURCE;
-
-typedef enum
-{
-    RTC_UNDEFINED = 0,
-    RTC_DS1307,
-    RTC_PCF8563,
-} PIC_RTC_TYPE;
-
+// Wire values are SML_DISPLAY_*, numerically equal by design.
 typedef enum
 {
     UI_DISPLAY_STATE_INIT = 0,
@@ -187,35 +108,8 @@ typedef enum
     UI_BUTTON_STATE_HOLD,
 } UI_BUTTON_STATE;
 
-typedef enum
-{
-    ESP_NONE = 0,
-    ESP_TIME,
-    ESP_GNSS,
-    ESP_OFFSET,
-    ESP_NET,
-    ESP_RTC,
-    ESP_SENSOR,
-    ESP_DISPLAY,
-    ESP_TZINFO,
-    ESP_USER,
-    ESP_BOOTLOADER,
-} ESP_MESSAGE_TYPE;
-
-typedef enum
-{
-    PIC_NONE = 0,
-    PIC_TIME,
-    PIC_GNSS,
-    PIC_OFFSET,
-    PIC_NET,
-    PIC_RTC,
-    PIC_SENSOR,
-    PIC_DISPLAY,
-    PIC_USER,
-    PIC_BOOTLOADER,
-} PIC_MESSAGE_TYPE;
-
+// Text commands parsed by the ESP console and telnet. Commands for the PIC
+// are sent as SML-CMD-USER with SML_USER_* codes, never these values.
 typedef enum
 {
     USER_CMD_NONE = 0,
@@ -294,6 +188,9 @@ typedef enum
     USER_CMD_ESP_SAVE,
     USER_CMD_RESET_ALL,
     USER_CMD_HELP,
+
+    /* Appended so existing command numbers are unchanged. */
+    USER_CMD_PIC_GNSS_PROVISION,
 } USER_CMD;
 
 typedef enum
@@ -311,14 +208,6 @@ typedef enum
     USER_CMD_SRC_UART,
     USER_CMD_SRC_TELNET,
 } USER_CMD_SRC;
-
-typedef enum
-{
-    BOOTLOADER_CMD_NONE = 0,
-    BOOTLOADER_CMD_ENTER,
-    BOOTLOADER_CMD_START,
-    BOOTLOADER_CMD_EXIT,
-} BOOTLOADER_CMD;
 
 #ifdef	__cplusplus
 }
