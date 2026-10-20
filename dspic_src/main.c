@@ -87,9 +87,9 @@ static void run_epoch(const TimingSnapshot *snapshot)
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
     prepare_display();
 
-    timing_report_epoch(snapshot, &update.loop);
-    gnss_print_edge(snapshot->capture.gnss_edge_sequence, epoch_timer_ms());
-    sync_report_epoch(&update);
+    //timing_report_epoch(snapshot, &update.loop);
+    //gnss_print_edge(snapshot->capture.gnss_edge_sequence, epoch_timer_ms());
+    //sync_report_epoch(&update);
 }
 
 
@@ -165,7 +165,7 @@ int main(void)
 
         if (scheduler_due(&minute_report))
         {
-            report_minute();
+            //report_minute();
         }
     }
 }
