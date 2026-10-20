@@ -95,6 +95,29 @@ void sync_report_epoch(const SyncUpdate *update)
             text_str(&line, "ns");
         }
     }
+    else
+    {
+        // Nothing selected: why each source is not, and how far it has got.
+        uint8_t index;
+        for (index = 0; index < SYNC_SOURCE_COUNT; index++)
+        {
+            const SyncSourceTracker *tracker = &status->sources[index];
+            text_str(&line, index == 0U ? " | " : ", ");
+            text_str(&line, sync_source_name(index));
+            text_char(&line, ' ');
+            text_str(&line, sync_source_check_name(tracker->check));
+            if (tracker->report.uncertainty_ns != 0U)
+            {
+                text_str(&line, " unc ");
+                text_u32(&line, tracker->report.uncertainty_ns, 0, ' ');
+                text_str(&line, "ns");
+            }
+            text_char(&line, ' ');
+            text_u32(&line, tracker->good_run, 0, ' ');
+            text_char(&line, '/');
+            text_u32(&line, SYNC_QUALIFY_EPOCHS, 0, ' ');
+        }
+    }
     text_str(&line, update->usable ? "\r\n" : " (not steering)\r\n");
     text_send(&line);
 }

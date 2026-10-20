@@ -60,6 +60,13 @@ typedef enum
 #define SYNC_QUALIFY_EPOCHS 3U
 // ... before a better-ranked source displaces a working one.
 #define SYNC_SWITCH_EPOCHS 10U
+// GNSS uncertainty (tAcc) limits: to be taken up, and to stay in use.
+#ifndef SYNC_GNSS_QUALIFY_NS
+#define SYNC_GNSS_QUALIFY_NS 10000UL // 10 us
+#endif
+#ifndef SYNC_GNSS_HOLD_NS
+#define SYNC_GNSS_HOLD_NS 100000UL // 100 us
+#endif
 // Holdover still counts as synchronised for this long (1 h). Set by how far
 // the oscillator wanders unsteered; the loop re-steps afterwards if needed.
 #ifndef SYNC_HOLDOVER_LIMIT_EPOCHS
@@ -130,6 +137,7 @@ typedef struct
     uint32_t epochs; // processed since sync_init()
     bool phase_valid;
     int32_t phase_ticks;
+    uint32_t steered_uncertainty_ns; // the source's, at the last epoch steered by
 
     uint32_t transitions; // total; the latest are in history
     SyncTransition history[SYNC_HISTORY_LENGTH];

@@ -15,15 +15,21 @@ typedef struct
     // Called when the source is selected: route its edge to the capture
     // pair, if it is not there already. NULL if nothing to do.
     void (*select)(void);
-    // Above this self-reported uncertainty the source is not used.
-    uint32_t max_uncertainty_ns;
+    // Its self-reported uncertainty must be within qualify_ns to be taken
+    // up, and stay within hold_ns while it is the selected source. The gap
+    // keeps a source near the limit from flapping in and out.
+    uint32_t qualify_ns;
+    uint32_t hold_ns;
 } SyncSourceDefinition;
 
 // One row per SyncSourceId, in the same order.
 static const SyncSourceDefinition sources[SYNC_SOURCE_COUNT] = {
-    // GNSS: tAcc is tens of ns when healthy; a microsecond means it is
-    // coasting or has a poor solution.
-    {"GNSS", source_gnss_report, NULL, 1000UL},
+    // GNSS: tAcc is tens of ns when healthy, ~1 us just after a fix or with
+    // few satellites, while its PPS is still steady to a few hundred ns.
+    // Even 100 us is ten times better than NTP over Wi-Fi (~1-10 ms), the
+    // next source down. Beyond that the receiver is coasting, and holdover
+    // on our own oscillator does as well.
+    {"GNSS", source_gnss_report, NULL, SYNC_GNSS_QUALIFY_NS, SYNC_GNSS_HOLD_NS},
 };
 
 static SyncStatus status;
@@ -40,8 +46,9 @@ static void judge_sources(const TimingSnapshot *snapshot, uint32_t now_ms)
     for (index = 0; index < SYNC_SOURCE_COUNT; index++)
     {
         sources[index].report(snapshot, now_ms, &report);
-        (void)sync_source_judge(&status.sources[index], &report, sources[index].max_uncertainty_ns,
-                                snapshot->timer.sequence);
+        uint32_t limit =
+            index == status.source ? sources[index].hold_ns : sources[index].qualify_ns;
+        (void)sync_source_judge(&status.sources[index], &report, limit, snapshot->timer.sequence);
     }
 }
 
@@ -278,6 +285,10 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     status.epochs++;
     status.phase_valid = update.loop.phase_valid;
     status.phase_ticks = update.loop.utc_offset_ticks;
+    if (update.usable)
+    {
+        status.steered_uncertainty_ns = status.sources[status.source].report.uncertainty_ns;
+    }
     status.state_epochs++;
     if (status.state == SYNC_HOLDOVER)
     {
@@ -312,16 +323,19 @@ bool sync_uncertainty(uint32_t *uncertainty_ns)
     {
         return false;
     }
-    bound = status.sources[status.source].report.uncertainty_ns + SYNC_CAPTURE_RESOLUTION_NS;
+    bound = SYNC_CAPTURE_RESOLUTION_NS;
     if (status.state == SYNC_HOLDOVER)
     {
-        bound += status.holdover_epochs * SYNC_HOLDOVER_DRIFT_NS_PER_S;
+        // The source's word no longer counts: what it was when last used.
+        bound +=
+            status.steered_uncertainty_ns + status.holdover_epochs * SYNC_HOLDOVER_DRIFT_NS_PER_S;
     }
     else if (status.phase_valid)
     {
         int32_t phase = status.phase_ticks;
         uint32_t magnitude = (uint32_t)(phase < 0 ? -phase : phase);
-        bound += magnitude * SYNC_CAPTURE_RESOLUTION_NS;
+        bound += status.sources[status.source].report.uncertainty_ns +
+                 magnitude * SYNC_CAPTURE_RESOLUTION_NS;
     }
     else
     {
