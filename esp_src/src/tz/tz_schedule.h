@@ -25,7 +25,7 @@
 
 extern "C"
 {
-#include "../common/sml_proto.h"
+#include "../pic/sml/sml_proto.h"
 }
 
 #define TZ_SCHEDULE_ENTRIES    (1 + SML_TZ_TRANSITION_MAX)

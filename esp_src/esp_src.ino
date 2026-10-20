@@ -1,8 +1,8 @@
 /*
  * Smol Clock V2 ESP32: network co-processor for the dsPIC timekeeper.
  *
- *   src/pic/       SML link to the PIC (pic_link), its state (pic_report),
- *                  the PIC bootloader path; sml/ links to the PIC's codec
+ *   src/pic/       SML link to the PIC (pic_link), its state (pic_report);
+ *                  sml/ links to the shared SML codec in common/
  *   src/timing/    NTP client and clock model, ESP PPS out, edge captures
  *   src/tz/        tzinfo v1 -> SML-TZ-STATE, TIME-LEAP
  *   src/net/       Wi-Fi, telnet, OTA updates, STAT-NET

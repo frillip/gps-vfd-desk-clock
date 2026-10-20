@@ -6,7 +6,7 @@
 
 extern "C"
 {
-#include "../common/sml_proto.h"
+#include "../pic/sml/sml_proto.h"
 }
 
 

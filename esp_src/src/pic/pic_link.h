@@ -19,8 +19,6 @@
  * it is paired with the latest captured edge if that is under 900 ms old.
  * Bytes read after the loop was held up (an HTTP request) may be older than
  * that suggests, so frames from such a backlog are not paired.
- *
- * While the PIC bootloader is active the link neither reads nor sends.
  */
 #ifndef PIC_LINK_H
 #define PIC_LINK_H
@@ -76,7 +74,7 @@ void pic_link_set_command_handler(PicCommandHandler handler);
 
 // The PIC has sent SML frames recently (it is in SML mode).
 bool pic_link_is_sml(void);
-// One frame from a native payload struct. Dropped while the bootloader runs.
+// One frame from a native payload struct.
 void pic_link_send(uint8_t class_id, uint8_t message_id, const void *native);
 // A command for the PIC (SML_USER_*); its answer is printed to reply_to.
 // Returns the token.

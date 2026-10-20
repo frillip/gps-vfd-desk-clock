@@ -6,7 +6,7 @@ The ESP32 handles everything the dsPIC would prefer not to think about: WiFi, NT
 
 The PIC remains in charge of UTC, local time and the display. The ESP supplies information and suggestions; the PIC decides what to do with them.
 
-This firmware requires the V2+ dsPIC firmware in [dspic_src](../dspic_src). It no longer speaks the V2 0x83 protocol, apart from the single frame used to enter the PIC bootloader.
+This firmware requires the V2+ dsPIC firmware in [dspic_src](../dspic_src). It no longer speaks the V2 0x83 protocol.
 
 # Building
 
@@ -24,7 +24,7 @@ The ESP compiles the same SML codec and protocol definitions as the dsPIC, so th
 | --- | --- |
 | `src/common/enums.h`, `src/pic/sml/sml_proto.h`, `src/pic/sml/sml.c`, `src/pic/sml/sml.h` | `common/` |
 
-Mirroring the layout means the relative include in `dspic_src/esp/sml.h` (`..\..\..\common\sml_proto.h`) resolves in the sketch exactly as it does in the repository. The links live under `src/` because the Arduino build only compiles source files in the sketch folder and in `src/`. Anything in another subfolder is copied into the build but never compiled, which produces some puzzling linker errors.
+`common/sml.h` includes `sml_proto.h` from its own folder, so `sml.c`, `sml.h` and `sml_proto.h` are linked side by side in `src/pic/sml/`. The links live under `src/` because the Arduino build only compiles source files in the sketch folder and in `src/`. Anything in another subfolder is copied into the build but never compiled, which produces some puzzling linker errors.
 
 On Windows, symbolic links need Developer Mode (or an administrator prompt) and `git config core.symlinks true` before checkout. Alternatively, `mklink` in cmd from `esp_src\src`:
 
@@ -54,7 +54,7 @@ cd tests/host && make
 | `esp_src.ino` | `setup()` and `loop()` |
 | `src/board.h`, `src/version.h` | Pin map and baud rates, firmware version |
 | `src/common/` | Links to the shared protocol definitions |
-| `src/pic/` | The PIC link: SML framing, the PIC's console text, its held state, commands in both directions, pairing TIME-AUTH with the epoch edge. Also the PIC state report and the bootloader path. `sml/` links to the PIC's codec |
+| `src/pic/` | The PIC link: SML framing, the PIC's console text, its held state, commands in both directions, pairing TIME-AUTH with the epoch edge. Also the PIC state report. `sml/` links to the shared SML codec |
 | `src/timing/` | NTP client and packet handling, the clock model, ESP PPS output, PIC epoch and GNSS PPS capture |
 | `src/tz/` | tzinfo lookups and cache, TZ-STATE assembly, TIME-LEAP |
 | `src/net/` | WiFi, Telnet, OTA updates, STAT-NET |
@@ -141,8 +141,6 @@ At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML m
 Anything on the link outside a valid frame is treated as the PIC's console output and printed, as is STAT-DEBUG text. Both go to the USB-UART console and to Telnet.
 
 PIC console commands are sent as CMD-USER requests, and the PIC's answer is printed on whichever console the command came from. Commands from the PIC to the ESP (codes from 0x8000, for example from the PIC's menu) are carried out and acknowledged.
-
-While the PIC bootloader is active the ESP neither reads from nor writes to the link. Entry still relies on the V2 PIC firmware; the V2+ firmware has no bootloader entry yet.
 
 # Settings
 
