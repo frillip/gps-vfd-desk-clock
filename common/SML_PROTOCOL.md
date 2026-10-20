@@ -118,7 +118,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x12 | TIME-VCTCXO | PIC→ESP | 20 | — V3 hardware | Every epoch (V3) |
 | | 0x13 | TIME-MEAS | PIC→ESP | 40 | ✓ Sent | Every epoch |
 | | 0x20 | TIME-GNSS | PIC→ESP | 54 | ✓ Sent | Every epoch |
-| | 0x30 | TIME-NTP | ESP→PIC | 42 | ✓ Received and held, not yet a sync source | Every ESP PPS while NTP time is valid |
+| | 0x30 | TIME-NTP | ESP→PIC | 42 | ✓ Labels the ESP PPS for the NTP sync source | Every ESP PPS while NTP time is valid |
 | | 0x40 | TIME-RTC | PIC→ESP | 34 | — RTC not yet ported | Every epoch |
 | | 0x50 | TIME-LEAP | ESP→PIC | 16 | ✓ Applied | On change, and periodically |
 | 0x20 TZ | 0x01 | TZ-STATE | ESP→PIC | 124 | ✓ Applied | On change, after a PIC reset, and every ~10 minutes |
@@ -153,7 +153,7 @@ This is the PIC's statement of the UTC second that its latest epoch edge marks, 
 
 `utc_phase_ns` is the epoch edge minus the reference edge (OC minus IC), so a positive value means the clock's edge is late. In holdover there is no reference edge to measure, and it is 0.
 
-`uncertainty_ns` is a ± **bound** on the UTC error of the edge, not a standard deviation. It is the selected source's own accuracy (GNSS tAcc), plus 25ns of capture resolution, plus either the magnitude of the measured phase while tracking or 100ns for every second spent in holdover (`SYNC_HOLDOVER_DRIFT_NS_PER_S`).
+`uncertainty_ns` is a ± **bound** on the UTC error of the edge, not a standard deviation. While tracking, it is the selected source's bound plus the magnitude of the measured phase. A source's bound is made conservative from its own figure: 3 × GNSS tAcc + 25ns of capture resolution, or the ESP's NTP bound + 20µs for the jitter of its PPS. In holdover it is the holdover bound, u0 + f·t + ½·D·t², grown from the bound at the last steered epoch (see `sync/sync.h` on the PIC).
 
 Without `UTC_VALID`, the phase and uncertainty are invalid too. In free run with the time of day still known (counted on from an earlier label), `UTC_VALID` is set and `UNCERTAINTY_VALID` is clear, since there is no honest bound to give. `SOURCE_VALID` means a source is selected.
 
@@ -288,7 +288,7 @@ _ESP network time. ESP→PIC, 42 bytes._
 | 34 | last_offset_us | i32 | Last NTP offset (estimated UTC minus ESP time), µs |
 | 38 | frequency_estimate_ppt | i32 | ESP clock frequency error, 10⁻¹² |
 
-The ESP sends TIME-NTP after each of its PPS edges. That gives the PIC an edge on RB15 and a label for it, which is what an NTP sync source needs. The V2+ PIC stores the latest one (`esp_link_ntp()`) for the NTP source adapter, which is still to be written.
+The ESP sends TIME-NTP after each of its PPS edges. That gives the PIC an edge on RB15 and a label for it, which is what an NTP sync source needs. The V2+ PIC pairs each one with the latest ESP edge it has seen (`sync/source_ntp.c`), and corrects that edge by `utc_phase_ns` when steering to it.
 
 ## TIME-RTC (0x40)
 
@@ -924,7 +924,7 @@ The `SML_MENU_*` values beyond NONE are frozen once the V2+ menu exists.
 
 `RESYNC` still needs defining. It could restart the control loop, re-qualify sources, or both, and is best settled alongside the NTP source.
 
-TIME-NTP is received and held, but NTP is not yet a sync source on the PIC. The NTP source adapter will use it together with the ESP PPS on RB15, and needs its own uncertainty limit and loop parameters.
+NTP is a sync source on the PIC, but its loop profile, jitter allowance and the holdover model it competes with are first guesses awaiting bench data. Nothing in SML shows the candidates yet: a STAT-SOURCES message and the `SHOW_SOURCES` and `SET_DEBUG` user commands are still to be defined.
 
 The bootloader class (0xF0) is reserved but not defined, and will be specified separately after the V2+ work.
 

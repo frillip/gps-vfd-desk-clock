@@ -37,14 +37,24 @@ void servo_gate_init(EpochPhaseGate *gate, int32_t limit_ticks, uint8_t reject_l
     {
         return;
     }
+    gate->rejected = 0;
+    servo_gate_set_limits(gate, limit_ticks, reject_limit);
+    servo_gate_reset(gate);
+}
+
+
+void servo_gate_set_limits(EpochPhaseGate *gate, int32_t limit_ticks, uint8_t reject_limit)
+{
+    if (gate == NULL)
+    {
+        return;
+    }
     if (limit_ticks < 0)
     {
         limit_ticks = -limit_ticks;
     }
     gate->limit_q16 = Q16_FROM_TICKS(q16_clamp(limit_ticks, Q16_TICK_LIMIT));
     gate->reject_limit = (reject_limit == 0U) ? 1U : reject_limit;
-    gate->rejected = 0;
-    servo_gate_reset(gate);
 }
 
 
@@ -85,6 +95,20 @@ void servo_pi_init(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
     {
         return;
     }
+    servo->integral_q16 = 0;
+    servo_pi_set_gains(servo, kp_q16, ki_q16, integral_limit_ticks, correction_limit_ticks);
+    servo->enabled = false;
+    servo_pi_reset(servo);
+}
+
+
+void servo_pi_set_gains(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
+                        int32_t integral_limit_ticks, int32_t correction_limit_ticks)
+{
+    if (servo == NULL)
+    {
+        return;
+    }
     if (integral_limit_ticks < 0)
     {
         integral_limit_ticks = -integral_limit_ticks;
@@ -99,8 +123,7 @@ void servo_pi_init(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
     servo->ki_q16 = (ki_q16 < 0) ? 0 : q16_clamp(ki_q16, Q16_ONE);
     servo->integral_limit_q16 = Q16_FROM_TICKS(q16_clamp(integral_limit_ticks, Q16_TICK_LIMIT));
     servo->correction_limit_q16 = Q16_FROM_TICKS(q16_clamp(correction_limit_ticks, Q16_TICK_LIMIT));
-    servo->enabled = false;
-    servo_pi_reset(servo);
+    servo->integral_q16 = q16_clamp(servo->integral_q16, servo->integral_limit_q16);
 }
 
 

@@ -50,10 +50,35 @@ static void text_q16_ticks(TextLine *line, int32_t value_q16)
 
 void timing_report_sync(const PpsCaptureSync *sync)
 {
-    printf("GPIO IC12=%10lu IC34=%10lu\r\n", (unsigned long)sync->ic12_stamp,
-           (unsigned long)sync->ic34_stamp);
-    printf(sync->valid ? "--- IC TIMEBASE SYNC VALID ---\r\n"
-                       : "*** IC TIMEBASE SYNC FAILED ***\r\n");
+    uint8_t attempt;
+
+    printf("GPIO IC12=%10lu IC34=%10lu, %u attempt%s, offsets", (unsigned long)sync->ic12_stamp,
+           (unsigned long)sync->ic34_stamp, (unsigned)sync->attempts,
+           sync->attempts == 1U ? "" : "s");
+    for (attempt = 0; attempt < sync->attempts; attempt++)
+    {
+        if (sync->offsets[attempt] == INT32_MAX)
+        {
+            printf(" missed");
+        }
+        else
+        {
+            printf(" %+ld", (long)sync->offsets[attempt]);
+        }
+    }
+    printf("\r\n");
+    if (!sync->valid)
+    {
+        printf("*** IC TIMEBASE SYNC FAILED ***\r\n");
+    }
+    else if (sync->correction != 0)
+    {
+        printf("--- IC TIMEBASE SYNC CORRECTED BY %+ld ---\r\n", (long)sync->correction);
+    }
+    else
+    {
+        printf("--- IC TIMEBASE SYNC VALID ---\r\n");
+    }
 }
 
 
@@ -71,18 +96,18 @@ static void report_measurement(const TimingSnapshot *snapshot, int32_t utc_offse
 
     text_start(&line);
     text_u32(&line, snapshot->timer.sequence, 5, '0');
-    text_str(&line, " GNSS: cap=");
-    text_u32(&line, capture->gnss_capture, 10, ' ');
+    text_str(&line, capture->reference_input == PPS_INPUT_ESP ? "  ESP: cap=" : " GNSS: cap=");
+    text_u32(&line, capture->reference_capture, 10, ' ');
     text_str(&line, " IC12=");
-    text_hex16(&line, capture->gnss_high);
+    text_hex16(&line, capture->reference_high);
     text_char(&line, ':');
-    text_hex16(&line, capture->gnss_low);
+    text_hex16(&line, capture->reference_low);
     text_str(&line, " ROLL:");
-    text_u32(&line, capture->gnss_rollover_corrected ? 1U : 0U, 0, ' ');
+    text_u32(&line, capture->reference_rollover_corrected ? 1U : 0U, 0, ' ');
     text_str(&line, " V:");
-    text_u32(&line, capture->gnss_capture_valid ? 1U : 0U, 0, ' ');
+    text_u32(&line, capture->reference_capture_valid ? 1U : 0U, 0, ' ');
     text_str(&line, " RAW:");
-    text_u32(&line, capture->gnss_period, 0, ' ');
+    text_u32(&line, capture->reference_period, 0, ' ');
     text_str(&line, "Hz KF:");
     text_u32(&line, kf_whole_hz, 0, ' ');
     text_char(&line, '.');
@@ -189,8 +214,8 @@ void timing_report_epoch(const TimingSnapshot *snapshot, const EpochUpdate *upda
             // The probe is from the previous epoch's pulse (see
             // EpochOutputSample for what a healthy one looks like).
             text_u32(&line, snapshot->timer.sequence, 5, '0');
-            text_str(&line, " incomplete capture pair: GNSS=");
-            text_u32(&line, snapshot->capture.gnss_capture_valid ? 1U : 0U, 0, ' ');
+            text_str(&line, " incomplete capture pair: REF=");
+            text_u32(&line, snapshot->capture.reference_capture_valid ? 1U : 0U, 0, ' ');
             text_str(&line, " OC=");
             text_u32(&line, snapshot->capture.epoch_capture_valid ? 1U : 0U, 0, ' ');
             text_str(&line, " OC1 CON1=");

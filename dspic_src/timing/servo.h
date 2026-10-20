@@ -110,12 +110,18 @@ typedef struct
 } EpochPhaseGate;
 
 void servo_gate_init(EpochPhaseGate *gate, int32_t limit_ticks, uint8_t reject_limit);
+// New limits, keeping the count of rejections.
+void servo_gate_set_limits(EpochPhaseGate *gate, int32_t limit_ticks, uint8_t reject_limit);
 // Clears the run of rejections; use on entering tracking.
 void servo_gate_reset(EpochPhaseGate *gate);
 EpochPhaseGateResult servo_gate_check(EpochPhaseGate *gate, int32_t predicted_phase_q16);
 
 void servo_pi_init(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
                    int32_t integral_limit_ticks, int32_t correction_limit_ticks);
+// New gains and limits, keeping the integral (clamped to the new limit) and
+// whether the servo is enabled.
+void servo_pi_set_gains(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
+                        int32_t integral_limit_ticks, int32_t correction_limit_ticks);
 // Disabling freezes the integral.
 void servo_pi_enable(EpochPiServo *servo, bool enabled);
 // Clears all state, including the integral. Use when the reference changes.

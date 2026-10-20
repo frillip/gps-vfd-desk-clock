@@ -58,30 +58,93 @@ static void text_time(TextLine *line, const SyncTime *time)
 }
 
 
-void sync_report_epoch(const SyncUpdate *update)
+// A bound in ns, us or ms, whichever keeps it short.
+static void text_bound(TextLine *line, uint32_t ns)
 {
-    const SyncStatus *status = sync_status();
-    TextLine line;
+    if (ns == SYNC_BOUND_NONE)
+    {
+        text_char(line, '-');
+    }
+    else if (ns < 10000UL)
+    {
+        text_u32(line, ns, 0, ' ');
+        text_str(line, "ns");
+    }
+    else if (ns < 10000000UL)
+    {
+        text_u32(line, ns / 1000UL, 0, ' ');
+        text_str(line, "us");
+    }
+    else
+    {
+        text_u32(line, ns / 1000000UL, 0, ' ');
+        text_str(line, "ms");
+    }
+}
 
-    // A state change is rare: printf will do.
+
+static const char *bound_unit(uint32_t ns, uint32_t *scaled)
+{
+    if (ns < 10000UL)
+    {
+        *scaled = ns;
+        return "ns";
+    }
+    if (ns < 10000000UL)
+    {
+        *scaled = ns / 1000UL;
+        return "us";
+    }
+    *scaled = ns / 1000000UL;
+    return "ms";
+}
+
+
+// The candidate in use: the selected source, or holdover.
+static uint8_t current_candidate(const SyncStatus *status)
+{
+    if (status->state == SYNC_HOLDOVER)
+    {
+        return SYNC_CANDIDATE_HOLDOVER;
+    }
+    if (status->state == SYNC_ACQUIRE || status->state == SYNC_LOCKED)
+    {
+        return status->source;
+    }
+    return SYNC_SOURCE_NONE;
+}
+
+
+void sync_report_transition(const SyncUpdate *update)
+{
+    // Rare: printf will do.
     if (update->transitioned)
     {
         printf("      SYNC *** ");
         print_transition(sync_last_transition());
         printf("\r\n");
     }
+}
+
+
+void sync_report_epoch(const SyncUpdate *update)
+{
+    const SyncStatus *status = sync_status();
+    TextLine line;
+
     text_start(&line);
     text_str(&line, "      SYNC: ");
     text_str(&line, sync_state_name(status->state));
     text_char(&line, ' ');
     text_str(&line, sync_source_name(status->source));
-    text_char(&line, ' ');
+    text_str(&line, status->fallback ? " (fallback) " : " ");
     text_time(&line, &status->time);
     if (status->state == SYNC_HOLDOVER)
     {
         text_str(&line, " holdover ");
         text_u32(&line, status->holdover_epochs, 0, ' ');
-        text_char(&line, 's');
+        text_str(&line, "s +/-");
+        text_bound(&line, status->holdover.bound_ns);
     }
     if (status->source < SYNC_SOURCE_COUNT)
     {
@@ -93,6 +156,11 @@ void sync_report_epoch(const SyncUpdate *update)
             text_str(&line, " unc ");
             text_u32(&line, tracker->report.uncertainty_ns, 0, ' ');
             text_str(&line, "ns");
+        }
+        if (tracker->bound_ns != 0U)
+        {
+            text_str(&line, " +/-");
+            text_bound(&line, tracker->bound_ns);
         }
     }
     else
@@ -120,6 +188,148 @@ void sync_report_epoch(const SyncUpdate *update)
     }
     text_str(&line, update->usable ? "\r\n" : " (not steering)\r\n");
     text_send(&line);
+}
+
+
+void sync_report_sources(void)
+{
+    const SyncStatus *status = sync_status();
+    uint8_t current = current_candidate(status);
+    uint8_t pass;
+    uint8_t candidate;
+    TextLine line;
+
+    text_start(&line);
+    text_str(&line, "   SOURCES:");
+    // Ranked first, best first (ranks 1 up), then the rest (rank 0).
+    for (pass = 1; pass <= SYNC_CANDIDATE_HOLDOVER + 1U; pass++)
+    {
+        uint8_t rank = (uint8_t)(pass % (SYNC_CANDIDATE_HOLDOVER + 1U));
+        for (candidate = 0; candidate <= SYNC_CANDIDATE_HOLDOVER; candidate++)
+        {
+            if (candidate == SYNC_SOURCE_NONE || sync_candidate_rank(candidate) != rank)
+            {
+                continue;
+            }
+            text_char(&line, ' ');
+            if (rank == 0U)
+            {
+                text_char(&line, '-');
+            }
+            else
+            {
+                text_u32(&line, rank, 0, ' ');
+            }
+            text_char(&line, candidate == current ? '*' : candidate == status->second ? '+' : ' ');
+            text_str(&line, sync_source_name(candidate));
+            text_char(&line, ' ');
+            if (candidate == SYNC_CANDIDATE_HOLDOVER)
+            {
+                text_bound(&line, sync_candidate_bound(candidate));
+                if (status->holdover.ready)
+                {
+                    text_char(&line, ' ');
+                    text_u32(&line, status->holdover.age, 0, ' ');
+                    text_char(&line, 's');
+                }
+            }
+            else
+            {
+                const SyncSourceTracker *tracker = &status->sources[candidate];
+                text_bound(&line, tracker->bound_ns != 0U ? tracker->bound_ns : SYNC_BOUND_NONE);
+                text_char(&line, ' ');
+                text_str(&line, sync_source_check_name(tracker->check));
+                text_char(&line, ' ');
+                text_u32(&line, tracker->good_run, 0, ' ');
+                if (tracker->phase_valid)
+                {
+                    text_str(&line, tracker->report.captured ? " cap " : " ioc ");
+                    text_i32(&line, tracker->phase_ticks, 0, true);
+                }
+            }
+            text_str(&line, " |");
+        }
+    }
+    if (status->challenger != SYNC_SOURCE_NONE)
+    {
+        text_str(&line, " challenger ");
+        text_str(&line, sync_source_name(status->challenger));
+        text_char(&line, ' ');
+        text_u32(&line, status->challenge_run, 0, ' ');
+        text_char(&line, '/');
+        text_u32(&line, SYNC_SWITCH_EPOCHS, 0, ' ');
+    }
+    text_str(&line, "\r\n");
+    text_send(&line);
+}
+
+
+static void print_candidates(const SyncStatus *status)
+{
+    uint8_t current = current_candidate(status);
+    uint8_t candidate;
+
+    printf("Candidates (bound, rank; * in use, + second choice):\r\n");
+    for (candidate = 0; candidate <= SYNC_CANDIDATE_HOLDOVER; candidate++)
+    {
+        uint32_t bound = sync_candidate_bound(candidate);
+        uint32_t scaled;
+        const char *unit;
+
+        if (candidate == SYNC_SOURCE_NONE)
+        {
+            continue;
+        }
+        printf("  %c %-5s",
+               candidate == current          ? '*'
+               : candidate == status->second ? '+'
+                                             : ' ',
+               sync_source_name(candidate));
+        if (bound == SYNC_BOUND_NONE && candidate < SYNC_SOURCE_COUNT &&
+            status->sources[candidate].usable_run >= SYNC_QUALIFY_EPOCHS)
+        {
+            unit = bound_unit(status->sources[candidate].bound_ns, &scaled);
+            printf(" +/-%lu%s, fallback only (from free run)", (unsigned long)scaled, unit);
+        }
+        else if (bound == SYNC_BOUND_NONE)
+        {
+            printf(" not a candidate");
+        }
+        else
+        {
+            unit = bound_unit(bound, &scaled);
+            printf(" +/-%lu%s rank %u", (unsigned long)scaled, unit,
+                   (unsigned)sync_candidate_rank(candidate));
+        }
+        if (candidate == SYNC_CANDIDATE_HOLDOVER)
+        {
+            if (status->holdover.ready)
+            {
+                unit = bound_unit(status->holdover.base_ns, &scaled);
+                printf(", from %s %lus ago at +/-%lu%s, %luns/s",
+                       sync_source_name(status->holdover.source),
+                       (unsigned long)status->holdover.age, (unsigned long)scaled, unit,
+                       (unsigned long)status->holdover.frequency_ns);
+            }
+        }
+        else
+        {
+            const SyncSourceTracker *tracker = &status->sources[candidate];
+            printf(", %s for %u", sync_source_check_name(tracker->check),
+                   (unsigned)tracker->good_run);
+            if (tracker->phase_valid)
+            {
+                printf(", %s phase %+ld ticks", tracker->report.captured ? "captured" : "watched",
+                       (long)tracker->phase_ticks);
+            }
+        }
+        printf("\r\n");
+    }
+    if (status->challenger != SYNC_SOURCE_NONE)
+    {
+        printf("  %s is challenging: %u of %u epochs\r\n", sync_source_name(status->challenger),
+               (unsigned)status->challenge_run, SYNC_SWITCH_EPOCHS);
+    }
 }
 
 
@@ -158,8 +368,9 @@ void sync_report_status(void)
     uint8_t source;
 
     printf("\r\n=== SYNC ===\r\n");
-    printf("State: %s on %s for %lus, %s\r\n", sync_state_name(status->state),
-           sync_source_name(status->source), (unsigned long)status->state_epochs,
+    printf("State: %s on %s%s for %lus, %s\r\n", sync_state_name(status->state),
+           sync_source_name(status->source), status->fallback ? " (fallback)" : "",
+           (unsigned long)status->state_epochs,
            sync_is_synchronised() ? "synchronised" : "not synchronised");
     printf("Time: ");
     print_time(&status->time);
@@ -172,6 +383,7 @@ void sync_report_status(void)
                status->time.leap.change > 0 ? "23:59:60Z inserted" : "23:59:59Z deleted");
     }
     printf("\r\n");
+    print_candidates(status);
     for (source = 0; source < SYNC_SOURCE_COUNT; source++)
     {
         print_source(source, &status->sources[source]);

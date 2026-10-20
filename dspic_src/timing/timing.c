@@ -6,6 +6,8 @@ bool timing_init(PpsCaptureSync *sync)
 {
     bool aligned = pps_capture_init(sync);
 
+    pps_monitor_init();
+
     // OC1 before T2/T3, so the first epoch trigger is not missed.
     epoch_output_init();
     epoch_timer_init();
@@ -20,10 +22,11 @@ bool timing_snapshot(TimingSnapshot *snapshot)
         return false;
     }
 
-    // Held off together so the three samples describe the same epoch.
+    // Held off together so the samples describe the same epoch.
     __builtin_disi(0x3FFF);
     epoch_timer_sample(&snapshot->timer);
     pps_capture_sample(&snapshot->capture);
+    pps_monitor_sample(&snapshot->monitor);
     epoch_output_sample(&snapshot->output);
     __builtin_disi(0);
     return true;

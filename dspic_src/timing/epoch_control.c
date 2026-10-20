@@ -5,12 +5,10 @@
 #include "epoch_timer.h"
 #include "timing_config.h"
 
-#define EPOCH_PI_KP             EPOCH_Q16_GAIN(1, 8)
-#define EPOCH_PI_KI             EPOCH_Q16_GAIN(1, 256)
-#define EPOCH_PI_INTEGRAL_LIMIT 8
-#define EPOCH_PI_OUTPUT_LIMIT   16
-
 /*
+ * The precise profile. Kp 1/8 and Ki 1/256 (Ki = Kp^2/4) make a critically
+ * damped loop with a time constant of about 8 s.
+ *
  * Phase gate (see EpochPhaseGate). In track the predicted phase sits within
  * a tick or two of zero: PPS jitter is well under a tick RMS and the servo
  * follows temperature to a fraction of a tick. 16 ticks (400 ns) is beyond
@@ -18,8 +16,9 @@
  * output by at most Kp x 16 = 2 ticks (50 ns). Four rejections in a row
  * re-acquire.
  */
-#define EPOCH_PHASE_GATE_TICKS   16L
-#define EPOCH_PHASE_REJECT_LIMIT 4U
+const EpochProfile epoch_profile_precise = {
+    "precise", EPOCH_Q16_GAIN(1, 8), EPOCH_Q16_GAIN(1, 256), 8, 16, 16, 4U, true,
+};
 
 // Usable reference epochs before the first step, so the Kalman filter has a
 // few measurements.
@@ -78,18 +77,19 @@ static bool compute_step(uint32_t base_period, int32_t offset_ticks, uint32_t *s
 // period measured while it was not is never learnt later.
 static void update_kalman(const PpsCaptureSample *capture, bool learn)
 {
-    if (!capture->gnss_period_valid || capture->gnss_period_sequence == loop.last_pps_sequence)
+    if (!capture->reference_period_valid ||
+        capture->reference_period_sequence == loop.last_pps_sequence)
     {
         return;
     }
-    loop.last_pps_sequence = capture->gnss_period_sequence;
-    if (!learn || loop.discard_period)
+    loop.last_pps_sequence = capture->reference_period_sequence;
+    if (!learn || loop.discard_period || !loop.profile->learn_frequency)
     {
         loop.discard_period = false;
         return;
     }
     // Rejected outliers leave the estimate unchanged.
-    (void)kalman_update(&loop.pps_kf, capture->gnss_period);
+    (void)kalman_update(&loop.pps_kf, capture->reference_period);
     loop.filtered_pps_period = kalman_period(&loop.pps_kf);
 }
 
@@ -194,9 +194,13 @@ static EpochUpdateKind track(const TimingSnapshot *snapshot, int32_t utc_offset_
 
     // The phase is wrapped to +/-half a second, so a wild edge cannot
     // overflow the Q16 conversion: it clamps, and the gate rejects it.
+    // Predicted at the loop's own best estimate of the true period, the
+    // Kalman estimate less the integral: with the Kalman estimate alone, the
+    // phase would settle wherever the integral is (in ticks), as the servo
+    // holds the prediction, not the phase, at zero.
     loop.predicted_phase_q16 = servo_phase_predict_q16(
         servo_phase_error_q16(utc_offset_ticks, EPOCH_PHASE_CALIBRATION_Q16), running_offset_ticks,
-        kalman_offset_q16);
+        servo_holdover_offset(&loop.pi, kalman_offset_q16));
 
     switch (servo_gate_check(&loop.gate, loop.predicted_phase_q16))
     {
@@ -237,10 +241,11 @@ void epoch_control_init(void)
     loop.commanded_offset_q16 = 0;
     loop.commanded_period = TIMING_NOMINAL_TICKS;
 
-    servo_pi_init(&loop.pi, EPOCH_PI_KP, EPOCH_PI_KI, EPOCH_PI_INTEGRAL_LIMIT,
-                  EPOCH_PI_OUTPUT_LIMIT);
+    loop.profile = &epoch_profile_precise;
+    servo_pi_init(&loop.pi, loop.profile->kp_q16, loop.profile->ki_q16,
+                  loop.profile->integral_limit_ticks, loop.profile->correction_limit_ticks);
     servo_pi_enable(&loop.pi, false);
-    servo_gate_init(&loop.gate, EPOCH_PHASE_GATE_TICKS, EPOCH_PHASE_REJECT_LIMIT);
+    servo_gate_init(&loop.gate, loop.profile->gate_ticks, loop.profile->reject_limit);
     servo_fraction_init(&loop.fractional);
     kalman_init(&loop.pps_kf, TIMING_NOMINAL_TICKS, PPS_KF_Q, PPS_KF_R);
 }
@@ -299,7 +304,8 @@ static EpochUpdateKind hold(const TimingSnapshot *snapshot)
 }
 
 
-EpochUpdate epoch_control_update(const TimingSnapshot *snapshot, bool reference_usable)
+EpochUpdate epoch_control_update(const TimingSnapshot *snapshot, bool reference_usable,
+                                 int32_t reference_offset_ticks)
 {
     const PpsCaptureSample *capture = &snapshot->capture;
     EpochUpdate update;
@@ -312,24 +318,44 @@ EpochUpdate epoch_control_update(const TimingSnapshot *snapshot, bool reference_
         loop.discard_period = true;
     }
 
-    update.phase_valid = capture->gnss_capture_valid && capture->epoch_capture_valid;
+    update.phase_valid = capture->reference_capture_valid && capture->epoch_capture_valid;
     update.utc_offset_ticks =
-        update.phase_valid ? wrap_phase((int32_t)(capture->epoch_capture - capture->gnss_capture),
-                                        loop.filtered_pps_period)
-                           : 0;
+        update.phase_valid
+            ? wrap_phase((int32_t)(capture->epoch_capture - capture->reference_capture) +
+                             reference_offset_ticks,
+                         loop.filtered_pps_period)
+            : 0;
     update.kind = reference_usable ? use_reference(snapshot, &update) : hold(snapshot);
     return update;
 }
 
 
-void epoch_control_restart(void)
+void epoch_control_restart(const EpochProfile *profile, bool slew)
 {
-    enter_acquire();
-    servo_pi_reset(&loop.pi);
+    if (profile != NULL)
+    {
+        loop.profile = profile;
+    }
+    servo_pi_set_gains(&loop.pi, loop.profile->kp_q16, loop.profile->ki_q16,
+                       loop.profile->integral_limit_ticks, loop.profile->correction_limit_ticks);
+    servo_gate_set_limits(&loop.gate, loop.profile->gate_ticks, loop.profile->reject_limit);
     servo_gate_reset(&loop.gate);
     loop.reference_epochs = 0;
     loop.holdover_epochs = 0;
     loop.discard_period = true;
+    if (slew && loop.state == EPOCH_STATE_TRACK)
+    {
+        servo_pi_reset_phase(&loop.pi);
+        return;
+    }
+    enter_acquire();
+    servo_pi_reset(&loop.pi);
+}
+
+
+int32_t epoch_control_holdover_offset_q16(void)
+{
+    return servo_holdover_offset(&loop.pi, kalman_phase_q16(&loop.pps_kf));
 }
 
 

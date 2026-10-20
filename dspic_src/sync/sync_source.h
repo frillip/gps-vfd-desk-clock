@@ -11,6 +11,13 @@
  * there is one, the UTC second it marks, and how far the source itself
  * trusts its time. A source without an edge of its own (a time-of-day
  * message, say) leaves edge false and cannot discipline the phase.
+ *
+ * Edges come at two grades. Every PPS edge is watched by interrupt-on-change
+ * (timing/pps_monitor.h): enough to show the pulses are arriving, to number
+ * them for labelling and to place them within a microsecond or so. That is
+ * evidence enough to judge a source GOOD. Only the source routed to the
+ * IC1/IC2 capture also has its edge captured to the tick (captured), and
+ * only a captured edge can steer the loop.
  */
 #ifndef SYNC_SOURCE_H
 #define SYNC_SOURCE_H
@@ -24,8 +31,13 @@ typedef struct
 {
     bool present;            // answering at all
     bool time_valid;         // claims to know UTC
-    bool edge;               // its edge was captured this epoch
+    bool edge;               // its edge was seen this epoch
     uint32_t edge_sequence;  // counts the source's edges; consecutive edges differ by 1
+    bool captured;           // ... and captured by IC1/IC2: the loop can steer by it
+    uint32_t edge_stamp;     // the edge on the capture timebase, ticks: the capture, or
+                             // the watched timestamp less its latency
+    int32_t edge_offset_ns;  // the edge minus the UTC second it marks, as far as the
+                             // source knows (GNSS 0, NTP the ESP's own estimate)
     bool labelled;           // the UTC second of that edge is known
     uint32_t utc_seconds;    // ... as Unix seconds (an inserted leap second repeats :59)
     bool leap_second;        // ... and it is an inserted 23:59:60
@@ -43,7 +55,7 @@ typedef enum
 {
     SYNC_CHECK_ABSENT = 0,   // not answering
     SYNC_CHECK_NO_TIME,      // does not know UTC (no fix, unlocked)
-    SYNC_CHECK_NO_EDGE,      // no edge captured this epoch
+    SYNC_CHECK_NO_EDGE,      // no edge seen this epoch
     SYNC_CHECK_UNLABELLED,   // an edge, but its UTC second is unknown
     SYNC_CHECK_INACCURATE,   // its own uncertainty is above the limit
     SYNC_CHECK_INCONSISTENT, // label does not follow on from its last one
@@ -56,7 +68,14 @@ typedef struct
     SyncCheck check;         // this epoch's verdict
     SyncSourceReport report; // this epoch's report
     uint16_t good_run;       // consecutive GOOD epochs, saturating
+    uint16_t usable_run;     // consecutive GOOD or INACCURATE epochs: everything but
+                             // the accuracy limit met, enough to leave free run
     uint32_t last_good_epoch;
+
+    // Set by the synchroniser each epoch (sync.c).
+    uint32_t bound_ns;   // +/- bound on the source's time while GOOD or INACCURATE, else 0
+    bool phase_valid;    // our epoch could be placed against its edge
+    int32_t phase_ticks; // ... our epoch minus its UTC second, ticks
 
     // Label continuity, by the source's own edge count.
     bool has_label;

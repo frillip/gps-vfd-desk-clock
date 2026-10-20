@@ -38,7 +38,7 @@ Most of the firmware has host tests, built with gcc against stand-ins for the ha
 - the fixed-point Kalman filter and servo against double precision;
 - the epoch timer, scheduler and OC1 output against a cycle-level model;
 - the control loop, closed through a model of the oscillator and receiver;
-- source selection, holdover and leap seconds;
+- source selection, holdover and leap seconds, and the choice between GNSS, NTP and holdover, closed through a model of both PPS inputs;
 - the UART drivers, the UBX parser and the GNSS service against a simulated receiver;
 - the tube wire format, bit for bit against the V2 encoder;
 - the SML codec, including golden frames and a 20000-frame fuzz test;
@@ -66,11 +66,11 @@ cd tests/host && make
 
 | Pin | Function |
 | --- | --- |
-| RA8 | GNSS PPS, captured by IC1/IC2 |
+| RA8 | GNSS PPS: watched always, captured by IC1/IC2 unless NTP is selected |
 | RB10 | Epoch output (OC1): latches the tubes, captured by IC3/IC4, timed by the receiver |
 | RB2 / RB3 | UART2 RX / TX to the GNSS receiver |
 | RC6 / RC7 | UART1 RX / TX to the ESP32 |
-| RB15 | ESP PPS, input |
+| RB15 | ESP PPS: watched always, captured by IC1/IC2 while NTP is selected |
 | RC8 / RC9 | SPI2 clock / data to the tube drivers |
 | RB11 | Tube BLANK, PWM from OC3 for brightness |
 | RB12 | Tube latch, ORed with the epoch output for immediate updates |
@@ -91,7 +91,7 @@ Almost everything runs from the main loop. The scheduler there reads its time fr
 | Display load | 500ms into each second, after the latch has closed |
 | Minute reports | 600ms into the second, one report per epoch at 15, 30 and 45 seconds into each minute |
 
-Only the timing edges, the 1ms slot timer and the UARTs use interrupts. The epoch timer interrupts run at priority 4 and the captures and UARTs at priority 1, so nothing in the foreground can delay an epoch. The scheduler report shows each task's worst lateness, its longest run and its share of the time.
+Only the timing edges, the 1ms slot timer and the UARTs use interrupts. The epoch timer interrupts run at priority 4, the PPS watch at 2, and the captures and UARTs at 1, so nothing in the foreground can delay an epoch. The scheduler report shows each task's worst lateness, its longest run and its share of the time.
 
 # Time
 
@@ -99,7 +99,9 @@ Only the timing edges, the 1ms slot timer and the UARTs use interrupts. The epoc
 
 Timers 2 and 3 form a 32-bit epoch timer clocked at 40MHz. Its period match triggers OC1, which raises RB10 for 100ms: that rising edge **is** the second, with no interrupt latency anywhere in its path. The length of each second is set by loading the next period, with fractional ticks carried forward so nothing is lost to rounding.
 
-IC1/IC2 capture the GNSS PPS and IC3/IC4 capture the epoch output on a common, free-running timebase. The difference between the two is the clock's phase error, measured to one tick (25ns).
+IC1/IC2 capture the reference PPS and IC3/IC4 capture the epoch output on a common, free-running timebase. The difference between the two is the clock's phase error, measured to one tick (25ns). At start-up Timer1 resets all four capture timers on the same cycle, and one strobe edge on RB13, captured by both pairs, proves it. The check is retried from scratch up to 8 times. If the pairs never agree but keep disagreeing by the same tick or two, that offset is taken off every reference capture instead. The reference is the GNSS PPS, or the ESP's PPS while NTP is the selected source: the capture is only ever rerouted when a source is selected.
+
+Both PPS pins are also watched by interrupt-on-change, whichever one is captured. Each rising edge is numbered and timestamped from the same timebase, to within a microsecond or so of interrupt latency. That is enough to show a source's pulses are arriving and where they are, and it is what the edges are labelled by, so GNSS labelling carries on while the capture follows the ESP. Steering still needs the capture.
 
 ## Control loop
 
@@ -111,7 +113,16 @@ Each epoch, `timing/epoch_control.c` decides the length of the next second:
 | STEP | Follow the step at the estimated frequency |
 | TRACK | Steer the phase with a PI servo on top of a Kalman frequency estimate, rejecting outliers |
 
-All the arithmetic is fixed point. A period requested after epoch N only runs from N+1, so the loop acts on the phase it predicts for N+1. The PPS edge arrives asynchronously and its capture is rounded down, so the loop aims for an average measured phase of half a tick: an even split between 0 and +1.
+All the arithmetic is fixed point. A period requested after epoch N only runs from N+1, so the loop acts on the phase it predicts for N+1, at its best estimate of the true second (the Kalman estimate less the servo integral). The PPS edge arrives asynchronously and its capture is rounded down, so the loop aims for an average measured phase of half a tick: an even split between 0 and +1.
+
+How hard the loop follows its reference depends on the source, by profile:
+
+| Profile | Used for | Servo | Gate | Kalman |
+| --- | --- | --- | --- | --- |
+| precise | GNSS | Kp 1/8, Ki 1/256: time constant ~8s, up to 0.4ppm of slew | 400ns | Learns the oscillator's frequency |
+| gentle | NTP | Kp 1/64, Ki 1/16384: time constant ~2 minutes, up to 10ppm of slew | 300µs | Learns nothing: the ESP slews its own clock |
+
+Both are critically damped. The NTP profile averages out the microseconds of jitter on the ESP's PPS, and corrects the ESP's edge by the offset the ESP reports for it in TIME-NTP.
 
 On the V2 board against a NEO-M9N, the measured phase sits at 0 or +1 tick in 90–98% of epochs. The receiver's own timing of the epoch edge (TIM-TM2) averages around +44ns, the fixed delay through the latch logic, with a standard deviation of 12–15ns. The 40MHz oscillator is around 1.6–1.9ppm slow, which the Kalman filter takes care of.
 
@@ -121,14 +132,28 @@ On the V2 board against a NEO-M9N, the measured phase sits at 0 or +1 tick in 90
 
 | State | Meaning |
 | --- | --- |
-| FREE_RUN | No source: the epoch runs on the last frequency estimate, and the time of day, if ever known, is counted on |
-| ACQUIRE | A source has qualified: the loop is learning its frequency and stepping onto its edge |
+| FREE_RUN | No source: the epoch runs on the last frequency estimate, and the time of day, if known, is counted on |
+| ACQUIRE | A source has been chosen: the loop is learning its frequency and stepping onto its edge, or slewing onto it if it is already close |
 | LOCKED | The loop is tracking the source |
-| HOLDOVER | The source has failed: the loop holds frequency, still counted as synchronised for up to an hour |
+| HOLDOVER | The source has failed: the loop holds frequency, still counted as synchronised while its uncertainty is within 100ms |
 
-A source qualifies after 3 consecutive good epochs, and a better-ranked one takes over after 10. GNSS is taken up when its reported time accuracy is within 10µs, and kept while it is within 100µs. Even then it is ten times better than NTP. While no source is selected, the per-epoch report says why each one is not.
+The sources are GNSS and NTP, and holdover on our own oscillator is treated as a third. Each carries a ± bound on its time error, and the choice is made on those bounds alone:
 
-Only GNSS exists as a source so far. Adding one takes an entry in the source table and an adapter that reports its edge, its UTC label and its accuracy. NTP via the ESP PPS is next.
+| Candidate | Bound |
+| --- | --- |
+| GNSS | 3 × tAcc + 25ns |
+| NTP | The ESP's own bound + 20µs for the jitter of its PPS |
+| Holdover | u0 + f·t + ½·D·t², from the bound when the loop last steered (u0), the frequency error that source leaves (f: 10ns/s after GNSS, 200ns/s after NTP), and the oscillator's drift rate (D: 200ppt/s) |
+
+A source becomes a candidate after 3 consecutive good epochs. A candidate takes over from the one in use when its bound is less than half of it for 10 epochs in a row. Holdover takes over at once when the source in use fails, so when GNSS is lost the clock holds over, and only moves to NTP once NTP is twice as good. With the first-guess holdover model, that is after about 15 minutes with NTP at ±20µs, after about two hours with NTP at ±2ms, and after about four hours at the ±11ms an ESP reports over Wi-Fi. GNSS is taken up when its reported time accuracy is within 10µs, and kept while it is within 100µs. NTP is taken up while the ESP's bound is within 50ms, and kept while it is within 100ms: the ESP's bound covers the whole Wi-Fi round trip, so ~10ms is normal.
+
+Those limits decide what competes, not whether the clock runs. In free run, with nothing within its limit, a source that meets every other requirement (present, time valid, its pulses arriving, labelled, consistent) for 3 epochs is taken as a fallback, however coarse: a receiver just after its first fix, or an ESP that only knows its time to tens of milliseconds. It is steered by and kept while it meets those requirements, and anything twice as good displaces it. Until the bound in use is within 100ms, the clock does not call itself synchronised. The time of day does not wait for any of this: it is set from the best labelled source the first epoch there is one.
+
+Selecting a source routes the capture to it if need be, then restarts the loop with that source's profile. If the loop was tracking and the new source's edge is already within half the profile's gate of the epoch, the loop slews onto it without a step. A handover from GNSS holdover to NTP usually goes that way; one from NTP back to GNSS steps.
+
+The holdover model and the NTP profile are first guesses. `sync/sync_tuning.c` collects what is needed to replace them on the bench: see [Console](#console).
+
+Adding a source takes an entry in the source table, an adapter that reports its edge, its UTC label and its uncertainty, and a loop profile.
 
 ## Time of day
 
@@ -162,23 +187,40 @@ From the ESP, the PIC acts on:
 - TZ-STATE;
 - TIME-LEAP;
 - user commands: INFO, message requests, reset, time zone and DST settings, display mode and brightness;
-- STAT-NET and TIME-NTP, which it holds for the menu and for the future NTP source.
+- TIME-NTP, which labels the ESP's PPS for the NTP source;
+- STAT-NET, which it holds for the menu.
 
 Commands it does not support yet are answered with a NACK, never ignored. The PIC can also send commands of its own to the ESP, such as resetting WiFi.
 
 # Console
 
-The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. Each epoch prints five lines:
+The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, and for now it is everything. State changes are always printed.
 
-- the GNSS capture and frequency estimate;
-- the epoch capture, phase and loop state;
-- the servo terms;
-- the receiver's view of the edge;
-- the synchroniser's state.
+| Bit | Name | What |
+| --- | --- | --- |
+| 0x01 | TIMING | Per epoch: the reference capture and frequency estimate, the epoch capture, phase and loop state, the servo terms, the receiver's view of the edge |
+| 0x02 | GNSS | Per epoch: the GNSS edge and its label |
+| 0x04 | SYNC | Per epoch: the synchroniser's state |
+| 0x08 | SOURCES | Per epoch: every candidate, best first, with its bound, verdict and phase |
+| 0x10 | NTP | Per epoch: the latest TIME-NTP and the edge it labels |
+| 0x20 | MINUTE | Each minute, at 15, 30 and 45 seconds past: the scheduler, GNSS and sync reports. The sync report also covers the candidates, the display, time zone and ESP link |
+| 0x40 | TUNING | Each minute, at 55 seconds past: the bench statistics below |
 
-Once a minute, at 15, 30 and 45 seconds past, the scheduler, GNSS and sync reports follow. The sync report also includes the display, time zone and ESP link.
+The sources line marks the candidate in use with `*` and the second choice with `+`, and says whether each source's phase comes from its captured edge (`cap`) or its watched one (`ioc`):
 
-XC16's printf turned out to cost about 1.5ms a call, and the five epoch lines took 67ms of every second. They are now built with the small formatter in [ui/text.c](ui/text.c), which produces identical output in about 2ms. The minute reports still use printf, so they run late in the second, clear of the epoch work and the GNSS traffic that follows each navigation solution.
+```
+   SOURCES: 1*GNSS 115ns good 412 cap +1 | 2+HOLD 140ns 0s | 3 NTP 2020us good 412 ioc -1203 |
+```
+
+The tuning report gives, for the minute just ended:
+
+- the captured reference's period and the loop's phase: mean, standard deviation and extremes;
+- each PPS input's period as watched, and how far its watched timestamp lags its capture (for `PPS_MONITOR_LATENCY_TICKS`);
+- each source's phase against the epoch. On the GNSS clock, the NTP line is the ESP's PPS as the PIC sees it, which sets the NTP jitter allowance and `SOURCE_NTP_PPS_DELAY_NS`.
+
+It also gives virtual holdover trials, which build up over hours. While the loop is locked, a trial starts every 10 minutes, up to 12 at once. Each takes the period the loop would hold if its source failed at that moment, then adds up how far that period drifts from the reference over the next two hours. Nothing is actually held over. The error at 10s, 1, 5, 10, 30, 60 and 120 minutes gives f and D for the holdover model.
+
+XC16's printf turned out to cost about 1.5ms a call, and the epoch lines took 67ms of every second. They are now built with the small formatter in [ui/text.c](ui/text.c), which produces identical output in about 2ms. The minute reports still use printf, so they run late in the second, clear of the epoch work and the GNSS traffic that follows each navigation solution.
 
 # Not yet ported
 
@@ -190,7 +232,7 @@ The V2 firmware did rather more than this. Still to come:
 - the RTC;
 - settings in flash;
 - GNSS provisioning;
-- NTP as a time source;
+- debug settings and the sources view over SML;
 - the watchdog;
 - bootloader entry.
 

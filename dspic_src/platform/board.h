@@ -8,7 +8,7 @@
  *   RA0   UI_SWITCH            alarm / DST switch, active low        input
  *   RA2   CLK_IN               40 MHz oscillator input               oscillator
  *   RA7   UI_BUTTON            push button, active low               input
- *   RA8   GNSS_PPS             receiver PPS (RPI24)                  IC1/IC2
+ *   RA8   GNSS_PPS             receiver PPS (RPI24)                  IC1/IC2, IOC
  *   RA10  STATUS_LED           status LED                            GPIO
  *   RB2   GNSS_UART2_RX        from the receiver's TX (RP34)         UART2
  *   RB3   GNSS_UART2_TX        to the receiver's RX (RP35)           UART2
@@ -26,7 +26,7 @@
  *                              start-up capture timebase check
  *                              pulses it (RPI45)
  *   RB14  PWR_STAT             power status, input                   input
- *   RB15  ESP_PPS              the ESP's PPS (RP47)                  input / IOC
+ *   RB15  ESP_PPS              the ESP's PPS (RP47)                  IOC, IC1/IC2 for NTP
  *   RC6   ESP_UART1_RX         from the ESP32 (RP54)                 UART1
  *   RC7   ESP_UART1_TX         to the ESP32 (RP55)                   UART1
  *   RC8   DISPLAY_SPI2_SCK     tube drivers' clock (RP56)            SPI2
@@ -68,7 +68,11 @@
 #define DISPLAY_BLANK_SET_LOW()  (_LATB11 = 0)
 
 // ---- Timing -----------------------------------------------------------------
-#define ESP_PPS_GET_VALUE() _RB15
+// Both PPS inputs are watched by change notification (timing/pps_monitor.c).
+#define GNSS_PPS_GET_VALUE()     _RA8
+#define GNSS_PPS_CHANGE_ENABLE() (CNENAbits.CNIEA8 = 1)
+#define ESP_PPS_GET_VALUE()      _RB15
+#define ESP_PPS_CHANGE_ENABLE()  (CNENBbits.CNIEB15 = 1)
 
 #define CAPTURE_SYNC_STROBE_SET_HIGH()           (_LATB13 = 1)
 #define CAPTURE_SYNC_STROBE_SET_LOW()            (_LATB13 = 0)
@@ -83,7 +87,7 @@
 #define GNSS_PPS_RPIN            0x18U // RA8  = RPI24 -> IC1/IC2
 #define DISPLAY_LATCH_OC_RPIN    0x2AU // RB10 = RP42  -> IC3/IC4 (epoch output loopback)
 #define CAPTURE_SYNC_STROBE_RPIN 0x2DU // RB13 = RPI45 -> all ICs, start-up check only
-#define ESP_PPS_RPIN             0x2FU // RB15 = RP47  -> IC1/IC2 once NTP is a source
+#define ESP_PPS_RPIN             0x2FU // RB15 = RP47  -> IC1/IC2 while NTP is selected
 
 void board_init(void);
 

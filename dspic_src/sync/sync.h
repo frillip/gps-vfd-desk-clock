@@ -4,38 +4,76 @@
  * timing/ and runs once per epoch:
  *
  *   timing_snapshot() -> sync_update() -+-> each source adapter -> judged
- *                                       +-> state machine
+ *                                       +-> candidates ranked, state machine
  *                                       +-> epoch_control_update(usable)
  *                                       +-> UTC label of our epoch
+ *
+ * Every candidate carries a +/- bound on its time error, in ns, and the
+ * choice between them is made on those bounds alone (lower is better; the
+ * table order in sync.c only breaks ties):
+ *
+ *   a source       its own uncertainty, made conservative: GNSS tAcc x
+ *                  SYNC_GNSS_TACC_SCALE plus the capture resolution, NTP the
+ *                  ESP's bound plus an allowance for the jitter of its PPS.
+ *                  A candidate once GOOD for SYNC_QUALIFY_EPOCHS.
+ *   HOLDOVER       our own oscillator since the loop last steered:
+ *                  u0 + f.t + D.t^2/2, where u0 is the bound when it last
+ *                  steered, f the frequency error left by that source
+ *                  (SYNC_HOLDOVER_FREQUENCY_*) and D the oscillator's drift
+ *                  rate (SYNC_HOLDOVER_DRIFT_PPT_PER_S). A candidate once
+ *                  the loop has locked.
+ *
+ * So when GNSS fails, holdover takes over and is kept while it is still
+ * better than NTP, which only takes over once its bound is less than half
+ * of holdover's.
+ *
+ * The accuracy limits (SYNC_*_QUALIFY_NS, SYNC_*_HOLD_NS) decide what is a
+ * candidate, not whether the clock runs at all. In free run, with nothing
+ * else, a source that meets every other requirement for SYNC_QUALIFY_EPOCHS
+ * (present, time valid, its edge seen, labelled, consistent) is taken as a
+ * fallback however coarse it is: NTP with an ESP that only knows its time
+ * to tens of ms, a GNSS receiver just after its first fix. It is kept while
+ * it meets those requirements, and any candidate that beats it by
+ * SYNC_SWITCH_RATIO displaces it as usual. Even before a source is taken,
+ * the time of day is set from the best labelled one, so the clock shows
+ * the time from the first epoch it is known. A source displaces the one in use only when its bound is
+ * less than 1/SYNC_SWITCH_RATIO of it for SYNC_SWITCH_EPOCHS in a row.
  *
  * States (the source in brackets is the selected one):
  *
  *   FREE_RUN       no source: the epoch runs on the last frequency estimate,
  *                  and the time of day (if ever known) is counted on.
- *   ACQUIRE(s)     s has qualified: the loop learns its frequency and steps
- *                  onto its edge.
+ *   ACQUIRE(s)     s has been chosen: the loop learns its frequency and steps
+ *                  onto its edge, or slews onto it if it is already close.
  *   LOCKED(s)      the loop tracks s.
- *   HOLDOVER(s)    s has failed: the loop holds frequency. Still counted as
- *                  synchronised until SYNC_HOLDOVER_LIMIT_EPOCHS.
+ *   HOLDOVER(s)    s, the source last steered by, has failed or been
+ *                  outranked: the loop holds frequency.
  *
- *   FREE_RUN  -> ACQUIRE   a source has been GOOD for SYNC_QUALIFY_EPOCHS
+ * Synchronised (LOCKED or HOLDOVER) only while the bound in use is within
+ * SYNC_SYNCHRONISED_LIMIT_NS: a fallback beyond it steers the clock, but
+ * does not count.
+ *
+ *   FREE_RUN  -> ACQUIRE   a source has qualified, or failing that, a fallback
  *   ACQUIRE   -> LOCKED    the loop measures in TRACK after its step
- *   ACQUIRE   -> FREE_RUN  s fails before the loop locks
+ *   ACQUIRE   -> HOLDOVER  s fails, and the loop had locked before
+ *   ACQUIRE   -> FREE_RUN  s fails, and it had not
  *   LOCKED    -> ACQUIRE   the loop loses phase and re-acquires
  *   LOCKED    -> HOLDOVER  s fails
- *   HOLDOVER  -> LOCKED    s is GOOD again (the loop's phase gate decides
+ *   HOLDOVER  -> LOCKED    s is GOOD again, with its edge captured, and no
+ *                          worse than holdover (the loop's phase gate decides
  *                          whether it is still in phase)
- *   HOLDOVER  -> ACQUIRE   another source has qualified
- *   HOLDOVER  -> FREE_RUN  SYNC_HOLDOVER_LIMIT_EPOCHS have passed
+ *   HOLDOVER  -> ACQUIRE   s is back but its edge is not routed to the
+ *                          capture, or another source beats holdover
+ *   HOLDOVER  -> FREE_RUN  the holdover bound passes SYNC_SYNCHRONISED_LIMIT_NS
  *   ACQUIRE/LOCKED(s) -> ACQUIRE(t)
- *                          t ranks above s and has been GOOD for
- *                          SYNC_SWITCH_EPOCHS
+ *                          t beats s (see above)
  *
- * Sources rank by their order in SyncSourceId: earlier is preferred. Adding
- * one takes an id here, an adapter (see source_gnss.c) and a row in the
- * table in sync.c. Only one source at a time can own the IC1/IC2 capture
- * pair that the loop steers by; a source that needs it re-routes the pair in
- * its select hook (pps_capture), and the loop is restarted on every change.
+ * Adding a source takes an id here, an adapter (see source_gnss.c) and a row
+ * in the table in sync.c. Every source's edge is watched (pps_monitor), but
+ * only one at a time can own the IC1/IC2 capture pair that the loop steers
+ * by: a source routes it in its select hook (pps_capture_route), so the
+ * routing only ever changes when a source is selected. The loop is then
+ * restarted with the source's profile (EpochProfile).
  */
 #ifndef SYNC_H
 #define SYNC_H
@@ -47,19 +85,26 @@
 #include "../timing/timing.h"
 #include "sync_source.h"
 
-// In order of preference.
+// In order of preference, when the bounds are equal.
 typedef enum
 {
     SYNC_SOURCE_GNSS = 0,
+    SYNC_SOURCE_NTP,
     SYNC_SOURCE_COUNT
 } SyncSourceId;
 
 #define SYNC_SOURCE_NONE SYNC_SOURCE_COUNT
+// The candidates are the sources and holdover.
+#define SYNC_CANDIDATE_HOLDOVER (SYNC_SOURCE_COUNT + 1U)
+#define SYNC_BOUND_NONE         UINT32_MAX // not a candidate
 
-// Consecutive GOOD epochs before a source is selected.
+// Consecutive GOOD epochs before a source is a candidate.
 #define SYNC_QUALIFY_EPOCHS 3U
-// ... before a better-ranked source displaces a working one.
+// A candidate displaces the one in use when its bound is less than
+// 1/SYNC_SWITCH_RATIO of it for this many epochs in a row.
 #define SYNC_SWITCH_EPOCHS 10U
+#define SYNC_SWITCH_RATIO  2U
+
 // GNSS uncertainty (tAcc) limits: to be taken up, and to stay in use.
 #ifndef SYNC_GNSS_QUALIFY_NS
 #define SYNC_GNSS_QUALIFY_NS 10000UL // 10 us
@@ -67,19 +112,70 @@ typedef enum
 #ifndef SYNC_GNSS_HOLD_NS
 #define SYNC_GNSS_HOLD_NS 100000UL // 100 us
 #endif
-// Holdover still counts as synchronised for this long (1 h). Set by how far
-// the oscillator wanders unsteered; the loop re-steps afterwards if needed.
-#ifndef SYNC_HOLDOVER_LIMIT_EPOCHS
-#define SYNC_HOLDOVER_LIMIT_EPOCHS 3600UL
+// tAcc is an estimate, not a bound: this many of them make one.
+#define SYNC_GNSS_TACC_SCALE 3U
+
+// NTP uncertainty limits (the ESP's own bound), and the allowance added for
+// the ESP's PPS: placed by a timer on the ESP, measured at 5-7 us of
+// latency and jitter. To be refined from the bench statistics. The ESP's
+// bound includes the whole round trip, so over Wi-Fi it is ~10 ms even
+// when its offset is well under 1 ms: the limits only keep out an ESP that
+// has lost track, and the ranking does the rest.
+#ifndef SYNC_NTP_QUALIFY_NS
+#define SYNC_NTP_QUALIFY_NS 50000000UL // 50 ms
 #endif
+#ifndef SYNC_NTP_HOLD_NS
+#define SYNC_NTP_HOLD_NS 100000000UL // 100 ms
+#endif
+#ifndef SYNC_NTP_EDGE_JITTER_NS
+#define SYNC_NTP_EDGE_JITTER_NS 20000UL // 20 us
+#endif
+
+// The loop profile for NTP (EpochProfile): Kp 1/64, Ki 1/16384, critically
+// damped with a time constant of about two minutes, so the ESP's edge
+// jitter averages out; up to 10 ppm of slew; a gate of 300 us. Reference
+// periods do not teach the Kalman filter: the ESP slews its own clock.
+#ifndef SYNC_NTP_KP_DIVISOR
+#define SYNC_NTP_KP_DIVISOR 64L
+#endif
+#ifndef SYNC_NTP_KI_DIVISOR
+#define SYNC_NTP_KI_DIVISOR 16384L
+#endif
+#ifndef SYNC_NTP_LIMIT_TICKS
+#define SYNC_NTP_LIMIT_TICKS 400L // integral and correction: 10 ppm
+#endif
+#ifndef SYNC_NTP_GATE_TICKS
+#define SYNC_NTP_GATE_TICKS 12000L // 300 us
+#endif
+#ifndef SYNC_NTP_REJECT_LIMIT
+#define SYNC_NTP_REJECT_LIMIT 8U
+#endif
+
+/*
+ * The holdover model, u0 + f.t + D.t^2/2. f is the frequency error left by
+ * the source last steered by, in ns/s (= ppb); D the oscillator's frequency
+ * drift rate, in ppt/s. First guesses, to be replaced by the bench
+ * measurement (sync_tuning.c): with these, holdover after GNSS is good to
+ * ~1 us after a minute, ~40 us after ten and ~1.3 ms after an hour.
+ */
+#ifndef SYNC_HOLDOVER_FREQUENCY_GNSS
+#define SYNC_HOLDOVER_FREQUENCY_GNSS 10UL // ns/s
+#endif
+#ifndef SYNC_HOLDOVER_FREQUENCY_NTP
+#define SYNC_HOLDOVER_FREQUENCY_NTP 200UL // ns/s
+#endif
+#ifndef SYNC_HOLDOVER_DRIFT_PPT_PER_S
+#define SYNC_HOLDOVER_DRIFT_PPT_PER_S 200UL
+#endif
+// Synchronised (the colon blinks, the ESP is told LOCKED or HOLDOVER) while
+// the bound is within this; beyond it holdover ends in free run. No lower
+// than SYNC_NTP_HOLD_NS, so holdover outlasts any NTP worth using.
+#ifndef SYNC_SYNCHRONISED_LIMIT_NS
+#define SYNC_SYNCHRONISED_LIMIT_NS 100000000UL // 100 ms
+#endif
+
 // State changes kept for diagnostics.
 #define SYNC_HISTORY_LENGTH 8U
-// How fast the time error may grow in holdover, for the uncertainty bound
-// reported to the ESP: the Kalman estimate holds the oscillator to well
-// within 0.1 ppm over an hour, unless the temperature changes a lot.
-#ifndef SYNC_HOLDOVER_DRIFT_NS_PER_S
-#define SYNC_HOLDOVER_DRIFT_NS_PER_S 100UL
-#endif
 // Capture resolution: one timer tick.
 #define SYNC_CAPTURE_RESOLUTION_NS 25UL
 
@@ -99,7 +195,7 @@ typedef enum
     SYNC_REASON_SOURCE_LOST,   // the selected source failed
     SYNC_REASON_SOURCE_BACK,   // ... and is good again
     SYNC_REASON_ALTERNATIVE,   // another source took over a failed one
-    SYNC_REASON_BETTER_SOURCE, // a better-ranked source took over
+    SYNC_REASON_BETTER_SOURCE, // a better source took over
     SYNC_REASON_EXPIRED        // holdover ran out
 } SyncReason;
 
@@ -123,21 +219,42 @@ typedef struct
     uint32_t corrections; // times a source's label replaced the count
 } SyncTime;
 
+// Holdover as a candidate: how far our oscillator can be trusted since the
+// loop last steered.
+typedef struct
+{
+    bool ready;            // the loop has locked: there is something to hold
+    uint8_t source;        // the source it last steered by
+    uint32_t age;          // epochs since
+    uint32_t base_ns;      // the bound at that epoch (u0)
+    uint32_t frequency_ns; // the frequency error that source leaves, ns/s
+    uint32_t bound_ns;     // the bound now
+} SyncHoldover;
+
 typedef struct
 {
     SyncState state;
-    uint8_t source;        // SyncSourceId, or SYNC_SOURCE_NONE
+    uint8_t source;        // SyncSourceId, or SYNC_SOURCE_NONE; in HOLDOVER the
+                           // source last steered by
+    bool fallback;         // source was taken as a fallback: kept while INACCURATE
     uint32_t state_epochs; // epochs in this state
     uint32_t holdover_epochs;
     SyncSourceTracker sources[SYNC_SOURCE_COUNT];
+    SyncHoldover holdover;
     SyncTime time;
     UtcLeap link_leap; // announced by the ESP (SML-TIME-LEAP), if any
 
-    // The latest epoch: our epoch minus the selected source's edge.
+    // The ranking: the best candidate other than the one in use, and the
+    // one, if any, on its way to displacing it.
+    uint8_t second; // a SyncSourceId, SYNC_CANDIDATE_HOLDOVER or SYNC_SOURCE_NONE
+    uint32_t second_bound_ns;
+    uint8_t challenger;
+    uint16_t challenge_run;
+
+    // The latest epoch: our epoch minus the selected source's UTC second.
     uint32_t epochs; // processed since sync_init()
     bool phase_valid;
     int32_t phase_ticks;
-    uint32_t steered_uncertainty_ns; // the source's, at the last epoch steered by
 
     uint32_t transitions; // total; the latest are in history
     SyncTransition history[SYNC_HISTORY_LENGTH];
@@ -164,17 +281,22 @@ const SyncStatus *sync_status(void);
 // in holdover and free run. change 0 withdraws it.
 void sync_set_leap(const UtcLeap *leap);
 
-// A +/- bound on the UTC error of our epoch, in ns: the selected source's own
-// uncertainty, the capture resolution and the measured phase, growing by
-// SYNC_HOLDOVER_DRIFT_NS_PER_S in holdover. False when there is none to give
-// (time unknown, or free running).
+// A +/- bound on the UTC error of our epoch, in ns: the selected source's
+// bound and the measured phase, or the holdover bound. False when there is
+// none to give (time unknown, or free running).
 bool sync_uncertainty(uint32_t *uncertainty_ns);
-// Locked, or in holdover within its limit.
+// Locked or in holdover, with a bound within SYNC_SYNCHRONISED_LIMIT_NS.
 bool sync_is_synchronised(void);
+// A candidate's bound this epoch (a SyncSourceId or SYNC_CANDIDATE_HOLDOVER),
+// or SYNC_BOUND_NONE if it is not a candidate.
+uint32_t sync_candidate_bound(uint8_t candidate);
+// Its place in the ranking, from 1, or 0 if it is not a candidate.
+uint8_t sync_candidate_rank(uint8_t candidate);
 // The latest state change, or NULL if none yet.
 const SyncTransition *sync_last_transition(void);
 
 const char *sync_state_name(SyncState state);
+// A SyncSourceId, SYNC_CANDIDATE_HOLDOVER or SYNC_SOURCE_NONE.
 const char *sync_source_name(uint8_t source);
 const char *sync_reason_name(uint8_t reason);
 

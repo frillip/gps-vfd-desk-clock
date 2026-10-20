@@ -12,18 +12,21 @@
 #include "epoch_output.h"
 #include "epoch_timer.h"
 #include "pps_capture.h"
+#include "pps_monitor.h"
 
 // Everything about one epoch, read consistently in one go.
 typedef struct
 {
     EpochTimerSample timer;
     PpsCaptureSample capture;
+    PpsMonitorSample monitor;
     EpochOutputSample output;
 } TimingSnapshot;
 
 /*
  * Brings up the timing hardware in the order it needs: captures aligned and
- * checked, then the epoch output armed, then the epoch timer started.
+ * checked, the PPS watch on their timebase, then the epoch output armed,
+ * then the epoch timer started.
  * Returns whether the capture timebases were proven aligned; if not, the
  * clock still runs but never reports a phase measurement.
  */

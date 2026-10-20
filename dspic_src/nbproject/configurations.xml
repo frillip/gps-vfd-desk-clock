@@ -37,6 +37,9 @@
         <itemPath>sync/sync_source.h</itemPath>
         <itemPath>sync/source_gnss.h</itemPath>
         <itemPath>sync/sync_report.h</itemPath>
+        <itemPath>sync/source_edge.h</itemPath>
+        <itemPath>sync/source_ntp.h</itemPath>
+        <itemPath>sync/sync_tuning.h</itemPath>
       </logicalFolder>
       <logicalFolder name="timing" displayName="timing" projectFiles="true">
         <itemPath>timing/servo.h</itemPath>
@@ -44,6 +47,7 @@
         <itemPath>timing/q16.h</itemPath>
         <itemPath>timing/timing_config.h</itemPath>
         <itemPath>timing/pps_capture.h</itemPath>
+        <itemPath>timing/pps_monitor.h</itemPath>
         <itemPath>timing/epoch_output.h</itemPath>
         <itemPath>timing/epoch_timer.h</itemPath>
         <itemPath>timing/epoch_control.h</itemPath>
@@ -56,6 +60,7 @@
         <itemPath>ui/display.h</itemPath>
         <itemPath>ui/timezone.h</itemPath>
         <itemPath>ui/text.h</itemPath>
+        <itemPath>ui/debug.h</itemPath>
       </logicalFolder>
       <itemPath>scheduler.h</itemPath>
     </logicalFolder>
@@ -99,11 +104,15 @@
         <itemPath>sync/sync_source.c</itemPath>
         <itemPath>sync/source_gnss.c</itemPath>
         <itemPath>sync/sync_report.c</itemPath>
+        <itemPath>sync/source_edge.c</itemPath>
+        <itemPath>sync/source_ntp.c</itemPath>
+        <itemPath>sync/sync_tuning.c</itemPath>
       </logicalFolder>
       <logicalFolder name="timing" displayName="timing" projectFiles="true">
         <itemPath>timing/servo.c</itemPath>
         <itemPath>timing/kalman.c</itemPath>
         <itemPath>timing/pps_capture.c</itemPath>
+        <itemPath>timing/pps_monitor.c</itemPath>
         <itemPath>timing/epoch_output.c</itemPath>
         <itemPath>timing/epoch_timer.c</itemPath>
         <itemPath>timing/epoch_control.c</itemPath>
@@ -116,6 +125,7 @@
         <itemPath>ui/display.c</itemPath>
         <itemPath>ui/timezone.c</itemPath>
         <itemPath>ui/text.c</itemPath>
+        <itemPath>ui/debug.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
       <itemPath>scheduler.c</itemPath>

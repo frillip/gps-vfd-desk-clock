@@ -122,6 +122,17 @@ SyncCheck sync_source_judge(SyncSourceTracker *tracker, const SyncSourceReport *
     {
         tracker->good_run = 0;
     }
+    if (check == SYNC_CHECK_GOOD || check == SYNC_CHECK_INACCURATE)
+    {
+        if (tracker->usable_run < UINT16_MAX)
+        {
+            tracker->usable_run++;
+        }
+    }
+    else
+    {
+        tracker->usable_run = 0;
+    }
     record_cross_check(tracker, report);
     return check;
 }

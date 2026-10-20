@@ -46,7 +46,7 @@ uint8_t esp_report_cause(uint8_t reason)
 
 uint8_t esp_report_source(uint8_t source, uint32_t epochs)
 {
-    static const uint8_t codes[SYNC_SOURCE_COUNT] = {SML_SOURCE_GNSS};
+    static const uint8_t codes[SYNC_SOURCE_COUNT] = {SML_SOURCE_GNSS, SML_SOURCE_NTP};
     if (epochs == 0U)
     {
         return SML_SOURCE_INIT;
@@ -135,10 +135,10 @@ void esp_report_time_pic(const TimingSnapshot *snapshot, const SyncUpdate *updat
         payload->flags |= SML_PIC_PHASE_VALID;
         payload->phase_cycles = update->loop.utc_offset_ticks;
     }
-    if (snapshot->capture.gnss_period_valid)
+    if (snapshot->capture.reference_period_valid)
     {
         payload->flags |= SML_PIC_PERIOD_VALID;
-        payload->pps_period_cycles = snapshot->capture.gnss_period;
+        payload->pps_period_cycles = snapshot->capture.reference_period;
     }
     if (control->pps_kf.initialized)
     {
@@ -147,7 +147,7 @@ void esp_report_time_pic(const TimingSnapshot *snapshot, const SyncUpdate *updat
         payload->flags |= SML_PIC_FREQUENCY_VALID;
         payload->fosc_hz = control->filtered_pps_period;
     }
-    if (snapshot->capture.gnss_capture_valid)
+    if (snapshot->capture.reference_capture_valid)
     {
         payload->flags |= SML_PIC_PPS_VALID;
     }
@@ -240,16 +240,16 @@ void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *upda
         payload->flags |= SML_MEAS_LABEL_VALID;
         payload->utc_seconds = status->time.utc_seconds;
     }
-    payload->reference_sequence = capture->gnss_edge_sequence;
+    payload->reference_sequence = capture->reference_edge_sequence;
     if (update->loop.phase_valid)
     {
         payload->flags |= SML_MEAS_PHASE_VALID;
         payload->phase_ticks = update->loop.utc_offset_ticks;
     }
-    if (capture->gnss_capture_valid && capture->gnss_period_valid)
+    if (capture->reference_capture_valid && capture->reference_period_valid)
     {
         payload->flags |= SML_MEAS_PERIOD_VALID;
-        payload->reference_period_ticks = capture->gnss_period;
+        payload->reference_period_ticks = capture->reference_period;
     }
     if (has_previous)
     {
@@ -261,7 +261,10 @@ void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *upda
     {
         payload->flags |= SML_MEAS_MEASUREMENT_USED;
     }
-    if (capture->gnss_capture_valid && gnss_time_pulse(capture->gnss_edge_sequence, &pulse))
+    // The receiver's quantisation error is for its own edge: only while that
+    // is the one captured.
+    if (capture->reference_capture_valid && capture->reference_input == PPS_INPUT_GNSS &&
+        gnss_time_pulse(snapshot->monitor.inputs[PPS_INPUT_GNSS].sequence, &pulse))
     {
         payload->flags |= SML_MEAS_QERR_VALID;
         payload->qerr_ps = pulse->quantisation_error_ps;

@@ -16,11 +16,14 @@
 #include "gnss/gnss.h"
 #include "platform/system.h"
 #include "scheduler.h"
+#include "sync/source_ntp.h"
 #include "sync/sync.h"
 #include "sync/sync_report.h"
+#include "sync/sync_tuning.h"
 #include "timing/timing.h"
 #include "timing/timing_report.h"
 #include "ui/console.h"
+#include "ui/debug.h"
 #include "ui/display.h"
 #include "ui/timezone.h"
 
@@ -28,11 +31,13 @@
 // second: they use printf, which costs ~1.5 ms a call here (70-80 ms a
 // report), so they stay clear of the epoch work and the GNSS burst that
 // follows each navigation solution. The per-epoch lines use ui/text.h.
+// Which are printed is up to ui/debug.h.
 #define REPORT_SLOT            600U
 #define FULL_REPORT_EPOCHS     60U
 #define SCHEDULER_REPORT_EPOCH 15U // ... at this epoch of each minute
 #define GNSS_REPORT_EPOCH      30U
 #define SYNC_REPORT_EPOCH      45U
+#define TUNING_REPORT_EPOCH    55U
 
 // ---- The task list --------------------------------------------------------
 // Periodic tasks keep their phase on the epoch timeline; slot tasks run at a
@@ -48,13 +53,14 @@ static SchedulerTask minute_report = SCHEDULER_AT_SLOT("minute report", REPORT_S
 // The epoch's work, started by timing_snapshot(): timed only.
 static SchedulerTask epoch_work = SCHEDULER_SECTION("epoch");
 
-// The GNSS receiver link, with the latest PPS edge for labelling.
+// The GNSS receiver link, with the latest PPS edge for labelling: as
+// watched, so labelling carries on whatever the capture is routed to.
 static void service_gnss(void)
 {
     GnssPpsReference reference;
     PpsEdge edge;
 
-    pps_capture_gnss_edge(&edge);
+    pps_monitor_edge(PPS_INPUT_GNSS, &edge);
     reference.sequence = edge.sequence;
     reference.observed_ms = edge.observed_ms;
     reference.valid = edge.valid;
@@ -86,10 +92,29 @@ static void run_epoch(const TimingSnapshot *snapshot)
     update = sync_update(snapshot, epoch_timer_ms());
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
     prepare_display();
+    sync_tuning_epoch(snapshot, &update);
 
-    //timing_report_epoch(snapshot, &update.loop);
-    //gnss_print_edge(snapshot->capture.gnss_edge_sequence, epoch_timer_ms());
-    //sync_report_epoch(&update);
+    if (debug_enabled(DEBUG_TIMING))
+    {
+        timing_report_epoch(snapshot, &update.loop);
+    }
+    if (debug_enabled(DEBUG_GNSS))
+    {
+        gnss_print_edge(snapshot->monitor.inputs[PPS_INPUT_GNSS].sequence, epoch_timer_ms());
+    }
+    if (debug_enabled(DEBUG_NTP))
+    {
+        source_ntp_print_epoch(snapshot, epoch_timer_ms());
+    }
+    sync_report_transition(&update);
+    if (debug_enabled(DEBUG_SYNC))
+    {
+        sync_report_epoch(&update);
+    }
+    if (debug_enabled(DEBUG_SOURCES))
+    {
+        sync_report_sources();
+    }
 }
 
 
@@ -98,6 +123,14 @@ static void report_minute(void)
 {
     uint32_t minute_epoch = scheduler_epoch() % FULL_REPORT_EPOCHS;
 
+    if (minute_epoch == TUNING_REPORT_EPOCH && debug_enabled(DEBUG_TUNING))
+    {
+        sync_tuning_print();
+    }
+    if (!debug_enabled(DEBUG_MINUTE))
+    {
+        return;
+    }
     if (minute_epoch == SCHEDULER_REPORT_EPOCH)
     {
         scheduler_print();
@@ -125,7 +158,9 @@ int main(void)
     esp_link_init();
     printf("\033[2J\033[1;1H");
 
+    debug_init();
     sync_init();
+    sync_tuning_init();
     timing_init(&capture_sync);
     timing_report_sync(&capture_sync);
     gnss_init(FCY, epoch_timer_ms());
@@ -156,6 +191,7 @@ int main(void)
         {
             service_gnss();
             esp_link_service(scheduler_now_ms());
+            source_ntp_service(scheduler_now_ms());
         }
 
         if (scheduler_due(&display_load))
@@ -165,7 +201,7 @@ int main(void)
 
         if (scheduler_due(&minute_report))
         {
-            //report_minute();
+            report_minute();
         }
     }
 }
