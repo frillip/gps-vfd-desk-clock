@@ -24,7 +24,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../../common/sml_proto.h"
+#include "sml_proto.h"
 
 // CRC-16/IBM-3740 (CCITT-FALSE): poly 0x1021, init 0xFFFF, no reflection.
 #define SML_CRC_INIT 0xFFFFU

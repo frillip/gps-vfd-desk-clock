@@ -10,10 +10,10 @@
         <itemPath>drivers/tubes.h</itemPath>
       </logicalFolder>
       <logicalFolder name="esp" displayName="esp" projectFiles="true">
-        <itemPath>esp/sml.h</itemPath>
         <itemPath>esp/esp_link.h</itemPath>
         <itemPath>esp/esp_report.h</itemPath>
         <itemPath>../common/sml_proto.h</itemPath>
+        <itemPath>../common/sml.h</itemPath>
       </logicalFolder>
       <logicalFolder name="gnss" displayName="gnss" projectFiles="true">
         <itemPath>gnss/gnss.h</itemPath>
@@ -77,9 +77,9 @@
         <itemPath>drivers/tubes.c</itemPath>
       </logicalFolder>
       <logicalFolder name="esp" displayName="esp" projectFiles="true">
-        <itemPath>esp/sml.c</itemPath>
         <itemPath>esp/esp_link.c</itemPath>
         <itemPath>esp/esp_report.c</itemPath>
+        <itemPath>../common/sml.c</itemPath>
       </logicalFolder>
       <logicalFolder name="gnss" displayName="gnss" projectFiles="true">
         <itemPath>gnss/gnss.c</itemPath>

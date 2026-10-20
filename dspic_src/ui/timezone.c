@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../esp/sml.h"
+#include "../../common/sml.h"
 
 #define OPEN_ENDED_UTC 0xFFFFFFFFUL
 #define NS_PER_SECOND  1000000000L

@@ -43,7 +43,7 @@
 
 #include "../sync/sync.h"
 #include "../timing/timing.h"
-#include "sml.h"
+#include "../../common/sml.h"
 
 #ifndef ESP_LINK_START_SML
 #define ESP_LINK_START_SML 0
