@@ -1,4 +1,3 @@
-// Version: 2026-10-19T17:30:00+01:00
 /*
  * SML protocol -- UBX-inspired framing for Smol Clock.
  * Draft for manual review. Payloads other than TIME-AUTH are provisional.
@@ -36,8 +35,8 @@
  * Reserved fields/bits transmit zero. Receivers ignore reserved bits.
  * No floats, time_t, native enums, C bitfields, pointers or unions on wire.
  */
-#ifndef SERIAL_PROTO_H
-#define SERIAL_PROTO_H
+#ifndef SML_PROTO_H
+#define SML_PROTO_H
 #include <stdint.h>
 #include <stddef.h>
 

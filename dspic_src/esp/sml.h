@@ -1,11 +1,11 @@
 /*
  * SML codec: framing, CRC and payload conversion for the dsPIC <-> ESP32
- * link (common/SML_PROTOCOL.md, serial_proto.h). Portable C99 with no
+ * link (common/SML_PROTOCOL.md, sml_proto.h). Portable C99 with no
  * hardware or clock dependency, so the ESP32 can build the same file.
  *
  *   B5 73 CLASS ID LEN_H LEN_L PAYLOAD[LEN] CRC_H CRC_L
  *
- * Payloads are big-endian on the wire. The packed structs in serial_proto.h
+ * Payloads are big-endian on the wire. The packed structs in sml_proto.h
  * fix the order and size of their fields; sml_encode()/sml_decode() convert
  * between such a struct (native byte order) and the wire, field by field,
  * driven by each message's layout: its field sizes in order. Because the
@@ -24,7 +24,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "sml_proto.h"
+#include "../../common/sml_proto.h"
 
 // CRC-16/IBM-3740 (CCITT-FALSE): poly 0x1021, init 0xFFFF, no reflection.
 #define SML_CRC_INIT 0xFFFFU

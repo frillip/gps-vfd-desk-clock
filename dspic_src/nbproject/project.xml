@@ -16,6 +16,7 @@
                 <sourceRootElem>timing</sourceRootElem>
                 <sourceRootElem>ui</sourceRootElem>
                 <sourceRootElem>esp</sourceRootElem>
+                <sourceRootElem>../common</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>

@@ -14,7 +14,7 @@
 #include "../sync/sync.h"
 #include "../timing/epoch_control.h"
 #include "../ui/display.h"
-#include "sml_proto.h"
+#include "../../common/sml_proto.h"
 
 // Mappings to wire codes.
 uint8_t esp_report_lock(SyncState state, uint32_t epochs);

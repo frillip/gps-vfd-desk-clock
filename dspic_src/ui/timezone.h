@@ -39,7 +39,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../esp/sml_proto.h"
+#include "../../common/sml_proto.h"
 
 // Offsets beyond a day are not time zones.
 #define TIMEZONE_OFFSET_LIMIT_S 86399L

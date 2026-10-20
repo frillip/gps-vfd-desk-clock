@@ -4,7 +4,7 @@
 #include <string.h>
 
 // ---- Message table --------------------------------------------------------
-// Field sizes in wire order, as in serial_proto.h. The host tests check that
+// Field sizes in wire order, as in sml_proto.h. The host tests check that
 // each layout adds up to the struct size and to the length in the table.
 
 #define TZ_ENTRY_FIELDS      4, 4, 2, 1, 1

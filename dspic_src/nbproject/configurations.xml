@@ -13,7 +13,7 @@
         <itemPath>esp/sml.h</itemPath>
         <itemPath>esp/esp_link.h</itemPath>
         <itemPath>esp/esp_report.h</itemPath>
-        <itemPath>esp/sml_proto.h</itemPath>
+        <itemPath>../common/sml_proto.h</itemPath>
       </logicalFolder>
       <logicalFolder name="gnss" displayName="gnss" projectFiles="true">
         <itemPath>gnss/gnss.h</itemPath>
@@ -30,6 +30,7 @@
         <itemPath>platform/system.h</itemPath>
         <itemPath>platform/time_ms.h</itemPath>
         <itemPath>platform/utc.h</itemPath>
+        <itemPath>../common/enums.h</itemPath>
       </logicalFolder>
       <logicalFolder name="sync" displayName="sync" projectFiles="true">
         <itemPath>sync/sync.h</itemPath>
@@ -128,6 +129,7 @@
     <Elem>timing</Elem>
     <Elem>ui</Elem>
     <Elem>esp</Elem>
+    <Elem>../common</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>

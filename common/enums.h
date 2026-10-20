@@ -6,7 +6,7 @@
  * Created on 13 April 2024, 19:33
  *
  * Application enums shared by name between the dsPIC and ESP32 sources.
- * None of these values goes on the wire: SML (serial_proto.h) carries fixed
+ * None of these values goes on the wire: SML (sml_proto.h) carries fixed
  * SML_* codes, and each side maps its enums onto them with explicit tables.
  *
  * 2026-10-19, SML 1.1: removed the enums the protocol now defines as wire
@@ -18,7 +18,7 @@
  *   ESP_/PIC_MESSAGE_TYPE, BOOTLOADER_CMD -> SML classes and IDs
  *   GNSS_MESSAGE_TYPE, UBX_NAV_STATUS_GPSFIX, UBX_NAV_TIMEUTC_VALID_UTCSTANDARD,
  *   UBX_TIM_TM2_FLAGS_TIMEBASE -> ubx_proto.h (UBX_FIX_*, UBX_TIMEUTC_*, UBX_TM2_*)
- * esp_src/ keeps its own legacy copies of enums.h and serial_proto.h until
+ * esp_src/ keeps its own legacy copies of enums.h and sml_proto.h until
  * the ESP is ported to SML.
  */
 
