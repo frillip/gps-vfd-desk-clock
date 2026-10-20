@@ -18,8 +18,8 @@
  *   ESP_/PIC_MESSAGE_TYPE, BOOTLOADER_CMD -> SML classes and IDs
  *   GNSS_MESSAGE_TYPE, UBX_NAV_STATUS_GPSFIX, UBX_NAV_TIMEUTC_VALID_UTCSTANDARD,
  *   UBX_TIM_TM2_FLAGS_TIMEBASE -> ubx_proto.h (UBX_FIX_*, UBX_TIMEUTC_*, UBX_TM2_*)
- * esp_src/ keeps its own legacy copies of enums.h and sml_proto.h until
- * the ESP is ported to SML.
+ * esp_src/ links to this file, and to sml.c, sml.h and sml_proto.h, from
+ * esp_src/src/.
  */
 
 #ifndef ENUMS_H

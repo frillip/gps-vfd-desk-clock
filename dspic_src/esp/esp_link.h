@@ -15,7 +15,7 @@
  * itself by sending anything, e.g. CMD-USER INFO at boot.
  *
  * Received:
- *   TZ-STATE     -> timezone_apply() (ignored while TZ auto is off)
+ *   TZ-STATE     -> timezone_apply() (always held; TZ/DST auto choose what is used)
  *   TIME-LEAP    -> sync_set_leap(): used when the selected source has none
  *   TIME-NTP     -> held for the NTP source (not yet a sync source)
  *   STAT-NET     -> held for the menu and status (esp_link_net)
