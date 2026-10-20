@@ -1,0 +1,362 @@
+#include "ntp.h"
+
+#include <Network.h>
+#include <esp_timer.h>
+#include <sys/time.h>
+
+#include "../console/console.h"
+#include "../settings/user_prefs.h"
+#include "../util/time_text.h"
+#include "esp_clock.h"
+#include "ntp_client.h"
+#include "pps.h"
+
+#define LEARN_FIRST_S     64U
+#define RETRY_FIRST_S     60U
+#define SYNC_SLACK_S      300U
+#define FREE_RUN_AFTER_S  86400U
+#define PPS_SYNC_LIMIT_NS 1000000 // phase within which the edge marks its second
+
+typedef struct
+{
+    bool polled;          // a poll has been started since the network came up
+    int64_t next_poll_us; // local time of the next poll
+    uint32_t interval_s;  // the interval in use
+    uint32_t retry_s;     // current retry delay after a failure
+    uint32_t learn_step;  // 64, 128, 256 s polls done
+    NtpPollResult last;   // the latest poll, good or bad
+    bool have_last;
+    bool report_ready;
+    SML_TIME_NTP_PAYLOAD report;
+    uint32_t edges;
+    int64_t last_edge_utc_us;
+    uint32_t dns_failures;
+} Ntp;
+
+static Ntp ntp;
+
+static int64_t now_us(void)
+{
+    return esp_timer_get_time();
+}
+
+
+void ntp_init(void)
+{
+    esp_clock_init();
+    ntp_client_init();
+    ntp.interval_s = user_prefs.fields.ntp.interval;
+    ntp.retry_s = RETRY_FIRST_S;
+}
+
+
+void ntp_resync(void)
+{
+    ntp.next_poll_us = now_us();
+}
+
+
+bool ntp_is_valid(void)
+{
+    return esp_clock_is_valid();
+}
+
+
+static uint32_t update_age_s(void)
+{
+    int64_t age = now_us() - esp_clock_status()->last_update_local_us;
+
+    return age < 0 ? 0 : (uint32_t)(age / 1000000);
+}
+
+
+bool ntp_is_synced(void)
+{
+    return esp_clock_is_valid() && update_age_s() <= 2U * ntp.interval_s + SYNC_SLACK_S;
+}
+
+
+bool ntp_utc_at(int64_t local_us, int64_t *utc_us)
+{
+    if (!esp_clock_is_valid())
+    {
+        return false;
+    }
+    *utc_us = esp_clock_utc_us(local_us);
+    return true;
+}
+
+
+bool ntp_utc_now(uint32_t *utc_seconds)
+{
+    int64_t utc;
+
+    if (!ntp_utc_at(now_us(), &utc))
+    {
+        return false;
+    }
+    *utc_seconds = (uint32_t)(utc / 1000000);
+    return true;
+}
+
+
+// The system clock follows the model, for anything using time() or TLS.
+static void set_system_time(void)
+{
+    int64_t utc = esp_clock_utc_us(now_us());
+    struct timeval value;
+
+    value.tv_sec = (time_t)(utc / 1000000);
+    value.tv_usec = (suseconds_t)(utc % 1000000);
+    settimeofday(&value, NULL);
+}
+
+
+static void schedule_next(bool good)
+{
+    uint32_t delay_s;
+
+    if (!good)
+    {
+        delay_s = ntp.retry_s;
+        ntp.retry_s = ntp.retry_s * 2 > ntp.interval_s ? ntp.interval_s : ntp.retry_s * 2;
+    }
+    else if (esp_clock_status()->frequency_samples < 2 && ntp.learn_step < 3)
+    {
+        delay_s = LEARN_FIRST_S << ntp.learn_step++;
+        ntp.retry_s = RETRY_FIRST_S;
+    }
+    else
+    {
+        delay_s = ntp.interval_s;
+        ntp.retry_s = RETRY_FIRST_S;
+    }
+    if (delay_s > ntp.interval_s)
+    {
+        delay_s = ntp.interval_s;
+    }
+    ntp.next_poll_us = now_us() + (int64_t)delay_s * 1000000;
+}
+
+
+static void start_pps(void)
+{
+    int64_t utc = esp_clock_utc_us(now_us());
+    int64_t next_second = (utc / 1000000 + 1) * 1000000;
+
+    pps_output_start(esp_clock_local_us(next_second), esp_clock_period_adjust_q16());
+}
+
+
+static const char *poll_failure(const NtpPollResult *poll)
+{
+    if (poll->dns_failed)
+    {
+        return "DNS lookup failed";
+    }
+    if (poll->last_result == NTP_REPLY_OK)
+    {
+        return "no reply";
+    }
+    return ntp_reply_name(poll->last_result);
+}
+
+
+static void handle_poll(const NtpPollResult *poll)
+{
+    ntp.last = *poll;
+    ntp.have_last = true;
+    if (!poll->ok)
+    {
+        console_printf("NTP: poll of %s failed (%s %s)\n", user_prefs.fields.ntp.server,
+                       poll_failure(poll), poll->kiss);
+        schedule_next(false);
+        return;
+    }
+    if (esp_clock_update(&poll->sample) == ESP_CLOCK_STEPPED)
+    {
+        const EspClockStatus *status = esp_clock_status();
+
+        console_printf("NTP: clock set from %s, step %lld us (%u steps)\n", poll->address,
+                       (long long)status->last_error_us, (unsigned)status->steps);
+        set_system_time();
+        start_pps();
+    }
+    else
+    {
+        set_system_time();
+    }
+    schedule_next(true);
+}
+
+
+static void build_report(const PpsEdge *edge)
+{
+    SML_TIME_NTP_PAYLOAD *report = &ntp.report;
+    const EspClockStatus *status = esp_clock_status();
+    int64_t utc = esp_clock_utc_us(edge->local_us);
+    int64_t second = (utc + 500000) / 1000000;
+    int64_t phase_ns = (utc - second * 1000000) * 1000;
+    uint32_t age_s = update_age_s();
+    int64_t age_ms = (now_us() - status->last_update_local_us) / 1000;
+
+    memset(report, 0, sizeof(*report));
+    report->flags = SML_NTP_TIME_VALID | SML_NTP_UNCERTAINTY_VALID;
+    if (status->updates != 0)
+    {
+        report->flags |= SML_NTP_UPDATE_VALID;
+    }
+    if (phase_ns < PPS_SYNC_LIMIT_NS && phase_ns > -PPS_SYNC_LIMIT_NS)
+    {
+        report->flags |= SML_NTP_PPS_SYNC | SML_NTP_SCHEDULER_SYNC;
+    }
+    report->source = ntp_is_synced() ? SML_SOURCE_NTP : SML_SOURCE_ESP;
+    if (ntp_is_synced())
+    {
+        report->lock_state = status->frequency_samples != 0 ? SML_LOCK_LOCKED : SML_LOCK_ACQUIRING;
+    }
+    else
+    {
+        report->lock_state = age_s > FREE_RUN_AFTER_S ? SML_LOCK_FREE_RUNNING : SML_LOCK_HOLDOVER;
+    }
+    report->utc_seconds = (uint32_t)second;
+    report->utc_phase_ns = (int32_t)phase_ns;
+    report->uncertainty_ns = esp_clock_uncertainty_ns(edge->local_us);
+    report->pps_sequence = edge->sequence;
+    report->last_update_utc = (uint32_t)(esp_clock_utc_us(status->last_update_local_us) / 1000000);
+    report->update_age_ms = age_ms > 65535 ? 65535 : (uint16_t)(age_ms < 0 ? 0 : age_ms);
+    report->update_interval_s = ntp.interval_s;
+    report->round_trip_us = (uint32_t)status->last.delay_us;
+    report->last_offset_us = (int32_t)status->last_error_us;
+    // Positive: the ESP's clock runs fast.
+    report->frequency_estimate_ppt = -status->frequency_ppb * 1000;
+    ntp.report_ready = true;
+    ntp.last_edge_utc_us = utc;
+}
+
+
+static void service_pps(void)
+{
+    PpsEdge edge;
+
+    if (!pps_output_take(&edge) || !esp_clock_is_valid())
+    {
+        return;
+    }
+    ntp.edges++;
+    build_report(&edge);
+    // The next edge: the next whole UTC second after this one.
+    pps_output_plan(esp_clock_local_us(((int64_t)ntp.report.utc_seconds + 1) * 1000000),
+                    esp_clock_period_adjust_q16());
+}
+
+
+void ntp_service(bool network_up)
+{
+    NtpPollResult poll;
+
+    ntp.interval_s = user_prefs.fields.ntp.interval;
+    if (ntp_client_take(&poll))
+    {
+        handle_poll(&poll);
+    }
+    service_pps();
+
+    if (!network_up)
+    {
+        ntp.polled = false; // poll as soon as it is back
+        return;
+    }
+    if ((!ntp.polled || now_us() >= ntp.next_poll_us) && !ntp_client_busy())
+    {
+        IPAddress address;
+
+        ntp.polled = true;
+        // Resolved here, in the loop task: see ntp_client.h.
+        if (!Network.hostByName(user_prefs.fields.ntp.server, address) || address.type() != IPv4 ||
+            (uint32_t)address == 0)
+        {
+            NtpPollResult failed;
+
+            memset(&failed, 0, sizeof(failed));
+            failed.dns_failed = true;
+            ntp.dns_failures++;
+            handle_poll(&failed);
+            return;
+        }
+        if (ntp_client_poll((uint32_t)address[0] << 24 | (uint32_t)address[1] << 16 |
+                            (uint32_t)address[2] << 8 | address[3]))
+        {
+            ntp.next_poll_us = now_us() + (int64_t)ntp.interval_s * 1000000; // until the result
+        }
+    }
+}
+
+
+bool ntp_take_report(SML_TIME_NTP_PAYLOAD *payload)
+{
+    if (!ntp.report_ready)
+    {
+        return false;
+    }
+    *payload = ntp.report;
+    ntp.report_ready = false;
+    return true;
+}
+
+
+void ntp_print(Stream *output)
+{
+    const EspClockStatus *status = esp_clock_status();
+    const NtpClientStats *stats = ntp_client_stats();
+    const PpsOutputStats *pps = pps_output_stats();
+    uint32_t utc;
+
+    output->printf("Server:    %s", user_prefs.fields.ntp.server);
+    if (ntp.have_last && ntp.last.address[0] != '\0')
+    {
+        output->printf(" (%s)", ntp.last.address);
+    }
+    output->printf("\nInterval:  %lu s\n", (unsigned long)ntp.interval_s);
+    if (!esp_clock_is_valid())
+    {
+        output->printf("Clock:     not set\n");
+    }
+    else
+    {
+        ntp_utc_now(&utc);
+        output->printf("Clock:     ");
+        time_print_utc(output, utc);
+        output->printf(" %s, +/-", ntp_is_synced() ? "synced" : "NOT SYNCED");
+        time_print_ns(output, esp_clock_uncertainty_ns(now_us()));
+        output->printf("\nUpdated:   ");
+        time_print_duration(output, update_age_s());
+        output->printf(" ago, stratum %u, round trip ", status->last.stratum);
+        time_print_ns(output, status->last.delay_us * 1000);
+        output->printf(", correction ");
+        time_print_ns(output, status->last_error_us * 1000);
+        output->printf("\nFrequency: %+.3f ppm (%lu estimates)\n",
+                       -(float)status->frequency_ppb / 1000.0f,
+                       (unsigned long)status->frequency_samples);
+    }
+    output->printf("Polls:     %lu (%lu good), %lu exchanges, %lu timeouts, %lu DNS failures, "
+                   "%lu updates, %lu steps\n",
+                   (unsigned long)stats->polls, (unsigned long)stats->good_polls,
+                   (unsigned long)stats->exchanges, (unsigned long)stats->timeouts,
+                   (unsigned long)ntp.dns_failures, (unsigned long)status->updates,
+                   (unsigned long)status->steps);
+    if (ntp.have_last && !ntp.last.ok)
+    {
+        output->printf("Last poll: failed (%s %s)\n", poll_failure(&ntp.last), ntp.last.kiss);
+    }
+    output->printf("ESP PPS:   %s, %lu edges, %lu planned, %lu ran on, latency %ld us (max %ld)\n",
+                   pps_output_running() ? "running" : "stopped", (unsigned long)ntp.edges,
+                   (unsigned long)pps->planned, (unsigned long)pps->extrapolated,
+                   (long)pps->latency_us, (long)pps->latency_max_us);
+    if (ntp.edges != 0)
+    {
+        output->printf("Last edge: UTC + ");
+        time_print_ns(output, (int64_t)ntp.report.utc_phase_ns);
+        output->printf("\n");
+    }
+}
