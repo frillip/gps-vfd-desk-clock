@@ -75,6 +75,9 @@ bool kalman_init(KalmanFilter *kf, uint32_t nominal_period, uint32_t process_var
                  uint32_t measurement_variance_q16);
 // Forgets the estimate; the next measurement is accepted directly.
 void kalman_reset(KalmanFilter *kf);
+// Starts from an estimate measured elsewhere (period - nominal, Q16), with
+// one measurement's worth of confidence, as a first measurement would.
+void kalman_seed(KalmanFilter *kf, int32_t offset_q16);
 
 // One validated PPS-to-PPS period, in ticks.
 KalmanResult kalman_update(KalmanFilter *kf, uint32_t measured_period);

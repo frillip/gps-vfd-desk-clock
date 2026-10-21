@@ -26,11 +26,16 @@
 
 #include "pps_capture.h"
 
-// Interrupt latency allowance subtracted from a watched edge's timestamp to
-// estimate the edge itself: a first guess, to be replaced by the measured
-// mean of the IOC-minus-capture statistics (sync_tuning.c).
+/*
+ * Interrupt latency subtracted from a watched edge's timestamp to estimate
+ * the edge itself. Measured on V2 (2026-10-20, IOC minus capture): 33 ticks
+ * (sd 1) for the ESP PPS on the NTP clock. An edge that coincides with the
+ * epoch waits for the epoch interrupts (priority 4) as well: the GNSS PPS on
+ * a GNSS-locked clock was 196 ticks (sd 0.6). So a watched source within a
+ * few microseconds of the epoch reads ~4 us late.
+ */
 #ifndef PPS_MONITOR_LATENCY_TICKS
-#define PPS_MONITOR_LATENCY_TICKS 40L // 1 us
+#define PPS_MONITOR_LATENCY_TICKS 33L
 #endif
 
 // One input's latest edge.
@@ -61,7 +66,7 @@ typedef struct
 {
     uint32_t edges[PPS_INPUT_COUNT];
     uint32_t implausible[PPS_INPUT_COUNT]; // periods outside +/-1000 ppm
-    uint32_t unseen;                       // changes gone again before the handler read the pins
+    uint32_t unseen; // interrupts with nothing new: a change already handled on a second pass
 } PpsMonitorStats;
 
 // After pps_capture_init(): timestamps need the aligned timebase.

@@ -76,6 +76,15 @@ bool kalman_init(KalmanFilter *kf, uint32_t nominal_period, uint32_t process_var
 }
 
 
+void kalman_seed(KalmanFilter *kf, int32_t offset_q16)
+{
+    if (kf != NULL)
+    {
+        acquire(kf, offset_q16);
+    }
+}
+
+
 void kalman_reset(KalmanFilter *kf)
 {
     if (kf == NULL)

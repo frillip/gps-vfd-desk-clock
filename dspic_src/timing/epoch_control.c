@@ -24,6 +24,11 @@ const EpochProfile epoch_profile_precise = {
 // few measurements.
 #define EPOCH_ACQUIRE_DELAY 3UL
 
+// Consecutive reference periods averaged to seed the Kalman filter (see
+// epoch_control.h). The ESP PPS period jitters by ~60 ticks RMS: over 16 s,
+// the average is good to a few ticks, ~0.1 ppm.
+#define EPOCH_SEED_PERIODS 16UL
+
 static EpochControl loop;
 
 // --------------------------------------------------------------------------
@@ -144,6 +149,48 @@ static void enter_acquire(void)
 // States
 // --------------------------------------------------------------------------
 
+// Seeds the Kalman filter if the profile does not teach it and nothing has
+// yet, from the capture-to-capture baseline over EPOCH_SEED_PERIODS
+// consecutive periods (exact: the captures telescope). True once there is
+// an estimate to step with.
+static bool seed_frequency(const PpsCaptureSample *capture)
+{
+    uint32_t span;
+    int64_t excess_q16;
+
+    if (loop.profile->learn_frequency || loop.pps_kf.initialized)
+    {
+        return true;
+    }
+    if (!capture->reference_capture_valid)
+    {
+        return false;
+    }
+    if (!loop.seed_started || !capture->reference_period_valid ||
+        capture->reference_period_sequence != loop.seed_sequence + 1U)
+    {
+        loop.seed_started = true;
+        loop.seed_first = capture->reference_capture;
+        loop.seed_periods = 0;
+    }
+    else
+    {
+        loop.seed_periods++;
+    }
+    loop.seed_sequence = capture->reference_period_sequence;
+    if (loop.seed_periods < EPOCH_SEED_PERIODS)
+    {
+        return false;
+    }
+    span = capture->reference_capture - loop.seed_first;
+    excess_q16 =
+        ((int64_t)span - (int64_t)loop.seed_periods * (int64_t)TIMING_NOMINAL_TICKS) * 65536;
+    kalman_seed(&loop.pps_kf, (int32_t)(excess_q16 / (int64_t)loop.seed_periods));
+    loop.filtered_pps_period = kalman_period(&loop.pps_kf);
+    return true;
+}
+
+
 // Requests either the step or, until it can be made, the frequency estimate.
 static void acquire(const TimingSnapshot *snapshot, int32_t utc_offset_ticks)
 {
@@ -236,6 +283,7 @@ void epoch_control_init(void)
     loop.holdover_epochs = 0;
     loop.reference_epochs = 0;
     loop.discard_period = false;
+    loop.seed_started = false;
     loop.filtered_pps_period = TIMING_NOMINAL_TICKS;
     loop.predicted_phase_q16 = 0;
     loop.commanded_offset_q16 = 0;
@@ -264,6 +312,11 @@ static EpochUpdateKind use_reference(const TimingSnapshot *snapshot, const Epoch
             {
                 request_frequency();
                 return EPOCH_UPDATE_INCOMPLETE;
+            }
+            if (!seed_frequency(&snapshot->capture))
+            {
+                request_frequency();
+                return EPOCH_UPDATE_MEASURED;
             }
             acquire(snapshot, update->utc_offset_ticks);
             return EPOCH_UPDATE_MEASURED;
@@ -343,6 +396,7 @@ void epoch_control_restart(const EpochProfile *profile, bool slew)
     loop.reference_epochs = 0;
     loop.holdover_epochs = 0;
     loop.discard_period = true;
+    loop.seed_started = false;
     if (slew && loop.state == EPOCH_STATE_TRACK)
     {
         servo_pi_reset_phase(&loop.pi);

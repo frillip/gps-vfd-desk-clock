@@ -122,7 +122,7 @@ How hard the loop follows its reference depends on the source, by profile:
 | precise | GNSS | Kp 1/8, Ki 1/256: time constant ~8s, up to 0.4ppm of slew | 400ns | Learns the oscillator's frequency |
 | gentle | NTP | Kp 1/64, Ki 1/16384: time constant ~2 minutes, up to 10ppm of slew | 300µs | Learns nothing: the ESP slews its own clock |
 
-Both are critically damped. The NTP profile averages out the microseconds of jitter on the ESP's PPS, and corrects the ESP's edge by the offset the ESP reports for it in TIME-NTP.
+Both are critically damped. The NTP profile averages out the microseconds of jitter on the ESP's PPS, and corrects the ESP's edge by the offset the ESP reports for it in TIME-NTP. A clock that has never had GNSS has no frequency estimate, and the servo alone would take minutes to find the oscillator's error, a few hundred microseconds out of phase meanwhile. So while acquiring NTP it measures the ESP's average period over 16 seconds once, and starts the Kalman filter from that.
 
 On the V2 board against a NEO-M9N, the measured phase sits at 0 or +1 tick in 90–98% of epochs. The receiver's own timing of the epoch edge (TIM-TM2) averages around +44ns, the fixed delay through the latch logic, with a standard deviation of 12–15ns. The 40MHz oscillator is around 1.6–1.9ppm slow, which the Kalman filter takes care of.
 
@@ -143,15 +143,15 @@ The sources are GNSS and NTP, and holdover on our own oscillator is treated as a
 | --- | --- |
 | GNSS | 3 × tAcc + 25ns |
 | NTP | The ESP's own bound + 20µs for the jitter of its PPS |
-| Holdover | u0 + f·t + ½·D·t², from the bound when the loop last steered (u0), the frequency error that source leaves (f: 10ns/s after GNSS, 200ns/s after NTP), and the oscillator's drift rate (D: 200ppt/s) |
+| Holdover | u0 + f·t + ½·D·t², from the bound when the loop last steered (u0), the frequency error that source leaves (f: 40ns/s after GNSS, 200ns/s after NTP), and the oscillator's drift rate (D: 5ppt/s) |
 
-A source becomes a candidate after 3 consecutive good epochs. A candidate takes over from the one in use when its bound is less than half of it for 10 epochs in a row. Holdover takes over at once when the source in use fails, so when GNSS is lost the clock holds over, and only moves to NTP once NTP is twice as good. With the first-guess holdover model, that is after about 15 minutes with NTP at ±20µs, after about two hours with NTP at ±2ms, and after about four hours at the ±11ms an ESP reports over Wi-Fi. GNSS is taken up when its reported time accuracy is within 10µs, and kept while it is within 100µs. NTP is taken up while the ESP's bound is within 50ms, and kept while it is within 100ms: the ESP's bound covers the whole Wi-Fi round trip, so ~10ms is normal.
+A source becomes a candidate after 3 consecutive good epochs. A candidate takes over from the one in use when its bound is less than half of it for 10 epochs in a row. Holdover takes over at once when the source in use fails, so when GNSS is lost the clock holds over, and only moves to NTP once NTP is twice as good. With the holdover model measured on the bench, that is after about 30 minutes with NTP at ±20µs, about 9 hours with NTP at ±2ms, and about a day at the ±11ms an ESP reports over Wi-Fi. GNSS is taken up when its reported time accuracy is within 10µs, and kept while it is within 100µs. NTP is taken up while the ESP's bound is within 50ms, and kept while it is within 100ms: the ESP's bound covers the whole Wi-Fi round trip, so ~10ms is normal.
 
 Those limits decide what competes, not whether the clock runs. In free run, with nothing within its limit, a source that meets every other requirement (present, time valid, its pulses arriving, labelled, consistent) for 3 epochs is taken as a fallback, however coarse: a receiver just after its first fix, or an ESP that only knows its time to tens of milliseconds. It is steered by and kept while it meets those requirements, and anything twice as good displaces it. Until the bound in use is within 100ms, the clock does not call itself synchronised. The time of day does not wait for any of this: it is set from the best labelled source the first epoch there is one.
 
 Selecting a source routes the capture to it if need be, then restarts the loop with that source's profile. If the loop was tracking and the new source's edge is already within half the profile's gate of the epoch, the loop slews onto it without a step. A handover from GNSS holdover to NTP usually goes that way; one from NTP back to GNSS steps.
 
-The holdover model and the NTP profile are first guesses. `sync/sync_tuning.c` collects what is needed to replace them on the bench: see [Console](#console).
+The GNSS holdover model comes from a night of virtual holdover trials on a V2 board (`sync/sync_tuning.c`, see [Console](#console)). Against GNSS, the held frequency drifted by 0.8µs at most after a minute, 23µs after ten, 50µs after an hour and 96µs after two (RMS 0.12, 3.8, 15 and 34µs). The bound is set at about three times the worst case, to leave room for temperature: 2.4µs, 25µs, 176µs and 420µs. Holdover after NTP and the NTP profile are still first guesses.
 
 Adding a source takes an entry in the source table, an adapter that reports its edge, its UTC label and its uncertainty, and a loop profile.
 

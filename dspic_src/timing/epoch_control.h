@@ -18,7 +18,12 @@
  * and whether reference periods may teach the Kalman filter the oscillator's
  * frequency. GNSS edges are good to a few ns and steer tightly; the ESP's
  * NTP-aligned edges carry microseconds of jitter and are slewed by the ESP
- * itself, so they steer gently and teach the filter nothing.
+ * itself, so they steer gently and teach the filter nothing period by
+ * period. If nothing ever has (a clock without GNSS), the filter is seeded
+ * once, in ACQUIRE, from the reference's average period over
+ * EPOCH_SEED_PERIODS: otherwise the servo's slow integral would have to
+ * find the oscillator's frequency error alone, a phase excursion of
+ * offset / Kp (~280 us for 4 ppm with the NTP gains).
  *
  * A period requested after measuring epoch N runs from epoch N+1, so the
  * loop acts on the phase predicted for N+1 (servo_phase_predict_q16). A
@@ -82,6 +87,13 @@ typedef struct
     uint32_t reference_epochs;  // usable epochs since the last restart
     bool discard_period;        // the next period spans a reference change
     const EpochProfile *profile;
+
+    // Seeding the Kalman filter once, for a profile that never teaches it,
+    // when nothing has (see EPOCH_SEED_PERIODS).
+    bool seed_started;
+    uint32_t seed_first;    // capture the baseline starts at
+    uint32_t seed_sequence; // reference period count at the latest capture
+    uint32_t seed_periods;  // consecutive periods since
 
     KalmanFilter pps_kf;
     EpochPiServo pi;

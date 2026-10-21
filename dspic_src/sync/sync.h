@@ -154,18 +154,24 @@ typedef enum
 /*
  * The holdover model, u0 + f.t + D.t^2/2. f is the frequency error left by
  * the source last steered by, in ns/s (= ppb); D the oscillator's frequency
- * drift rate, in ppt/s. First guesses, to be replaced by the bench
- * measurement (sync_tuning.c): with these, holdover after GNSS is good to
- * ~1 us after a minute, ~40 us after ten and ~1.3 ms after an hour.
+ * drift rate, in ppt/s.
+ *
+ * GNSS values from the V2 bench (2026-10-20/21, 41 two-hour virtual
+ * holdover trials, sync_tuning.c). Error held minus true, RMS / worst:
+ * 60 s 0.12 / 0.8 us, 10 min 3.8 / 23 us, 30 min 7 / 33 us, 1 h 15 / 50 us,
+ * 2 h 34 / 96 us; the Kalman estimate drifted ~1.8 ppt/s overnight. The
+ * bound covers the worst case with margin for temperature: 2.4 us at a
+ * minute, 25 us at ten, 176 us at an hour, 420 us at two, ~22 ms at a day.
+ * The NTP value is still a guess: no NTP holdover data yet.
  */
 #ifndef SYNC_HOLDOVER_FREQUENCY_GNSS
-#define SYNC_HOLDOVER_FREQUENCY_GNSS 10UL // ns/s
+#define SYNC_HOLDOVER_FREQUENCY_GNSS 40UL // ns/s
 #endif
 #ifndef SYNC_HOLDOVER_FREQUENCY_NTP
 #define SYNC_HOLDOVER_FREQUENCY_NTP 200UL // ns/s
 #endif
 #ifndef SYNC_HOLDOVER_DRIFT_PPT_PER_S
-#define SYNC_HOLDOVER_DRIFT_PPT_PER_S 200UL
+#define SYNC_HOLDOVER_DRIFT_PPT_PER_S 5UL
 #endif
 // Synchronised (the colon blinks, the ESP is told LOCKED or HOLDOVER) while
 // the bound is within this; beyond it holdover ends in free run. No lower

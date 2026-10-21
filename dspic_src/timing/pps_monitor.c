@@ -110,37 +110,49 @@ static void rising_edge(PpsInput input, uint32_t stamp, uint32_t now_ms)
 }
 
 
-// Any change on a watched pin. Timestamped first thing; only rising edges
-// count. The pins are read before the flag is cleared: reading the port is
-// what ends the mismatch.
+/*
+ * Any change on a watched pin. Only rising edges count.
+ *
+ * The flag is cleared before the pins are read, and the pins are read again
+ * until nothing has changed: an edge on one pin while the handler is busy
+ * with the other (the ESP and GNSS edges a few microseconds apart, with the
+ * epoch interrupt between them) then either shows on the next pass or
+ * interrupts again. Clearing the flag after reading lost such an edge
+ * altogether, until the pin's falling edge 100 ms later.
+ */
 void __attribute__((interrupt, no_auto_psv)) _CNInterrupt(void)
 {
-    uint32_t stamp = pps_capture_timebase();
-    bool high[PPS_INPUT_COUNT];
-    bool changed = false;
+    bool any = false;
+    bool changed;
     uint8_t input;
-    uint32_t now_ms;
+    uint32_t now_ms = epoch_timer_ms(); // T4 may preempt: it re-reads
 
-    for (input = 0; input < PPS_INPUT_COUNT; input++)
-    {
-        high[input] = input_high((PpsInput)input);
-    }
     IFS1bits.CNIF = 0;
-
-    now_ms = epoch_timer_ms(); // T4 may preempt: it re-reads
-    for (input = 0; input < PPS_INPUT_COUNT; input++)
+    do
     {
-        if (high[input] != watches[input].high)
+        uint32_t stamp = pps_capture_timebase();
+        bool high[PPS_INPUT_COUNT];
+
+        for (input = 0; input < PPS_INPUT_COUNT; input++)
         {
-            changed = true;
-            watches[input].high = high[input];
-            if (high[input])
+            high[input] = input_high((PpsInput)input);
+        }
+        changed = false;
+        for (input = 0; input < PPS_INPUT_COUNT; input++)
+        {
+            if (high[input] != watches[input].high)
             {
-                rising_edge((PpsInput)input, stamp, now_ms);
+                changed = true;
+                watches[input].high = high[input];
+                if (high[input])
+                {
+                    rising_edge((PpsInput)input, stamp, now_ms);
+                }
             }
         }
-    }
-    if (!changed)
+        any = any || changed;
+    } while (changed);
+    if (!any)
     {
         stats.unseen++;
     }
