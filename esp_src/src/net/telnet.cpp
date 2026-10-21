@@ -2,6 +2,7 @@
 
 #include <ESPTelnetStream.h>
 #include <WiFi.h>
+#include <lwip/sockets.h>
 
 #include "../console/commands.h"
 #include "../console/console.h"
@@ -10,6 +11,10 @@
 static ESPTelnetStream telnet;
 static bool running;
 static ConsoleLine line;
+static uint32_t pending_dropped; // bytes dropped since the last note
+static uint32_t dropped_bytes;   // ... in all
+static uint32_t connections;
+static uint32_t disconnections;
 
 static void on_connect(String ip)
 {
@@ -17,12 +22,15 @@ static void on_connect(String ip)
     telnet.printf("\nSmol Clock, %s\n(type 'quit' or 'exit' to disconnect)\n> ",
                   WiFi.getHostname());
     console_line_clear(&line);
+    pending_dropped = 0;
+    connections++;
 }
 
 
 static void on_disconnect(String ip)
 {
     Serial.printf("Telnet: %s disconnected\n", ip.c_str());
+    disconnections++;
 }
 
 
@@ -153,4 +161,68 @@ bool telnet_is_running(void)
 Stream *telnet_client(void)
 {
     return running && telnet.isConnected() ? &telnet : NULL;
+}
+
+
+// As much as the socket takes now; true if all of it.
+static bool send_now(int fd, const uint8_t *data, size_t length)
+{
+    ssize_t sent = send(fd, data, length, MSG_DONTWAIT);
+
+    if (sent < 0)
+    {
+        sent = 0;
+    }
+    if ((size_t)sent < length)
+    {
+        pending_dropped += (uint32_t)(length - (size_t)sent);
+        dropped_bytes += (uint32_t)(length - (size_t)sent);
+        return false;
+    }
+    return true;
+}
+
+
+void telnet_write_text(const uint8_t *text, size_t length)
+{
+    int fd;
+
+    if (!running || !telnet.isConnected())
+    {
+        return;
+    }
+    fd = telnet.getClient().fd();
+    if (fd < 0)
+    {
+        return;
+    }
+    if (pending_dropped != 0)
+    {
+        char note[48];
+        int n = snprintf(note, sizeof(note), "\r\n[telnet: %lu bytes dropped]\r\n",
+                         (unsigned long)pending_dropped);
+
+        if (send(fd, note, (size_t)n, MSG_DONTWAIT) != n)
+        {
+            // Still no room: this goes too, and the note waits.
+            pending_dropped += (uint32_t)length;
+            dropped_bytes += (uint32_t)length;
+            return;
+        }
+        pending_dropped = 0;
+    }
+    send_now(fd, text, length);
+}
+
+
+void telnet_print(Stream *output)
+{
+    output->printf("Telnet:   %s", running ? "running" : "stopped");
+    if (running && telnet.isConnected())
+    {
+        output->printf(", %s connected", telnet.getIP().c_str());
+    }
+    output->printf(", %lu connections, %lu disconnections, %lu bytes dropped\n",
+                   (unsigned long)connections, (unsigned long)disconnections,
+                   (unsigned long)dropped_bytes);
 }

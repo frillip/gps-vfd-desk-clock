@@ -66,13 +66,8 @@ bool console_read_line(ConsoleLine *line, Stream *input, bool echo)
 
 void console_write_text(const uint8_t *text, size_t length)
 {
-    Stream *telnet = telnet_client();
-
     Serial.write(text, length);
-    if (telnet != NULL)
-    {
-        telnet->write(text, length);
-    }
+    telnet_write_text(text, length);
 }
 
 
