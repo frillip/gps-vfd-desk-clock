@@ -15,6 +15,8 @@
 void commands_execute(Stream *output, char *line);
 // The ESP's and the PIC's state.
 void commands_print_status(Stream *output);
+// Why the ESP last started, as text.
+const char *commands_reset_reason(void);
 // For pic_link_set_command_handler().
 uint16_t commands_from_pic(uint16_t command, uint32_t argument, uint16_t *detail, bool *restart);
 

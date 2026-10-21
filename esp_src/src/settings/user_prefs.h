@@ -22,16 +22,17 @@
 #define TELNET_ENABLED_DEFAULT 0
 #define TELNET_PORT_DEFAULT    23
 
-// NTP: polled every interval seconds.
+// NTP: interval is the longest poll interval; the ESP polls more often
+// while its corrections are large (ntp.h).
 #define NTP_SERVER_DEFAULT   "rubidium.darksky.io"
-#define NTP_INTERVAL_DEFAULT 1800
-#define NTP_INTERVAL_MIN     300
+#define NTP_INTERVAL_DEFAULT 1024
+#define NTP_INTERVAL_MIN     128
 #define NTP_INTERVAL_MAX     86400
 
 // Remote tzinfo (protocol v1). gnss_accuracy is the number of decimal places
 // of the coordinates sent (0: 111 km ... 6: 11 cm), or -1 to send none, in
 // which case the server locates the clock by its IP address.
-#define TZINFO_ENABLED_DEFAULT       0
+#define TZINFO_ENABLED_DEFAULT       1
 #define TZINFO_SERVER_DEFAULT        "rubidium.darksky.io"
 #define TZINFO_PATH_DEFAULT          "/smol_clock/api/v1/tzinfo"
 #define TZINFO_PATH_OLD              "/smol_clock/v2/tzinfo" // pre-v1 default, migrated

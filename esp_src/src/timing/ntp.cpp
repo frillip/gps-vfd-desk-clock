@@ -12,6 +12,11 @@
 #include "pps.h"
 
 #define LEARN_FIRST_S     64U
+#define POLL_MIN_S        128U // adaptive range, once learnt: from here ...
+#define POLL_START_S      256U
+#define POLL_QUIET_US     500LL // ... longer after POLL_QUIET_RUN corrections under this
+#define POLL_QUIET_RUN    4U
+#define POLL_LOUD_US      2000LL // ... shorter after one over this
 #define RETRY_FIRST_S     60U
 #define SYNC_SLACK_S      300U
 #define FREE_RUN_AFTER_S  86400U
@@ -19,12 +24,14 @@
 
 typedef struct
 {
-    bool polled;          // a poll has been started since the network came up
-    int64_t next_poll_us; // local time of the next poll
-    uint32_t interval_s;  // the interval in use
-    uint32_t retry_s;     // current retry delay after a failure
-    uint32_t learn_step;  // 64, 128, 256 s polls done
-    NtpPollResult last;   // the latest poll, good or bad
+    bool polled;             // a poll has been started since the network came up
+    int64_t next_poll_us;    // local time of the next poll
+    uint32_t max_interval_s; // ntp.interval: the longest poll interval
+    uint32_t interval_s;     // the interval in use, adaptive below that
+    uint32_t quiet;          // consecutive small corrections
+    uint32_t retry_s;        // current retry delay after a failure
+    uint32_t learn_step;     // 64, 128, 256 s polls done
+    NtpPollResult last;      // the latest poll, good or bad
     bool have_last;
     bool report_ready;
     SML_TIME_NTP_PAYLOAD report;
@@ -45,7 +52,8 @@ void ntp_init(void)
 {
     esp_clock_init();
     ntp_client_init();
-    ntp.interval_s = user_prefs.fields.ntp.interval;
+    ntp.max_interval_s = user_prefs.fields.ntp.interval;
+    ntp.interval_s = POLL_START_S < ntp.max_interval_s ? POLL_START_S : ntp.max_interval_s;
     ntp.retry_s = RETRY_FIRST_S;
 }
 
@@ -72,7 +80,7 @@ static uint32_t update_age_s(void)
 
 bool ntp_is_synced(void)
 {
-    return esp_clock_is_valid() && update_age_s() <= 2U * ntp.interval_s + SYNC_SLACK_S;
+    return esp_clock_is_valid() && update_age_s() <= 2U * ntp.max_interval_s + SYNC_SLACK_S;
 }
 
 
@@ -112,7 +120,44 @@ static void set_system_time(void)
 }
 
 
-static void schedule_next(bool good)
+/*
+ * The poll interval adapts between POLL_MIN_S and ntp.interval: it doubles
+ * after POLL_QUIET_RUN corrections in a row under POLL_QUIET_US, and halves
+ * after one over POLL_LOUD_US. Short polls while the crystal wanders (warm
+ * up, temperature) keep each correction small enough to slew gently; long
+ * ones once it is steady spare the server.
+ */
+static void adapt_interval(int64_t error_us)
+{
+    uint32_t longest = ntp.max_interval_s;
+    uint32_t shortest = POLL_MIN_S < longest ? POLL_MIN_S : longest;
+
+    if (error_us < 0)
+    {
+        error_us = -error_us;
+    }
+    if (error_us > POLL_LOUD_US)
+    {
+        ntp.interval_s /= 2;
+        ntp.quiet = 0;
+    }
+    else if (error_us < POLL_QUIET_US && ++ntp.quiet >= POLL_QUIET_RUN)
+    {
+        ntp.interval_s *= 2;
+        ntp.quiet = 0;
+    }
+    if (ntp.interval_s > longest)
+    {
+        ntp.interval_s = longest;
+    }
+    if (ntp.interval_s < shortest)
+    {
+        ntp.interval_s = shortest;
+    }
+}
+
+
+static uint32_t next_delay_s(bool good)
 {
     uint32_t delay_s;
 
@@ -120,22 +165,21 @@ static void schedule_next(bool good)
     {
         delay_s = ntp.retry_s;
         ntp.retry_s = ntp.retry_s * 2 > ntp.interval_s ? ntp.interval_s : ntp.retry_s * 2;
+        return delay_s;
     }
-    else if (esp_clock_status()->frequency_samples < 2 && ntp.learn_step < 3)
+    ntp.retry_s = RETRY_FIRST_S;
+    if (esp_clock_status()->frequency_samples < 2 && ntp.learn_step < 3)
     {
         delay_s = LEARN_FIRST_S << ntp.learn_step++;
-        ntp.retry_s = RETRY_FIRST_S;
+        return delay_s < ntp.interval_s ? delay_s : ntp.interval_s;
     }
-    else
-    {
-        delay_s = ntp.interval_s;
-        ntp.retry_s = RETRY_FIRST_S;
-    }
-    if (delay_s > ntp.interval_s)
-    {
-        delay_s = ntp.interval_s;
-    }
-    ntp.next_poll_us = now_us() + (int64_t)delay_s * 1000000;
+    return ntp.interval_s;
+}
+
+
+static void schedule_next(bool good)
+{
+    ntp.next_poll_us = now_us() + (int64_t)next_delay_s(good) * 1000000;
 }
 
 
@@ -164,6 +208,9 @@ static const char *poll_failure(const NtpPollResult *poll)
 
 static void handle_poll(const NtpPollResult *poll)
 {
+    const EspClockStatus *status = esp_clock_status();
+    EspClockAction action;
+
     ntp.last = *poll;
     ntp.have_last = true;
     if (!poll->ok)
@@ -173,18 +220,24 @@ static void handle_poll(const NtpPollResult *poll)
         schedule_next(false);
         return;
     }
-    if (esp_clock_update(&poll->sample) == ESP_CLOCK_STEPPED)
+    // A gentle correction is spread over about two polls: the next sample
+    // replaces what is left of it.
+    action = esp_clock_update(&poll->sample, now_us(), (int64_t)ntp.interval_s * 2000000);
+    set_system_time();
+    if (action == ESP_CLOCK_STEPPED)
     {
-        const EspClockStatus *status = esp_clock_status();
-
         console_printf("NTP: clock set from %s, step %lld us (%u steps)\n", poll->address,
                        (long long)status->last_error_us, (unsigned)status->steps);
-        set_system_time();
         start_pps();
     }
-    else
+    else if (action == ESP_CLOCK_SLEWED_FAST)
     {
-        set_system_time();
+        console_printf("NTP: correcting %lld us at %d ppm\n", (long long)status->slew_us,
+                       ESP_CLOCK_FAST_SLEW_PPM);
+    }
+    if (status->frequency_samples >= 2 && action != ESP_CLOCK_STEPPED)
+    {
+        adapt_interval(status->last_error_us);
     }
     schedule_next(true);
 }
@@ -209,6 +262,10 @@ static void build_report(const PpsEdge *edge)
     if (phase_ns < PPS_SYNC_LIMIT_NS && phase_ns > -PPS_SYNC_LIMIT_NS)
     {
         report->flags |= SML_NTP_PPS_SYNC | SML_NTP_SCHEDULER_SYNC;
+    }
+    if (esp_clock_correcting(edge->local_us))
+    {
+        report->flags |= SML_NTP_CORRECTING;
     }
     report->source = ntp_is_synced() ? SML_SOURCE_NTP : SML_SOURCE_ESP;
     if (ntp_is_synced())
@@ -255,7 +312,14 @@ void ntp_service(bool network_up)
 {
     NtpPollResult poll;
 
-    ntp.interval_s = user_prefs.fields.ntp.interval;
+    if (ntp.max_interval_s != user_prefs.fields.ntp.interval)
+    {
+        ntp.max_interval_s = user_prefs.fields.ntp.interval;
+        if (ntp.interval_s > ntp.max_interval_s)
+        {
+            ntp.interval_s = ntp.max_interval_s;
+        }
+    }
     if (ntp_client_take(&poll))
     {
         handle_poll(&poll);
@@ -287,7 +351,7 @@ void ntp_service(bool network_up)
         if (ntp_client_poll((uint32_t)address[0] << 24 | (uint32_t)address[1] << 16 |
                             (uint32_t)address[2] << 8 | address[3]))
         {
-            ntp.next_poll_us = now_us() + (int64_t)ntp.interval_s * 1000000; // until the result
+            ntp.next_poll_us = now_us() + (int64_t)ntp.max_interval_s * 1000000; // until the result
         }
     }
 }
@@ -317,7 +381,8 @@ void ntp_print(Stream *output)
     {
         output->printf(" (%s)", ntp.last.address);
     }
-    output->printf("\nInterval:  %lu s\n", (unsigned long)ntp.interval_s);
+    output->printf("\nInterval:  %lu s (adaptive, at most %lu s)\n", (unsigned long)ntp.interval_s,
+                   (unsigned long)ntp.max_interval_s);
     if (!esp_clock_is_valid())
     {
         output->printf("Clock:     not set\n");
@@ -335,9 +400,21 @@ void ntp_print(Stream *output)
         time_print_ns(output, status->last.delay_us * 1000);
         output->printf(", correction ");
         time_print_ns(output, status->last_error_us * 1000);
-        output->printf("\nFrequency: %+.3f ppm (%lu estimates)\n",
+        output->printf("\nFrequency: %+.3f ppm (%lu estimates, latest from %u samples)\n",
                        -(float)status->frequency_ppb / 1000.0f,
-                       (unsigned long)status->frequency_samples);
+                       (unsigned long)status->frequency_samples, status->frequency_used);
+        output->printf("Slewing:   ");
+        time_print_ns(output, (status->slew_us) * 1000);
+        if (now_us() < status->slew_end_us)
+        {
+            output->printf(" %s, done in ", status->fast ? "fast" : "gently");
+            time_print_duration(output, (uint32_t)((status->slew_end_us - now_us()) / 1000000));
+        }
+        else
+        {
+            output->printf(", done");
+        }
+        output->printf(" (%lu fast)\n", (unsigned long)status->fast_slews);
     }
     output->printf("Polls:     %lu (%lu good), %lu exchanges, %lu timeouts, %lu DNS failures, "
                    "%lu updates, %lu steps\n",

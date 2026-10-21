@@ -161,6 +161,11 @@ static void handle_response(const SML_CMD_RESPONSE_PAYLOAD *response)
                 slot->reply_to->printf(" (%s)", pic_report_error_name(response->detail));
             }
             slot->reply_to->printf("\n");
+            // The PIC sends STAT-SOURCES before its ACK.
+            if (slot->command == SML_USER_SHOW_SOURCES && response->status == SML_RESULT_ACK)
+            {
+                pic_report_print_sources(slot->reply_to);
+            }
         }
         if (response->status != SML_RESULT_ACCEPTED)
         {
@@ -385,7 +390,10 @@ bool pic_link_get(uint8_t class_id, uint8_t message_id, void *native, uint32_t m
     {
         return false;
     }
-    memcpy(native, slot->payload, message->length);
+    if (native != NULL)
+    {
+        memcpy(native, slot->payload, message->length);
+    }
     return true;
 }
 

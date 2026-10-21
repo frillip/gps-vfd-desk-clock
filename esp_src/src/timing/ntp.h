@@ -3,11 +3,17 @@
  * model (esp_clock), drives the ESP PPS (pps) and builds SML-TIME-NTP for
  * each PPS edge.
  *
- * Polling: at once when Wi-Fi comes up, then every 64, 128, 256 s while the
- * frequency is being learnt, then every ntp.interval seconds. A failed poll
- * is retried after 60 s, doubling up to the interval.
+ * Polling: at once when Wi-Fi comes up, then after 64, 128, 256 s while the
+ * frequency is being learnt, then adaptively from 128 s up to ntp.interval:
+ * twice as long after 4 corrections in a row under 500 us, half as long
+ * after one over 2 ms. A failed poll is retried after 60 s, doubling up to
+ * the interval.
  *
- * Status: synced while an update is no older than 2 intervals + 5 min.
+ * Each correction is slewed in by the clock model (esp_clock.h): gently,
+ * over about two polls, so the ESP PPS moves slowly enough for the PIC to
+ * follow; a large one quickly, with SML_NTP_CORRECTING set in TIME-NTP.
+ *
+ * Status: synced while an update is no older than 2 x ntp.interval + 5 min.
  * After that the clock coasts on its frequency estimate (source ESP,
  * HOLDOVER) and the uncertainty keeps growing; after 24 h it is reported as
  * FREE_RUNNING. TIME-NTP is only built once the clock has been set.

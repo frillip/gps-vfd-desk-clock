@@ -34,7 +34,9 @@ static const Name commands[] = {
     {SML_USER_SHOW_CONFIG, "SHOW_CONFIG"},
     {SML_USER_DEFAULTS, "DEFAULTS"},
     {SML_USER_SAVE, "SAVE"},
+    {SML_USER_SHOW_SOURCES, "SHOW_SOURCES"},
     {SML_USER_ENTER_BOOTLOADER, "ENTER_BOOTLOADER"},
+    {SML_USER_SET_DEBUG, "SET_DEBUG"},
     {SML_USER_ESP_RESET, "ESP_RESET"},
     {SML_USER_ESP_WIFI_CLEAR, "ESP_WIFI_CLEAR"},
     {SML_USER_ESP_WIFI_SETUP, "ESP_WIFI_SETUP"},
@@ -86,9 +88,9 @@ const char *pic_report_error_name(uint16_t error)
 
 const char *pic_report_source_name(uint8_t source)
 {
-    static const char *const names[] = {"INIT", "NONE", "RTC", "ESP", "NTP", "GNSS"};
+    static const char *const names[] = {"INIT", "NONE", "RTC", "ESP", "NTP", "GNSS", "HOLDOVER"};
 
-    return source < 6 ? names[source] : "?";
+    return source < 7 ? names[source] : "?";
 }
 
 
@@ -133,6 +135,15 @@ static const char *control_name(uint8_t state)
     static const char *const names[] = {"INIT", "ACQUIRE", "STEP", "TRACK"};
 
     return state < 4 ? names[state] : "?";
+}
+
+
+static const char *verdict_name(uint8_t verdict)
+{
+    static const char *const names[] = {"-",          "absent",     "no time",      "no edge",
+                                        "unlabelled", "inaccurate", "inconsistent", "good"};
+
+    return verdict < 8 ? names[verdict] : "?";
 }
 
 
@@ -234,7 +245,12 @@ static void print_sync(Stream *output)
         {
             output->printf("phase %ld cycles, ", (long)pic.phase_cycles);
         }
-        output->printf("%lu missing PPS\n", (unsigned long)pic.missing_pps_events);
+        output->printf("%lu missing PPS", (unsigned long)pic.missing_pps_events);
+        if (pic.second_source != SML_SOURCE_INIT && pic.second_source != SML_SOURCE_NONE)
+        {
+            output->printf(", second choice %s", pic_report_source_name(pic.second_source));
+        }
+        output->printf("\n");
     }
     if (pic_link_get(SML_CLASS_TIME, SML_TIME_CTRL, &ctrl, PIC_LINK_STATE_TIMEOUT_MS))
     {
@@ -287,6 +303,95 @@ static void print_gnss(Stream *output)
 }
 
 
+// A bound in the units that suit it, or "-".
+static void print_bound(Stream *output, bool valid, uint32_t ns)
+{
+    if (!valid || ns == UINT32_MAX)
+    {
+        output->printf("%11s", "-");
+        return;
+    }
+    if (ns < 10000U)
+    {
+        output->printf("%8lu ns", (unsigned long)ns);
+    }
+    else if (ns < 10000000U)
+    {
+        output->printf("%8.1f us", (float)ns / 1000.0f);
+    }
+    else
+    {
+        output->printf("%8.1f ms", (float)ns / 1000000.0f);
+    }
+}
+
+
+void pic_report_print_sources(Stream *output)
+{
+    SML_STAT_SOURCES_PAYLOAD sources;
+    uint8_t rank;
+    uint8_t index;
+    bool listed[SML_SOURCES_ENTRIES] = {false};
+
+    output->printf("\n=== PIC sources ===\n");
+    if (!pic_link_get(SML_CLASS_STAT, SML_STAT_SOURCES, &sources, 15000U))
+    {
+        output->printf("No STAT-SOURCES from the PIC (needs PIC firmware with SML 1.3)\n");
+        return;
+    }
+    output->printf("State:  %s on %s, second choice %s", sync_name(sources.sync_state),
+                   pic_report_source_name(sources.selected),
+                   pic_report_source_name(sources.second));
+    if (sources.challenger != SML_SOURCE_NONE && sources.challenger != SML_SOURCE_INIT)
+    {
+        output->printf(", %s challenging for %u epochs", pic_report_source_name(sources.challenger),
+                       sources.challenge_run);
+    }
+    output->printf("%s%s\n", (sources.flags & SML_SOURCES_SYNCHRONISED) ? ", synchronised" : "",
+                   (sources.flags & SML_SOURCES_FALLBACK) ? ", as a fallback" : "");
+    output->printf(
+        "Rank Source    Verdict        Bound     Own figure      Phase  Good run  Age\n");
+    // Ranked first, then the rest in the order sent.
+    for (rank = 1; rank <= SML_SOURCES_ENTRIES + 1; rank++)
+    {
+        for (index = 0; index < SML_SOURCES_ENTRIES; index++)
+        {
+            const SML_SOURCE_ENTRY *entry = &sources.entries[index];
+            bool last_pass = rank == SML_SOURCES_ENTRIES + 1;
+
+            if (listed[index] || entry->source == SML_SOURCE_NONE ||
+                entry->source == SML_SOURCE_INIT || (!last_pass && entry->rank != rank))
+            {
+                continue;
+            }
+            listed[index] = true;
+            output->printf("%c%-3s %-9s %-12s",
+                           entry->source == sources.selected ? '*'
+                           : entry->source == sources.second ? '+'
+                                                             : ' ',
+                           entry->rank != 0 ? String(entry->rank).c_str() : "-",
+                           pic_report_source_name(entry->source), verdict_name(entry->verdict));
+            print_bound(output, (entry->flags & SML_ENTRY_BOUND_VALID) != 0, entry->bound_ns);
+            output->printf("  ");
+            print_bound(output, entry->uncertainty_ns != 0, entry->uncertainty_ns);
+            if (entry->flags & SML_ENTRY_PHASE_VALID)
+            {
+                output->printf(" %+10.1f us", (float)entry->phase_ns / 1000.0f);
+            }
+            else
+            {
+                output->printf(" %13s", "-");
+            }
+            output->printf(" %9u  ", entry->good_run);
+            time_print_duration(output, entry->age_s);
+            output->printf("%s%s\n", (entry->flags & SML_ENTRY_EDGE) ? "" : ", no edge",
+                           (entry->flags & SML_ENTRY_CAPTURED) ? ", captured" : "");
+        }
+    }
+    output->printf("(* in use, + second choice)\n");
+}
+
+
 void pic_report_print_link(Stream *output)
 {
     const PicLinkStats *stats = pic_link_stats();
@@ -314,6 +419,10 @@ void pic_report_print(Stream *output)
 {
     print_time(output);
     print_sync(output);
+    if (pic_link_get(SML_CLASS_STAT, SML_STAT_SOURCES, NULL, 15000U))
+    {
+        pic_report_print_sources(output);
+    }
     print_gnss(output);
     pic_report_print_link(output);
 }

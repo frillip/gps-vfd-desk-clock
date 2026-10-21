@@ -81,7 +81,7 @@ void pic_link_send(uint8_t class_id, uint8_t message_id, const void *native);
 uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to);
 
 // The latest of each PIC message, and its age; false if never received or
-// older than max_age_ms.
+// older than max_age_ms. native may be NULL, to ask only whether it is held.
 bool pic_link_get(uint8_t class_id, uint8_t message_id, void *native, uint32_t max_age_ms);
 // The PIC's time at its latest paired epoch edge.
 bool pic_link_time(PicTime *time);

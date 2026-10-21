@@ -78,17 +78,23 @@ Almost everything runs from `loop()`. The exceptions are the NTP exchanges, whic
 
 ezTime has been replaced by a small NTP client. Each poll sends four requests two seconds apart and keeps the exchange with the shortest round trip, since the fastest exchange has the least queueing and therefore the least asymmetry. The send and receive timestamps are taken immediately around the socket calls in the client task, so loop latency never reaches the measurement.
 
-The server is polled at startup, then after 64, 128 and 256 seconds while the crystal frequency is being learnt, then at the configured interval (default 1800 seconds). Failed polls are retried after 60 seconds, doubling up to the interval.
+The server is polled at startup, then after 64, 128 and 256 seconds while the crystal frequency is being learnt. After that the interval adapts between 128 seconds and `ntp.interval` (default 1024): it doubles after four corrections in a row under 500µs, and halves after one over 2ms. A crystal that is warming up, or sitting next to a radiator, gets polled more often; a settled one leaves the server in peace. Failed polls are retried after 60 seconds, doubling up to the interval.
+
+`ntp.interval` is the longest interval rather than a fixed one. A clock that saved the old 1800-second default keeps it as its ceiling; `esp-ntp-set-interval 1024` and `esp-save` bring it in line.
 
 The server's hostname is resolved in `loop()`, not in the NTP task. In arduino-esp32 3.3.x, `Network.hostByName()` clears lwIP's DNS cache without taking the TCPIP core lock, which cancels any lookup in progress elsewhere and trips an lwIP assertion. With the PIC already running, the timezone lookup at startup overlapped the NTP lookup, and the ESP restarted every few seconds until power cycled. Keeping every DNS lookup in `loop()` means none is ever in progress when the cache is cleared. Any future network code should follow the same rule.
 
 ## Clock model
 
-The ESP keeps UTC as a model against its own microsecond timer: an anchor point, a frequency estimate and a slew in progress. The first NTP sample sets the clock. A sample more than 128ms from the model steps it. Anything smaller is slewed in at 100ppm, so the PPS output never jumps. The frequency is estimated from raw offsets at least 60 seconds apart.
+The ESP keeps UTC as a model against its own microsecond timer: an anchor point, a frequency estimate and a slew in progress. The first NTP sample sets the clock, and a sample more than 128ms from the model steps it. Each sample is judged against the model at the moment it was taken, but the correction starts from the moment it is applied, so the clock never jumps by what the old slew would have done in the meantime.
+
+Corrections up to 8ms are slewed in gently: spread over about two poll intervals, and never faster than 5ppm. The next sample replaces whatever is left, so each sample's noise is only half applied, and the ESP PPS moves by a few microseconds a second at most. That is slow enough for the PIC's NTP loop to follow without re-stepping, which is the point. Anything larger is slewed in at 100ppm and flagged in TIME-NTP (`CORRECTING`) while it lasts, since the PIC cannot follow it anyway and might as well know.
+
+The frequency comes from a least-squares line through the raw offsets of the last eight samples, leaving out any whose round trip is well above the best of them: queueing adds delay in one direction, so the slow exchanges carry the most asymmetry. Two samples two minutes apart give a first estimate.
 
 The model also reports an uncertainty bound: half the round trip, the server's own root delay and dispersion, any correction not yet slewed in, and a drift allowance that shrinks as the frequency becomes known.
 
-In simulation, with a crystal running 20ppm fast, 300µs of NTP noise and 30-minute polls, the frequency estimate settles within 0.001ppm, the error stays under 1ms after the first hour, and it never exceeds the reported uncertainty.
+In a 12-hour simulation with a crystal drifting from 4.9 to 2.9ppm, 12ms round trips, a few milliseconds of queueing and 3.5ms of path asymmetry, the ESP PPS wanders by 340–700µs (sd) around its asymmetry offset, against 550–1000µs for the previous model, and never moves faster than 7µs a second, against 100µs. The asymmetry offset itself, about 1.3ms here, is invisible to NTP and to any client of it.
 
 ## ESP PPS
 
@@ -96,7 +102,7 @@ The ESP PPS output on GPIO5 is a 100ms pulse whose rising edge marks the ESP's U
 
 The interrupt reads the time immediately after setting the pin, so the edge latency is measured rather than assumed. On the V2 board it is around 5–7µs.
 
-After each edge the ESP sends SML-TIME-NTP, labelling that edge with its UTC second, phase, uncertainty and the details of the last NTP update. The PIC can use this as a time source when GNSS is unavailable.
+After each edge the ESP sends SML-TIME-NTP, labelling that edge with its UTC second, phase, uncertainty and the details of the last NTP update. The PIC uses this as a time source when GNSS is unavailable.
 
 ## PIC epoch
 
@@ -114,9 +120,11 @@ GET https://<tzinfo.server><tzinfo.path>[?lat=...&lon=...]
 
 The default is `rubidium.darksky.io/smol_clock/api/v1/tzinfo`. A path saved by the V2 firmware is migrated to the new one automatically.
 
+tzinfo is enabled by default. Clocks with saved settings keep whatever they had; `esp-tzinfo-enable` and `esp-save` turn it on.
+
 The position comes from the PIC's GNSS fix, rounded to `tzinfo.gnss_accuracy` decimal places using integer arithmetic before it leaves the ESP. With the setting at `-1`, or with no fix after 60 seconds, no position is sent and the server falls back to GeoIP.
 
-The ESP looks up the timezone at startup, at the configured interval (or sooner if the server says so), after moving more than a whole rounding step, and on request. Failed lookups are retried after 5 minutes, doubling up to an hour. The latest result is cached in NVS and used at startup until a fresh lookup replaces it.
+The ESP looks up the timezone at startup, as soon as tzinfo is enabled, at the configured interval (or sooner if the server says so), after moving more than a whole rounding step, and on request. The 60-second wait for a fix at startup is skipped when the PIC reports no GNSS receiver at all, and when nothing is cached: a clock with no schedule would otherwise show UTC for a minute for no good reason. In that case GeoIP goes first, and the GNSS position refines it once there is a fix. Failed lookups are retried after 5 minutes, doubling up to an hour, or after 30 seconds, doubling up to 5 minutes, while there is no schedule at all. The latest result is cached in NVS and used at startup until a fresh lookup replaces it.
 
 ## Schedule horizon
 
@@ -141,6 +149,24 @@ At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML m
 Anything on the link outside a valid frame is treated as the PIC's console output and printed, as is STAT-DEBUG text. Both go to the USB-UART console and to Telnet.
 
 PIC console commands are sent as CMD-USER requests, and the PIC's answer is printed on whichever console the command came from. Commands from the PIC to the ESP (codes from 0x8000, for example from the PIC's menu) are carried out and acknowledged.
+
+The PIC's diagnostics are controlled from here too (SML 1.3):
+
+| Command | Effect |
+| --- | --- |
+| `pic-show-sources` | The PIC's time sources as a table: verdict, rank, bound, phase, which is in use and which would come next |
+| `pic-debug` | Shows which debug output is on |
+| `pic-debug gnss sync` | Turns exactly that output on |
+| `pic-debug-enable [names]` | Turns output on, all of it without names |
+| `pic-debug-disable [names]` | Turns output off, all of it without names |
+
+The names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute` and `tuning`, or `all`, or a mask such as `0x1f`. The sources table also appears in the status (an empty line on the console) once the PIC sends STAT-SOURCES.
+
+# Telnet
+
+Telnet gets a copy of all console output, the PIC's included. That copy never blocks: whatever the connection cannot take at once is dropped, and a note saying how much appears in the stream when there is room again. A plain write to a stalled connection waits up to 10 seconds in the network stack, holding up `loop()` (and the PIC link, and TIME-NTP) meanwhile, and after three such failures the Telnet library used to drop the client. Replies to commands typed at Telnet are still written normally.
+
+The status shows the ESP's uptime and why it last started. A restart through the EN pin, which is what a USB-UART's DTR and RTS lines do when a computer opens or closes the port, reports as "power-on or EN pin", so an ESP that restarted while the PIC kept counting epochs was most likely reset that way.
 
 # Settings
 

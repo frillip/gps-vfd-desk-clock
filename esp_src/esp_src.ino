@@ -42,7 +42,7 @@ static uint32_t last_minute_ms;
 void setup()
 {
     Serial.begin(BOARD_CONSOLE_BAUD);
-    Serial.printf("\nSmol Clock ESP %s\n", ESP_VERSION);
+    Serial.printf("\nSmol Clock ESP %s (reset: %s)\n", ESP_VERSION, commands_reset_reason());
     pinMode(BOARD_STATUS_LED_PIN, OUTPUT);
     digitalWrite(BOARD_STATUS_LED_PIN, LOW);
 

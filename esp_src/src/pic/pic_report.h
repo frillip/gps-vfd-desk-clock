@@ -17,6 +17,8 @@ const char *pic_report_tz_source_name(uint8_t source);
 
 // Time, synchroniser, loop, GNSS, display and link.
 void pic_report_print(Stream *output);
+// STAT-SOURCES: the PIC's time sources, ranked (pic-show-sources).
+void pic_report_print_sources(Stream *output);
 // The link counters only.
 void pic_report_print_link(Stream *output);
 

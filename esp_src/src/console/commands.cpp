@@ -1,6 +1,8 @@
 #include "commands.h"
 
 #include <ctype.h>
+#include <esp_system.h>
+#include <esp_timer.h>
 #include <string.h>
 
 extern "C"
@@ -19,6 +21,7 @@ extern "C"
 #include "../tz/leap.h"
 #include "../tz/tzinfo.h"
 #include "../util/parse.h"
+#include "../util/time_text.h"
 #include "../version.h"
 
 typedef enum
@@ -28,6 +31,7 @@ typedef enum
     ARG_SIGNED,   // [n], min..max, may be negative
     ARG_BOOL,     // [b]: 1/0, on/off, true/false, yes/no
     ARG_TEXT,     // [s]
+    ARG_DEBUG,    // [s]: SML_DEBUG_* names or a mask; may be empty
 } ArgKind;
 
 typedef struct
@@ -58,7 +62,7 @@ static const Command commands[] = {
     CMD_ESP("esp-reset", USER_CMD_ESP_RESET, NONE, "Restart the ESP"),
     CMD_ESP("esp-ntp-info", USER_CMD_ESP_NTP_INFO, NONE, "NTP clock, server and ESP PPS"),
     CMD_ESP("esp-ntp-set-interval", USER_CMD_ESP_NTP_SET_INTERVAL, ARG_UNSIGNED, NTP_INTERVAL_MIN,
-            NTP_INTERVAL_MAX, "NTP poll interval, seconds"),
+            NTP_INTERVAL_MAX, "Longest NTP poll interval, seconds"),
     CMD_ESP("esp-ntp-set-server", USER_CMD_ESP_NTP_SET_SERVER, TEXT, "NTP server, then poll it"),
     CMD_ESP("esp-ntp-resync", USER_CMD_ESP_NTP_RESYNC, NONE, "Poll the NTP server now"),
     CMD_ESP("esp-wifi-info", USER_CMD_ESP_WIFI_INFO, NONE, "Wi-Fi state (never the passphrase)"),
@@ -146,6 +150,14 @@ static const Command commands[] = {
     CMD_PIC("pic-config-clear", USER_CMD_PIC_CLEAR_ALL, SML_USER_DEFAULTS, NONE,
             "The PIC's settings to defaults"),
     CMD_PIC("pic-save", USER_CMD_PIC_SAVE, SML_USER_SAVE, NONE, "Save the PIC's settings"),
+    CMD_PIC("pic-show-sources", USER_CMD_PIC_SHOW_SOURCES, SML_USER_SHOW_SOURCES, NONE,
+            "The PIC's time sources, ranked"),
+    CMD_PIC("pic-debug", USER_CMD_PIC_DEBUG, SML_USER_SET_DEBUG, ARG_DEBUG, 0, 0,
+            "The PIC's debug output: show, or set exactly"),
+    CMD_PIC("pic-debug-enable", USER_CMD_PIC_DEBUG_ENABLE, SML_USER_SET_DEBUG, ARG_DEBUG, 0, 0,
+            "Turn PIC debug output on (default all)"),
+    CMD_PIC("pic-debug-disable", USER_CMD_PIC_DEBUG_DISABLE, SML_USER_SET_DEBUG, ARG_DEBUG, 0, 0,
+            "Turn PIC debug output off (default all)"),
 
     CMD_ESP("rst-all", USER_CMD_RESET_ALL, NONE, "Reset the PIC and the ESP"),
     CMD_ESP("rst-esp", USER_CMD_ESP_RESET, NONE, "Same as esp-reset"),
@@ -170,9 +182,120 @@ static const Command *find(const char *name)
 }
 
 
+static const struct
+{
+    const char *name;
+    uint16_t bit;
+} debug_names[] = {
+    {"timing", SML_DEBUG_TIMING},   {"gnss", SML_DEBUG_GNSS}, {"sync", SML_DEBUG_SYNC},
+    {"sources", SML_DEBUG_SOURCES}, {"ntp", SML_DEBUG_NTP},   {"minute", SML_DEBUG_MINUTE},
+    {"tuning", SML_DEBUG_TUNING},   {"all", SML_DEBUG_ALL},
+};
+
+#define DEBUG_NAME_COUNT (sizeof(debug_names) / sizeof(debug_names[0]))
+
+static void print_debug_names(Stream *output, uint16_t mask)
+{
+    size_t index;
+    bool first = true;
+
+    for (index = 0; index < DEBUG_NAME_COUNT; index++)
+    {
+        if (debug_names[index].bit != SML_DEBUG_ALL && (mask & debug_names[index].bit) != 0)
+        {
+            output->printf("%s%s", first ? "" : " ", debug_names[index].name);
+            first = false;
+        }
+    }
+}
+
+
+// "gnss sync", "gnss,ntp", "all", "0x1f" or "31". True with *mask set;
+// *given false for an empty argument.
+static bool parse_debug_mask(const char *text, uint16_t *mask, bool *given)
+{
+    char word[16];
+    uint32_t value;
+
+    *mask = 0;
+    *given = false;
+    while (*text != '\0')
+    {
+        size_t length = 0;
+        size_t index;
+        bool known = false;
+
+        while (*text == ' ' || *text == ',')
+        {
+            text++;
+        }
+        while (text[length] != '\0' && text[length] != ' ' && text[length] != ',')
+        {
+            length++;
+        }
+        if (length == 0)
+        {
+            break;
+        }
+        if (length >= sizeof(word))
+        {
+            return false;
+        }
+        memcpy(word, text, length);
+        word[length] = '\0';
+        text += length;
+        *given = true;
+        for (index = 0; index < DEBUG_NAME_COUNT; index++)
+        {
+            if (strcasecmp(word, debug_names[index].name) == 0)
+            {
+                *mask |= debug_names[index].bit;
+                known = true;
+            }
+        }
+        if (known)
+        {
+            continue;
+        }
+        if (word[0] == '0' && (word[1] == 'x' || word[1] == 'X'))
+        {
+            char *end;
+            unsigned long parsed = strtoul(word + 2, &end, 16);
+
+            if (*end != '\0' || end == word + 2 || parsed > 0xFFFFUL)
+            {
+                return false;
+            }
+            *mask |= (uint16_t)parsed;
+        }
+        else if (parse_u32(word, 0, 0xFFFF, &value))
+        {
+            *mask |= (uint16_t)value;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+// SML_USER_SET_DEBUG's argument: clear << 16 | set.
+static uint32_t debug_argument(USER_CMD command, uint16_t mask, bool given)
+{
+    switch (command)
+    {
+        case USER_CMD_PIC_DEBUG_ENABLE: return given ? mask : SML_DEBUG_ALL;
+        case USER_CMD_PIC_DEBUG_DISABLE: return (uint32_t)(given ? mask : 0xFFFFU) << 16;
+        default: return given ? 0xFFFF0000UL | mask : 0; // 0: only show it
+    }
+}
+
+
 static void print_help(Stream *output)
 {
-    static const char *const labels[] = {"", "[n]", "[n]", "[b]", "[s]"};
+    static const char *const labels[] = {"", "[n]", "[n]", "[b]", "[s]", "[s]"};
     size_t index;
 
     for (index = 0; index < COMMAND_COUNT; index++)
@@ -189,18 +312,47 @@ static void print_help(Stream *output)
         }
         output->printf("\n");
     }
+    output->printf("PIC debug subsystems: ");
+    print_debug_names(output, SML_DEBUG_ALL);
+    output->printf(", all, or a mask\n");
+}
+
+
+const char *commands_reset_reason(void)
+{
+    esp_reset_reason_t reason = esp_reset_reason();
+
+    switch (reason)
+    {
+        // The EN pin (the USB-UART's DTR/RTS reset) reports as power-on.
+        case ESP_RST_POWERON: return "power-on or EN pin";
+        case ESP_RST_EXT: return "external pin";
+        case ESP_RST_SW: return "software";
+        case ESP_RST_PANIC: return "panic";
+        case ESP_RST_INT_WDT: return "interrupt watchdog";
+        case ESP_RST_TASK_WDT: return "task watchdog";
+        case ESP_RST_WDT: return "watchdog";
+        case ESP_RST_DEEPSLEEP: return "deep sleep";
+        case ESP_RST_BROWNOUT: return "brownout";
+        case ESP_RST_SDIO: return "SDIO";
+        default: return "unknown";
+    }
 }
 
 
 void commands_print_status(Stream *output)
 {
     output->printf("\n=== ESP %s, %s ===\n", ESP_VERSION, wifi_link_hostname());
+    output->printf("Up:        ");
+    time_print_duration(output, (uint32_t)(esp_timer_get_time() / 1000000));
+    output->printf(", last reset: %s\n", commands_reset_reason());
     ntp_print(output);
     output->printf("\n=== Time zone ===\n");
     tzinfo_print(output);
     leap_print(output);
     output->printf("\n=== Wi-Fi ===\n");
     wifi_link_print(output);
+    telnet_print(output);
     pic_report_print(output);
 }
 
@@ -243,6 +395,21 @@ static bool argument_value(Stream *output, const Command *command, const char *t
                 return true;
             }
             break;
+        case ARG_DEBUG:
+        {
+            uint16_t mask;
+            bool given;
+
+            if (parse_debug_mask(text, &mask, &given))
+            {
+                *value = debug_argument(command->command, mask, given);
+                return true;
+            }
+            output->printf("%s: bad argument '%s': ", command->name, text);
+            print_debug_names(output, SML_DEBUG_ALL);
+            output->printf(", all, or a mask\n");
+            return false;
+        }
     }
     output->printf("%s: bad argument '%s'", command->name, text);
     if (command->argument == ARG_UNSIGNED || command->argument == ARG_SIGNED)
