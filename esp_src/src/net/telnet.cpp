@@ -11,9 +11,16 @@
 static ESPTelnetStream telnet;
 static bool running;
 static ConsoleLine line;
+// Console output waiting for the socket, sent from telnet_service().
+#define TX_BUFFER_BYTES 8192U
+static uint8_t tx_buffer[TX_BUFFER_BYTES];
+static uint32_t tx_head; // next byte to send
+static uint32_t tx_count;
 static uint32_t pending_dropped; // bytes dropped since the last note
 static uint32_t dropped_bytes;   // ... in all
 static uint32_t connections;
+
+static void tx_flush(void);
 static uint32_t disconnections;
 
 static void on_connect(String ip)
@@ -22,6 +29,8 @@ static void on_connect(String ip)
     telnet.printf("\nSmol Clock, %s\n(type 'quit' or 'exit' to disconnect)\n> ",
                   WiFi.getHostname());
     console_line_clear(&line);
+    tx_head = 0;
+    tx_count = 0;
     pending_dropped = 0;
     connections++;
 }
@@ -70,7 +79,13 @@ void telnet_service(void)
         return;
     }
     telnet.loop();
-    if (telnet.isConnected() && console_read_line(&line, &telnet, false))
+    if (!telnet.isConnected())
+    {
+        tx_count = 0;
+        return;
+    }
+    tx_flush();
+    if (console_read_line(&line, &telnet, false))
     {
         if (strcmp(line.text, "quit") == 0 || strcmp(line.text, "exit") == 0)
         {
@@ -78,6 +93,7 @@ void telnet_service(void)
         }
         else
         {
+            tx_flush(); // what came before, before the reply
             commands_execute(&telnet, line.text);
             telnet.print("> ");
         }
@@ -164,30 +180,60 @@ Stream *telnet_client(void)
 }
 
 
-// As much as the socket takes now; true if all of it.
-static bool send_now(int fd, const uint8_t *data, size_t length)
+// Into the buffer; what does not fit is dropped and counted.
+static void buffer_text(const uint8_t *text, size_t length)
 {
-    ssize_t sent = send(fd, data, length, MSG_DONTWAIT);
+    uint32_t room = TX_BUFFER_BYTES - tx_count;
+    uint32_t tail;
+    size_t index;
 
-    if (sent < 0)
+    if (length > room)
     {
-        sent = 0;
+        pending_dropped += (uint32_t)(length - room);
+        dropped_bytes += (uint32_t)(length - room);
+        length = room;
     }
-    if ((size_t)sent < length)
+    tail = (tx_head + tx_count) % TX_BUFFER_BYTES;
+    for (index = 0; index < length; index++)
     {
-        pending_dropped += (uint32_t)(length - (size_t)sent);
-        dropped_bytes += (uint32_t)(length - (size_t)sent);
-        return false;
+        tx_buffer[tail] = text[index];
+        tail = (tail + 1) % TX_BUFFER_BYTES;
     }
-    return true;
+    tx_count += (uint32_t)length;
 }
 
 
 void telnet_write_text(const uint8_t *text, size_t length)
 {
+    if (!running || !telnet.isConnected())
+    {
+        return;
+    }
+    if (pending_dropped != 0 && TX_BUFFER_BYTES - tx_count >= 48U + length)
+    {
+        char note[48];
+        int n = snprintf(note, sizeof(note), "\r\n[telnet: %lu bytes dropped]\r\n",
+                         (unsigned long)pending_dropped);
+
+        pending_dropped = 0;
+        buffer_text((const uint8_t *)note, (size_t)n);
+    }
+    buffer_text(text, length);
+}
+
+
+/*
+ * As much of the buffer as the socket takes now, without waiting. One send
+ * per pass of loop() gathers the many small writes of a burst (the PIC's
+ * start-up text arrives a few bytes at a time) into full segments: lwIP
+ * limits the segments queued as well as the bytes, so a send per piece ran
+ * out of segments with the window still open.
+ */
+static void tx_flush(void)
+{
     int fd;
 
-    if (!running || !telnet.isConnected())
+    if (tx_count == 0)
     {
         return;
     }
@@ -196,22 +242,23 @@ void telnet_write_text(const uint8_t *text, size_t length)
     {
         return;
     }
-    if (pending_dropped != 0)
+    while (tx_count != 0)
     {
-        char note[48];
-        int n = snprintf(note, sizeof(note), "\r\n[telnet: %lu bytes dropped]\r\n",
-                         (unsigned long)pending_dropped);
+        uint32_t chunk =
+            TX_BUFFER_BYTES - tx_head < tx_count ? TX_BUFFER_BYTES - tx_head : tx_count;
+        ssize_t sent = send(fd, tx_buffer + tx_head, chunk, MSG_DONTWAIT);
 
-        if (send(fd, note, (size_t)n, MSG_DONTWAIT) != n)
+        if (sent <= 0)
         {
-            // Still no room: this goes too, and the note waits.
-            pending_dropped += (uint32_t)length;
-            dropped_bytes += (uint32_t)length;
+            return; // no room now: try again next pass
+        }
+        tx_head = (tx_head + (uint32_t)sent) % TX_BUFFER_BYTES;
+        tx_count -= (uint32_t)sent;
+        if ((uint32_t)sent < chunk)
+        {
             return;
         }
-        pending_dropped = 0;
     }
-    send_now(fd, text, length);
 }
 
 
