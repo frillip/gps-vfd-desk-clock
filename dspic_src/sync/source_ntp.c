@@ -10,8 +10,8 @@
 static SourceNtpState state;
 static SML_TIME_NTP_PAYLOAD latest;
 static bool has_latest;
-static uint32_t messages_seen;        // esp_link's count when last looked
-static uint32_t corrections_reported; // state.corrections when last reported
+static uint32_t messages_seen; // esp_link's count when last looked
+static bool correcting;        // the latest TIME-NTP flags CORRECTING
 
 static void average_phase(int32_t phase_ns)
 {
@@ -49,13 +49,14 @@ void source_ntp_service(uint32_t now_ms)
     if ((latest.flags & SML_NTP_UPDATE_VALID) != 0U &&
         latest.last_update_utc != state.last_update_utc)
     {
-        // The first one seen is not a correction we saw happen.
-        if (state.last_update_utc != 0U)
-        {
-            state.corrections++;
-        }
+        state.updates++;
         state.last_update_utc = latest.last_update_utc;
     }
+    if ((latest.flags & SML_NTP_CORRECTING) != 0U && !correcting)
+    {
+        state.corrections++;
+    }
+    correcting = (latest.flags & SML_NTP_CORRECTING) != 0U;
 
     pps_monitor_edge(PPS_INPUT_ESP, &edge);
     if (!edge.valid || time_ms_elapsed(now_ms, edge.observed_ms) > SOURCE_NTP_ASSOCIATION_MS)
@@ -104,8 +105,7 @@ void source_ntp_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
                                           report->edge_sequence - state.label_edge, NULL, &leap);
         report->edge_offset_ns = state.phase_average_ns + SOURCE_NTP_PPS_DELAY_NS;
     }
-    report->stepped = state.corrections != corrections_reported;
-    corrections_reported = state.corrections;
+    report->stepped = report->present && correcting;
 }
 
 

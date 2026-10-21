@@ -412,12 +412,12 @@ void sync_tuning_print(void)
     printf("Loop: %s profile, gate rejects %lu, Kalman rejects %lu; watch: %lu unseen changes\r\n",
            epoch_control_state()->profile->name, (unsigned long)tuning.gate_rejects,
            (unsigned long)tuning.kalman_rejects, (unsigned long)watch->unseen);
-    printf("TIME-NTP: %lu taken, %lu paired, %lu unpaired, %lu sequence slips, %lu corrections, "
-           "edge estimate avg %+ldns (%lu left out)\r\n",
+    printf("TIME-NTP: %lu taken, %lu paired, %lu unpaired, %lu sequence slips, %lu polls, "
+           "%lu corrections, edge estimate avg %+ldns (%lu left out)\r\n",
            (unsigned long)ntp->messages, (unsigned long)ntp->labelled,
            (unsigned long)ntp->unassociated, (unsigned long)ntp->sequence_slips,
-           (unsigned long)ntp->corrections, (long)ntp->phase_average_ns,
-           (unsigned long)ntp->phase_outliers);
+           (unsigned long)ntp->updates, (unsigned long)ntp->corrections,
+           (long)ntp->phase_average_ns, (unsigned long)ntp->phase_outliers);
     print_trials();
 
     // The next minute.

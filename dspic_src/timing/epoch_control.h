@@ -139,9 +139,9 @@ EpochUpdate epoch_control_update(const TimingSnapshot *snapshot, bool reference_
 void epoch_control_restart(const EpochProfile *profile, bool slew);
 
 /*
- * The reference has just corrected its own time (an NTP update on the ESP):
- * the phase jump that follows is the reference moving, not our frequency
- * error. The servo works it off with its proportional term only, the
+ * The reference is correcting its own time (an ESP step or fast slew,
+ * TIME-NTP CORRECTING): call every epoch it lasts. The phase jump is the
+ * reference moving, not our frequency error. The servo works it off with its proportional term only, the
  * integral held, until the predicted phase is back within 1/32 of the gate
  * (after at least EPOCH_STEP_HOLD_MIN epochs, for the reference's own slew
  * to happen, and at most EPOCH_STEP_HOLD_MAX). Without the hold the

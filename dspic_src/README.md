@@ -122,7 +122,7 @@ How hard the loop follows its reference depends on the source, by profile:
 | precise | GNSS | Kp 1/8, Ki 1/256: time constant ~8s, up to 0.4ppm of slew | 400ns | Learns the oscillator's frequency |
 | gentle | NTP | Kp 1/64, Ki 1/16384: time constant ~2 minutes, up to 10ppm of slew | 300µs | Learns nothing: the ESP slews its own clock |
 
-Both are critically damped. The NTP profile averages out the microseconds of jitter on the ESP's PPS, and corrects the ESP's edge by the offset the ESP reports for it in TIME-NTP. A clock that has never had GNSS has no frequency estimate, and the servo alone would take minutes to find the oscillator's error, a few hundred microseconds out of phase meanwhile. So while acquiring NTP it measures the ESP's average period over 16 seconds once, and starts the Kalman filter from that. Two things in TIME-NTP help further. The ESP's own estimate of each edge arrives after the PIC has measured it, and wanders by microseconds, by tens just after a correction, so the edge is corrected by its running average. And each NTP correction the ESP makes is flagged: the phase jump that follows is the ESP's time moving, so the servo works it off with its integral held rather than taking it for a frequency error. In the model, a 150µs correction then settles in about 3 minutes with 1.6µs of overshoot, instead of 8 minutes with 21µs.
+Both are critically damped. The NTP profile averages out the microseconds of jitter on the ESP's PPS, and corrects the ESP's edge by the offset the ESP reports for it in TIME-NTP. A clock that has never had GNSS has no frequency estimate, and the servo alone would take minutes to find the oscillator's error, a few hundred microseconds out of phase meanwhile. So while acquiring NTP it measures the ESP's average period over 16 seconds once, and starts the Kalman filter from that. Two things in TIME-NTP help further. The ESP's own estimate of each edge arrives after the PIC has measured it, and wanders by microseconds, by tens just after a correction, so the edge is corrected by its running average. And while the ESP steps or slews its clock fast (TIME-NTP `CORRECTING`), the phase jump is the ESP's time moving, so the servo works it off with its integral held rather than taking it for a frequency error. Routine corrections, slewed in at 5ppm or less, are simply followed. In the model, a 150µs correction then settles in about 3 minutes with 1.6µs of overshoot, instead of 8 minutes with 21µs.
 
 On the V2 board against a NEO-M9N, the measured phase sits at 0 or +1 tick in 90–98% of epochs. The receiver's own timing of the epoch edge (TIM-TM2) averages around +44ns, the fixed delay through the latch logic, with a standard deviation of 12–15ns. The 40MHz oscillator is around 1.6–1.9ppm slow, which the Kalman filter takes care of.
 
@@ -180,13 +180,13 @@ Without a schedule, both fall back to the manual values. Past the end of a sched
 
 The PIC starts in text mode, sending its console output raw, which is what the V2 ESP firmware expects. On the first valid SML frame from the ESP it switches to SML mode for good. From then on the console text travels in STAT-DEBUG frames, and each epoch the PIC sends TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS and STAT-UI, about 300 bytes a second.
 
-TIME-AUTH goes first, within a few milliseconds of the edge it labels. TIME-MEAS carries the raw measurements of each epoch, which the ESP needs for statistics and Allan deviation.
+STAT-SOURCES, the synchroniser's candidates ranked, follows whenever the choice or a verdict changes, every 10 seconds, and on request; the ESP shows it with `pic-show-sources`. TIME-AUTH goes first, within a few milliseconds of the edge it labels. TIME-MEAS carries the raw measurements of each epoch, which the ESP needs for statistics and Allan deviation.
 
 From the ESP, the PIC acts on:
 
 - TZ-STATE;
 - TIME-LEAP;
-- user commands: INFO, message requests, reset, time zone and DST settings, display mode and brightness;
+- user commands: INFO, message requests, reset, time zone and DST settings, display mode and brightness, the sources (SHOW_SOURCES) and the debug mask (SET_DEBUG);
 - TIME-NTP, which labels the ESP's PPS for the NTP source;
 - STAT-NET, which it holds for the menu.
 
@@ -194,7 +194,7 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 # Console
 
-The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, and for now it is everything. State changes are always printed.
+The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is not kept over a reset yet. State changes are always printed.
 
 | Bit | Name | What |
 | --- | --- | --- |
@@ -232,7 +232,7 @@ The V2 firmware did rather more than this. Still to come:
 - the RTC;
 - settings in flash;
 - GNSS provisioning;
-- debug settings and the sources view over SML;
+- keeping the debug mask over a reset;
 - the watchdog;
 - bootloader entry.
 

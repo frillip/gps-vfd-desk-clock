@@ -8,7 +8,9 @@
  *         else (the old firmware's own messages) is counted and dropped.
  *   SML   console text travels in SML-STAT-DEBUG frames, and the clock's
  *         state goes out every epoch (TIME-AUTH, TIME-PIC, TIME-CTRL,
- *         TIME-MEAS, TIME-GNSS, STAT-UI).
+ *         TIME-MEAS, TIME-GNSS, STAT-UI), with STAT-SOURCES when the
+ *         synchroniser's choice or a verdict changes and every
+ *         ESP_LINK_SOURCES_EPOCHS.
  *
  * The link starts in TEXT (or SML with ESP_LINK_START_SML) and moves to SML
  * for good on the first valid SML frame from the ESP: an SML ESP announces
@@ -17,15 +19,18 @@
  * Received:
  *   TZ-STATE     -> timezone_apply() (always held; TZ/DST auto choose what is used)
  *   TIME-LEAP    -> sync_set_leap(): used when the selected source has none
- *   TIME-NTP     -> held for the NTP source (not yet a sync source)
+ *   TIME-NTP     -> held for the NTP source (sync/source_ntp.c)
  *   STAT-NET     -> held for the menu and status (esp_link_net)
  *   CMD-RESPONSE -> the answer to a command sent with esp_link_request()
  *   CMD-USER     -> the commands below, answered with CMD-RESPONSE
  *   CMD-SETTINGS -> NACK UNSUPPORTED until the settings store is ported
  *
  * Commands handled: INFO, REQUEST_MESSAGE (TIME-AUTH/PIC/CTRL/MEAS/GNSS,
- * STAT-UI), RESET, SET_TZ_OFFSET, SET_DST_OFFSET, SET_DST_ACTIVE,
- * SET_TZ_AUTO, SET_DST_AUTO, SET_DISPLAY (HHMM only), SET_BRIGHTNESS. The
+ * STAT-UI, STAT-SOURCES), RESET, SET_TZ_OFFSET, SET_DST_OFFSET,
+ * SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO, SET_DISPLAY (HHMM only),
+ * SET_BRIGHTNESS, SHOW_SOURCES (STAT-SOURCES, then the ACK), SET_DEBUG
+ * (clear << 16 | set, ui/debug.h; the resulting mask is printed; setting an
+ * undefined bit is NACK ARGUMENT, clearing one is not). The
  * others, and every ESP command code (0x8000 up), are answered NACK
  * UNSUPPORTED. Settings changes are applied, not yet saved.
  *
@@ -54,6 +59,8 @@
 #define ESP_LINK_FRAME_TIMEOUT_MS 100U
 // STAT-NET comes every 10 s: after this long without one it is unknown.
 #define ESP_LINK_NET_TIMEOUT_MS 30000UL
+// STAT-SOURCES goes out at least this often, changed or not.
+#define ESP_LINK_SOURCES_EPOCHS 10UL
 
 typedef struct
 {

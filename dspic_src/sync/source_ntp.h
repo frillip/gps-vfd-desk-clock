@@ -8,8 +8,9 @@
  * measurement slot the label for this epoch's edge may not be in yet: it is
  * counted on from the last edge that was labelled, as for GNSS.
  *
- * The ESP's PPS is placed by a timer on the ESP and wanders by microseconds;
- * the ESP slews its own clock at up to 100 ppm after each NTP poll. The
+ * The ESP's PPS is placed by a timer on the ESP and wanders by microseconds.
+ * The ESP slews each routine NTP correction in at no more than
+ * SML_NTP_GENTLE_SLEW_PPM, which the loop simply follows. The
  * uncertainty it reports bounds its time, not the jitter of its edge, so
  * the synchroniser adds an allowance for that (SYNC_NTP_EDGE_JITTER_NS).
  * Leap seconds are not followed: a label that jumps at one is judged
@@ -21,9 +22,10 @@
  * by tens on the edge after an NTP correction: the edge is corrected by its
  * running average instead (SOURCE_NTP_PHASE_*), outliers left out.
  *
- * Each NTP correction the ESP makes (a new last_update_utc) is reported
- * once as the source stepping its time (SyncSourceReport.stepped): the
- * phase jump that follows is the ESP's, not our oscillator's.
+ * While the ESP flags a step or a fast slew (TIME-NTP CORRECTING), the
+ * source is reported as stepping its time (SyncSourceReport.stepped): the
+ * edge is moving faster than the loop should believe, and the phase jump
+ * is the ESP's, not our oscillator's.
  */
 #ifndef SOURCE_NTP_H
 #define SOURCE_NTP_H
@@ -67,7 +69,8 @@ typedef struct
     bool has_phase;
     int32_t phase_average_ns; // ... averaged: what the next edge is corrected by
     uint32_t phase_outliers;  // estimates left out of the average
-    uint32_t corrections;     // NTP corrections seen (last_update_utc changed)
+    uint32_t updates;         // NTP polls seen (last_update_utc changed)
+    uint32_t corrections;     // ... steps or fast slews flagged CORRECTING
     uint32_t last_update_utc;
 } SourceNtpState;
 

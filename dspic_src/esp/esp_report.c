@@ -55,6 +55,26 @@ uint8_t esp_report_source(uint8_t source, uint32_t epochs)
 }
 
 
+uint8_t esp_report_candidate(uint8_t candidate)
+{
+    if (candidate == SYNC_CANDIDATE_HOLDOVER)
+    {
+        return SML_SOURCE_HOLDOVER;
+    }
+    return esp_report_source(candidate, 1U);
+}
+
+
+uint8_t esp_report_verdict(SyncCheck check)
+{
+    static const uint8_t codes[SYNC_CHECK_COUNT] = {
+        SML_VERDICT_ABSENT,     SML_VERDICT_NO_TIME,    SML_VERDICT_NO_EDGE,
+        SML_VERDICT_UNLABELLED, SML_VERDICT_INACCURATE, SML_VERDICT_INCONSISTENT,
+        SML_VERDICT_GOOD};
+    return (unsigned)check < SYNC_CHECK_COUNT ? codes[check] : SML_VERDICT_NONE;
+}
+
+
 uint8_t esp_report_control(EpochSyncState state)
 {
     static const uint8_t codes[] = {SML_CONTROL_ACQUIRE, SML_CONTROL_STEP, SML_CONTROL_TRACK};
@@ -124,6 +144,7 @@ void esp_report_time_pic(const TimingSnapshot *snapshot, const SyncUpdate *updat
     payload->source = esp_report_source(status->source, status->epochs);
     payload->lock_state = esp_report_lock(status->state, status->epochs);
     payload->sync_state = esp_report_sync(status->state, status->epochs);
+    payload->second_source = esp_report_candidate(status->second);
     if (transition != NULL)
     {
         payload->previous_sync_state = esp_report_sync(transition->from, 1U);
@@ -395,6 +416,94 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
         payload->flags |= SML_UI_LOCAL_VALID;
         payload->local_seconds = time->utc_seconds + (uint32_t)zone.offset_s;
     }
+}
+
+
+// One source's entry in STAT-SOURCES.
+static void source_entry(const SyncStatus *status, uint8_t source, uint32_t epoch_sequence,
+                         SML_SOURCE_ENTRY *entry)
+{
+    const SyncSourceTracker *tracker = &status->sources[source];
+    const SyncSourceReport *report = &tracker->report;
+    uint32_t bound = sync_candidate_bound(source);
+
+    entry->source = esp_report_candidate(source);
+    entry->verdict = status->epochs == 0U ? SML_VERDICT_NONE : esp_report_verdict(tracker->check);
+    entry->rank = sync_candidate_rank(source);
+    entry->flags = (uint8_t)((report->present ? SML_ENTRY_PRESENT : 0U) |
+                             (report->time_valid ? SML_ENTRY_TIME_VALID : 0U) |
+                             (report->edge ? SML_ENTRY_EDGE : 0U) |
+                             (report->captured ? SML_ENTRY_CAPTURED : 0U) |
+                             (report->labelled ? SML_ENTRY_LABELLED : 0U) |
+                             (tracker->phase_valid ? SML_ENTRY_PHASE_VALID : 0U) |
+                             (bound != SYNC_BOUND_NONE ? SML_ENTRY_BOUND_VALID : 0U));
+    entry->good_run = tracker->good_run;
+    entry->usable_run = tracker->usable_run;
+    entry->bound_ns = bound != SYNC_BOUND_NONE ? bound : 0U;
+    entry->uncertainty_ns = report->uncertainty_ns;
+    entry->phase_ns = tracker->phase_valid ? tracker->phase_ticks * NS_PER_TICK : 0;
+    entry->age_s = tracker->verdicts[SYNC_CHECK_GOOD] != 0U
+                       ? epoch_sequence - tracker->last_good_epoch
+                       : UINT32_MAX;
+}
+
+
+// Holdover's entry: judged by nothing but its own bound.
+static void holdover_entry(const SyncStatus *status, SML_SOURCE_ENTRY *entry)
+{
+    uint32_t bound = sync_candidate_bound(SYNC_CANDIDATE_HOLDOVER);
+
+    entry->source = SML_SOURCE_HOLDOVER;
+    entry->verdict = bound != SYNC_BOUND_NONE ? SML_VERDICT_GOOD : SML_VERDICT_NONE;
+    entry->rank = sync_candidate_rank(SYNC_CANDIDATE_HOLDOVER);
+    entry->flags = status->holdover.ready ? SML_ENTRY_PRESENT | SML_ENTRY_TIME_VALID : 0U;
+    if (bound != SYNC_BOUND_NONE)
+    {
+        entry->flags |= SML_ENTRY_BOUND_VALID;
+        entry->bound_ns = bound;
+    }
+    entry->uncertainty_ns = status->holdover.ready ? status->holdover.base_ns : 0U;
+    entry->age_s = status->holdover.ready ? status->holdover.age : UINT32_MAX;
+}
+
+
+void esp_report_stat_sources(uint32_t epoch_sequence, SML_STAT_SOURCES_PAYLOAD *payload)
+{
+    const SyncStatus *status = sync_status();
+    uint8_t index;
+
+    memset(payload, 0, sizeof(*payload));
+    if (sync_is_synchronised())
+    {
+        payload->flags |= SML_SOURCES_SYNCHRONISED;
+    }
+    if (status->fallback && (status->state == SYNC_ACQUIRE || status->state == SYNC_LOCKED))
+    {
+        payload->flags |= SML_SOURCES_FALLBACK;
+    }
+    payload->sync_state = esp_report_sync(status->state, status->epochs);
+    switch (status->state)
+    {
+        case SYNC_HOLDOVER: payload->selected = SML_SOURCE_HOLDOVER; break;
+        case SYNC_ACQUIRE:
+        case SYNC_LOCKED: payload->selected = esp_report_candidate(status->source); break;
+        default: payload->selected = SML_SOURCE_NONE; break;
+    }
+    payload->second = esp_report_candidate(status->second);
+    payload->challenger = esp_report_candidate(status->challenger);
+    payload->challenge_run = status->challenger != SYNC_SOURCE_NONE ? status->challenge_run : 0U;
+    payload->epoch_sequence = epoch_sequence;
+
+    // The sources, then holdover; unused entries say NONE.
+    for (index = 0; index < SML_SOURCES_ENTRIES; index++)
+    {
+        payload->entries[index].source = SML_SOURCE_NONE;
+    }
+    for (index = 0; index < SYNC_SOURCE_COUNT && index < SML_SOURCES_ENTRIES - 1U; index++)
+    {
+        source_entry(status, index, epoch_sequence, &payload->entries[index]);
+    }
+    holdover_entry(status, &payload->entries[index]);
 }
 
 

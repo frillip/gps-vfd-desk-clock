@@ -21,6 +21,9 @@ uint8_t esp_report_lock(SyncState state, uint32_t epochs);
 uint8_t esp_report_sync(SyncState state, uint32_t epochs);
 uint8_t esp_report_cause(uint8_t reason);                   // SyncReason
 uint8_t esp_report_source(uint8_t source, uint32_t epochs); // SyncSourceId
+// A candidate: a SyncSourceId, SYNC_CANDIDATE_HOLDOVER or SYNC_SOURCE_NONE.
+uint8_t esp_report_candidate(uint8_t candidate);
+uint8_t esp_report_verdict(SyncCheck check);
 uint8_t esp_report_control(EpochSyncState state);
 uint8_t esp_report_display(DisplayMode mode, bool time_known);
 
@@ -34,6 +37,8 @@ void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *upda
                           SML_TIME_MEAS_PAYLOAD *payload);
 void esp_report_time_gnss(uint32_t now_ms, SML_TIME_GNSS_PAYLOAD *payload);
 void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload);
+// The synchroniser's candidates. epoch_sequence: the latest epoch's.
+void esp_report_stat_sources(uint32_t epoch_sequence, SML_STAT_SOURCES_PAYLOAD *payload);
 
 // Every module's full diagnostics, for SML_USER_INFO.
 void esp_report_print_all(uint32_t now_ms);

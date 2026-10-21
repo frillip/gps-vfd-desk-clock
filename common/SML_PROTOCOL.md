@@ -118,7 +118,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x12 | TIME-VCTCXO | PIC→ESP | 20 | — V3 hardware | Every epoch (V3) |
 | | 0x13 | TIME-MEAS | PIC→ESP | 40 | ✓ Sent | Every epoch |
 | | 0x20 | TIME-GNSS | PIC→ESP | 54 | ✓ Sent | Every epoch |
-| | 0x30 | TIME-NTP | ESP→PIC | 42 | ✓ Labels the ESP PPS for the NTP sync source | Every ESP PPS while NTP time is valid |
+| | 0x30 | TIME-NTP | ESP→PIC | 42 | ✓ Labels the ESP PPS for the NTP sync source; `CORRECTING` holds the PIC's frequency estimate | Every ESP PPS while NTP time is valid |
 | | 0x40 | TIME-RTC | PIC→ESP | 34 | — RTC not yet ported | Every epoch |
 | | 0x50 | TIME-LEAP | ESP→PIC | 16 | ✓ Applied | On change, and periodically |
 | 0x20 TZ | 0x01 | TZ-STATE | ESP→PIC | 124 | ✓ Applied | On change, after a PIC reset, and every ~10 minutes |
@@ -128,7 +128,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x20 | STAT-SUPPLY | PIC→ESP | 14 | — V3 hardware | Every few seconds |
 | | 0x30 | STAT-SETTINGS | PIC→ESP | 36 | — Settings store not yet ported | On change, after reset, on request |
 | | 0x40 | STAT-NET | ESP→PIC | 24 | ✓ Received and held | On change, and every 10 seconds |
-| | 0x50 | STAT-SOURCES | PIC→ESP | 108 | — To do (1.3) | On change, every 10 seconds, and on request |
+| | 0x50 | STAT-SOURCES | PIC→ESP | 108 | ✓ Sent | On change, every 10 seconds, and on request |
 | | 0xF0 | STAT-DEBUG | PIC→ESP | 1–240 | ✓ Sent in SML mode | As text is produced |
 | 0x80 CMD | 0x10 | CMD-USER | Both ways | 10 | ✓ Runs PIC codes, sends ESP codes | On demand |
 | | 0x20 | CMD-RESPONSE | Both ways | 12 | ✓ | One per command |
@@ -605,7 +605,7 @@ Each entry is 24 bytes, and entry *k* starts at offset 12 + 24k.
 | 8 | bound_ns | u32 | The ± bound the PIC ranks it by, ns (`BOUND_VALID`) |
 | 12 | uncertainty_ns | u32 | The source's own figure, ns (GNSS tAcc, the ESP's NTP bound); for holdover, the bound when it was last steered (u0) |
 | 16 | phase_ns | i32 | The PIC's epoch minus the source's UTC second, ns (`PHASE_VALID`) |
-| 20 | age_s | u32 | Seconds since its last GOOD epoch; for holdover, since the loop last steered |
+| 20 | age_s | u32 | Seconds since its last GOOD epoch; for holdover, since the loop last steered. 0xFFFFFFFF: never |
 
 The PIC sends STAT-SOURCES when the selection, the second choice, the sync state or any verdict changes (at most once an epoch), every 10 seconds, and in answer to `SHOW_SOURCES`, just before the ACK. On the ESP, `pic-show-sources` prints it as a table.
 
@@ -650,9 +650,9 @@ Commands run by the PIC:
 | 0x0071 | `SHOW_CONFIG` | — | NACK UNSUPPORTED |
 | 0x0072 | `DEFAULTS` | — | NACK UNSUPPORTED (settings store) |
 | 0x0073 | `SAVE` | — | NACK UNSUPPORTED (settings store) |
-| 0x0074 | `SHOW_SOURCES` | — | To do (1.3): STAT-SOURCES, then ACK |
+| 0x0074 | `SHOW_SOURCES` | — | ✓ STAT-SOURCES, then ACK |
 | 0x0080 | `ENTER_BOOTLOADER` | — | Reserved for the bootloader. NACK UNSUPPORTED |
-| 0x0090 | `SET_DEBUG` | clear << 16 \| set, `SML_DEBUG_*` bits | To do (1.3): see below |
+| 0x0090 | `SET_DEBUG` | clear << 16 \| set, `SML_DEBUG_*` bits | ✓ See below. Setting a bit outside `SML_DEBUG_ALL` is NACK `ARGUMENT`; clearing any is fine (0xFFFF clears all) |
 
 On the V2+ PIC, settings changed by command are applied at once but not yet persisted.
 
@@ -998,7 +998,7 @@ The `SML_MENU_*` values beyond NONE are frozen once the V2+ menu exists.
 
 `RESYNC` still needs defining. It could restart the control loop, re-qualify sources, or both, and is best settled alongside the NTP source.
 
-NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SHOW_SOURCES`, `SET_DEBUG` and TIME-PIC `second_source` are defined in 1.3 and implemented on the ESP; the PIC side is still to do. The PIC's hold of its frequency estimate after an NTP correction should key on TIME-NTP `CORRECTING` rather than on every change of `last_update_utc`, now that the ESP corrects gently at every poll.
+NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SHOW_SOURCES`, `SET_DEBUG` and TIME-PIC `second_source` are implemented at both ends. While TIME-NTP has `CORRECTING` set, the PIC holds its frequency estimate (the servo integral) and works the phase off with its proportional term alone; routine gentle corrections are simply followed. The debug mask is not yet kept over a PIC reset: that waits for the settings store.
 
 The bootloader class (0xF0) is reserved but not defined, and will be specified separately after the V2+ work.
 

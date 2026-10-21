@@ -9,6 +9,7 @@
 #include "../platform/system.h"
 #include "../platform/time_ms.h"
 #include "../ui/console.h"
+#include "../ui/debug.h"
 #include "../ui/display.h"
 #include "../ui/timezone.h"
 #include "esp_report.h"
@@ -36,6 +37,19 @@ static SML_STAT_NET_PAYLOAD net;
 static bool have_response;
 static SML_CMD_RESPONSE_PAYLOAD esp_response;
 static uint16_t next_token;
+
+// STAT-SOURCES: what was last sent, to send again on a change.
+static bool have_sources;
+static SML_STAT_SOURCES_PAYLOAD last_sources;
+static uint32_t sources_sent_epoch;
+
+// The console's debug bits are SML's.
+#if DEBUG_TIMING != SML_DEBUG_TIMING || DEBUG_GNSS != SML_DEBUG_GNSS ||   \
+    DEBUG_SYNC != SML_DEBUG_SYNC || DEBUG_SOURCES != SML_DEBUG_SOURCES || \
+    DEBUG_NTP != SML_DEBUG_NTP || DEBUG_MINUTE != SML_DEBUG_MINUTE ||     \
+    DEBUG_TUNING != SML_DEBUG_TUNING || DEBUG_ALL != SML_DEBUG_ALL
+#error "ui/debug.h and SML_DEBUG_* disagree"
+#endif
 
 // ---- Sending --------------------------------------------------------------
 
@@ -131,6 +145,7 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
         SML_TIME_MEAS_PAYLOAD meas;
         SML_TIME_GNSS_PAYLOAD gnss;
         SML_STAT_UI_PAYLOAD ui;
+        SML_STAT_SOURCES_PAYLOAD sources;
     } payload;
 
     if (class_id == SML_CLASS_TIME && message_id == SML_TIME_AUTH)
@@ -157,12 +172,59 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
     {
         esp_report_stat_ui(&payload.ui);
     }
+    else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_SOURCES)
+    {
+        esp_report_stat_sources(last_snapshot.timer.sequence, &payload.sources);
+        last_sources = payload.sources;
+        have_sources = true;
+        sources_sent_epoch = last_snapshot.timer.sequence;
+    }
     else
     {
         return false;
     }
     esp_link_send(class_id, message_id, &payload);
     return true;
+}
+
+
+// STAT-SOURCES when the selection, the second choice, the sync state or any
+// verdict has changed, and every ESP_LINK_SOURCES_EPOCHS anyway.
+static bool sources_changed(const SML_STAT_SOURCES_PAYLOAD *now)
+{
+    uint8_t index;
+
+    if (now->selected != last_sources.selected || now->second != last_sources.second ||
+        now->sync_state != last_sources.sync_state)
+    {
+        return true;
+    }
+    for (index = 0; index < SML_SOURCES_ENTRIES; index++)
+    {
+        if (now->entries[index].source != last_sources.entries[index].source ||
+            now->entries[index].verdict != last_sources.entries[index].verdict)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+static void send_sources_if_due(void)
+{
+    SML_STAT_SOURCES_PAYLOAD sources;
+
+    esp_report_stat_sources(last_snapshot.timer.sequence, &sources);
+    if (have_sources && !sources_changed(&sources) &&
+        last_snapshot.timer.sequence - sources_sent_epoch < ESP_LINK_SOURCES_EPOCHS)
+    {
+        return;
+    }
+    esp_link_send(SML_CLASS_STAT, SML_STAT_SOURCES, &sources);
+    last_sources = sources;
+    have_sources = true;
+    sources_sent_epoch = last_snapshot.timer.sequence;
 }
 
 
@@ -183,6 +245,7 @@ void esp_link_epoch(const TimingSnapshot *snapshot, const SyncUpdate *update, ui
     (void)send_message(SML_CLASS_TIME, SML_TIME_MEAS, now_ms);
     (void)send_message(SML_CLASS_TIME, SML_TIME_GNSS, now_ms);
     (void)send_message(SML_CLASS_STAT, SML_STAT_UI, now_ms);
+    send_sources_if_due();
 }
 
 
@@ -223,6 +286,26 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
                        ? SML_ERROR_NONE
                        : SML_ERROR_UNSUPPORTED;
         case SML_USER_RESET: *reset = true; return SML_ERROR_NONE;
+        case SML_USER_SHOW_SOURCES:
+            // The message, then the ACK.
+            return send_message(SML_CLASS_STAT, SML_STAT_SOURCES, now_ms) ? SML_ERROR_NONE
+                                                                          : SML_ERROR_UNSUPPORTED;
+        case SML_USER_SET_DEBUG:
+        {
+            // clear << 16 | set; 0 changes nothing. Shown either way. Any
+            // bit may be cleared (the ESP clears 0xFFFF for "all"); only
+            // the defined ones may be set.
+            uint16_t set = (uint16_t)argument;
+            uint16_t clear = (uint16_t)(argument >> 16);
+
+            if ((set & (uint16_t)~DEBUG_ALL) != 0U)
+            {
+                return SML_ERROR_ARGUMENT;
+            }
+            debug_set((uint16_t)((debug_mask() & (uint16_t)~clear) | set));
+            debug_print();
+            return SML_ERROR_NONE;
+        }
         case SML_USER_SET_TZ_AUTO:
             if (!flag_argument(argument))
             {

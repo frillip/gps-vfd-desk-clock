@@ -817,7 +817,7 @@ typedef struct
     uint32_t bound_ns;       // +/- bound the PIC ranks it by (BOUND_VALID)
     uint32_t uncertainty_ns; // the source's own figure; holdover: the bound when held
     int32_t phase_ns;        // the PIC's epoch minus the source's UTC second (PHASE_VALID)
-    uint32_t age_s;          // since its last GOOD epoch; holdover: since last steered
+    uint32_t age_s;          // since its last GOOD epoch; holdover: since last steered; 0xFFFFFFFF never
 } SML_SOURCE_ENTRY;
 
 typedef struct
