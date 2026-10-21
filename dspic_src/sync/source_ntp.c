@@ -10,7 +10,28 @@
 static SourceNtpState state;
 static SML_TIME_NTP_PAYLOAD latest;
 static bool has_latest;
-static uint32_t messages_seen; // esp_link's count when last looked
+static uint32_t messages_seen;        // esp_link's count when last looked
+static uint32_t corrections_reported; // state.corrections when last reported
+
+static void average_phase(int32_t phase_ns)
+{
+    int32_t difference;
+
+    if (!state.has_phase)
+    {
+        state.has_phase = true;
+        state.phase_average_ns = phase_ns;
+        return;
+    }
+    difference = phase_ns - state.phase_average_ns;
+    if (difference > SOURCE_NTP_PHASE_OUTLIER_NS || difference < -SOURCE_NTP_PHASE_OUTLIER_NS)
+    {
+        state.phase_outliers++;
+        return;
+    }
+    state.phase_average_ns += difference / SOURCE_NTP_PHASE_WEIGHT;
+}
+
 
 void source_ntp_service(uint32_t now_ms)
 {
@@ -25,6 +46,16 @@ void source_ntp_service(uint32_t now_ms)
     has_latest = true;
     state.messages++;
     state.received_ms = now_ms;
+    if ((latest.flags & SML_NTP_UPDATE_VALID) != 0U &&
+        latest.last_update_utc != state.last_update_utc)
+    {
+        // The first one seen is not a correction we saw happen.
+        if (state.last_update_utc != 0U)
+        {
+            state.corrections++;
+        }
+        state.last_update_utc = latest.last_update_utc;
+    }
 
     pps_monitor_edge(PPS_INPUT_ESP, &edge);
     if (!edge.valid || time_ms_elapsed(now_ms, edge.observed_ms) > SOURCE_NTP_ASSOCIATION_MS)
@@ -44,6 +75,7 @@ void source_ntp_service(uint32_t now_ms)
     state.label_esp_sequence = latest.pps_sequence;
     state.label_utc = latest.utc_seconds;
     state.label_phase_ns = latest.utc_phase_ns;
+    average_phase(latest.utc_phase_ns);
     state.labelled++;
 }
 
@@ -70,8 +102,10 @@ void source_ntp_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
         report->labelled = true;
         report->utc_seconds = utc_advance(state.label_utc, false,
                                           report->edge_sequence - state.label_edge, NULL, &leap);
-        report->edge_offset_ns = state.label_phase_ns + SOURCE_NTP_PPS_DELAY_NS;
+        report->edge_offset_ns = state.phase_average_ns + SOURCE_NTP_PPS_DELAY_NS;
     }
+    report->stepped = state.corrections != corrections_reported;
+    corrections_reported = state.corrections;
 }
 
 
@@ -108,7 +142,9 @@ void source_ntp_print_epoch(const TimingSnapshot *snapshot, uint32_t now_ms)
     text_u32(&line, state.label_utc, 0, ' ');
     text_str(&line, " esp-ph ");
     text_i32(&line, state.label_phase_ns, 0, true);
-    text_str(&line, "ns unc ");
+    text_str(&line, "ns (avg ");
+    text_i32(&line, state.phase_average_ns, 0, true);
+    text_str(&line, ") unc ");
     text_u32(&line, latest.uncertainty_ns, 0, ' ');
     text_str(&line, "ns flags ");
     text_hex16(&line, latest.flags);

@@ -662,6 +662,11 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     {
         offset_ticks = ns_to_ticks(status.sources[status.source].report.edge_offset_ns);
     }
+    if (is_tracking() && status.source < SYNC_SOURCE_COUNT &&
+        status.sources[status.source].report.stepped)
+    {
+        epoch_control_source_stepped();
+    }
     update.loop = epoch_control_update(snapshot, update.usable, offset_ticks);
     follow_loop(snapshot, &update.loop);
     follow_holdover(&update.loop);

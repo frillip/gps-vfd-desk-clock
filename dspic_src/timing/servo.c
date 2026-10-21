@@ -98,6 +98,7 @@ void servo_pi_init(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
     servo->integral_q16 = 0;
     servo_pi_set_gains(servo, kp_q16, ki_q16, integral_limit_ticks, correction_limit_ticks);
     servo->enabled = false;
+    servo->holding = false;
     servo_pi_reset(servo);
 }
 
@@ -124,6 +125,15 @@ void servo_pi_set_gains(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
     servo->integral_limit_q16 = Q16_FROM_TICKS(q16_clamp(integral_limit_ticks, Q16_TICK_LIMIT));
     servo->correction_limit_q16 = Q16_FROM_TICKS(q16_clamp(correction_limit_ticks, Q16_TICK_LIMIT));
     servo->integral_q16 = q16_clamp(servo->integral_q16, servo->integral_limit_q16);
+}
+
+
+void servo_pi_hold(EpochPiServo *servo, bool holding)
+{
+    if (servo != NULL)
+    {
+        servo->holding = holding;
+    }
 }
 
 
@@ -187,8 +197,9 @@ int32_t servo_pi_update(EpochPiServo *servo, int32_t phase_error_q16)
         q16_clamp(servo->integral_q16 + integral_step_q16, servo->integral_limit_q16);
     candidate_correction_q16 = proportional_q16 + candidate_integral_q16;
 
-    // Conditional integration: do not integrate further into saturation.
-    if (!((candidate_correction_q16 > servo->correction_limit_q16 && integral_step_q16 > 0) ||
+    // Conditional integration: not while held, nor further into saturation.
+    if (!servo->holding &&
+        !((candidate_correction_q16 > servo->correction_limit_q16 && integral_step_q16 > 0) ||
           (candidate_correction_q16 < -servo->correction_limit_q16 && integral_step_q16 < 0)))
     {
         servo->integral_q16 = candidate_integral_q16;

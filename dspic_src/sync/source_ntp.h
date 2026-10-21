@@ -14,6 +14,16 @@
  * the synchroniser adds an allowance for that (SYNC_NTP_EDGE_JITTER_NS).
  * Leap seconds are not followed: a label that jumps at one is judged
  * INCONSISTENT for an epoch.
+ *
+ * The ESP's own estimate of each edge (utc_phase_ns) arrives with that
+ * edge's TIME-NTP, after the measurement slot, so it is only ever known for
+ * the edge before. It wanders by a few microseconds from edge to edge, and
+ * by tens on the edge after an NTP correction: the edge is corrected by its
+ * running average instead (SOURCE_NTP_PHASE_*), outliers left out.
+ *
+ * Each NTP correction the ESP makes (a new last_update_utc) is reported
+ * once as the source stepping its time (SyncSourceReport.stepped): the
+ * phase jump that follows is the ESP's, not our oscillator's.
  */
 #ifndef SOURCE_NTP_H
 #define SOURCE_NTP_H
@@ -31,6 +41,11 @@
 #define SOURCE_NTP_ASSOCIATION_MS 500UL
 // Labels are counted on for this long without a new one.
 #define SOURCE_NTP_FRESH_MS 5000UL
+// The running average of utc_phase_ns: 1/SOURCE_NTP_PHASE_WEIGHT of each
+// new value, those further than SOURCE_NTP_PHASE_OUTLIER_NS out left out.
+#define SOURCE_NTP_PHASE_WEIGHT     16L
+#define SOURCE_NTP_PHASE_OUTLIER_NS 20000L
+
 // Fixed delay from the ESP's timestamp of its edge to the edge on RB15, if
 // one is measured (from the GNSS clock, where both are seen).
 #ifndef SOURCE_NTP_PPS_DELAY_NS
@@ -48,7 +63,12 @@ typedef struct
     uint32_t label_edge;         // PIC edge number (pps_monitor) of the latest label
     uint32_t label_esp_sequence; // ... and the ESP's own
     uint32_t label_utc;
-    int32_t label_phase_ns;
+    int32_t label_phase_ns; // the ESP's estimate for that edge
+    bool has_phase;
+    int32_t phase_average_ns; // ... averaged: what the next edge is corrected by
+    uint32_t phase_outliers;  // estimates left out of the average
+    uint32_t corrections;     // NTP corrections seen (last_update_utc changed)
+    uint32_t last_update_utc;
 } SourceNtpState;
 
 // Every 10 ms, after esp_link_service(): pairs a new TIME-NTP with its edge.

@@ -24,6 +24,10 @@ const EpochProfile epoch_profile_precise = {
 // few measurements.
 #define EPOCH_ACQUIRE_DELAY 3UL
 
+// See epoch_control_source_stepped().
+#define EPOCH_STEP_HOLD_MIN 10UL
+#define EPOCH_STEP_HOLD_MAX 600UL
+
 // Consecutive reference periods averaged to seed the Kalman filter (see
 // epoch_control.h). The ESP PPS period jitters by ~60 ticks RMS: over 16 s,
 // the average is good to a few ticks, ~0.1 ppm.
@@ -234,6 +238,29 @@ static void follow_step(const TimingSnapshot *snapshot)
 }
 
 
+// Ends the integral hold once the phase is back near zero (see
+// epoch_control_source_stepped()).
+static void follow_step_hold(void)
+{
+    int32_t settle_q16 = Q16_FROM_TICKS(loop.profile->gate_ticks / 32L);
+    int32_t phase_q16 = loop.predicted_phase_q16;
+
+    if (loop.step_hold > 0U)
+    {
+        loop.step_hold--;
+        if (loop.step_hold_min > 0U)
+        {
+            loop.step_hold_min--;
+        }
+        else if (phase_q16 <= settle_q16 && phase_q16 >= -settle_q16)
+        {
+            loop.step_hold = 0;
+        }
+    }
+    servo_pi_hold(&loop.pi, loop.step_hold > 0U);
+}
+
+
 static EpochUpdateKind track(const TimingSnapshot *snapshot, int32_t utc_offset_ticks)
 {
     int32_t running_offset_ticks = (int32_t)(snapshot->timer.running_period - TIMING_NOMINAL_TICKS);
@@ -249,6 +276,7 @@ static EpochUpdateKind track(const TimingSnapshot *snapshot, int32_t utc_offset_
         servo_phase_error_q16(utc_offset_ticks, EPOCH_PHASE_CALIBRATION_Q16), running_offset_ticks,
         servo_holdover_offset(&loop.pi, kalman_offset_q16));
 
+    follow_step_hold();
     switch (servo_gate_check(&loop.gate, loop.predicted_phase_q16))
     {
         case EPOCH_PHASE_ACCEPTED:
@@ -284,6 +312,8 @@ void epoch_control_init(void)
     loop.reference_epochs = 0;
     loop.discard_period = false;
     loop.seed_started = false;
+    loop.step_hold = 0;
+    loop.step_hold_min = 0;
     loop.filtered_pps_period = TIMING_NOMINAL_TICKS;
     loop.predicted_phase_q16 = 0;
     loop.commanded_offset_q16 = 0;
@@ -397,6 +427,8 @@ void epoch_control_restart(const EpochProfile *profile, bool slew)
     loop.holdover_epochs = 0;
     loop.discard_period = true;
     loop.seed_started = false;
+    loop.step_hold = 0;
+    servo_pi_hold(&loop.pi, false);
     if (slew && loop.state == EPOCH_STATE_TRACK)
     {
         servo_pi_reset_phase(&loop.pi);
@@ -404,6 +436,13 @@ void epoch_control_restart(const EpochProfile *profile, bool slew)
     }
     enter_acquire();
     servo_pi_reset(&loop.pi);
+}
+
+
+void epoch_control_source_stepped(void)
+{
+    loop.step_hold = EPOCH_STEP_HOLD_MAX;
+    loop.step_hold_min = EPOCH_STEP_HOLD_MIN;
 }
 
 

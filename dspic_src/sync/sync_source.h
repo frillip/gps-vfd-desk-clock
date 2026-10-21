@@ -38,6 +38,8 @@ typedef struct
                              // the watched timestamp less its latency
     int32_t edge_offset_ns;  // the edge minus the UTC second it marks, as far as the
                              // source knows (GNSS 0, NTP the ESP's own estimate)
+    bool stepped;            // the source has just corrected its own time: a phase
+                             // jump from here is the source's, not our frequency
     bool labelled;           // the UTC second of that edge is known
     uint32_t utc_seconds;    // ... as Unix seconds (an inserted leap second repeats :59)
     bool leap_second;        // ... and it is an inserted 23:59:60

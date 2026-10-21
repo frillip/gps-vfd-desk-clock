@@ -95,6 +95,11 @@ typedef struct
     uint32_t seed_sequence; // reference period count at the latest capture
     uint32_t seed_periods;  // consecutive periods since
 
+    // After the reference corrected its own time: the integral is held
+    // while the servo works the phase jump off (epoch_control_source_stepped).
+    uint32_t step_hold;     // epochs left at most
+    uint32_t step_hold_min; // ... before settling may end it
+
     KalmanFilter pps_kf;
     EpochPiServo pi;
     EpochPhaseGate gate;
@@ -132,6 +137,18 @@ EpochUpdate epoch_control_update(const TimingSnapshot *snapshot, bool reference_
  * within the profile's gate of the epoch: a handover with no step.
  */
 void epoch_control_restart(const EpochProfile *profile, bool slew);
+
+/*
+ * The reference has just corrected its own time (an NTP update on the ESP):
+ * the phase jump that follows is the reference moving, not our frequency
+ * error. The servo works it off with its proportional term only, the
+ * integral held, until the predicted phase is back within 1/32 of the gate
+ * (after at least EPOCH_STEP_HOLD_MIN epochs, for the reference's own slew
+ * to happen, and at most EPOCH_STEP_HOLD_MAX). Without the hold the
+ * integral takes the jump for a frequency error, then has to unwind it:
+ * an overshoot and minutes of tail.
+ */
+void epoch_control_source_stepped(void);
 
 // The offset from nominal the loop would hold in holdover now: the Kalman
 // estimate less the servo integral, Q16 ticks.

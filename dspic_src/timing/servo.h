@@ -51,6 +51,7 @@ typedef struct
     int32_t correction_q16;
 
     bool enabled;
+    bool holding; // integral frozen: the proportional term alone acts
 } EpochPiServo;
 
 // Phase error in Q16 ticks: positive = epoch late. Whole-tick measurements
@@ -122,6 +123,9 @@ void servo_pi_init(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
 // whether the servo is enabled.
 void servo_pi_set_gains(EpochPiServo *servo, int32_t kp_q16, int32_t ki_q16,
                         int32_t integral_limit_ticks, int32_t correction_limit_ticks);
+// Holding freezes the integral while the servo keeps acting on the phase:
+// for a phase error that is known not to be frequency (see epoch_control).
+void servo_pi_hold(EpochPiServo *servo, bool holding);
 // Disabling freezes the integral.
 void servo_pi_enable(EpochPiServo *servo, bool enabled);
 // Clears all state, including the integral. Use when the reference changes.
