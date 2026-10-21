@@ -76,9 +76,11 @@ void pic_link_set_command_handler(PicCommandHandler handler);
 bool pic_link_is_sml(void);
 // One frame from a native payload struct.
 void pic_link_send(uint8_t class_id, uint8_t message_id, const void *native);
-// A command for the PIC (SML_USER_*); its answer is printed to reply_to.
+// A command for the PIC (SML_USER_*); its answer is printed to reply_to,
+// with anything printed after it (the sources table) in full if verbose.
 // Returns the token.
-uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to);
+uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to,
+                          bool verbose = false);
 
 // The latest of each PIC message, and its age; false if never received or
 // older than max_age_ms. native may be NULL, to ask only whether it is held.

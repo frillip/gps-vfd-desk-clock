@@ -44,6 +44,7 @@ bool ntp_utc_at(int64_t local_us, int64_t *utc_us);
 // After each ESP PPS edge: the TIME-NTP labelling it. True once per edge.
 bool ntp_take_report(SML_TIME_NTP_PAYLOAD *payload);
 
-void ntp_print(Stream *output);
+// One line, or everything (esp-ntp-info -v).
+void ntp_print(Stream *output, bool verbose);
 
 #endif // NTP_H

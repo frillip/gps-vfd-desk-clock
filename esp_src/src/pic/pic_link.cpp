@@ -34,6 +34,7 @@ typedef struct
     uint16_t token;
     uint16_t command;
     Stream *reply_to;
+    bool verbose; // for what is printed with the answer
     uint32_t sent_ms;
 } Pending;
 
@@ -106,7 +107,7 @@ static void respond(uint16_t token, uint16_t command, uint16_t result, uint16_t 
 }
 
 
-uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to)
+uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to, bool verbose)
 {
     SML_CMD_USER_PAYLOAD request;
     Pending *slot = &pending[0];
@@ -131,6 +132,7 @@ uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to)
     slot->token = next_token;
     slot->command = command;
     slot->reply_to = reply_to;
+    slot->verbose = verbose;
     slot->sent_ms = millis();
     next_token = next_token == 0xFFFF ? 1 : next_token + 1;
     pic_link_send(SML_CLASS_CMD, SML_CMD_USER, &request);
@@ -154,17 +156,24 @@ static void handle_response(const SML_CMD_RESPONSE_PAYLOAD *response)
         }
         if (slot->reply_to != NULL)
         {
-            slot->reply_to->printf("PIC %s: %s", pic_report_command_name(slot->command),
-                                   pic_report_result_name(response->status));
-            if (response->status == SML_RESULT_NACK)
+            // The PIC sends STAT-SOURCES before its ACK; the table is the
+            // answer, so the ACK itself only shows with -v.
+            bool table =
+                slot->command == SML_USER_SHOW_SOURCES && response->status == SML_RESULT_ACK;
+
+            if (!table || slot->verbose)
             {
-                slot->reply_to->printf(" (%s)", pic_report_error_name(response->detail));
+                slot->reply_to->printf("PIC %s: %s", pic_report_command_name(slot->command),
+                                       pic_report_result_name(response->status));
+                if (response->status == SML_RESULT_NACK)
+                {
+                    slot->reply_to->printf(" (%s)", pic_report_error_name(response->detail));
+                }
+                slot->reply_to->printf("\n");
             }
-            slot->reply_to->printf("\n");
-            // The PIC sends STAT-SOURCES before its ACK.
-            if (slot->command == SML_USER_SHOW_SOURCES && response->status == SML_RESULT_ACK)
+            if (table)
             {
-                pic_report_print_sources(slot->reply_to);
+                pic_report_print_sources(slot->reply_to, slot->verbose);
             }
         }
         if (response->status != SML_RESULT_ACCEPTED)

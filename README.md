@@ -144,10 +144,12 @@ Changes to ESP preferences require `esp-save` to persist. PIC settings use `pic-
 
 | Command | Description |
 | --- | --- |
-| Enter on an empty line | Print available time, PPS, NTP, GNSS, tzinfo, RTC, sensor and sync-state diagnostics |
+| Enter on an empty line | Print a brief status: time, sources, NTP, time zone and links (everything with `verbose on`) |
+| `status [-v]` | The same; `-v` prints everything |
+| `verbose [b]` | Print everything by default, until restart |
 | `help` | Print the complete built-in help text, per-command help is not implemented |
 | `esp-reset` | Restart the ESP, also completes an update installed with `esp-update-pull` |
-| `pic-info` | Request diagnostics directly from the PIC |
+| `pic-info [-v]` | Request diagnostics directly from the PIC |
 | `pic-reset` | Restart the PIC |
 | `rst-all` | Request a PIC reset and restart the ESP |
 | `rst-pic` | Same as `pic-reset` |
@@ -158,7 +160,7 @@ Changes to ESP preferences require `esp-save` to persist. PIC settings use `pic-
 
 | Command | Description |
 | --- | --- |
-| `esp-ntp-info` | Print NTP time, sync status, server, interval and last sync time |
+| `esp-ntp-info [-v]` | Print NTP sync status, server and last sync time; `-v` adds the interval, frequency, slew and counters |
 | `esp-ntp-set-interval [n]` | Set NTP resync interval in seconds, valid saved-preference range 300–86400, default 1800 |
 | `esp-ntp-set-server [s]` | Test and select an NTP server |
 | `esp-ntp-resync` | Force an NTP query and realign ESP timing |
@@ -167,7 +169,7 @@ Changes to ESP preferences require `esp-save` to persist. PIC settings use `pic-
 
 | Command | Description |
 | --- | --- |
-| `esp-wifi-info` | Print connection status, SSID, saved passphrase and IP address |
+| `esp-wifi-info [-v]` | Print connection status, SSID, IP address and signal; `-v` adds gateway, DNS, channel and MAC |
 | `esp-wifi-scan` | Scan nearby networks and print signal strength and security type |
 | `esp-wifi-connect` | Request reconnection to WiFi |
 | `esp-wifi-disconnect` | Disconnect WiFi, the normal reconnect task can reconnect later |

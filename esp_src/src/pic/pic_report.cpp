@@ -156,30 +156,69 @@ static const char *fix_name(uint8_t fix)
 }
 
 
-static void print_time(Stream *output)
+static void print_local(Stream *output, const SML_TIME_AUTH_PAYLOAD *auth, bool verbose)
+{
+    SML_STAT_UI_PAYLOAD ui;
+    int32_t offset;
+
+    if (!pic_link_get(SML_CLASS_STAT, SML_STAT_UI, &ui, PIC_LINK_STATE_TIMEOUT_MS) ||
+        !(ui.flags & SML_UI_LOCAL_VALID) || !(auth->flags & SML_AUTH_UTC_VALID))
+    {
+        return;
+    }
+    offset = ui.base_offset_s + ((ui.flags & SML_UI_DST_ACTIVE) ? ui.dst_offset_s : 0);
+    output->printf(verbose ? "Local:  " : "Local:    ");
+    time_print_local(output, auth->utc_seconds, offset);
+    if (verbose)
+    {
+        output->printf(" (base ");
+        time_print_offset(output, ui.base_offset_s);
+        output->printf(", DST ");
+        time_print_offset(output, ui.dst_offset_s);
+        output->printf(" %s)", (ui.flags & SML_UI_DST_ACTIVE) ? "active" : "inactive");
+    }
+    else if (ui.flags & SML_UI_DST_ACTIVE)
+    {
+        output->printf(" DST");
+    }
+    // Warnings either way; no schedule is normal with manual offsets.
+    output->printf("%s%s%s\n",
+                   (verbose && !(ui.flags & SML_UI_TZ_HELD)) ? ", no schedule held" : "",
+                   (ui.flags & SML_UI_TZ_STALE) ? ", STALE" : "",
+                   (ui.flags & SML_UI_TZ_AMBIGUOUS) ? ", AMBIGUOUS" : "");
+}
+
+
+// Compact: "PIC:      <UTC> +/-120 ns, GNSS LOCKED" and the local time.
+static void print_time(Stream *output, bool verbose)
 {
     SML_TIME_AUTH_PAYLOAD auth;
-    SML_STAT_UI_PAYLOAD ui;
     PicTime time;
     PpsEdge gnss;
     int64_t ntp_utc;
 
-    output->printf("\n=== PIC time ===\n");
+    if (verbose)
+    {
+        output->printf("\n=== PIC time ===\n");
+    }
     if (!pic_link_get(SML_CLASS_TIME, SML_TIME_AUTH, &auth, PIC_LINK_STATE_TIMEOUT_MS))
     {
-        output->printf("No TIME-AUTH from the PIC%s\n",
+        output->printf("%s%s\n", verbose ? "No TIME-AUTH from the PIC" : "PIC:      no time",
                        pic_link_is_sml() ? "" : " (not in SML mode)");
         return;
     }
-    output->printf("UTC:    ");
+    output->printf(verbose ? "UTC:    " : "PIC:      ");
     if (auth.flags & SML_AUTH_UTC_VALID)
     {
         time_print_utc(output, auth.utc_seconds);
-        output->printf(" + ");
-        time_print_ns(output, auth.utc_phase_ns);
+        if (verbose)
+        {
+            output->printf(" + ");
+            time_print_ns(output, auth.utc_phase_ns);
+        }
         if (auth.flags & SML_AUTH_UNCERTAINTY_VALID)
         {
-            output->printf(", +/-");
+            output->printf(verbose ? ", +/-" : " +/-");
             time_print_ns(output, auth.uncertainty_ns);
         }
     }
@@ -187,25 +226,18 @@ static void print_time(Stream *output)
     {
         output->printf("unknown");
     }
-    output->printf("\nSource: %s, %s\n", pic_report_source_name(auth.source),
-                   pic_report_lock_name(auth.lock_state));
-    if (pic_link_get(SML_CLASS_STAT, SML_STAT_UI, &ui, PIC_LINK_STATE_TIMEOUT_MS) &&
-        (ui.flags & SML_UI_LOCAL_VALID) && (auth.flags & SML_AUTH_UTC_VALID))
+    if (verbose)
     {
-        int32_t offset = ui.base_offset_s + ((ui.flags & SML_UI_DST_ACTIVE) ? ui.dst_offset_s : 0);
-
-        output->printf("Local:  ");
-        time_print_local(output, auth.utc_seconds, offset);
-        output->printf(" (base ");
-        time_print_offset(output, ui.base_offset_s);
-        output->printf(", DST ");
-        time_print_offset(output, ui.dst_offset_s);
-        output->printf(" %s)%s%s%s\n", (ui.flags & SML_UI_DST_ACTIVE) ? "active" : "inactive",
-                       (ui.flags & SML_UI_TZ_HELD) ? "" : " no schedule held",
-                       (ui.flags & SML_UI_TZ_STALE) ? " STALE" : "",
-                       (ui.flags & SML_UI_TZ_AMBIGUOUS) ? " AMBIGUOUS" : "");
+        output->printf("\nSource: %s, %s\n", pic_report_source_name(auth.source),
+                       pic_report_lock_name(auth.lock_state));
     }
-    if (pic_link_time(&time))
+    else
+    {
+        output->printf(", %s %s\n", pic_report_source_name(auth.source),
+                       pic_report_lock_name(auth.lock_state));
+    }
+    print_local(output, &auth, verbose);
+    if (verbose && pic_link_time(&time))
     {
         if (ntp_utc_at(time.edge_local_us, &ntp_utc))
         {
@@ -265,12 +297,39 @@ static void print_sync(Stream *output)
 }
 
 
-static void print_gnss(Stream *output)
+// Compact: the loop's oscillator estimate, as chronyc tracking's frequency.
+static void print_oscillator(Stream *output)
+{
+    SML_TIME_CTRL_PAYLOAD ctrl;
+
+    if (pic_link_get(SML_CLASS_TIME, SML_TIME_CTRL, &ctrl, PIC_LINK_STATE_TIMEOUT_MS) &&
+        (ctrl.flags & SML_CTRL_ESTIMATE_VALID))
+    {
+        output->printf("Freq:     %+.4f ppm (%s)\n",
+                       (float)ctrl.frequency_offset_q16 / 65536.0f /
+                           (float)ctrl.nominal_period_ticks * 1e6f,
+                       control_name(ctrl.controller_state));
+    }
+}
+
+
+static void print_gnss(Stream *output, bool verbose)
 {
     SML_TIME_GNSS_PAYLOAD gnss;
 
     if (!pic_link_get(SML_CLASS_TIME, SML_TIME_GNSS, &gnss, PIC_LINK_STATE_TIMEOUT_MS))
     {
+        return;
+    }
+    if (!verbose)
+    {
+        // Compact: only a receiver that is there.
+        if (gnss.flags & SML_GNSS_DETECTED)
+        {
+            output->printf("GNSS:     %s%s, tAcc %lu ns\n", fix_name(gnss.fix_type),
+                           (gnss.flags & SML_GNSS_FIX_OK) ? " OK" : "",
+                           (unsigned long)gnss.utc_accuracy_ns);
+        }
         return;
     }
     output->printf("\n=== GNSS (PIC) ===\n");
@@ -326,69 +385,205 @@ static void print_bound(Stream *output, bool valid, uint32_t ns)
 }
 
 
-void pic_report_print_sources(Stream *output)
+// A phase, signed, in the units that suit it, or "-".
+static void print_phase(Stream *output, bool valid, int32_t ns)
 {
-    SML_STAT_SOURCES_PAYLOAD sources;
+    int32_t size = ns < 0 ? -ns : ns;
+
+    if (!valid)
+    {
+        output->printf(" %11s", "-");
+    }
+    else if (size < 10000)
+    {
+        output->printf(" %+8ld ns", (long)ns);
+    }
+    else if (size < 10000000)
+    {
+        output->printf(" %+8.1f us", (float)ns / 1000.0f);
+    }
+    else
+    {
+        output->printf(" %+8.1f ms", (float)ns / 1000000.0f);
+    }
+}
+
+
+// An age as chronyc prints one: 12s, 5m, 3h, 2d; "never" for UINT32_MAX.
+static void print_age(Stream *output, uint32_t seconds)
+{
+    char text[12];
+
+    if (seconds == UINT32_MAX)
+    {
+        snprintf(text, sizeof(text), "never");
+    }
+    else if (seconds < 600U)
+    {
+        snprintf(text, sizeof(text), "%lus", (unsigned long)seconds);
+    }
+    else if (seconds < 36000UL)
+    {
+        snprintf(text, sizeof(text), "%lum", (unsigned long)(seconds / 60U));
+    }
+    else if (seconds < 864000UL)
+    {
+        snprintf(text, sizeof(text), "%luh", (unsigned long)(seconds / 3600U));
+    }
+    else
+    {
+        snprintf(text, sizeof(text), "%lud", (unsigned long)(seconds / 86400UL));
+    }
+    output->printf("%9s", text);
+}
+
+
+static bool real_source(uint8_t source)
+{
+    return source != SML_SOURCE_NONE && source != SML_SOURCE_INIT;
+}
+
+
+// Never seen and not a candidate: nothing to say about it unless asked.
+static bool idle_entry(const SML_SOURCE_ENTRY *entry)
+{
+    return entry->rank == 0 && entry->age_s == UINT32_MAX &&
+           (entry->verdict == SML_VERDICT_NONE || entry->verdict == SML_VERDICT_ABSENT);
+}
+
+
+// "LOCKED on GNSS, synchronised": the state and what it is steered by.
+static void print_sources_state(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sources,
+                                bool verbose)
+{
+    output->printf("%s", sync_name(sources->sync_state));
+    if (real_source(sources->selected) && sources->selected != SML_SOURCE_HOLDOVER)
+    {
+        output->printf(" on %s", pic_report_source_name(sources->selected));
+    }
+    if (verbose && real_source(sources->second))
+    {
+        output->printf(", second choice %s", pic_report_source_name(sources->second));
+    }
+    if (real_source(sources->challenger))
+    {
+        output->printf(", %s challenging", pic_report_source_name(sources->challenger));
+        if (verbose)
+        {
+            output->printf(" for %u epochs", sources->challenge_run);
+        }
+    }
+    output->printf("%s%s", (sources->flags & SML_SOURCES_SYNCHRONISED) ? ", synchronised" : "",
+                   (sources->flags & SML_SOURCES_FALLBACK) ? ", fallback" : "");
+}
+
+
+static void print_source_row(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sources,
+                             const SML_SOURCE_ENTRY *entry, bool verbose)
+{
+    bool holdover = entry->source == SML_SOURCE_HOLDOVER;
+
+    output->printf("%c ", entry->source == sources->selected ? '*'
+                          : entry->source == sources->second ? '+'
+                                                             : ' ');
+    if (verbose)
+    {
+        output->printf("%-3s ", entry->rank != 0 ? String(entry->rank).c_str() : "-");
+    }
+    output->printf("%-9s %-12s", pic_report_source_name(entry->source),
+                   verdict_name(entry->verdict));
+    print_bound(output, (entry->flags & SML_ENTRY_BOUND_VALID) != 0, entry->bound_ns);
+    if (verbose)
+    {
+        output->printf(" ");
+        print_bound(output, entry->uncertainty_ns != 0, entry->uncertainty_ns);
+    }
+    print_phase(output, (entry->flags & SML_ENTRY_PHASE_VALID) != 0, entry->phase_ns);
+    if (verbose)
+    {
+        if (holdover)
+        {
+            output->printf(" %5s", "-");
+        }
+        else
+        {
+            output->printf(" %5u", entry->good_run);
+        }
+    }
+    print_age(output, entry->age_s);
+    if (verbose && !holdover)
+    {
+        output->printf("  %s%s", (entry->flags & SML_ENTRY_EDGE) ? "edge" : "no edge",
+                       (entry->flags & SML_ENTRY_CAPTURED) ? ", captured" : "");
+    }
+    output->printf("\n");
+}
+
+
+/*
+ * Like chronyc sources: * marks the source in use, + the second choice.
+ * Ranked entries first, then the rest in the order sent. Without verbose,
+ * sources never seen are left out, as are the rank, the source's own
+ * figure, the run and the edge.
+ */
+static void print_sources_table(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sources,
+                                bool verbose)
+{
     uint8_t rank;
     uint8_t index;
     bool listed[SML_SOURCES_ENTRIES] = {false};
 
-    output->printf("\n=== PIC sources ===\n");
+    if (verbose)
+    {
+        output->printf("  Rank Source    Verdict            Bound     Claimed       Phase   Run"
+                       "  Last good\n");
+    }
+    else
+    {
+        output->printf("  Source    Verdict            Bound       Phase  Last good\n");
+    }
+    for (rank = 1; rank <= SML_SOURCES_ENTRIES + 1; rank++)
+    {
+        for (index = 0; index < SML_SOURCES_ENTRIES; index++)
+        {
+            const SML_SOURCE_ENTRY *entry = &sources->entries[index];
+            bool last_pass = rank == SML_SOURCES_ENTRIES + 1;
+
+            if (listed[index] || !real_source(entry->source) || (!last_pass && entry->rank != rank))
+            {
+                continue;
+            }
+            listed[index] = true;
+            if (!verbose && idle_entry(entry))
+            {
+                continue;
+            }
+            print_source_row(output, sources, entry, verbose);
+        }
+    }
+}
+
+
+void pic_report_print_sources(Stream *output, bool verbose)
+{
+    SML_STAT_SOURCES_PAYLOAD sources;
+
     if (!pic_link_get(SML_CLASS_STAT, SML_STAT_SOURCES, &sources, 15000U))
     {
         output->printf("No STAT-SOURCES from the PIC (needs PIC firmware with SML 1.3)\n");
         return;
     }
-    output->printf("State:  %s on %s, second choice %s", sync_name(sources.sync_state),
-                   pic_report_source_name(sources.selected),
-                   pic_report_source_name(sources.second));
-    if (sources.challenger != SML_SOURCE_NONE && sources.challenger != SML_SOURCE_INIT)
+    if (verbose)
     {
-        output->printf(", %s challenging for %u epochs", pic_report_source_name(sources.challenger),
-                       sources.challenge_run);
+        output->printf("\n=== PIC sources ===\nState:  ");
     }
-    output->printf("%s%s\n", (sources.flags & SML_SOURCES_SYNCHRONISED) ? ", synchronised" : "",
-                   (sources.flags & SML_SOURCES_FALLBACK) ? ", as a fallback" : "");
-    output->printf(
-        "Rank Source    Verdict        Bound     Own figure      Phase  Good run  Age\n");
-    // Ranked first, then the rest in the order sent.
-    for (rank = 1; rank <= SML_SOURCES_ENTRIES + 1; rank++)
+    else
     {
-        for (index = 0; index < SML_SOURCES_ENTRIES; index++)
-        {
-            const SML_SOURCE_ENTRY *entry = &sources.entries[index];
-            bool last_pass = rank == SML_SOURCES_ENTRIES + 1;
-
-            if (listed[index] || entry->source == SML_SOURCE_NONE ||
-                entry->source == SML_SOURCE_INIT || (!last_pass && entry->rank != rank))
-            {
-                continue;
-            }
-            listed[index] = true;
-            output->printf("%c%-3s %-9s %-12s",
-                           entry->source == sources.selected ? '*'
-                           : entry->source == sources.second ? '+'
-                                                             : ' ',
-                           entry->rank != 0 ? String(entry->rank).c_str() : "-",
-                           pic_report_source_name(entry->source), verdict_name(entry->verdict));
-            print_bound(output, (entry->flags & SML_ENTRY_BOUND_VALID) != 0, entry->bound_ns);
-            output->printf("  ");
-            print_bound(output, entry->uncertainty_ns != 0, entry->uncertainty_ns);
-            if (entry->flags & SML_ENTRY_PHASE_VALID)
-            {
-                output->printf(" %+10.1f us", (float)entry->phase_ns / 1000.0f);
-            }
-            else
-            {
-                output->printf(" %13s", "-");
-            }
-            output->printf(" %9u  ", entry->good_run);
-            time_print_duration(output, entry->age_s);
-            output->printf("%s%s\n", (entry->flags & SML_ENTRY_EDGE) ? "" : ", no edge",
-                           (entry->flags & SML_ENTRY_CAPTURED) ? ", captured" : "");
-        }
+        output->printf("Sync:     ");
     }
-    output->printf("(* in use, + second choice)\n");
+    print_sources_state(output, &sources, verbose);
+    output->printf("\n");
+    print_sources_table(output, &sources, verbose);
 }
 
 
@@ -415,14 +610,24 @@ void pic_report_print_link(Stream *output)
 }
 
 
-void pic_report_print(Stream *output)
+void pic_report_print(Stream *output, bool verbose)
 {
-    print_time(output);
-    print_sync(output);
+    print_time(output, verbose);
+    if (verbose)
+    {
+        print_sync(output);
+    }
+    else
+    {
+        print_oscillator(output);
+    }
     if (pic_link_get(SML_CLASS_STAT, SML_STAT_SOURCES, NULL, 15000U))
     {
-        pic_report_print_sources(output);
+        pic_report_print_sources(output, verbose);
     }
-    print_gnss(output);
-    pic_report_print_link(output);
+    print_gnss(output, verbose);
+    if (verbose)
+    {
+        pic_report_print_link(output);
+    }
 }

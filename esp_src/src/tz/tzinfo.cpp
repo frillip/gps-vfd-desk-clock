@@ -573,9 +573,54 @@ bool tzinfo_local_now(uint32_t *local_seconds)
 }
 
 
-void tzinfo_print(Stream *output)
+// One line: the zone, its offset now and its next change.
+static void print_brief(Stream *output)
+{
+    uint32_t utc;
+    uint8_t index;
+
+    output->printf("Zone:     ");
+    if (!tz.schedule.valid)
+    {
+        output->printf("no schedule held (tzinfo %s)",
+                       user_prefs.fields.rtzinfo.flags.enabled ? "enabled" : "disabled");
+    }
+    else
+    {
+        output->printf("%s (%s%s)", tz.schedule.zone, pic_report_tz_source_name(tz.schedule.source),
+                       tz.schedule.ambiguous ? ", ambiguous" : "");
+        if (esp_time_utc_now(&utc))
+        {
+            output->printf(", UTC");
+            time_print_offset(output, tz_entry_offset(tz_schedule_entry_at(&tz.schedule, utc)));
+            for (index = 0; index < tz.schedule.count; index++)
+            {
+                if (tz.schedule.entries[index].utc_seconds > utc)
+                {
+                    output->printf(", changes ");
+                    time_print_utc(output, tz.schedule.entries[index].utc_seconds);
+                    break;
+                }
+            }
+        }
+    }
+    if (tz.last_error[0] != '\0')
+    {
+        output->printf(", last lookup failed: %s", tz.last_error);
+    }
+    output->printf("\n");
+}
+
+
+void tzinfo_print(Stream *output, bool verbose)
 {
     uint32_t now = millis();
+
+    if (!verbose)
+    {
+        print_brief(output);
+        return;
+    }
 
     output->printf("Enabled:  %s, server %s%s\n",
                    user_prefs.fields.rtzinfo.flags.enabled ? "yes" : "no",

@@ -32,6 +32,7 @@ typedef enum
     ARG_BOOL,     // [b]: 1/0, on/off, true/false, yes/no
     ARG_TEXT,     // [s]
     ARG_DEBUG,    // [s]: SML_DEBUG_* names or a mask; may be empty
+    ARG_VERBOSE,  // [-v]: -v or verbose for everything; empty for the verbose setting
 } ArgKind;
 
 typedef struct
@@ -54,18 +55,23 @@ typedef struct
     {                                 \
         name, cmd, code, __VA_ARGS__  \
     }
-#define NONE ARG_NONE, 0, 0
-#define TEXT ARG_TEXT, 0, 0
-#define FLAG ARG_BOOL, 0, 1
+#define NONE    ARG_NONE, 0, 0
+#define TEXT    ARG_TEXT, 0, 0
+#define FLAG    ARG_BOOL, 0, 1
+#define VERBOSE ARG_VERBOSE, 0, 0
+
+// Information is printed briefly, as chronyc does, unless asked for with -v
+// or the verbose setting is on. Not saved: off at restart.
+static bool verbose_setting;
 
 static const Command commands[] = {
     CMD_ESP("esp-reset", USER_CMD_ESP_RESET, NONE, "Restart the ESP"),
-    CMD_ESP("esp-ntp-info", USER_CMD_ESP_NTP_INFO, NONE, "NTP clock, server and ESP PPS"),
+    CMD_ESP("esp-ntp-info", USER_CMD_ESP_NTP_INFO, VERBOSE, "NTP clock, server and ESP PPS"),
     CMD_ESP("esp-ntp-set-interval", USER_CMD_ESP_NTP_SET_INTERVAL, ARG_UNSIGNED, NTP_INTERVAL_MIN,
             NTP_INTERVAL_MAX, "Longest NTP poll interval, seconds"),
     CMD_ESP("esp-ntp-set-server", USER_CMD_ESP_NTP_SET_SERVER, TEXT, "NTP server, then poll it"),
     CMD_ESP("esp-ntp-resync", USER_CMD_ESP_NTP_RESYNC, NONE, "Poll the NTP server now"),
-    CMD_ESP("esp-wifi-info", USER_CMD_ESP_WIFI_INFO, NONE, "Wi-Fi state (never the passphrase)"),
+    CMD_ESP("esp-wifi-info", USER_CMD_ESP_WIFI_INFO, VERBOSE, "Wi-Fi state (never the passphrase)"),
     CMD_ESP("esp-wifi-scan", USER_CMD_ESP_WIFI_SCAN, NONE, "Scan for Wi-Fi networks"),
     CMD_ESP("esp-wifi-connect", USER_CMD_ESP_WIFI_CONNECT, NONE, "Reconnect to Wi-Fi"),
     CMD_ESP("esp-wifi-disconnect", USER_CMD_ESP_WIFI_DISCONNECT, NONE, "Disconnect from Wi-Fi"),
@@ -112,7 +118,7 @@ static const Command commands[] = {
             "ESP settings and Wi-Fi to defaults, restart"),
     CMD_ESP("esp-save", USER_CMD_ESP_SAVE, NONE, "Save the ESP settings"),
 
-    CMD_PIC("pic-info", USER_CMD_PIC_INFO, SML_USER_INFO, NONE,
+    CMD_PIC("pic-info", USER_CMD_PIC_INFO, SML_USER_INFO, VERBOSE,
             "The PIC's diagnostics, and its state"),
     CMD_PIC("pic-resync", USER_CMD_PIC_RESYNC, SML_USER_RESYNC, NONE, "Resynchronise the PIC"),
     CMD_PIC("pic-reset", USER_CMD_PIC_RESET, SML_USER_RESET, NONE, "Reset the PIC"),
@@ -150,7 +156,7 @@ static const Command commands[] = {
     CMD_PIC("pic-config-clear", USER_CMD_PIC_CLEAR_ALL, SML_USER_DEFAULTS, NONE,
             "The PIC's settings to defaults"),
     CMD_PIC("pic-save", USER_CMD_PIC_SAVE, SML_USER_SAVE, NONE, "Save the PIC's settings"),
-    CMD_PIC("pic-show-sources", USER_CMD_PIC_SHOW_SOURCES, SML_USER_SHOW_SOURCES, NONE,
+    CMD_PIC("pic-show-sources", USER_CMD_PIC_SHOW_SOURCES, SML_USER_SHOW_SOURCES, VERBOSE,
             "The PIC's time sources, ranked"),
     CMD_PIC("pic-debug", USER_CMD_PIC_DEBUG, SML_USER_SET_DEBUG, ARG_DEBUG, 0, 0,
             "The PIC's debug output: show, or set exactly"),
@@ -162,6 +168,8 @@ static const Command commands[] = {
     CMD_ESP("rst-all", USER_CMD_RESET_ALL, NONE, "Reset the PIC and the ESP"),
     CMD_ESP("rst-esp", USER_CMD_ESP_RESET, NONE, "Same as esp-reset"),
     CMD_PIC("rst-pic", USER_CMD_PIC_RESET, SML_USER_RESET, NONE, "Same as pic-reset"),
+    CMD_ESP("status", USER_CMD_STATUS, VERBOSE, "Time, sources and links; same as an empty line"),
+    CMD_ESP("verbose", USER_CMD_VERBOSE, FLAG, "Everything without -v, until restart"),
     CMD_ESP("help", USER_CMD_HELP, NONE, "This text; an empty line prints the status"),
 };
 
@@ -295,7 +303,7 @@ static uint32_t debug_argument(USER_CMD command, uint16_t mask, bool given)
 
 static void print_help(Stream *output)
 {
-    static const char *const labels[] = {"", "[n]", "[n]", "[b]", "[s]", "[s]"};
+    static const char *const labels[] = {"", "[n]", "[n]", "[b]", "[s]", "[s]", "[-v]"};
     size_t index;
 
     for (index = 0; index < COMMAND_COUNT; index++)
@@ -315,6 +323,7 @@ static void print_help(Stream *output)
     output->printf("PIC debug subsystems: ");
     print_debug_names(output, SML_DEBUG_ALL);
     output->printf(", all, or a mask\n");
+    output->printf("[-v]: everything, not only what matters (or: verbose on)\n");
 }
 
 
@@ -340,20 +349,36 @@ const char *commands_reset_reason(void)
 }
 
 
-void commands_print_status(Stream *output)
+void commands_print_status(Stream *output, bool verbose)
 {
+    uint32_t up_s = (uint32_t)(esp_timer_get_time() / 1000000);
+
+    if (!verbose)
+    {
+        output->printf("\nESP:      %s %s, up ", ESP_VERSION, wifi_link_hostname());
+        time_print_duration(output, up_s);
+        output->printf("\n");
+        ntp_print(output, false);
+        tzinfo_print(output, false);
+        leap_print(output, false);
+        wifi_link_print(output, false);
+        telnet_print(output, false);
+        output->printf("\n");
+        pic_report_print(output, false);
+        return;
+    }
     output->printf("\n=== ESP %s, %s ===\n", ESP_VERSION, wifi_link_hostname());
     output->printf("Up:        ");
-    time_print_duration(output, (uint32_t)(esp_timer_get_time() / 1000000));
+    time_print_duration(output, up_s);
     output->printf(", last reset: %s\n", commands_reset_reason());
-    ntp_print(output);
+    ntp_print(output, true);
     output->printf("\n=== Time zone ===\n");
-    tzinfo_print(output);
-    leap_print(output);
+    tzinfo_print(output, true);
+    leap_print(output, true);
     output->printf("\n=== Wi-Fi ===\n");
-    wifi_link_print(output);
-    telnet_print(output);
-    pic_report_print(output);
+    wifi_link_print(output, true);
+    telnet_print(output, true);
+    pic_report_print(output, true);
 }
 
 
@@ -395,6 +420,20 @@ static bool argument_value(Stream *output, const Command *command, const char *t
                 return true;
             }
             break;
+        case ARG_VERBOSE:
+            if (text[0] == '\0')
+            {
+                *value = verbose_setting ? 1 : 0;
+                return true;
+            }
+            if (strcmp(text, "-v") == 0 || strcasecmp(text, "v") == 0 ||
+                strcasecmp(text, "verbose") == 0)
+            {
+                *value = 1;
+                return true;
+            }
+            output->printf("%s: bad argument '%s' (-v for everything)\n", command->name, text);
+            return false;
         case ARG_DEBUG:
         {
             uint16_t mask;
@@ -430,7 +469,12 @@ static void run_esp(Stream *output, USER_CMD command, const char *text, uint32_t
             delay(100);
             ESP.restart();
             break;
-        case USER_CMD_ESP_NTP_INFO: ntp_print(output); break;
+        case USER_CMD_STATUS: commands_print_status(output, value != 0); break;
+        case USER_CMD_VERBOSE:
+            verbose_setting = value != 0;
+            output->printf("Verbose output %s\n", verbose_setting ? "on" : "off");
+            break;
+        case USER_CMD_ESP_NTP_INFO: ntp_print(output, value != 0); break;
         case USER_CMD_ESP_NTP_SET_INTERVAL:
             user_prefs.fields.ntp.interval = value;
             output->printf("NTP interval %lu s\n", (unsigned long)value);
@@ -444,7 +488,7 @@ static void run_esp(Stream *output, USER_CMD command, const char *text, uint32_t
             output->printf("Polling NTP now\n");
             ntp_resync();
             break;
-        case USER_CMD_ESP_WIFI_INFO: wifi_link_print(output); break;
+        case USER_CMD_ESP_WIFI_INFO: wifi_link_print(output, value != 0); break;
         case USER_CMD_ESP_WIFI_SCAN: wifi_link_scan(output); break;
         case USER_CMD_ESP_WIFI_CONNECT:
             output->printf("Reconnecting to Wi-Fi\n");
@@ -577,7 +621,7 @@ void commands_execute(Stream *output, char *line)
     }
     if (*line == '\0')
     {
-        commands_print_status(output);
+        commands_print_status(output, verbose_setting);
         return;
     }
     argument = line;
@@ -609,11 +653,19 @@ void commands_execute(Stream *output, char *line)
         {
             output->printf("The PIC is not in SML mode; sending anyway\n");
         }
-        pic_link_request(command->pic_command, value, output);
-        if (command->command == USER_CMD_PIC_INFO)
+        if (command->argument == ARG_VERBOSE)
         {
-            pic_report_print(output);
+            // Ours, not the PIC's: it prints what follows the answer.
+            bool verbose = value != 0;
+
+            pic_link_request(command->pic_command, 0, output, verbose);
+            if (command->command == USER_CMD_PIC_INFO)
+            {
+                pic_report_print(output, verbose);
+            }
+            return;
         }
+        pic_link_request(command->pic_command, value, output);
         return;
     }
     run_esp(output, command->command, argument, value);

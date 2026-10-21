@@ -140,9 +140,23 @@ void wifi_link_disconnect(void)
 }
 
 
-void wifi_link_print(Stream *output)
+void wifi_link_print(Stream *output, bool verbose)
 {
     bool up = wifi_link_is_up();
+
+    if (!verbose)
+    {
+        output->printf("Wi-Fi:    %s", up ? "" : "disconnected, ");
+        output->printf("%s", manager.getWiFiIsSaved() ? manager.getWiFiSSID(true).c_str()
+                                                      : "no network saved");
+        if (up)
+        {
+            output->printf(", %s, %d dBm", WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
+        }
+        output->printf("%s\n",
+                       manager.getConfigPortalActive() ? ", setup access point active" : "");
+        return;
+    }
 
     output->printf("Wi-Fi:  %s\n", up ? "CONNECTED" : "DISCONNECTED");
     output->printf("SSID:   %s\n",

@@ -51,6 +51,7 @@ uint32_t tzinfo_refresh_utc(void); // next lookup due, 0 if unknown
 // schedule held, else UTC. False only if UTC itself is unknown.
 bool tzinfo_local_now(uint32_t *local_seconds);
 
-void tzinfo_print(Stream *output);
+// One line, or everything (status -v).
+void tzinfo_print(Stream *output, bool verbose);
 
 #endif // TZINFO_H

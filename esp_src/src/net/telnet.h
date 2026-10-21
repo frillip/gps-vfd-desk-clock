@@ -29,6 +29,6 @@ bool telnet_is_running(void);
 Stream *telnet_client(void);
 // Console output to the client, if any, without blocking (see above).
 void telnet_write_text(const uint8_t *text, size_t length);
-void telnet_print(Stream *output);
+void telnet_print(Stream *output, bool verbose);
 
 #endif // TELNET_H

@@ -81,7 +81,7 @@ void leap_service(void)
 }
 
 
-void leap_print(Stream *output)
+void leap_print(Stream *output, bool verbose)
 {
     output->printf("Leap:     ");
     if ((held.flags & SML_LEAP_VALID) == 0)
@@ -95,5 +95,9 @@ void leap_print(Stream *output)
         output->printf(", %+d at ", held.change);
         time_print_utc(output, held.event_utc);
     }
-    output->printf(", %lu sent\n", (unsigned long)sent);
+    if (verbose)
+    {
+        output->printf(", %lu sent", (unsigned long)sent);
+    }
+    output->printf("\n");
 }

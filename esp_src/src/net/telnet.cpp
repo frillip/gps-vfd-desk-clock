@@ -262,12 +262,17 @@ static void tx_flush(void)
 }
 
 
-void telnet_print(Stream *output)
+void telnet_print(Stream *output, bool verbose)
 {
     output->printf("Telnet:   %s", running ? "running" : "stopped");
     if (running && telnet.isConnected())
     {
         output->printf(", %s connected", telnet.getIP().c_str());
+    }
+    if (!verbose)
+    {
+        output->printf("\n");
+        return;
     }
     output->printf(", %lu connections, %lu disconnections, %lu bytes dropped\n",
                    (unsigned long)connections, (unsigned long)disconnections,

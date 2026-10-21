@@ -13,8 +13,8 @@
 
 // Runs one line; line is modified.
 void commands_execute(Stream *output, char *line);
-// The ESP's and the PIC's state.
-void commands_print_status(Stream *output);
+// The ESP's and the PIC's state: a line or so each, or everything.
+void commands_print_status(Stream *output, bool verbose);
 // Why the ESP last started, as text.
 const char *commands_reset_reason(void);
 // For pic_link_set_command_handler().

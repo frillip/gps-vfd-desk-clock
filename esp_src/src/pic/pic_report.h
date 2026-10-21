@@ -15,10 +15,12 @@ const char *pic_report_source_name(uint8_t source);
 const char *pic_report_lock_name(uint8_t lock);
 const char *pic_report_tz_source_name(uint8_t source);
 
-// Time, synchroniser, loop, GNSS, display and link.
-void pic_report_print(Stream *output);
-// STAT-SOURCES: the PIC's time sources, ranked (pic-show-sources).
-void pic_report_print_sources(Stream *output);
+// Time, synchroniser, loop, sources, GNSS and link. Compact unless verbose:
+// a line or two each, the sources table, and nothing that is only counters.
+void pic_report_print(Stream *output, bool verbose);
+// STAT-SOURCES: the PIC's time sources, ranked (pic-show-sources). Verbose
+// adds the rank, each source's own figure, its run and its edge.
+void pic_report_print_sources(Stream *output, bool verbose);
 // The link counters only.
 void pic_report_print_link(Stream *output);
 

@@ -154,13 +154,36 @@ The PIC's diagnostics are controlled from here too (SML 1.3):
 
 | Command | Effect |
 | --- | --- |
-| `pic-show-sources` | The PIC's time sources as a table: verdict, rank, bound, phase, which is in use and which would come next |
+| `pic-show-sources [-v]` | The PIC's time sources as a table: verdict, bound, phase and when each was last good; `*` marks the one in use and `+` the one that would come next |
 | `pic-debug` | Shows which debug output is on |
 | `pic-debug gnss sync` | Turns exactly that output on |
 | `pic-debug-enable [names]` | Turns output on, all of it without names |
 | `pic-debug-disable [names]` | Turns output off, all of it without names |
 
 The names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute` and `tuning`, or `all`, or a mask such as `0x1f`. The sources table also appears in the status (an empty line on the console) once the PIC sends STAT-SOURCES.
+
+# Console output
+
+Information is printed briefly by default, in the manner of chronyc: a line for each of NTP, the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` after `status`, `pic-info`, `pic-show-sources`, `esp-ntp-info` or `esp-wifi-info` prints everything, as before: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, and the link statistics. `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
+
+```
+ESP:      2.0.0 smolclock, up 00:41:07
+NTP:      pool.ntp.org, synced +/-13.7 ms, stratum 2, updated 00:12:40 ago
+Zone:     Europe/London (GNSS), UTC+01:00, changes 2026-10-25T01:00:00Z
+Leap:     TAI-UTC 37 s (GNSS)
+Wi-Fi:    home, 192.168.1.20, -61 dBm
+Telnet:   running, 192.168.1.5 connected
+
+PIC:      2026-10-21T10:53:20Z +/-61 ns, GNSS LOCKED
+Local:    2026-10-21T11:53:20+01:00 DST
+Freq:     -3.7500 ppm (TRACK)
+Sync:     LOCKED on GNSS, synchronised
+  Source    Verdict            Bound       Phase  Last good
+* GNSS      good              61 ns      +25 ns       0s
++ HOLDOVER  good              86 ns           -      42s
+  NTP       good            13.7 ms   -571.0 us       0s
+GNSS:     3D OK, tAcc 12 ns
+```
 
 # Telnet
 

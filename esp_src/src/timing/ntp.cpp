@@ -369,12 +369,44 @@ bool ntp_take_report(SML_TIME_NTP_PAYLOAD *payload)
 }
 
 
-void ntp_print(Stream *output)
+// One line: the server, whether the ESP clock follows it, and how well.
+static void print_brief(Stream *output)
+{
+    const EspClockStatus *status = esp_clock_status();
+
+    output->printf("NTP:      %s", user_prefs.fields.ntp.server);
+    if (!esp_clock_is_valid())
+    {
+        output->printf(", not set");
+    }
+    else
+    {
+        output->printf(", %s +/-", ntp_is_synced() ? "synced" : "NOT SYNCED");
+        time_print_ns(output, esp_clock_uncertainty_ns(now_us()));
+        output->printf(", stratum %u, updated ", status->last.stratum);
+        time_print_duration(output, update_age_s());
+        output->printf(" ago");
+    }
+    if (ntp.have_last && !ntp.last.ok)
+    {
+        output->printf(", last poll failed (%s %s)", poll_failure(&ntp.last), ntp.last.kiss);
+    }
+    output->printf("\n");
+}
+
+
+void ntp_print(Stream *output, bool verbose)
 {
     const EspClockStatus *status = esp_clock_status();
     const NtpClientStats *stats = ntp_client_stats();
     const PpsOutputStats *pps = pps_output_stats();
     uint32_t utc;
+
+    if (!verbose)
+    {
+        print_brief(output);
+        return;
+    }
 
     output->printf("Server:    %s", user_prefs.fields.ntp.server);
     if (ntp.have_last && ntp.last.address[0] != '\0')

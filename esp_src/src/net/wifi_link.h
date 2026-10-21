@@ -25,7 +25,8 @@ void wifi_link_reconnect(void);
 void wifi_link_disconnect(void);
 
 // SSID, state, address and signal; never the passphrase.
-void wifi_link_print(Stream *output);
+// One line, or everything (esp-wifi-info -v).
+void wifi_link_print(Stream *output, bool verbose);
 void wifi_link_scan(Stream *output);
 
 #endif // WIFI_LINK_H

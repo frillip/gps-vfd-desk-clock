@@ -16,6 +16,6 @@
 #include <Arduino.h>
 
 void leap_service(void);
-void leap_print(Stream *output);
+void leap_print(Stream *output, bool verbose);
 
 #endif // LEAP_H
