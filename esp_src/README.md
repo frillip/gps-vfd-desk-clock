@@ -164,11 +164,12 @@ The names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute` and `tuning`,
 
 # Console output
 
-Information is printed briefly by default, in the manner of chronyc: a line for each of NTP, the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` after `status`, `pic-info`, `pic-show-sources`, `esp-ntp-info` or `esp-wifi-info` prints everything, as before: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
+Information is printed briefly by default, in the manner of chronyc: the ESP's NTP time and its server, a line each for the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` after `status`, `pic-info`, `pic-show-sources`, `esp-ntp-info` or `esp-wifi-info` prints everything, as before: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
 
 ```
 ESP:      2.0.0 smolclock, up 00:41:07
-NTP:      pool.ntp.org, synced +/-13.7 ms, stratum 2, updated 00:12:40 ago
+NTP:      2026-10-21T10:53:20Z +/-13.7 ms, synced
+Server:   pool.ntp.org (192.0.2.10), stratum 2, updated 00:12:40 ago
 Zone:     Europe/London (GNSS), UTC+01:00, changes 2026-10-25T01:00:00Z
 Leap:     TAI-UTC 37 s (GNSS)
 Wi-Fi:    home, 192.168.1.20, -61 dBm

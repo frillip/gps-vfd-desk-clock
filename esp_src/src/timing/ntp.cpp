@@ -369,20 +369,32 @@ bool ntp_take_report(SML_TIME_NTP_PAYLOAD *payload)
 }
 
 
-// One line: the server, whether the ESP clock follows it, and how well.
+// Two lines: the ESP's time and how well it is known, as the PIC's UTC
+// line; then the server and the latest poll.
 static void print_brief(Stream *output)
 {
     const EspClockStatus *status = esp_clock_status();
+    uint32_t utc;
 
-    output->printf("NTP:      %s", user_prefs.fields.ntp.server);
-    if (!esp_clock_is_valid())
+    output->printf("NTP:      ");
+    if (!esp_clock_is_valid() || !ntp_utc_now(&utc))
     {
-        output->printf(", not set");
+        output->printf("not set\n");
     }
     else
     {
-        output->printf(", %s +/-", ntp_is_synced() ? "synced" : "NOT SYNCED");
+        time_print_utc(output, utc);
+        output->printf(" +/-");
         time_print_ns(output, esp_clock_uncertainty_ns(now_us()));
+        output->printf(", %s\n", ntp_is_synced() ? "synced" : "NOT SYNCED");
+    }
+    output->printf("Server:   %s", user_prefs.fields.ntp.server);
+    if (ntp.have_last && ntp.last.address[0] != '\0')
+    {
+        output->printf(" (%s)", ntp.last.address);
+    }
+    if (esp_clock_is_valid())
+    {
         output->printf(", stratum %u, updated ", status->last.stratum);
         time_print_duration(output, update_age_s());
         output->printf(" ago");
