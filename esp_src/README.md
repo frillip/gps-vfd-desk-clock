@@ -144,7 +144,7 @@ SML-TIME-LEAP is built from the PIC's own GNSS leap-second data and sent back to
 
 # PIC link
 
-At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML mode and prompts it to print its status. STAT-NET every 10 seconds and TIME-NTP every second bring the PIC back into SML mode after it resets. The PIC then sends STAT-SYS (SML 1.4) in its first epoch, and every 10 seconds after: its firmware version, uptime and why it last reset. The ESP announces the PIC when it first hears from it, and again whenever the uptime drops.
+At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML mode and prompts it to print its status. STAT-NET every 10 seconds and TIME-NTP every second bring the PIC back into SML mode after it resets. The PIC then sends STAT-SYS (SML 1.4) every epoch: its firmware version, uptime and why it last reset. The ESP announces the PIC when it first hears from it, and again whenever the uptime drops.
 
 Anything on the link outside a valid frame is treated as the PIC's console output and printed, as is STAT-DEBUG text. Both go to the USB-UART console and to Telnet.
 

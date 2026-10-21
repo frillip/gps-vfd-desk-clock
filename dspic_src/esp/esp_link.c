@@ -44,8 +44,6 @@ static uint16_t next_token;
 static bool have_sources;
 static SML_STAT_SOURCES_PAYLOAD last_sources;
 static uint32_t sources_sent_epoch;
-static bool have_sys; // STAT-SYS sent since start-up or the move to SML
-static uint32_t sys_sent_epoch;
 
 // The console's debug bits are SML's.
 #if DEBUG_TIMING != SML_DEBUG_TIMING || DEBUG_GNSS != SML_DEBUG_GNSS ||   \
@@ -187,8 +185,6 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
     else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_SYS)
     {
         esp_report_stat_sys(last_snapshot.timer.sequence, &payload.sys);
-        have_sys = true;
-        sys_sent_epoch = last_snapshot.timer.sequence;
     }
     else
     {
@@ -257,11 +253,9 @@ void esp_link_epoch(const TimingSnapshot *snapshot, const SyncUpdate *update, ui
     (void)send_message(SML_CLASS_TIME, SML_TIME_GNSS, now_ms);
     (void)send_message(SML_CLASS_STAT, SML_STAT_UI, now_ms);
     send_sources_if_due();
-    // The first in SML mode tells the ESP at once that the PIC (re)started.
-    if (!have_sys || last_snapshot.timer.sequence - sys_sent_epoch >= ESP_LINK_SYS_EPOCHS)
-    {
-        (void)send_message(SML_CLASS_STAT, SML_STAT_SYS, now_ms);
-    }
+    // Every epoch, so the uptime the ESP shows keeps up; the first in SML
+    // mode tells it at once that the PIC (re)started.
+    (void)send_message(SML_CLASS_STAT, SML_STAT_SYS, now_ms);
 }
 
 
@@ -515,7 +509,6 @@ void esp_link_init(void)
     have_ntp = false;
     have_leap = false;
     have_net = false;
-    have_sys = false;
     have_response = false;
     next_token = 0;
     last_rx_ms = 0;

@@ -10,9 +10,8 @@
  *         state goes out every epoch (TIME-AUTH, TIME-PIC, TIME-CTRL,
  *         TIME-MEAS, TIME-GNSS, STAT-UI), with STAT-SOURCES when the
  *         synchroniser's choice or a verdict changes and every
- *         ESP_LINK_SOURCES_EPOCHS, and STAT-SYS (version, uptime, reset
- *         cause) in the first epoch in SML mode and every
- *         ESP_LINK_SYS_EPOCHS.
+ *         ESP_LINK_SOURCES_EPOCHS, then STAT-SYS (version, uptime, reset
+ *         cause), every epoch too.
  *
  * The link starts in TEXT (or SML with ESP_LINK_START_SML) and moves to SML
  * for good on the first valid SML frame from the ESP: an SML ESP announces
@@ -63,8 +62,6 @@
 #define ESP_LINK_NET_TIMEOUT_MS 30000UL
 // STAT-SOURCES goes out at least this often, changed or not.
 #define ESP_LINK_SOURCES_EPOCHS 10UL
-// STAT-SYS goes out this often, as STAT-NET comes the other way.
-#define ESP_LINK_SYS_EPOCHS 10UL
 
 typedef struct
 {

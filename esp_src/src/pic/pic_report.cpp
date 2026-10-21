@@ -257,7 +257,7 @@ static void print_system(Stream *output, bool verbose)
     output->printf(", %lu restarts seen\n", (unsigned long)pic_link_stats()->restarts);
     output->printf("Reset:    %s (0x%04X)\n", pic_report_reset_name(sys.reset_cause),
                    sys.reset_cause);
-    output->printf("Loop:     longest pass %u ms in the last 10 s\n", sys.loop_max_ms);
+    output->printf("Loop:     longest pass %u ms in the last second\n", sys.loop_max_ms);
 }
 
 
