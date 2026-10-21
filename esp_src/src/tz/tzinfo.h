@@ -6,10 +6,14 @@
  *   - Location: the PIC's GNSS position, rounded to tzinfo.gnss_accuracy
  *     decimal places, while it has a fix; otherwise none, and the server uses
  *     the clock's IP address (GeoIP). With gnss_accuracy -1 no position is
- *     ever sent. The first lookup after start waits up to 60 s for a fix.
- *   - When: at start, every tzinfo.interval seconds (sooner if the server's
- *     valid_until says so), when the rounded position changes, and on
- *     request. A failure is retried after 5 min, doubling to 1 h.
+ *     ever sent. The first lookup after start waits up to 60 s for a fix,
+ *     unless the PIC reports no receiver, or no schedule is cached (then
+ *     GeoIP at once, and the GNSS position refines it once there is a fix).
+ *   - When: at start, as soon as tzinfo is enabled, every tzinfo.interval
+ *     seconds (sooner if the server's valid_until says so), when the rounded
+ *     position changes, and on request. A failure is retried after 5 min,
+ *     doubling to 1 h; while no schedule is held at all, after 30 s,
+ *     doubling to 5 min.
  *
  * The latest schedule is kept in NVS and sent at start as source CACHE until
  * a lookup replaces it.

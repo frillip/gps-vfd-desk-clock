@@ -17,6 +17,8 @@
 #define FIRST_FIX_WAIT_MS 60000U
 #define RETRY_FIRST_S     300U
 #define RETRY_MAX_S       3600U
+#define RETRY_EMPTY_S     30U  // first retry while no schedule is held at all
+#define RETRY_EMPTY_MAX_S 300U // ... doubling to this
 #define MOVE_RECHECK_MS   60000U
 #define RESEND_MS         600000U
 #define HELD_RESEND_MS    5000U
@@ -48,6 +50,8 @@ typedef struct
     uint32_t next_lookup_ms;
     uint32_t refresh_s; // after the latest success
     uint32_t retry_s;
+    uint32_t empty_retry_s; // ... while no schedule is held
+    bool force;             // look up as soon as the network is up: no wait for a fix
     uint32_t last_move_check_ms;
     Position used; // the position of the latest lookup
     bool send_now;
@@ -96,6 +100,16 @@ static void format_e7(char *text, size_t size, int32_t value, int8_t precision)
     fraction[precision] = '\0';
     snprintf(text, size, "%s%lld%s%s", value < 0 ? "-" : "", (long long)magnitude,
              precision > 0 ? "." : "", fraction);
+}
+
+
+// The PIC reports no GNSS receiver at all: no point waiting for a fix.
+static bool receiver_absent(void)
+{
+    SML_TIME_GNSS_PAYLOAD gnss;
+
+    return pic_link_get(SML_CLASS_TIME, SML_TIME_GNSS, &gnss, PIC_LINK_STATE_TIMEOUT_MS) &&
+           (gnss.flags & SML_GNSS_DETECTED) == 0;
 }
 
 
@@ -240,6 +254,14 @@ static void schedule_next(bool ok)
     {
         delay_s = tz.refresh_s;
         tz.retry_s = RETRY_FIRST_S;
+        tz.empty_retry_s = RETRY_EMPTY_S;
+    }
+    else if (!tz.schedule.valid)
+    {
+        // Nothing to give the PIC, which shows UTC meanwhile: retry soon.
+        delay_s = tz.empty_retry_s;
+        tz.empty_retry_s =
+            tz.empty_retry_s * 2 > RETRY_EMPTY_MAX_S ? RETRY_EMPTY_MAX_S : tz.empty_retry_s * 2;
     }
     else
     {
@@ -282,6 +304,7 @@ static bool update(Stream *output, const Position *position)
     bool ok = lookup(position, &result);
 
     tz.looked_up = true;
+    tz.force = false;
     tz.last_ok = ok;
     tz.used = *position;
     if (ok)
@@ -375,8 +398,8 @@ void tzinfo_set_enabled(bool enabled)
     user_prefs.fields.rtzinfo.flags.enabled = enabled;
     if (enabled)
     {
-        tz.looked_up = false; // look up as soon as possible
-        tz.network_since_ms = 0;
+        tz.looked_up = false;
+        tz.force = true; // at once: whoever enabled it wants to see it work
         tz.send_now = true;
     }
 }
@@ -404,9 +427,13 @@ void tzinfo_init(Stream *output)
 {
     memset(&tz, 0, sizeof(tz));
     tz.retry_s = RETRY_FIRST_S;
+    tz.empty_retry_s = RETRY_EMPTY_S;
     tz.refresh_s = user_prefs.fields.rtzinfo.interval;
     tz.send_now = true;
     load(output);
+    // With nothing cached, the PIC has nothing to show but UTC: GeoIP at
+    // once, and GNSS refines it when a fix arrives (has_moved()).
+    tz.force = !tz.schedule.valid;
 }
 
 
@@ -422,9 +449,10 @@ static bool lookup_due(void)
     position = current_position();
     if (!tz.looked_up)
     {
-        // Wait a little for a GNSS fix before falling back to GeoIP.
-        return position.have || user_prefs.fields.rtzinfo.gnss_accuracy < 0 ||
-               now - tz.network_since_ms > FIRST_FIX_WAIT_MS;
+        // Wait a little for a GNSS fix before falling back to GeoIP, unless
+        // there is no receiver, no position is ever sent, or it is wanted now.
+        return tz.force || position.have || user_prefs.fields.rtzinfo.gnss_accuracy < 0 ||
+               receiver_absent() || now - tz.network_since_ms > FIRST_FIX_WAIT_MS;
     }
     if ((int32_t)(now - tz.next_lookup_ms) >= 0)
     {
