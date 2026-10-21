@@ -4,6 +4,11 @@
  * DS1307 driver is retired, and the time is UTC seconds (platform/utc.h)
  * rather than a time_t from mktime().
  *
+ * The RTC always holds UTC, never local time, as on V2: time zones and DST
+ * are applied only for the display (ui/timezone.h), so a DST change never
+ * touches the RTC. It cannot hold a leap second: across an inserted
+ * 23:59:60 it simply counts on and is a second ahead until it is next set.
+ *
  * One request at a time, started by pcf8563_read() or pcf8563_write() and
  * finished by pcf8563_service() from the main loop. A write is read back
  * once it is done, as V2 did, so the status always shows what the chip
