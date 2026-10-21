@@ -129,7 +129,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x30 | STAT-SETTINGS | PIC→ESP | 36 | — Settings store not yet ported | On change, after reset, on request |
 | | 0x40 | STAT-NET | ESP→PIC | 24 | ✓ Received and held | On change, and every 10 seconds |
 | | 0x50 | STAT-SOURCES | PIC→ESP | 108 | ✓ Sent | On change, every 10 seconds, and on request |
-| | 0x60 | STAT-SYS | PIC→ESP | 16 | ✓ Sent | First epoch in SML mode, every 10 seconds, and on request |
+| | 0x60 | STAT-SYS | PIC→ESP | 16 | ✓ Sent | Every epoch in SML mode, and on request |
 | | 0xF0 | STAT-DEBUG | PIC→ESP | 1–240 | ✓ Sent in SML mode | As text is produced |
 | 0x80 CMD | 0x10 | CMD-USER | Both ways | 10 | ✓ Runs PIC codes, sends ESP codes | On demand |
 | | 0x20 | CMD-RESPONSE | Both ways | 12 | ✓ | One per command |
@@ -622,10 +622,10 @@ STAT-SYS is the PIC's counterpart to the uptime and version in STAT-NET: what th
 | 2 | reset_cause | u16 | `SML_RESET_*` bits as found at start-up, see [Reset causes](#reset-causes). More than one may be set |
 | 4 | uptime_s | u32 | Seconds since start-up, counted in epochs; it starts under a second after reset. A drop means the PIC restarted |
 | 8 | pic_version | u32 | PIC firmware: major << 16 \| minor << 8 \| patch, as `esp_version` |
-| 12 | loop_max_ms | u16 | The longest pass of the PIC's main loop since the previous STAT-SYS, ms: anything that held the rest up |
+| 12 | loop_max_ms | u16 | The longest pass of the PIC's main loop since the previous STAT-SYS (normally the last second), ms: anything that held the rest up |
 | 14 | reserved | u16 | Zero |
 
-The PIC sends STAT-SYS in its first epoch in SML mode, so the ESP hears about a restart straight away, then every 10 seconds, and on `REQUEST_MESSAGE`. The ESP shows the version, uptime and reset cause in its status, and prints a line when the uptime drops.
+The PIC sends STAT-SYS every epoch in SML mode, last of the epoch's messages, so the uptime the ESP shows keeps up and a restart is heard about straight away; and on `REQUEST_MESSAGE`. The ESP shows the version, uptime and reset cause in its status, and prints a line when the uptime drops.
 
 # CMD class (0x80)
 
@@ -785,7 +785,7 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | STAT-SETTINGS | PIC | On change, after reset, on `SHOW_SETTINGS` |
 | STAT-DEBUG | PIC | As text is produced |
 | STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to `SHOW_SOURCES` |
-| STAT-SYS | PIC | First epoch in SML mode, then every 10 seconds |
+| STAT-SYS | PIC | Every epoch in SML mode, after STAT-SOURCES |
 | CMD-RESPONSE | Both | One per CMD-USER or CMD-SETTINGS received, plus a final one for each ACCEPTED |
 | CMD-USER (ESP codes) | PIC | On demand, from the menu |
 | STAT-NET | ESP | On change, and every 10 seconds |

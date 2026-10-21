@@ -851,9 +851,9 @@ typedef struct
 } SML_STAT_SOURCES_PAYLOAD;
 
 /* SML-STAT-SYS, PIC -> ESP. The PIC's counterpart to STAT-NET's uptime and
- * version: what the ESP needs to notice and explain a PIC restart. Sent in
- * the first epoch after the PIC starts (or enters SML mode), every 10 s, and
- * on REQUEST_MESSAGE.
+ * version: what the ESP needs to notice and explain a PIC restart. Sent every
+ * epoch, from the first after the PIC starts (or enters SML mode), and on
+ * REQUEST_MESSAGE.
  * reset_cause: SML_RESET_* bits as captured at start-up (several may be set:
  * a power-on sets POR and BOR; a trap with no handler resets through the
  * RESET instruction, setting TRAPR and SWR).
@@ -861,7 +861,7 @@ typedef struct
  * second after reset, and a drop means the PIC restarted.
  * pic_version: major << 16 | minor << 8 | patch, as esp_version.
  * loop_max_ms: the longest pass of the PIC's main loop since the previous
- * STAT-SYS: work that held everything else up. */
+ * STAT-SYS (normally the last second): work that held everything else up. */
 typedef struct
 {
     uint16_t flags; // reserved; transmit zero

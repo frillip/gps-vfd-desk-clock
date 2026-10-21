@@ -29,6 +29,7 @@ typedef enum
 } SearchPurpose;
 
 static SourceRtcState state;
+static int32_t second_fraction_q8; // counting its second on at its rate
 
 // Our latest epoch (source_rtc_epoch).
 static uint32_t epoch_sequence;
@@ -99,6 +100,88 @@ static void set_activity(SourceRtcActivity activity)
 }
 
 
+static int32_t floor_div(int32_t a, int32_t b)
+{
+    return a >= 0 ? a / b : -((-a + b - 1) / b);
+}
+
+
+// The next of its seconds, counted on at its rate, ticks.
+static uint32_t next_second(int32_t *fraction_q8)
+{
+    int32_t q = *fraction_q8 + state.rate_q8;
+    int32_t whole = floor_div(q, 256);
+
+    *fraction_q8 = q - whole * 256;
+    return (uint32_t)((int32_t)SECOND_TICKS + whole);
+}
+
+
+/* A second found again, with no setting since the baseline: how far it is
+ * from where the baseline, counted on at the rate in use, puts it corrects
+ * the rate. By the RTC's own count of seconds, so a jump of our epoch or a
+ * gap in the search does not matter. */
+static void learn_rate(uint32_t stamp, uint32_t label)
+{
+    uint32_t seconds = label - state.baseline_label;
+    int64_t limit = (int64_t)SOURCE_RTC_RATE_LIMIT_PPM * (int64_t)SOURCE_RTC_TICKS_PER_US * 256;
+    uint32_t predicted;
+    int32_t error;
+    int64_t rate;
+
+    if (!state.baseline_valid || seconds < SOURCE_RTC_RATE_MIN_SECONDS || seconds > 200000UL)
+    {
+        return;
+    }
+    predicted = state.baseline_stamp + seconds * SECOND_TICKS +
+                (uint32_t)(int32_t)(((int64_t)seconds * state.rate_q8) / 256);
+    error = (int32_t)(stamp - predicted);
+    rate = state.rate_q8 + ((int64_t)error * 256) / (int64_t)seconds;
+    if (rate > limit || rate < -limit)
+    {
+        return;
+    }
+    state.rate_q8 = (int32_t)rate;
+    state.rate_valid = true;
+    state.rate_updates++;
+}
+
+
+uint32_t source_rtc_check_interval(void)
+{
+    uint32_t ticks_per_second =
+        (uint32_t)(state.rate_q8 < 0 ? -state.rate_q8 : state.rate_q8) / 256U;
+    uint64_t seconds;
+
+    if (!state.rate_valid || ticks_per_second == 0U)
+    {
+        return SOURCE_RTC_CHECK_EPOCHS;
+    }
+    seconds = (uint64_t)SOURCE_RTC_DRIFT_LIMIT_MS * (uint64_t)TICKS_PER_MS / ticks_per_second;
+    if (seconds > SOURCE_RTC_CHECK_EPOCHS)
+    {
+        return SOURCE_RTC_CHECK_EPOCHS;
+    }
+    return seconds < SOURCE_RTC_CHECK_MIN_EPOCHS ? SOURCE_RTC_CHECK_MIN_EPOCHS : (uint32_t)seconds;
+}
+
+
+int32_t source_rtc_rate_ppm10(void)
+{
+    // rate_q8 / 256 ticks a second of 40 000 000: ppm = -rate_q8 / 10240.
+    return state.rate_valid ? -(state.rate_q8 / 1024) : 0;
+}
+
+
+static void print_rate(void)
+{
+    int32_t ppm10 = source_rtc_rate_ppm10();
+    int32_t size = ppm10 < 0 ? -ppm10 : ppm10;
+
+    printf("%c%ld.%ld ppm", ppm10 < 0 ? '-' : '+', (long)(size / 10), (long)(size % 10));
+}
+
+
 static int32_t clamp_correction(int32_t ticks)
 {
     if (ticks > SOURCE_RTC_CORRECTION_LIMIT_TICKS)
@@ -166,6 +249,15 @@ static void found(uint32_t stamp, uint32_t label, uint32_t resolution)
     {
         state.second_edges++;
     }
+    if (purpose != PURPOSE_CONFIRM)
+    {
+        learn_rate(stamp, label);
+    }
+    // The baseline for the next: after a setting, the confirmation.
+    state.baseline_valid = true;
+    state.baseline_stamp = stamp;
+    state.baseline_label = label;
+    second_fraction_q8 = 0;
     state.second_valid = true;
     state.second_stamp = stamp;
     state.second_label = label;
@@ -265,6 +357,7 @@ static void begin_write(const SyncStatus *sync)
         write_wanted = true; // after it
         return;
     }
+    state.baseline_valid = false; // its second will be wherever we put it
     release_target = epoch_stamp + n * SECOND_TICKS - (uint32_t)delay;
     expect_stamp = epoch_stamp + n * SECOND_TICKS;
     expect_label = label + n;
@@ -370,7 +463,10 @@ static void confirmed(void)
         state.attempts = 0;
         state.last_write_valid = true;
         state.last_write_utc = expect_label;
-        state.next_check_epoch = epoch_sequence + SOURCE_RTC_CHECK_EPOCHS;
+        state.last_write_epoch = epoch_sequence;
+        state.next_check_epoch = epoch_sequence + source_rtc_check_interval();
+        state.rate_due = true; // how far it has gone by then shows its rate
+        state.rate_due_epoch = epoch_sequence + SOURCE_RTC_RATE_EPOCHS;
         printf("RTC: set, its second ");
         print_us(error);
         printf(" from the epoch (start delay correction ");
@@ -403,7 +499,7 @@ static void confirmed(void)
     else
     {
         state.attempts = 0;
-        state.next_check_epoch = epoch_sequence + SOURCE_RTC_CHECK_EPOCHS;
+        state.next_check_epoch = epoch_sequence + source_rtc_check_interval();
     }
 }
 
@@ -442,12 +538,22 @@ static void search_result(const SyncStatus *sync, bool synchronised)
     {
         printf(", %+ld ms against the clock", (long)state.offset_ms);
     }
+    if (state.rate_valid)
+    {
+        printf(", rate ");
+        print_rate();
+    }
     printf("\n");
     if (purpose != PURPOSE_CHECK)
     {
+        // A rate learnt may bring the next check forward.
+        if (state.rate_valid && state.last_write_valid)
+        {
+            check_by(state.last_write_epoch + source_rtc_check_interval());
+        }
         return;
     }
-    state.next_check_epoch = epoch_sequence + SOURCE_RTC_CHECK_EPOCHS;
+    state.next_check_epoch = epoch_sequence + source_rtc_check_interval();
     if (synchronised && state.offset_valid &&
         (!rtc->time_valid || state.offset_ms > SOURCE_RTC_RESYNC_MS ||
          state.offset_ms < -SOURCE_RTC_RESYNC_MS))
@@ -465,6 +571,7 @@ static void search_result(const SyncStatus *sync, bool synchronised)
 void source_rtc_init(void)
 {
     memset(&state, 0, sizeof(state));
+    second_fraction_q8 = 0;
     state.next_check_epoch = SOURCE_RTC_CHECK_EPOCHS;
     epoch_sequence = 0;
     epoch_valid = false;
@@ -494,10 +601,18 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
     {
         return;
     }
-    // Counted on to the latest increment at or before our epoch.
-    while ((int32_t)(capture->epoch_capture - (state.second_stamp + SECOND_TICKS)) >= 0)
+    // Counted on, at its rate, to the latest increment at or before our epoch.
+    for (;;)
     {
-        state.second_stamp += SECOND_TICKS;
+        int32_t fraction = second_fraction_q8;
+        uint32_t length = next_second(&fraction);
+
+        if ((int32_t)(capture->epoch_capture - (state.second_stamp + length)) < 0)
+        {
+            break;
+        }
+        second_fraction_q8 = fraction;
+        state.second_stamp += length;
         state.second_label++;
         state.second_edges++;
         if (++steps > 3U)
@@ -572,6 +687,7 @@ void source_rtc_epoch(const TimingSnapshot *snapshot)
         {
             state.plain_writes++;
             state.second_valid = false;
+            state.baseline_valid = false;
             printf("RTC: aligned write failed: set to the nearest second\n");
         }
         return;
@@ -622,6 +738,12 @@ void source_rtc_epoch(const TimingSnapshot *snapshot)
         start_search(PURPOSE_CHECK, SOURCE_RTC_SEARCH_EPOCHS);
         return;
     }
+    if (state.rate_due && epoch_reached(state.rate_due_epoch) && rtc->time_valid)
+    {
+        state.rate_due = false;
+        start_search(PURPOSE_MEASURE, SOURCE_RTC_SEARCH_EPOCHS);
+        return;
+    }
     if (!state.second_valid && rtc->time_valid && epoch_reached(measure_due_epoch))
     {
         start_search(PURPOSE_MEASURE, SOURCE_RTC_SEARCH_EPOCHS);
@@ -631,16 +753,23 @@ void source_rtc_epoch(const TimingSnapshot *snapshot)
 
 void source_rtc_poll(void)
 {
-    const Pcf8563Status *rtc;
+    const Pcf8563Status *rtc = pcf8563_status();
 
     switch (state.activity)
     {
+        case SOURCE_RTC_IDLE:
+            // At start-up, as soon as the chip has been read: first.
+            if (state.searches == 0U && !state.second_valid && rtc->reads != 0U &&
+                rtc->time_valid && !pcf8563_busy())
+            {
+                start_search(PURPOSE_MEASURE, SOURCE_RTC_SEARCH_EPOCHS);
+            }
+            break;
         case SOURCE_RTC_SEARCHING:
         case SOURCE_RTC_CONFIRMING: keep_searching(); break;
         case SOURCE_RTC_LOADING:
             if (!pcf8563_busy())
             {
-                rtc = pcf8563_status();
                 if (rtc->writes != writes_seen)
                 {
                     set_activity(SOURCE_RTC_WAITING);
@@ -655,7 +784,6 @@ void source_rtc_poll(void)
         case SOURCE_RTC_RELEASING:
             if (!pcf8563_busy())
             {
-                rtc = pcf8563_status();
                 if (rtc->releases != releases_seen)
                 {
                     start_search(PURPOSE_CONFIRM, SOURCE_RTC_SEARCH_EPOCHS);
@@ -679,6 +807,7 @@ bool source_rtc_set(uint32_t utc_seconds)
     }
     state.plain_writes++;
     state.second_valid = false; // found again once it is read back
+    state.baseline_valid = false;
     measure_due_epoch = epoch_sequence;
     write_wanted = false;
     plain_wanted = false;
@@ -724,6 +853,16 @@ void source_rtc_print(void)
     {
         printf(", %+ld ms against the clock %lu s ago", (long)state.offset_ms,
                (unsigned long)(epoch_sequence - state.offset_epoch));
+    }
+    printf(", rate ");
+    if (state.rate_valid)
+    {
+        print_rate();
+        printf(" (%lu updates)", (unsigned long)state.rate_updates);
+    }
+    else
+    {
+        printf("not known yet");
     }
     printf("\n  ");
     if (state.last_write_valid)

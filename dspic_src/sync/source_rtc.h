@@ -7,8 +7,16 @@
  * start completed, until the seconds count goes up; the increment lies
  * between the last read before it and the first after (a search). That
  * places the RTC's second to well within a millisecond; from there it is
- * counted on at the nominal second, and searched for again every
- * SOURCE_RTC_CHECK_EPOCHS.
+ * counted on, and searched for again at every check. The first search
+ * starts as soon as the chip has been read, so the RTC is the first source
+ * at start-up.
+ *
+ * Its rate. Each search after the first, with no setting in between and at
+ * least SOURCE_RTC_RATE_MIN_SECONDS on, shows how far its second has moved
+ * against where it was counted on to: that corrects its rate, and its
+ * second is counted on at that length rather than the nominal second. A
+ * search SOURCE_RTC_RATE_EPOCHS after each setting gives the first. (V2's
+ * PCF8563s were measured at about 150 ppm fast: 13 s a day.)
  *
  * As a source (source_rtc_report) it reports that second as a watched edge
  * labelled with the RTC's time, never captured, with a bound of
@@ -16,9 +24,10 @@
  * first placing (sync.h).
  *
  * Keeping it set. Once the clock is synchronised, after SOURCE_RTC_SETTLE_
- * EPOCHS, and every SOURCE_RTC_CHECK_EPOCHS from then (and soon after any
- * correction of the clock's time), the RTC's second is searched for and
- * compared with ours. If it is out by more than SOURCE_RTC_RESYNC_MS, or
+ * EPOCHS, then often enough that at its rate it drifts no further than
+ * SOURCE_RTC_DRIFT_LIMIT_MS from ours (between SOURCE_RTC_CHECK_MIN_EPOCHS
+ * and SOURCE_RTC_CHECK_EPOCHS apart), and soon after any correction of the
+ * clock's time, the RTC's second is searched for and compared with ours. If it is out by more than SOURCE_RTC_RESYNC_MS, or
  * its time cannot be trusted (VL, STOP), it is set, aligned:
  *
  *   1. load a time with STOP set, which holds the prescaler in reset;
@@ -60,10 +69,23 @@
 // the start condition at 400 kHz.
 #define SOURCE_RTC_READ_LATCH_TICKS (25UL * SOURCE_RTC_TICKS_PER_US)
 
-// Searched for, and checked against our time, this often.
+// Searched for, and checked against our time, at most this far apart...
 #ifndef SOURCE_RTC_CHECK_EPOCHS
 #define SOURCE_RTC_CHECK_EPOCHS 21600UL // 6 h
 #endif
+// ... and at least this far, sooner the faster it drifts, so it stays
+// within SOURCE_RTC_DRIFT_LIMIT_MS: half its bound.
+#define SOURCE_RTC_CHECK_MIN_EPOCHS 600UL // 10 min
+#define SOURCE_RTC_DRIFT_LIMIT_MS   500UL
+
+// Its rate: learnt from searches at least this far apart (by its own
+// count), the first this long after each setting; a rate beyond the limit
+// is not believed.
+#define SOURCE_RTC_RATE_MIN_SECONDS 300UL
+#ifndef SOURCE_RTC_RATE_EPOCHS
+#define SOURCE_RTC_RATE_EPOCHS 600UL
+#endif
+#define SOURCE_RTC_RATE_LIMIT_PPM 500L
 // A second measured longer ago than this is no longer reported.
 #define SOURCE_RTC_SECOND_MAX_AGE_EPOCHS (SOURCE_RTC_CHECK_EPOCHS + 3600UL)
 // After the clock synchronises, or its time is corrected, before checking.
@@ -113,6 +135,15 @@ typedef struct
     uint32_t measured_epoch;   // our epoch when it was last found
     uint32_t resolution_ticks; // ... between the reads either side
 
+    // Its rate: its second on the capture timebase less the nominal second,
+    // Q8 ticks (+ = slow), from the searches since a baseline.
+    bool rate_valid;
+    int32_t rate_q8;
+    uint32_t rate_updates;
+    bool baseline_valid;     // no setting since the last search
+    uint32_t baseline_stamp; // ... where it found the second
+    uint32_t baseline_label;
+
     // Against our clock, at the last search made with our time known.
     bool offset_valid;
     int32_t offset_ms; // RTC minus our clock, + = RTC ahead (saturated at +/-23 days)
@@ -125,6 +156,9 @@ typedef struct
     bool last_write_valid;
     int32_t last_write_error_ticks; // where the increment landed, minus our epoch
     uint32_t last_write_utc;        // the second it was aligned to
+    uint32_t last_write_epoch;
+    bool rate_due; // a search for the rate, SOURCE_RTC_RATE_EPOCHS after a setting
+    uint32_t rate_due_epoch;
 
     uint32_t searches;
     uint32_t searches_failed;
@@ -154,6 +188,10 @@ void source_rtc_poll(void);
 bool source_rtc_set(uint32_t utc_seconds);
 
 const SourceRtcState *source_rtc_state(void);
+// Its rate in tenths of a ppm, + = fast; 0 until one has been learnt.
+int32_t source_rtc_rate_ppm10(void);
+// Epochs between checks at the rate learnt.
+uint32_t source_rtc_check_interval(void);
 const char *source_rtc_activity_name(SourceRtcActivity activity);
 // The RTC's second and how it is kept: one or two lines.
 void source_rtc_print(void);

@@ -75,7 +75,11 @@
  * source with a time: the time of day is seeded from it (as above), and
  * while still free running, before anything has steered, the epoch is
  * stepped once onto the RTC's second (epoch_control_free_run_step), so
- * the seconds shown change with the RTC's. GNSS or NTP take over from there.
+ * the seconds shown change with the RTC's. That happens the first epoch it
+ * is GOOD; and so that it does happen first, in free run nothing is taken
+ * to steer by while the RTC answers with a time but its second is still
+ * being found, for up to SYNC_ALIGN_WAIT_EPOCHS. GNSS or NTP take over
+ * from there.
  *
  * Adding a source takes an id here, an adapter (see source_gnss.c) and a row
  * in the table in sync.c. Every source's edge is watched (pps_monitor), but
@@ -149,6 +153,9 @@ typedef enum
 #define SYNC_RTC_UNCERTAINTY_NS 999000000UL // 999 ms
 #endif
 #define SYNC_RTC_LIMIT_NS 1000000000UL
+// At start-up, free run waits this long at most for a time-of-day source
+// that has a time but not yet its second (the RTC being searched).
+#define SYNC_ALIGN_WAIT_EPOCHS 6U
 
 // The loop profile for NTP (EpochProfile): Kp 1/64, Ki 1/16384, critically
 // damped with a time constant of about two minutes, so the ESP's edge

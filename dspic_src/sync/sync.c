@@ -407,9 +407,10 @@ static void acquire(uint8_t source, SyncReason reason, uint32_t epoch, bool fall
 
 
 /* At start-up, still free running and with nothing yet to steer by: puts
- * the epoch on the second of a time-of-day source (the RTC) once it is
- * GOOD, in one interval, so the seconds shown change with its seconds.
- * Once only: from then on the epoch is left to the sources that steer. */
+ * the epoch on the second of a time-of-day source (the RTC) the first
+ * epoch it is GOOD, in one interval, so the seconds shown change with its
+ * seconds. Once only: from then on the epoch is left to the sources that
+ * steer. */
 static void align_to_time_of_day(void)
 {
     uint8_t index;
@@ -422,8 +423,7 @@ static void align_to_time_of_day(void)
     {
         const SyncSourceTracker *tracker = &status.sources[index];
 
-        if (!sources[index].steers && tracker->check == SYNC_CHECK_GOOD &&
-            tracker->good_run >= SYNC_QUALIFY_EPOCHS && tracker->phase_valid)
+        if (!sources[index].steers && tracker->check == SYNC_CHECK_GOOD && tracker->phase_valid)
         {
             status.aligned = true;
             status.aligned_to = index;
@@ -432,6 +432,29 @@ static void align_to_time_of_day(void)
             return;
         }
     }
+}
+
+
+// Still to be aligned onto a time-of-day source that has a time but not
+// yet its second (the RTC being searched for), and not for long yet.
+static bool time_of_day_pending(void)
+{
+    uint8_t index;
+
+    if (status.aligned || status.steered || status.epochs >= SYNC_ALIGN_WAIT_EPOCHS)
+    {
+        return false;
+    }
+    for (index = 0; index < SYNC_SOURCE_COUNT; index++)
+    {
+        const SyncSourceReport *report = &status.sources[index].report;
+
+        if (!sources[index].steers && report->present && report->time_valid && !report->edge)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -444,6 +467,10 @@ static void follow_sources(uint32_t epoch)
     switch (status.state)
     {
         case SYNC_FREE_RUN:
+            if (time_of_day_pending())
+            {
+                break; // the RTC first
+            }
             best = best_source(SYNC_SOURCE_NONE);
             if (best != SYNC_SOURCE_NONE)
             {
@@ -701,8 +728,9 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
         status.fallback = false;
     }
     update_holdover_bound();
-    follow_sources(snapshot->timer.sequence);
+    // Before a source is taken up in the same epoch: the RTC first.
     align_to_time_of_day();
+    follow_sources(snapshot->timer.sequence);
 
     update.usable = is_tracking() && source_usable(status.source) &&
                     status.sources[status.source].report.captured;

@@ -65,13 +65,14 @@
 #define PCF8563_VL      0x80U // seconds
 #define PCF8563_CENTURY 0x80U // century/months
 
-/* From the release of STOP to the first seconds increment: 0.507813 to
- * 0.507935 s by NXP's data sheets for this prescaler (the two lower stages,
- * 8.192 kHz, are not reset, hence the spread); the middle of that. Clones
- * may differ: the RTC source measures the result of every aligned write and
+/* From the release of STOP to the first seconds increment. Measured on two
+ * V2 boards (2026-10-21, aligned writes timed against GNSS and NTP): about
+ * 492.12 ms with the 70 us of the release itself, i.e. 63/128 s, where
+ * NXP's PCA85063A data sheet gives 0.507813 to 0.507935 s (65/128) for its
+ * prescaler. The RTC source measures the result of every aligned write and
  * corrects the next one, so this is only where it starts. */
 #ifndef PCF8563_START_DELAY_NS
-#define PCF8563_START_DELAY_NS 507874000UL
+#define PCF8563_START_DELAY_NS 492187500UL // 63/128 s
 #endif
 
 // 2000-01-01T00:00:00Z: the chip's calendar starts here.
