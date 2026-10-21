@@ -550,14 +550,36 @@ static void print_sources_state(Stream *output, const SML_STAT_SOURCES_PAYLOAD *
 }
 
 
+/* chronyc's markers: * in use, + the second choice, x discounted: the PIC
+ * has the source's time but judged it unfit, beyond its accuracy limit
+ * (INACCURATE) or not following on from its own last label (INCONSISTENT);
+ * ? unusable: nothing to judge (absent, no time, no edge, unlabelled, or
+ * not judged yet, holdover with nothing to hold included). A source taken
+ * as a fallback while INACCURATE is in use: *. */
+static char source_marker(const SML_STAT_SOURCES_PAYLOAD *sources, const SML_SOURCE_ENTRY *entry)
+{
+    if (entry->source == sources->selected)
+    {
+        return '*';
+    }
+    if (entry->verdict == SML_VERDICT_INACCURATE || entry->verdict == SML_VERDICT_INCONSISTENT)
+    {
+        return 'x';
+    }
+    if (entry->verdict != SML_VERDICT_GOOD)
+    {
+        return '?';
+    }
+    return entry->source == sources->second ? '+' : ' ';
+}
+
+
 static void print_source_row(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sources,
                              const SML_SOURCE_ENTRY *entry, bool verbose)
 {
     bool holdover = entry->source == SML_SOURCE_HOLDOVER;
 
-    output->printf("%c ", entry->source == sources->selected ? '*'
-                          : entry->source == sources->second ? '+'
-                                                             : ' ');
+    output->printf("%c ", source_marker(sources, entry));
     if (verbose)
     {
         output->printf("%-3s ", entry->rank != 0 ? String(entry->rank).c_str() : "-");
@@ -593,7 +615,8 @@ static void print_source_row(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sou
 
 
 /*
- * Like chronyc sources: * marks the source in use, + the second choice.
+ * Like chronyc sources: * marks the source in use, + the second choice,
+ * x one discounted, ? one unusable (source_marker).
  * Ranked entries first, then the rest in the order sent. Without verbose,
  * sources never seen are left out, as are the rank, the source's own
  * figure, the run and the edge.

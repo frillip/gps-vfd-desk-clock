@@ -154,7 +154,7 @@ The PIC's diagnostics are controlled from here too (SML 1.3):
 
 | Command | Effect |
 | --- | --- |
-| `pic-show-sources [-v]` | The PIC's time sources as a table: verdict, bound, phase and when each was last good; `*` marks the one in use and `+` the one that would come next |
+| `pic-show-sources [-v]` | The PIC's time sources as a table: verdict, bound, phase and when each was last good; `*` marks the one in use, `+` the one that would come next, `x` one discounted (its time beyond the accuracy limit, or inconsistent) and `?` one unusable (absent, or without time, pulse or label), as `chronyc sources` does |
 | `pic-debug` | Shows which debug output is on |
 | `pic-debug gnss sync` | Turns exactly that output on |
 | `pic-debug-enable [names]` | Turns output on, all of it without names |
