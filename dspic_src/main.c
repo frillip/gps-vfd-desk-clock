@@ -7,11 +7,14 @@
  * and time of day in sync/ (sync/sync.h); the timing hardware and control
  * loop in timing/ (timing/timing_config.h); the GNSS receiver link in gnss/
  * (gnss/gnss.h); the ESP32 link in esp/ (esp/esp_link.h, SML protocol); the
- * tubes in ui/display.h and local time in ui/timezone.h.
+ * tubes in ui/display.h and local time in ui/timezone.h; the I2C bus and the
+ * RTC in drivers/ (drivers/i2c1.h, drivers/pcf8563.h).
  */
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "drivers/i2c1.h"
+#include "drivers/pcf8563.h"
 #include "esp/esp_link.h"
 #include "gnss/gnss.h"
 #include "platform/system.h"
@@ -65,6 +68,18 @@ static void service_gnss(void)
     reference.observed_ms = edge.observed_ms;
     reference.valid = edge.valid;
     gnss_service(scheduler_now_ms(), reference);
+}
+
+
+// The clock's time, for the RTC's printed offset.
+static Pcf8563Reference rtc_reference(void)
+{
+    const SyncStatus *status = sync_status();
+    Pcf8563Reference reference;
+
+    reference.utc_seconds = status->time.utc_seconds;
+    reference.known = status->time.known;
+    return reference;
 }
 
 
@@ -144,6 +159,8 @@ static void report_minute(void)
         sync_report_status();
         display_print();
         timezone_print(sync_status()->time.utc_seconds);
+        pcf8563_print(epoch_timer_ms(), rtc_reference());
+        i2c1_print();
         esp_link_print();
     }
 }
@@ -164,6 +181,9 @@ int main(void)
     timing_init(&capture_sync);
     timing_report_sync(&capture_sync);
     gnss_init(FCY, epoch_timer_ms());
+    // The RTC is only read and printed for now: the RTC source is to come.
+    i2c1_init();
+    pcf8563_init(epoch_timer_ms());
     timezone_init();
     display_init();
     scheduler_init();
@@ -192,6 +212,8 @@ int main(void)
             service_gnss();
             esp_link_service(scheduler_now_ms());
             source_ntp_service(scheduler_now_ms());
+            i2c1_service(scheduler_now_ms());
+            (void)pcf8563_service(scheduler_now_ms(), rtc_reference());
         }
 
         if (scheduler_due(&display_load))

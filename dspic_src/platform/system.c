@@ -9,8 +9,9 @@
 #pragma config JTAGEN = OFF
 
 // FPOR
-// Alternate I2C1 pins: I2C1 mapped to SDA1/SCL1 pins
-#pragma config ALTI2C1 = OFF
+// Alternate I2C1 pins: I2C1 mapped to ASDA1/ASCL1 (RB9/RB8), where the RTC
+// and sensors are wired. As V2. OFF would put I2C1 on SDA1/SCL1 instead.
+#pragma config ALTI2C1 = ON
 // Alternate I2C2 pins: I2C2 mapped to SDA2/SCL2 pins
 #pragma config ALTI2C2 = OFF
 // Watchdog Window Select bits: WDT Window is 25% of WDT period

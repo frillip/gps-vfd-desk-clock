@@ -56,7 +56,7 @@ cd tests/host && make
 | --- | --- |
 | `main.c`, `scheduler.c/.h` | The task list and the cooperative scheduler that runs it |
 | `platform/` | Clock and configuration bits, the pin map, millisecond helpers, UTC and calendar arithmetic |
-| `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers |
+| `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers, I2C1 and the PCF8563 RTC |
 | `timing/` | PPS capture, the epoch timer and output, the control loop, and its console report |
 | `sync/` | Time source evaluation and selection, holdover, and the UTC second of each epoch |
 | `gnss/` | UBX parsing, decoding and encoding, receiver detection, epoch assembly, the GNSS state |
@@ -77,7 +77,7 @@ cd tests/host && make
 | RA10 | Status LED, lit for the 100ms epoch pulse |
 | RA7 / RA0 | Push button / toggle switch |
 | RB7 | Buzzer |
-| RB8 / RB9 | I2C1, not used yet |
+| RB8 / RB9 | I2C1 on its alternate pins ASCL1/ASDA1 (ALTI2C1 = ON): the PCF8563 RTC (and, to come, the light sensor) |
 | RB13 | Not connected: pulsed at startup to check that the capture timebases agree |
 
 The full pin table, with the remappable pin numbers, is at the top of [platform/board.h](platform/board.h). Code elsewhere uses the function names, never the port names.
@@ -222,14 +222,22 @@ It also gives virtual holdover trials, which build up over hours. While the loop
 
 XC16's printf turned out to cost about 1.5ms a call, and the epoch lines took 67ms of every second. They are now built with the small formatter in [ui/text.c](ui/text.c), which produces identical output in about 2ms. The minute reports still use printf, so they run late in the second, clear of the epoch work and the GNSS traffic that follows each navigation solution.
 
+# I2C and the RTC
+
+I2C1 runs at 400kHz, as on V2, but nothing waits for it. A driver queues a transfer (bytes to write, then optionally a repeated start and bytes to read), and the master interrupt carries it through a byte at a time. The driver checks the result later from the main loop. A transfer that has not finished within 20ms is abandoned. After that, or after a bus collision, the bus is recovered: SCL is clocked by hand until any slave that was part-way through a byte releases SDA, and a stop is sent. The same recovery runs at start-up, because a PIC reset in the middle of a read leaves the RTC holding SDA low.
+
+The PCF8563 driver is V2's, ported onto this. It reads the control registers and the time in one transfer and reports whether the time can be trusted: VL (the oscillator lost power) and STOP must be clear and the date must be real. A write clears STOP and VL and is read back to confirm it. The RTC is read and printed at start-up, then read every minute (or tried every 10s while it does not answer), and shown in `pic-info` and the minute report. Unlike V2, the century bit is honoured (1 for 2100 onwards), and the time is converted as UTC rather than through `mktime()`.
+
+The RTC does not yet feed the clock. That comes with the RTC source.
+
 # Not yet ported
 
 The V2 firmware did rather more than this. Still to come:
 
 - the menu, buttons, buzzer and alarm;
 - the other display modes and the 12-hour format;
-- the I2C sensors and automatic brightness;
-- the RTC;
+- the light sensor and automatic brightness;
+- the RTC as a time source (it is read and printed, and `pic-set-rtc` writes it, but the clock does not take its time from it yet);
 - settings in flash;
 - GNSS provisioning;
 - keeping the debug mask over a reset;

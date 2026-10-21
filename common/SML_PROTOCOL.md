@@ -632,7 +632,7 @@ Commands run by the PIC:
 | 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-GNSS and STAT-UI: the message, then ACK. Others: NACK UNSUPPORTED |
 | 0x0010 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
 | 0x0011 | `RESET` | — | ✓ ACK, flush, then software reset |
-| 0x0020 | `SET_RTC` | UTC seconds | NACK UNSUPPORTED (RTC not ported) |
+| 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY mid-request. The RTC is printed once read back. The clock's own time is not changed |
 | 0x0030 | `SET_TZ_OFFSET` | Manual base offset, signed s | ✓ Within ±86399 |
 | 0x0031 | `SET_TZ_AUTO` | 0/1 | ✓ |
 | 0x0032 | `SET_DST_OFFSET` | Manual DST amount, signed s | ✓ Within ±86399 |

@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "../drivers/i2c1.h"
+#include "../drivers/pcf8563.h"
 #include "../drivers/tubes.h"
 #include "../gnss/gnss.h"
 #include "../platform/board.h"
@@ -510,9 +512,14 @@ void esp_report_stat_sources(uint32_t epoch_sequence, SML_STAT_SOURCES_PAYLOAD *
 void esp_report_print_all(uint32_t now_ms)
 {
     const SyncStatus *status = sync_status();
+    Pcf8563Reference clock;
 
+    clock.utc_seconds = status->time.utc_seconds;
+    clock.known = status->time.known;
     sync_report_status();
     gnss_print(now_ms);
     display_print();
     timezone_print(status->time.utc_seconds);
+    pcf8563_print(now_ms, clock);
+    i2c1_print();
 }

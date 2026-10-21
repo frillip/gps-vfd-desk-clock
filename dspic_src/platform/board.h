@@ -15,8 +15,8 @@
  *   RB5   PGED                 programming / debug data              ICSP
  *   RB6   PGEC                 programming / debug clock             ICSP
  *   RB7   UI_BUZZER            buzzer, active high                   GPIO
- *   RB8   I2C1_SCL             sensor and RTC bus clock              I2C1
- *   RB9   I2C1_SDA             sensor and RTC bus data               I2C1
+ *   RB8   I2C1_SCL             sensor and RTC bus clock (ASCL1)      I2C1, ALTI2C1 = ON
+ *   RB9   I2C1_SDA             sensor and RTC bus data (ASDA1)       I2C1, ALTI2C1 = ON
  *   RB10  DISPLAY_LATCH_OC     the epoch output (RP42): latches the  OC1
  *                              tubes on the second, read back by
  *                              IC3/IC4 and timed by the receiver
@@ -88,6 +88,16 @@
 #define DISPLAY_LATCH_OC_RPIN    0x2AU // RB10 = RP42  -> IC3/IC4 (epoch output loopback)
 #define CAPTURE_SYNC_STROBE_RPIN 0x2DU // RB13 = RPI45 -> all ICs, start-up check only
 #define ESP_PPS_RPIN             0x2FU // RB15 = RP47  -> IC1/IC2 while NTP is selected
+
+// ---- I2C1 bus recovery --------------------------------------------------------
+// Only while the module is off (drivers/i2c1.c): the pins as open drain,
+// LAT held at 0 and TRIS choosing between pulling low and letting go.
+#define I2C1_SCL_IS_HIGH()  (_RB8 != 0)
+#define I2C1_SDA_IS_HIGH()  (_RB9 != 0)
+#define I2C1_SCL_RELEASE()  (_TRISB8 = 1)
+#define I2C1_SDA_RELEASE()  (_TRISB9 = 1)
+#define I2C1_SCL_PULL_LOW() (_LATB8 = 0, _TRISB8 = 0)
+#define I2C1_SDA_PULL_LOW() (_LATB9 = 0, _TRISB9 = 0)
 
 void board_init(void);
 
