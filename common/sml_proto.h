@@ -3,6 +3,10 @@
  * Draft for manual review. Payloads other than TIME-AUTH are provisional.
  * Specification: common/SML_PROTOCOL.md. This header is the single shared
  * copy for the dsPIC and the ESP32; do not fork it.
+ * 2026-10-21 (1.3): STAT-SOURCES added (the PIC's time sources, ranked);
+ * SML_SOURCE_HOLDOVER; TIME-PIC second_source (was reserved); TIME-NTP
+ * CORRECTING flag; SML_USER_SET_DEBUG with SML_DEBUG_* subsystem bits, and
+ * SML_USER_SHOW_SOURCES.
  * 2026-10-19 (1.2): TIME-CTRL made lossless (exact Kalman/servo fixed-point
  * state); TIME-MEAS added (raw per-epoch measurements for statistics/ADEV);
  * STAT-NET added (ESP network/service status, ESP -> PIC); NTP WIFI_CONNECTED
@@ -50,7 +54,7 @@
 #define SML_TZ_TRANSITION_MAX 8U
 #define SML_SETTINGS_SCHEMA   1U
 #define SML_PROTOCOL_MAJOR    1U
-#define SML_PROTOCOL_MINOR    2U
+#define SML_PROTOCOL_MINOR    3U
 
 #define SML_CLASS_TIME 0x10U
 #define SML_CLASS_TZ   0x20U
@@ -74,6 +78,7 @@
 #define SML_STAT_SUPPLY   0x20U // SML-STAT-SUPPLY
 #define SML_STAT_SETTINGS 0x30U // SML-STAT-SETTINGS
 #define SML_STAT_NET      0x40U // SML-STAT-NET (ESP -> PIC)
+#define SML_STAT_SOURCES  0x50U // SML-STAT-SOURCES: the PIC's time sources, ranked
 #define SML_STAT_DEBUG    0xF0U // SML-STAT-DEBUG
 #define SML_CMD_USER      0x10U // SML-CMD-USER
 #define SML_CMD_RESPONSE  0x20U // SML-CMD-RESPONSE
@@ -93,6 +98,7 @@
 #define SML_SOURCE_ESP         3U // ESP holdover/internal time, not a fresh NTP fix
 #define SML_SOURCE_NTP         4U
 #define SML_SOURCE_GNSS        5U
+#define SML_SOURCE_HOLDOVER    6U // the PIC's own oscillator, held: STAT-SOURCES, TIME-PIC second
 #define SML_LOCK_UNINITIALISED 0U
 #define SML_LOCK_ACQUIRING     1U
 #define SML_LOCK_LOCKED        2U
@@ -161,6 +167,26 @@
 // STAT-UI menu_state: 0 outside the menu. Menu values are frozen when the
 // V2+ menu is ported; until then only SML_MENU_NONE is sent.
 #define SML_MENU_NONE 0U
+// STAT-SOURCES verdict: the PIC's judgement of a source's latest report, GOOD
+// or the first reason it is not.
+#define SML_VERDICT_NONE         0U // not judged yet
+#define SML_VERDICT_ABSENT       1U // not answering
+#define SML_VERDICT_NO_TIME      2U // does not know UTC (no fix, NTP unsynced)
+#define SML_VERDICT_NO_EDGE      3U // no edge seen this epoch
+#define SML_VERDICT_UNLABELLED   4U // an edge, but its UTC second is unknown
+#define SML_VERDICT_INACCURATE   5U // its own uncertainty is above the PIC's limit
+#define SML_VERDICT_INCONSISTENT 6U // label does not follow on from the last one
+#define SML_VERDICT_GOOD         7U
+// SML_USER_SET_DEBUG: the PIC's console diagnostics, by subsystem. State
+// changes and warnings are always printed; these gate the periodic output.
+#define SML_DEBUG_TIMING  0x0001U // per epoch: captures, loop, servo, receiver's view
+#define SML_DEBUG_GNSS    0x0002U // per epoch: the GNSS edge and its label
+#define SML_DEBUG_SYNC    0x0004U // per epoch: the synchroniser's state
+#define SML_DEBUG_SOURCES 0x0008U // per epoch: every candidate, ranked
+#define SML_DEBUG_NTP     0x0010U // per epoch: the latest TIME-NTP and its pairing
+#define SML_DEBUG_MINUTE  0x0020U // each minute: scheduler, GNSS and sync reports
+#define SML_DEBUG_TUNING  0x0040U // each minute: loop and source statistics
+#define SML_DEBUG_ALL     0x007FU
 
 #define SML_AUTH_UTC_VALID          0x0001U
 #define SML_AUTH_UNCERTAINTY_VALID  0x0002U
@@ -192,11 +218,15 @@
 #define SML_GNSS_LEAP_VALID         0x0020U
 #define SML_GNSS_LEAP_EVENT_VALID   0x0040U
 // 0x0001 (former SML_NTP_WIFI_CONNECTED) moved to STAT-NET; reserved.
-#define SML_NTP_TIME_VALID           0x0002U
-#define SML_NTP_UPDATE_VALID         0x0004U
-#define SML_NTP_PPS_SYNC             0x0008U
-#define SML_NTP_SCHEDULER_SYNC       0x0010U
-#define SML_NTP_UNCERTAINTY_VALID    0x0020U
+#define SML_NTP_TIME_VALID        0x0002U
+#define SML_NTP_UPDATE_VALID      0x0004U
+#define SML_NTP_PPS_SYNC          0x0008U
+#define SML_NTP_SCHEDULER_SYNC    0x0010U
+#define SML_NTP_UNCERTAINTY_VALID 0x0020U
+#define SML_NTP_CORRECTING        0x0040U // a step or fast slew is moving the edge
+// The fastest the ESP slews a routine correction; anything faster is flagged
+// SML_NTP_CORRECTING while it lasts.
+#define SML_NTP_GENTLE_SLEW_PPM      5U
 #define SML_TZ_VALID                 0x0001U // single gating flag for the whole state
 #define SML_TZ_AMBIGUOUS             0x0002U // informational: best guess near a boundary
 #define SML_TZ_ENTRY_DST_ACTIVE      0x01U   // per-entry flag; includes negative DST
@@ -292,6 +322,9 @@
 #define SML_SETTINGS_BODY_BYTES 28U
 #define SML_STAT_SETTINGS_BYTES 36U
 #define SML_STAT_NET_BYTES      24U
+#define SML_SOURCE_ENTRY_BYTES  24U
+#define SML_SOURCES_ENTRIES     4U
+#define SML_STAT_SOURCES_BYTES  108U
 #define SML_CMD_USER_BYTES      10U
 #define SML_CMD_RESPONSE_BYTES  12U
 #define SML_CMD_SETTINGS_BYTES  38U
@@ -349,7 +382,7 @@ typedef struct
     uint8_t sync_state;
     uint8_t previous_sync_state;
     uint8_t last_sync_cause;
-    uint8_t reserved;
+    uint8_t second_source; // SML_SOURCE_*, HOLDOVER included; NONE: no second choice
     uint32_t epoch_sequence;
     uint32_t fosc_hz;
     uint32_t pps_period_cycles;
@@ -504,6 +537,8 @@ typedef struct
      * bit 3: SML_NTP_PPS_SYNC
      * bit 4: SML_NTP_SCHEDULER_SYNC
      * bit 5: SML_NTP_UNCERTAINTY_VALID
+     * bit 6: SML_NTP_CORRECTING (a step, or a slew faster than
+     *        SML_NTP_GENTLE_SLEW_PPM, is moving the edge; clear once done)
      * All other bits reserved; transmit zero. */
     uint16_t flags;
     uint8_t source;
@@ -745,6 +780,62 @@ typedef struct
     uint32_t esp_version;
 } SML_STAT_NET_PAYLOAD;
 
+/* SML-STAT-SOURCES, PIC -> ESP. The PIC's time sources as its synchroniser
+ * sees them: one entry per candidate, holdover included, and which is in
+ * use and which would be next. Sent on change (selection, second choice,
+ * sync state or any verdict; at most once an epoch), every 10 s, and in
+ * answer to SML_USER_SHOW_SOURCES (before the ACK).
+ * Each entry's source is SML_SOURCE_GNSS, NTP, RTC or HOLDOVER; SML_SOURCE_NONE
+ * marks an unused entry. Entries are in no particular order: rank orders them
+ * (1 = best, 0 = not a candidate). */
+#define SML_SOURCES_SYNCHRONISED 0x0001U // the PIC counts itself synchronised
+#define SML_SOURCES_FALLBACK     0x0002U // selected only as a fallback (INACCURATE kept)
+#define SML_ENTRY_PRESENT        0x01U
+#define SML_ENTRY_TIME_VALID     0x02U
+#define SML_ENTRY_EDGE           0x04U // its edge was seen this epoch
+#define SML_ENTRY_CAPTURED       0x08U // ... by the capture hardware: it can steer
+#define SML_ENTRY_LABELLED       0x10U // the edge's UTC second is known
+#define SML_ENTRY_PHASE_VALID    0x20U
+#define SML_ENTRY_BOUND_VALID    0x40U // a candidate: bound_ns is set
+typedef struct
+{
+    uint8_t source;  // SML_SOURCE_*
+    uint8_t verdict; // SML_VERDICT_*
+    uint8_t rank;    // 1 = best; 0 = not a candidate
+    /* flags:
+     * bit 0: SML_ENTRY_PRESENT
+     * bit 1: SML_ENTRY_TIME_VALID
+     * bit 2: SML_ENTRY_EDGE
+     * bit 3: SML_ENTRY_CAPTURED
+     * bit 4: SML_ENTRY_LABELLED
+     * bit 5: SML_ENTRY_PHASE_VALID
+     * bit 6: SML_ENTRY_BOUND_VALID
+     * bit 7: reserved; transmit zero. */
+    uint8_t flags;
+    uint16_t good_run;       // consecutive GOOD epochs, saturating
+    uint16_t usable_run;     // consecutive GOOD or INACCURATE epochs, saturating
+    uint32_t bound_ns;       // +/- bound the PIC ranks it by (BOUND_VALID)
+    uint32_t uncertainty_ns; // the source's own figure; holdover: the bound when held
+    int32_t phase_ns;        // the PIC's epoch minus the source's UTC second (PHASE_VALID)
+    uint32_t age_s;          // since its last GOOD epoch; holdover: since last steered
+} SML_SOURCE_ENTRY;
+
+typedef struct
+{
+    /* flags:
+     * bit 0: SML_SOURCES_SYNCHRONISED
+     * bit 1: SML_SOURCES_FALLBACK
+     * All other bits reserved; transmit zero. */
+    uint16_t flags;
+    uint8_t sync_state;     // SML_SYNC_*
+    uint8_t selected;       // SML_SOURCE_* in use: HOLDOVER while holding; NONE
+    uint8_t second;         // the best other candidate, or SML_SOURCE_NONE
+    uint8_t challenger;     // a candidate on its way to taking over, or SML_SOURCE_NONE
+    uint16_t challenge_run; // epochs it has been better by the switching margin
+    uint32_t epoch_sequence;
+    SML_SOURCE_ENTRY entries[SML_SOURCES_ENTRIES];
+} SML_STAT_SOURCES_PAYLOAD;
+
 /* Shared settings body. No EEPROM marker/checksum or action/reset flags.
  * Persistent selected display only; current runtime mode belongs in STAT-UI.
  * TZ_AUTO: base offset from the held TZ-STATE, else base_offset_s.
@@ -848,7 +939,9 @@ typedef struct
 #define SML_USER_SHOW_CONFIG         0x0071U
 #define SML_USER_DEFAULTS            0x0072U
 #define SML_USER_SAVE                0x0073U
+#define SML_USER_SHOW_SOURCES        0x0074U // STAT-SOURCES, then ACK
 #define SML_USER_ENTER_BOOTLOADER    0x0080U
+#define SML_USER_SET_DEBUG           0x0090U // clear << 16 | set: SML_DEBUG_* bits
 #define SML_USER_ESP_FIRST           0x8000U // codes from here run on the ESP
 #define SML_USER_ESP_RESET           0x8010U
 #define SML_USER_ESP_WIFI_CLEAR      0x8020U // forget credentials
@@ -907,6 +1000,8 @@ SML_SIZE_CHECK(SML_STAT_SUPPLY_PAYLOAD, SML_STAT_SUPPLY_BYTES);
 SML_SIZE_CHECK(SML_SETTINGS_BODY, SML_SETTINGS_BODY_BYTES);
 SML_SIZE_CHECK(SML_STAT_SETTINGS_PAYLOAD, SML_STAT_SETTINGS_BYTES);
 SML_SIZE_CHECK(SML_STAT_NET_PAYLOAD, SML_STAT_NET_BYTES);
+SML_SIZE_CHECK(SML_SOURCE_ENTRY, SML_SOURCE_ENTRY_BYTES);
+SML_SIZE_CHECK(SML_STAT_SOURCES_PAYLOAD, SML_STAT_SOURCES_BYTES);
 SML_SIZE_CHECK(SML_CMD_USER_PAYLOAD, SML_CMD_USER_BYTES);
 SML_SIZE_CHECK(SML_CMD_RESPONSE_PAYLOAD, SML_CMD_RESPONSE_BYTES);
 SML_SIZE_CHECK(SML_CMD_SETTINGS_PAYLOAD, SML_CMD_SETTINGS_BYTES);

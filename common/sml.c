@@ -9,6 +9,7 @@
 
 #define TZ_ENTRY_FIELDS      4, 4, 2, 1, 1
 #define SETTINGS_BODY_FIELDS 2, 2, 4, 4, 4, 4, 4, 2, 1, 1
+#define SOURCE_ENTRY_FIELDS  1, 1, 1, 1, 2, 2, 4, 4, 4, 4
 
 static const uint8_t layout_time_auth[] = {2, 1, 1, 4, 4, 4, 0};
 static const uint8_t layout_time_pic[] = {2, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 2, 0};
@@ -40,6 +41,18 @@ static const uint8_t layout_stat_ui[] = {2, 1, 1, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 
 static const uint8_t layout_stat_env[] = {2, 2, 2, 2, 2, 2, 2, 0};
 static const uint8_t layout_stat_supply[] = {2, 2, 2, 2, 2, 2, 2, 0};
 static const uint8_t layout_stat_net[] = {2, 1, 1, 4, 4, 4, 4, 4, 0};
+static const uint8_t layout_stat_sources[] = {2,
+                                              1,
+                                              1,
+                                              1,
+                                              1,
+                                              2,
+                                              4,
+                                              SOURCE_ENTRY_FIELDS,
+                                              SOURCE_ENTRY_FIELDS,
+                                              SOURCE_ENTRY_FIELDS,
+                                              SOURCE_ENTRY_FIELDS,
+                                              0};
 static const uint8_t layout_stat_settings[] = {2, 2, 4, SETTINGS_BODY_FIELDS, 0};
 static const uint8_t layout_cmd_user[] = {2, 2, 2, 4, 0};
 static const uint8_t layout_cmd_response[] = {2, 2, 2, 2, 4, 0};
@@ -68,6 +81,8 @@ static const SmlMessage messages[] = {
     {SML_CLASS_STAT, SML_STAT_SETTINGS, SML_STAT_SETTINGS_BYTES, PIC, layout_stat_settings,
      "STAT-SETTINGS"},
     {SML_CLASS_STAT, SML_STAT_NET, SML_STAT_NET_BYTES, ESP, layout_stat_net, "STAT-NET"},
+    {SML_CLASS_STAT, SML_STAT_SOURCES, SML_STAT_SOURCES_BYTES, PIC, layout_stat_sources,
+     "STAT-SOURCES"},
     {SML_CLASS_STAT, SML_STAT_DEBUG, 0U, PIC, layout_text, "STAT-DEBUG"},
     {SML_CLASS_CMD, SML_CMD_USER, SML_CMD_USER_BYTES, PIC | ESP, layout_cmd_user, "CMD-USER"},
     {SML_CLASS_CMD, SML_CMD_RESPONSE, SML_CMD_RESPONSE_BYTES, PIC | ESP, layout_cmd_response,

@@ -192,6 +192,10 @@ typedef enum
 
     /* Appended so existing command numbers are unchanged. */
     USER_CMD_PIC_GNSS_PROVISION,
+    USER_CMD_PIC_SHOW_SOURCES,
+    USER_CMD_PIC_DEBUG,
+    USER_CMD_PIC_DEBUG_ENABLE,
+    USER_CMD_PIC_DEBUG_DISABLE,
 } USER_CMD;
 
 typedef enum

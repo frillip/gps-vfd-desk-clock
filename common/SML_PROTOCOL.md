@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 1.2 (`SML_PROTOCOL_MAJOR` 1, `SML_PROTOCOL_MINOR` 2) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 1.3 (`SML_PROTOCOL_MAJOR` 1, `SML_PROTOCOL_MINOR` 3) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -128,6 +128,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x20 | STAT-SUPPLY | PIC→ESP | 14 | — V3 hardware | Every few seconds |
 | | 0x30 | STAT-SETTINGS | PIC→ESP | 36 | — Settings store not yet ported | On change, after reset, on request |
 | | 0x40 | STAT-NET | ESP→PIC | 24 | ✓ Received and held | On change, and every 10 seconds |
+| | 0x50 | STAT-SOURCES | PIC→ESP | 108 | — To do (1.3) | On change, every 10 seconds, and on request |
 | | 0xF0 | STAT-DEBUG | PIC→ESP | 1–240 | ✓ Sent in SML mode | As text is produced |
 | 0x80 CMD | 0x10 | CMD-USER | Both ways | 10 | ✓ Runs PIC codes, sends ESP codes | On demand |
 | | 0x20 | CMD-RESPONSE | Both ways | 12 | ✓ | One per command |
@@ -171,7 +172,7 @@ _Epoch timer and synchroniser. PIC→ESP, 38 bytes._
 | 4 | sync_state | u8 | `SML_SYNC_*`, see [Synchroniser state](#synchroniser-state) |
 | 5 | previous_sync_state | u8 | `SML_SYNC_*` before the latest change |
 | 6 | last_sync_cause | u8 | `SML_CAUSE_*`, see [Cause of the latest change](#cause-of-the-latest-change) |
-| 7 | reserved | u8 | 0 |
+| 7 | second_source | u8 | `SML_SOURCE_*` the PIC would turn to next, `HOLDOVER` included; `NONE` if there is none (1.3; 0 from older PICs) |
 | 8 | epoch_sequence | u32 | Epochs since the PIC started |
 | 12 | fosc_hz | u32 | Timer clock (FCY) measured against the reference, Hz (`FREQUENCY_VALID`) |
 | 16 | pps_period_cycles | u32 | Latest reference PPS period, timer cycles (`PERIOD_VALID`) |
@@ -274,7 +275,7 @@ _ESP network time. ESP→PIC, 42 bytes._
 
 | Offset | Field | Type | Unit / values |
 | --- | --- | --- | --- |
-| 0 | flags | u16 | Bit 0 reserved (was `WIFI_CONNECTED`, now in STAT-NET), 1 `TIME_VALID`, 2 `UPDATE_VALID`, 3 `PPS_SYNC`, 4 `SCHEDULER_SYNC`, 5 `UNCERTAINTY_VALID` |
+| 0 | flags | u16 | Bit 0 reserved (was `WIFI_CONNECTED`, now in STAT-NET), 1 `TIME_VALID`, 2 `UPDATE_VALID`, 3 `PPS_SYNC`, 4 `SCHEDULER_SYNC`, 5 `UNCERTAINTY_VALID`, 6 `CORRECTING` |
 | 2 | source | u8 | `SML_SOURCE_NTP`, or `SML_SOURCE_ESP` when coasting on its own clock |
 | 3 | lock_state | u8 | `SML_LOCK_*`, the ESP's view of its own time |
 | 4 | utc_seconds | u32 | UTC of the **ESP PPS edge** this message labels, not of the UART arrival |
@@ -283,12 +284,14 @@ _ESP network time. ESP→PIC, 42 bytes._
 | 16 | pps_sequence | u32 | ESP PPS edge count |
 | 20 | last_update_utc | u32 | UTC of the last NTP exchange (`UPDATE_VALID`) |
 | 24 | update_age_ms | u16 | Age of that exchange; saturates as a matter of course with long poll intervals |
-| 26 | update_interval_s | u32 | NTP poll interval, s |
+| 26 | update_interval_s | u32 | NTP poll interval in use, s (adaptive on the ESP) |
 | 30 | round_trip_us | u32 | Last round trip, µs |
 | 34 | last_offset_us | i32 | Last NTP offset (estimated UTC minus ESP time), µs |
 | 38 | frequency_estimate_ppt | i32 | ESP clock frequency error, 10⁻¹² |
 
 The ESP sends TIME-NTP after each of its PPS edges. That gives the PIC an edge on RB15 and a label for it, which is what an NTP sync source needs. The V2+ PIC pairs each one with the latest ESP edge it has seen (`sync/source_ntp.c`), and corrects that edge by `utc_phase_ns` when steering to it.
+
+`last_update_utc` changes at every NTP poll, and each poll brings a correction. A routine correction is slewed in no faster than `SML_NTP_GENTLE_SLEW_PPM` (5ppm), spread over about two poll intervals, so the edge moves by at most a few microseconds from one second to the next and a receiver can simply follow it. A step, or a correction large enough to be slewed faster, sets `CORRECTING` for as long as it lasts: the edge is then moving faster than any tracking loop should believe, and a receiver may hold its frequency estimate or re-acquire.
 
 ## TIME-RTC (0x40)
 
@@ -572,6 +575,40 @@ STAT-NET carries the network and service status for the PIC's menu and status di
 
 STAT-NET is sent on change and every 10 seconds. The PIC treats the network state as unknown after 30 seconds without one (`ESP_LINK_NET_TIMEOUT_MS`).
 
+## STAT-SOURCES (0x50)
+
+_The PIC's time sources, ranked. PIC→ESP, 108 bytes._
+
+STAT-SOURCES shows the synchroniser's view of every candidate, holdover included: how each was judged, the bound it is ranked by, which is in use and which would come next. It is structured rather than text, so it works with the debug output off.
+
+| Offset | Field | Type | Unit / values |
+| --- | --- | --- | --- |
+| 0 | flags | u16 | Bit 0 `SYNCHRONISED` (the PIC counts itself synchronised), bit 1 `FALLBACK` (the source in use was taken as a fallback, and is kept while INACCURATE) |
+| 2 | sync_state | u8 | `SML_SYNC_*` |
+| 3 | selected | u8 | `SML_SOURCE_*` in use: `HOLDOVER` while holding over, `NONE` in free run |
+| 4 | second | u8 | The best other candidate, or `SML_SOURCE_NONE` |
+| 5 | challenger | u8 | A candidate on its way to taking over, or `SML_SOURCE_NONE` |
+| 6 | challenge_run | u16 | Epochs it has been better by the switching margin |
+| 8 | epoch_sequence | u32 | As TIME-PIC |
+| 12 | entries[0–3] | entry × 4 | One per candidate, in no particular order; `rank` orders them |
+
+Each entry is 24 bytes, and entry *k* starts at offset 12 + 24k.
+
+| Entry offset | Field | Type | Unit / values |
+| --- | --- | --- | --- |
+| 0 | source | u8 | `SML_SOURCE_GNSS`, `NTP`, `RTC` or `HOLDOVER`; `NONE` marks an unused entry |
+| 1 | verdict | u8 | `SML_VERDICT_*`, see [Verdicts](#verdicts) |
+| 2 | rank | u8 | 1 is best; 0 means not a candidate |
+| 3 | flags | u8 | Bit 0 `PRESENT`, 1 `TIME_VALID`, 2 `EDGE` (seen this epoch), 3 `CAPTURED` (by the capture hardware, so it can steer), 4 `LABELLED`, 5 `PHASE_VALID`, 6 `BOUND_VALID` |
+| 4 | good_run | u16 | Consecutive GOOD epochs, saturating |
+| 6 | usable_run | u16 | Consecutive GOOD or INACCURATE epochs, saturating |
+| 8 | bound_ns | u32 | The ± bound the PIC ranks it by, ns (`BOUND_VALID`) |
+| 12 | uncertainty_ns | u32 | The source's own figure, ns (GNSS tAcc, the ESP's NTP bound); for holdover, the bound when it was last steered (u0) |
+| 16 | phase_ns | i32 | The PIC's epoch minus the source's UTC second, ns (`PHASE_VALID`) |
+| 20 | age_s | u32 | Seconds since its last GOOD epoch; for holdover, since the loop last steered |
+
+The PIC sends STAT-SOURCES when the selection, the second choice, the sync state or any verdict changes (at most once an epoch), every 10 seconds, and in answer to `SHOW_SOURCES`, just before the ACK. On the ESP, `pic-show-sources` prints it as a table.
+
 # CMD class (0x80)
 
 ## CMD-USER (0x10)
@@ -613,9 +650,13 @@ Commands run by the PIC:
 | 0x0071 | `SHOW_CONFIG` | — | NACK UNSUPPORTED |
 | 0x0072 | `DEFAULTS` | — | NACK UNSUPPORTED (settings store) |
 | 0x0073 | `SAVE` | — | NACK UNSUPPORTED (settings store) |
+| 0x0074 | `SHOW_SOURCES` | — | To do (1.3): STAT-SOURCES, then ACK |
 | 0x0080 | `ENTER_BOOTLOADER` | — | Reserved for the bootloader. NACK UNSUPPORTED |
+| 0x0090 | `SET_DEBUG` | clear << 16 \| set, `SML_DEBUG_*` bits | To do (1.3): see below |
 
 On the V2+ PIC, settings changed by command are applied at once but not yet persisted.
+
+`SET_DEBUG` changes which of the PIC's periodic diagnostics are printed: the new mask is (old & ~clear) | set, using the bits under [Debug subsystems](#debug-subsystems). An argument of 0 changes nothing. Either way the PIC answers ACK and prints the resulting mask, by name, as STAT-DEBUG text, whatever the mask is. State changes and warnings are always printed. On the ESP, `pic-debug-enable [names]` sets bits, `pic-debug-disable [names]` clears them (all of them, without names), and `pic-debug [names]` sets the mask exactly, or with no names only shows it.
 
 Commands run by the ESP:
 
@@ -693,6 +734,8 @@ Each message has an entry in a table with its class, ID, fixed length (0 for STA
 
 The ESP side is described in the [ESP firmware README](../esp_src/README.md). In outline, it announces SML mode with CMD-USER `INFO` at start, treats STAT-DEBUG and any text outside frames as console output, pairs each TIME-AUTH with the epoch edge captured on GPIO27, sends TIME-NTP after every ESP PPS edge, STAT-NET on change and every 10 seconds, TZ-STATE and TIME-LEAP as described above, and answers the PIC's `SML_USER_ESP_*` commands.
 
+The ESP's NTP clock slews each routine correction in at 5ppm or less over about two poll intervals, and polls more often while its corrections are large (from 128 seconds up to `ntp.interval`). A step or a faster slew sets TIME-NTP `CORRECTING`.
+
 The ESP links to `common/sml.c`, `sml.h`, `sml_proto.h` and `enums.h` from inside its sketch, rather than keeping copies.
 
 ## Statistics and Allan deviation
@@ -723,6 +766,7 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | TIME-RTC, STAT-ENV, STAT-SUPPLY, TIME-VCTCXO | PIC | Once ported: RTC and VCTCXO every epoch, sensors every few seconds |
 | STAT-SETTINGS | PIC | On change, after reset, on `SHOW_SETTINGS` |
 | STAT-DEBUG | PIC | As text is produced |
+| STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to `SHOW_SOURCES` |
 | CMD-RESPONSE | Both | One per CMD-USER or CMD-SETTINGS received, plus a final one for each ACCEPTED |
 | CMD-USER (ESP codes) | PIC | On demand, from the menu |
 | STAT-NET | ESP | On change, and every 10 seconds |
@@ -745,6 +789,7 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | 3 | ESP | ESP holdover or internal time, not a fresh NTP fix |
 | 4 | NTP | NTP via the ESP |
 | 5 | GNSS | GNSS receiver |
+| 6 | HOLDOVER | The PIC's own oscillator, held: a candidate in STAT-SOURCES, and a possible TIME-PIC `second_source` (1.3) |
 
 ## Lock state
 
@@ -865,6 +910,35 @@ The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. The
 | 5 | DISCONNECTED | Configured, but the link is lost or failed |
 | 6 | PROVISIONING | Setup access point active |
 
+## Verdicts
+
+`SML_VERDICT_*`, used in STAT-SOURCES: the PIC's judgement of a source's latest report, GOOD or the first reason it is not.
+
+| Value | Name | Meaning |
+| --- | --- | --- |
+| 0 | NONE | Not judged yet |
+| 1 | ABSENT | Not answering |
+| 2 | NO_TIME | Does not know UTC (no fix, NTP not synced) |
+| 3 | NO_EDGE | No edge seen this epoch |
+| 4 | UNLABELLED | An edge, but its UTC second is unknown |
+| 5 | INACCURATE | Its own uncertainty is above the PIC's limit |
+| 6 | INCONSISTENT | Its label does not follow on from the last one |
+| 7 | GOOD | |
+
+## Debug subsystems
+
+`SML_DEBUG_*`, the bits of `SET_DEBUG`. Each gates periodic console output on the PIC.
+
+| Bit | Name | Output |
+| --- | --- | --- |
+| 0x0001 | TIMING | Per epoch: captures, loop, servo, the receiver's view |
+| 0x0002 | GNSS | Per epoch: the GNSS edge and its label |
+| 0x0004 | SYNC | Per epoch: the synchroniser's state |
+| 0x0008 | SOURCES | Per epoch: every candidate, ranked |
+| 0x0010 | NTP | Per epoch: the latest TIME-NTP and its pairing |
+| 0x0020 | MINUTE | Each minute: scheduler, GNSS and sync reports |
+| 0x0040 | TUNING | Each minute: loop and source statistics |
+
 ## Results and errors
 
 | Status | Value | | Detail | Value |
@@ -924,7 +998,7 @@ The `SML_MENU_*` values beyond NONE are frozen once the V2+ menu exists.
 
 `RESYNC` still needs defining. It could restart the control loop, re-qualify sources, or both, and is best settled alongside the NTP source.
 
-NTP is a sync source on the PIC, but its loop profile, jitter allowance and the holdover model it competes with are first guesses awaiting bench data. Nothing in SML shows the candidates yet: a STAT-SOURCES message and the `SHOW_SOURCES` and `SET_DEBUG` user commands are still to be defined.
+NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SHOW_SOURCES`, `SET_DEBUG` and TIME-PIC `second_source` are defined in 1.3 and implemented on the ESP; the PIC side is still to do. The PIC's hold of its frequency estimate after an NTP correction should key on TIME-NTP `CORRECTING` rather than on every change of `last_update_utc`, now that the ESP corrects gently at every poll.
 
 The bootloader class (0xF0) is reserved but not defined, and will be specified separately after the V2+ work.
 
@@ -938,6 +1012,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-21 (1.3) | STAT-SOURCES (0x50, PIC→ESP, 108 bytes): the PIC's time sources, ranked. `SML_SOURCE_HOLDOVER` (6). TIME-PIC offset 7 becomes `second_source` (was reserved). TIME-NTP flag bit 6 `CORRECTING`, and `SML_NTP_GENTLE_SLEW_PPM`. CMD-USER `SHOW_SOURCES` (0x0074) and `SET_DEBUG` (0x0090) with `SML_DEBUG_*` bits. `SML_VERDICT_*`. No existing layout changes length |
 | 2026-10-20 | Document only, no wire change. Rewritten in the style of the repository README. Definitions and codec now in `common/` (`sml_proto.h`, `sml.c`, `sml.h`). Link speed 921600 baud. Bootloader references reduced to the reserved class. The ESP implementation is complete and described in its own README |
 | 2026-10-19 (1.2) | TIME-CTRL redefined as lossless Kalman and servo fixed-point state (28 → 56 bytes). TIME-MEAS (0x13) added: raw per-epoch measurements for statistics and ADEV. STAT-NET (0x40, ESP→PIC) added; TIME-NTP flag bit 0 (`WIFI_CONNECTED`) retired into it. CMD-USER and CMD-RESPONSE both ways: codes 0x8000 and up run on the ESP (`SML_USER_ESP_*`). Timezone: the PIC always holds the latest TZ-STATE; `TZ_AUTO` selects the base offset and `DST_AUTO` the DST state from it, independently; `SML_UI_TZ_HELD`; `SML_TZ_SOURCE_MANUAL` redefined as ESP-side manual configuration. `SML_RTC_*` 3 is the RV-3028-C7 |
 | 2026-10-19 (1.1) | Frozen wire mappings: `SML_SYNC_*`, `SML_CAUSE_*`, `SML_CONTROL_*`, `SML_DISPLAY_*`, `SML_BUTTON_*`, `SML_MENU_NONE`. TIME-AUTH uncertainty defined as a ± bound. `SML_*_BYTES` length constants for every message. Link modes and receiver rules specified. `common/enums.h` loses the enums SML now defines. No wire layout change |
