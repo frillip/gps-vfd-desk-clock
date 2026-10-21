@@ -68,6 +68,15 @@
  *   ACQUIRE/LOCKED(s) -> ACQUIRE(t)
  *                          t beats s (see above)
  *
+ * The RTC (source_rtc.c) is a source of the time of day only: on V2 it has
+ * no edge the capture can take, so it never steers and is never a
+ * candidate (sync_source_steers). It is judged like any other, with a
+ * bound of SYNC_RTC_UNCERTAINTY_NS, and at start-up it is usually the first
+ * source with a time: the time of day is seeded from it (as above), and
+ * while still free running, before anything has steered, the epoch is
+ * stepped once onto the RTC's second (epoch_control_free_run_step), so
+ * the seconds shown change with the RTC's. GNSS or NTP take over from there.
+ *
  * Adding a source takes an id here, an adapter (see source_gnss.c) and a row
  * in the table in sync.c. Every source's edge is watched (pps_monitor), but
  * only one at a time can own the IC1/IC2 capture pair that the loop steers
@@ -90,6 +99,7 @@ typedef enum
 {
     SYNC_SOURCE_GNSS = 0,
     SYNC_SOURCE_NTP,
+    SYNC_SOURCE_RTC, // time of day only: never steers
     SYNC_SOURCE_COUNT
 } SyncSourceId;
 
@@ -130,6 +140,15 @@ typedef enum
 #ifndef SYNC_NTP_EDGE_JITTER_NS
 #define SYNC_NTP_EDGE_JITTER_NS 20000UL // 20 us
 #endif
+
+// The RTC's bound: the RTC holds UTC to the second, and how far its second
+// is from UTC's is not known for sure until the time of its last aligned
+// write can be kept over a power cycle. Its limits only require it to be
+// within that.
+#ifndef SYNC_RTC_UNCERTAINTY_NS
+#define SYNC_RTC_UNCERTAINTY_NS 999000000UL // 999 ms
+#endif
+#define SYNC_RTC_LIMIT_NS 1000000000UL
 
 // The loop profile for NTP (EpochProfile): Kp 1/64, Ki 1/16384, critically
 // damped with a time constant of about two minutes, so the ESP's edge
@@ -227,6 +246,7 @@ typedef struct
     bool leap_second;     // ... this one is 23:59:60
     UtcLeap leap;         // announced leap second in use (see sync_set_leap)
     uint32_t corrections; // times a source's label replaced the count
+    uint8_t source;       // SyncSourceId that last labelled or seeded it
 } SyncTime;
 
 // Holdover as a candidate: how far our oscillator can be trusted since the
@@ -268,6 +288,12 @@ typedef struct
 
     uint32_t transitions; // total; the latest are in history
     SyncTransition history[SYNC_HISTORY_LENGTH];
+
+    // Start-up alignment onto a time-of-day source (the RTC), once.
+    bool steered;          // a source has been selected to steer by since start
+    bool aligned;          // the epoch was stepped onto a time-of-day source
+    uint8_t aligned_to;    // ... which one
+    int32_t aligned_ticks; // ... by how much (the step requested)
 } SyncStatus;
 
 typedef struct
@@ -293,10 +319,14 @@ void sync_set_leap(const UtcLeap *leap);
 
 // A +/- bound on the UTC error of our epoch, in ns: the selected source's
 // bound and the measured phase, or the holdover bound. False when there is
-// none to give (time unknown, or free running).
+// none to give: time unknown, or free running on nothing better than a count
+// (free running on the RTC's time gives the RTC's bound).
 bool sync_uncertainty(uint32_t *uncertainty_ns);
 // Locked or in holdover, with a bound within SYNC_SYNCHRONISED_LIMIT_NS.
 bool sync_is_synchronised(void);
+// False for a source of the time of day only (the RTC), which is judged and
+// can seed the time but is never a candidate to steer by.
+bool sync_source_steers(uint8_t source);
 // A candidate's bound this epoch (a SyncSourceId or SYNC_CANDIDATE_HOLDOVER),
 // or SYNC_BOUND_NONE if it is not a candidate.
 uint32_t sync_candidate_bound(uint8_t candidate);

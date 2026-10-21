@@ -42,6 +42,7 @@
         <itemPath>sync/source_edge.h</itemPath>
         <itemPath>sync/source_ntp.h</itemPath>
         <itemPath>sync/sync_tuning.h</itemPath>
+        <itemPath>sync/source_rtc.h</itemPath>
       </logicalFolder>
       <logicalFolder name="timing" displayName="timing" projectFiles="true">
         <itemPath>timing/servo.h</itemPath>
@@ -111,6 +112,7 @@
         <itemPath>sync/source_edge.c</itemPath>
         <itemPath>sync/source_ntp.c</itemPath>
         <itemPath>sync/sync_tuning.c</itemPath>
+        <itemPath>sync/source_rtc.c</itemPath>
       </logicalFolder>
       <logicalFolder name="timing" displayName="timing" projectFiles="true">
         <itemPath>timing/servo.c</itemPath>

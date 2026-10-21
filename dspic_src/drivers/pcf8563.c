@@ -21,8 +21,12 @@ static I2cTransfer read_transfer =
     I2C_TRANSFER(PCF8563_ADDRESS, &read_address, 1U, status.registers, REGISTER_COUNT);
 static I2cTransfer write_transfer =
     I2C_TRANSFER(PCF8563_ADDRESS, write_buffer, sizeof(write_buffer), 0, 0U);
+static const uint8_t release_buffer[2] = {PCF8563_CONTROL_STATUS_1, 0x00U};
+static I2cTransfer release_transfer =
+    I2C_TRANSFER(PCF8563_ADDRESS, release_buffer, sizeof(release_buffer), 0, 0U);
 static uint32_t last_attempt_ms;
 static bool print_next; // report the next completed read on the console
+static bool auto_read = true;
 
 uint8_t pcf8563_bcd_to_binary(uint8_t bcd)
 {
@@ -104,7 +108,8 @@ void pcf8563_init(uint32_t now_ms)
 
 bool pcf8563_busy(void)
 {
-    return status.request == PCF8563_READING || status.request == PCF8563_WRITING;
+    return status.request == PCF8563_READING || status.request == PCF8563_WRITING ||
+           status.request == PCF8563_WRITING_STOPPED || status.request == PCF8563_RELEASING;
 }
 
 
@@ -118,20 +123,17 @@ bool pcf8563_read(void)
 }
 
 
-bool pcf8563_write(uint32_t utc_seconds)
+// The ten bytes from control/status 1: the time, and control as given.
+static void encode(uint32_t utc_seconds, uint8_t control_1)
 {
     UtcCivil civil;
     uint16_t days = (uint16_t)(utc_seconds / UTC_SECONDS_PER_DAY);
     uint8_t *r = &write_buffer[1];
 
-    if (pcf8563_busy() || utc_seconds < PCF8563_FIRST_UTC)
-    {
-        return false;
-    }
     utc_to_civil(utc_seconds, false, &civil);
     write_buffer[0] = PCF8563_CONTROL_STATUS_1;
-    r[PCF8563_CONTROL_STATUS_1] = 0x00U; // running (STOP clear), TESTC clear
-    r[PCF8563_CONTROL_STATUS_2] = 0x00U; // no alarm or timer interrupts
+    r[PCF8563_CONTROL_STATUS_1] = control_1;                     // STOP as given, TESTC clear
+    r[PCF8563_CONTROL_STATUS_2] = 0x00U;                         // no alarm or timer interrupts
     r[PCF8563_VL_SECONDS] = pcf8563_binary_to_bcd(civil.second); // VL cleared
     r[PCF8563_MINUTES] = pcf8563_binary_to_bcd(civil.minute);
     r[PCF8563_HOURS] = pcf8563_binary_to_bcd(civil.hour);
@@ -140,12 +142,43 @@ bool pcf8563_write(uint32_t utc_seconds)
     r[PCF8563_CENTURY_MONTHS] = (uint8_t)(pcf8563_binary_to_bcd(civil.month) |
                                           (civil.year >= 2100U ? PCF8563_CENTURY : 0U));
     r[PCF8563_YEARS] = pcf8563_binary_to_bcd((uint8_t)(civil.year % 100U));
+}
+
+
+bool pcf8563_write(uint32_t utc_seconds)
+{
+    if (pcf8563_busy() || utc_seconds < PCF8563_FIRST_UTC)
+    {
+        return false;
+    }
+    encode(utc_seconds, 0x00U); // running
     if (!start(&write_transfer, PCF8563_WRITING))
     {
         return false;
     }
     print_next = true;
     return true;
+}
+
+
+bool pcf8563_write_stopped(uint32_t utc_seconds)
+{
+    if (pcf8563_busy() || utc_seconds < PCF8563_FIRST_UTC)
+    {
+        return false;
+    }
+    encode(utc_seconds, PCF8563_STOP);
+    return start(&write_transfer, PCF8563_WRITING_STOPPED);
+}
+
+
+bool pcf8563_release(void)
+{
+    if (pcf8563_busy())
+    {
+        return false;
+    }
+    return start(&release_transfer, PCF8563_RELEASING);
 }
 
 
@@ -172,6 +205,20 @@ static bool finish(const I2cTransfer *transfer, uint32_t now_ms)
         status.request = PCF8563_FAILED;
         return transfer == &read_transfer;
     }
+    if (status.request == PCF8563_WRITING_STOPPED || status.request == PCF8563_RELEASING)
+    {
+        // The aligned write reads for itself, once the chip runs.
+        if (status.request == PCF8563_WRITING_STOPPED)
+        {
+            status.writes++;
+        }
+        else
+        {
+            status.releases++;
+        }
+        status.request = PCF8563_DONE;
+        return false;
+    }
     if (transfer == &write_transfer)
     {
         status.writes++;
@@ -185,6 +232,7 @@ static bool finish(const I2cTransfer *transfer, uint32_t now_ms)
     }
     status.reads++;
     status.read_ms = now_ms;
+    status.read_stamp = read_transfer.start_stamp;
     status.request = PCF8563_DONE;
     decode();
     return true;
@@ -199,16 +247,21 @@ bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference)
     {
         read_done = finish(&read_transfer, now_ms);
     }
-    else if (status.request == PCF8563_WRITING && i2c1_done(&write_transfer))
+    else if ((status.request == PCF8563_WRITING || status.request == PCF8563_WRITING_STOPPED) &&
+             i2c1_done(&write_transfer))
     {
         read_done = finish(&write_transfer, now_ms);
+    }
+    else if (status.request == PCF8563_RELEASING && i2c1_done(&release_transfer))
+    {
+        read_done = finish(&release_transfer, now_ms);
     }
     if (read_done && print_next)
     {
         print_next = false;
         pcf8563_print(now_ms, reference);
     }
-    if (!pcf8563_busy() &&
+    if (auto_read && !pcf8563_busy() &&
         now_ms - last_attempt_ms >=
             (status.present ? PCF8563_READ_INTERVAL_MS : PCF8563_DETECT_INTERVAL_MS))
     {
@@ -216,6 +269,12 @@ bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference)
         (void)pcf8563_read();
     }
     return read_done;
+}
+
+
+void pcf8563_set_auto_read(bool enabled)
+{
+    auto_read = enabled;
 }
 
 

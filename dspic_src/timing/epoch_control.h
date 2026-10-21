@@ -100,6 +100,9 @@ typedef struct
     uint32_t step_hold;     // epochs left at most
     uint32_t step_hold_min; // ... before settling may end it
 
+    int32_t free_run_step;       // epoch_control_free_run_step(), pending
+    int32_t free_run_step_taken; // the last one applied, ticks
+
     KalmanFilter pps_kf;
     EpochPiServo pi;
     EpochPhaseGate gate;
@@ -149,6 +152,16 @@ void epoch_control_restart(const EpochProfile *profile, bool slew);
  * an overshoot and minutes of tail.
  */
 void epoch_control_source_stepped(void);
+
+/*
+ * Free run only, before any reference has been used: moves the epoch by
+ * ticks (|ticks| up to half a second) in one interval, the next to be
+ * requested, on top of the frequency held. For a time-of-day source without
+ * an edge the loop could steer by (the RTC on V2): the epoch is put on its
+ * second once, at start-up, so the second shown changes with it. Dropped
+ * if the loop is not free running when the next period is requested.
+ */
+void epoch_control_free_run_step(int32_t ticks);
 
 // The offset from nominal the loop would hold in holdover now: the Kalman
 // estimate less the servo integral, Q16 ticks.

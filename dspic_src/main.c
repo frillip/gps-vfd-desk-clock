@@ -8,7 +8,8 @@
  * loop in timing/ (timing/timing_config.h); the GNSS receiver link in gnss/
  * (gnss/gnss.h); the ESP32 link in esp/ (esp/esp_link.h, SML protocol); the
  * tubes in ui/display.h and local time in ui/timezone.h; the I2C bus and the
- * RTC in drivers/ (drivers/i2c1.h, drivers/pcf8563.h).
+ * RTC in drivers/ (drivers/i2c1.h, drivers/pcf8563.h), and the RTC as a time
+ * source, kept set, in sync/source_rtc.h.
  */
 #include <stdbool.h>
 #include <stdio.h>
@@ -21,6 +22,7 @@
 #include "platform/system.h"
 #include "scheduler.h"
 #include "sync/source_ntp.h"
+#include "sync/source_rtc.h"
 #include "sync/sync.h"
 #include "sync/sync_report.h"
 #include "sync/sync_tuning.h"
@@ -107,6 +109,7 @@ static void run_epoch(const TimingSnapshot *snapshot)
 
     update = sync_update(snapshot, epoch_timer_ms());
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
+    source_rtc_epoch(snapshot);
     prepare_display();
     sync_tuning_epoch(snapshot, &update);
 
@@ -161,6 +164,7 @@ static void report_minute(void)
         display_print();
         timezone_print(sync_status()->time.utc_seconds);
         pcf8563_print(epoch_timer_ms(), rtc_reference());
+        source_rtc_print();
         i2c1_print();
         esp_link_print();
     }
@@ -183,9 +187,12 @@ int main(void)
     timing_init(&capture_sync);
     timing_report_sync(&capture_sync);
     gnss_init(FCY, epoch_timer_ms());
-    // The RTC is only read and printed for now: the RTC source is to come.
+    // The RTC: its reads stamped on the capture timebase, so the RTC source
+    // can place its second against the epoch.
     i2c1_init();
+    i2c1_set_stamp_clock(pps_capture_timebase);
     pcf8563_init(epoch_timer_ms());
+    source_rtc_init();
     timezone_init();
     display_init();
     scheduler_init();
@@ -201,6 +208,12 @@ int main(void)
         // rising edge also marks the interrupt's latency on a scope.
         STATUS_LED_SET(DISPLAY_LATCH_OC_GET_VALUE());
 
+        // Every pass: the RTC's reads are taken as they finish, so a search
+        // for its second (and the timed release of an aligned write) is not
+        // held to the 10 ms tasks.
+        (void)pcf8563_service(scheduler_now_ms(), rtc_reference());
+        source_rtc_poll();
+
         // Every epoch, at the measurement slot (set by the T4 scheduler
         // interrupt, so the captures of the epoch are read together).
         if (timing_snapshot(&snapshot))
@@ -215,7 +228,6 @@ int main(void)
             esp_link_service(scheduler_now_ms());
             source_ntp_service(scheduler_now_ms());
             i2c1_service(scheduler_now_ms());
-            (void)pcf8563_service(scheduler_now_ms(), rtc_reference());
         }
 
         if (scheduler_due(&display_load))

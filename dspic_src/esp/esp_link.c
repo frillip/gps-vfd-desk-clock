@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "../drivers/pcf8563.h"
+#include "../sync/source_rtc.h"
 #include "../drivers/tubes.h"
 #include "../drivers/uart1.h"
 #include "../platform/system.h"
@@ -322,7 +323,9 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
             return SML_ERROR_NONE;
         }
         case SML_USER_SET_RTC:
-            // A manual write, as V2's menu; the result is printed once read back.
+            // A manual write, as V2's menu, to the nearest second; the result
+            // is printed once read back. The RTC source finds its second
+            // again, and its next check may set it to the clock's time.
             if (argument < PCF8563_FIRST_UTC)
             {
                 return SML_ERROR_ARGUMENT;
@@ -331,7 +334,7 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
             {
                 return SML_ERROR_STATE;
             }
-            return pcf8563_write(argument) ? SML_ERROR_NONE : SML_ERROR_BUSY;
+            return source_rtc_set(argument) ? SML_ERROR_NONE : SML_ERROR_BUSY;
         case SML_USER_SET_TZ_AUTO:
             if (!flag_argument(argument))
             {

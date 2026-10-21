@@ -72,11 +72,16 @@ typedef struct I2cTransfer
     uint8_t read_length;
     volatile I2cResult result;
     struct I2cTransfer *volatile next; // the queue, the driver's
+    // When its start condition completed, by the clock given to
+    // i2c1_set_stamp_clock() (0 without one): just before the address goes
+    // out, so when a device that latches its registers on being addressed
+    // (an RTC) took them, give or take a byte.
+    volatile uint32_t start_stamp;
 } I2cTransfer;
 
-#define I2C_TRANSFER(address, write, write_length, read, read_length)          \
-    {                                                                          \
-        (address), (write), (write_length), (read), (read_length), I2C_IDLE, 0 \
+#define I2C_TRANSFER(address, write, write_length, read, read_length)             \
+    {                                                                             \
+        (address), (write), (write_length), (read), (read_length), I2C_IDLE, 0, 0 \
     }
 
 typedef struct
@@ -100,6 +105,11 @@ bool i2c1_submit(I2cTransfer *transfer);
 // True once a submitted transfer has finished (its result is then final),
 // and for one never submitted.
 bool i2c1_done(const I2cTransfer *transfer);
+
+// A free-running clock to stamp each transfer's start with (start_stamp),
+// read from the interrupt: the capture timebase (pps_capture_timebase), so
+// an RTC's second can be placed against the epoch. NULL: none.
+void i2c1_set_stamp_clock(uint32_t (*clock)(void));
 
 // From the main loop, every few ms: timeouts and recovery. now_ms is any
 // millisecond clock (epoch_timer_ms()).

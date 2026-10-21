@@ -53,6 +53,7 @@ static volatile uint8_t position;  // bytes written or read so far
 static volatile bool address_sent; // in STATE_WRITE: the address went
 static volatile uint16_t started;  // counts transfers started, for timeouts
 static volatile I2c1Stats stats;
+static uint32_t (*stamp_clock)(void);
 
 // The service's view, for timeouts.
 static uint16_t watched;
@@ -295,6 +296,15 @@ void i2c1_service(uint32_t now_ms)
 }
 
 
+void i2c1_set_stamp_clock(uint32_t (*clock)(void))
+{
+    bool enabled = mask_interrupt();
+
+    stamp_clock = clock;
+    restore_interrupt(enabled);
+}
+
+
 const I2c1Stats *i2c1_stats(void)
 {
     return (const I2c1Stats *)&stats;
@@ -354,6 +364,10 @@ void __attribute__((interrupt, no_auto_psv)) _MI2C1Interrupt(void)
     switch (state)
     {
         case STATE_START:
+            if (stamp_clock != 0)
+            {
+                transfer->start_stamp = stamp_clock();
+            }
             if (transfer->write_length != 0U || transfer->read_length == 0U)
             {
                 state = STATE_WRITE;

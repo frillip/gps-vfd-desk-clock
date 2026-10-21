@@ -153,6 +153,8 @@ Selecting a source routes the capture to it if need be, then restarts the loop w
 
 The GNSS holdover model comes from a night of virtual holdover trials on a V2 board (`sync/sync_tuning.c`, see [Console](#console)). Against GNSS, the held frequency drifted by 0.8µs at most after a minute, 23µs after ten, 50µs after an hour and 96µs after two (RMS 0.12, 3.8, 15 and 34µs). The bound is set at about three times the worst case, to leave room for temperature: 2.4µs, 25µs, 176µs and 420µs. Holdover after NTP is dominated by the ESP's own time: its frequency wanders by about 2ppm between its 30-minute polls, so 1µs/s.
 
+The RTC is a source of the time of day only. On V2 it has no pulse the capture can take, so it never steers and is never a candidate, but it is judged like the others with a bound of ±999ms. At start-up it is usually the first source with a time. The time of day is taken from it, and while the clock is still free running, the epoch is moved once onto the RTC's second (see [I2C and the RTC](#i2c-and-the-rtc)), so the seconds shown change when the RTC's do. GNSS or NTP then take over as usual.
+
 Adding a source takes an entry in the source table, an adapter that reports its edge, its UTC label and its uncertainty, and a loop profile.
 
 ## Time of day
@@ -228,7 +230,17 @@ I2C1 runs at 400kHz, as on V2, but nothing waits for it. A driver queues a trans
 
 The PCF8563 driver is V2's, ported onto this. It reads the control registers and the time in one transfer and reports whether the time can be trusted: VL (the oscillator lost power) and STOP must be clear and the date must be real. A write clears STOP and VL and is read back to confirm it. The RTC is read and printed at start-up, then read every minute (or tried every 10s while it does not answer), and shown in `pic-info` and the minute report. The RTC holds UTC, never local time, as on V2; time zones and DST are applied only on the display. Unlike V2, the century bit is honoured (1 for 2100 onwards), and the registers are converted with the clock's own UTC calendar rather than `mktime()`.
 
-The RTC does not yet feed the clock. That comes with the RTC source.
+The RTC holds the time to the second, and has no pulse on V2, so `sync/source_rtc.c` finds where its second falls by polling. It reads the chip back to back, a few hundred microseconds a read, each stamped on the capture timebase as its I2C start completes, until the seconds count goes up. The increment lies between the last read before it and the first after, which places it to well within a millisecond. From there the second is counted on, and found again every 6 hours. This happens at start-up, after `pic-set-rtc`, and whenever the second found is more than 7 hours old.
+
+Once the clock is synchronised, the RTC is checked after a minute, then every 6 hours, and a minute after any correction of the clock's time. If its second is more than 10ms from ours, or its time cannot be trusted (VL or STOP set), it is set, aligned to the epoch:
+
+1. The time is loaded with STOP set, which holds the chip's prescaler in reset.
+2. STOP is released so that the chip's first increment lands on one of our epochs. The data sheets for this prescaler give that first increment 0.507813 to 0.507935s after the release. The release is timed against the capture timebase, with the main loop spinning for the last 2ms.
+3. The RTC's second is found again, which confirms the time and measures where the increment landed.
+
+That error corrects the next release, so a part whose start delay differs from the data sheet's (a clone, say) is learnt on the second attempt. An attempt that misses its moment, because the main loop was busy or the bus was in use, is tried again the next second. After three, the time is written plainly, to the nearest second, so the RTC is never left stopped. Nothing is written unless the clock is synchronised, and never next to a leap second, which the RTC cannot hold.
+
+The RTC's bound stays ±999ms. The aligned write makes it much better than that, but the time of the last setting has to survive a power cycle before that can be counted on, and that waits for the settings store. `pic-info` and the minute report show where the RTC's second was last found, its offset from the clock, the last setting and the learnt correction.
 
 # Not yet ported
 
@@ -237,7 +249,7 @@ The V2 firmware did rather more than this. Still to come:
 - the menu, buttons, buzzer and alarm;
 - the other display modes and the 12-hour format;
 - the light sensor and automatic brightness;
-- the RTC as a time source (it is read and printed, and `pic-set-rtc` writes it, but the clock does not take its time from it yet);
+- the RTC's bound from the time of its last setting (it stays ±999ms until that time can be kept over a power cycle), and SML-TIME-RTC;
 - settings in flash;
 - GNSS provisioning;
 - keeping the debug mask over a reset;

@@ -26,8 +26,18 @@
  *   - The century bit: 0 for 2000-2099 (what V2 wrote), 1 for 2100-2106.
  * The time is valid only with VL and STOP clear and a real calendar date.
  *
+ * Aligned setting (sync/source_rtc.c drives it): pcf8563_write_stopped()
+ * loads a time with STOP set, which holds the prescaler in reset, and
+ * pcf8563_release() clears STOP; the chip's first seconds increment then
+ * follows the release by PCF8563_START_DELAY_NS. Timing that release puts
+ * the RTC's second where we want it.
+ *
+ * Every read is stamped with when its I2C start completed (read_stamp, on
+ * the clock given to i2c1_set_stamp_clock()), so a run of reads can place
+ * the RTC's seconds increment.
+ *
  * Nothing here sets the clock's own time from the RTC, or the RTC from the
- * clock: that is the RTC source's job (sync/), still to come.
+ * clock: that is the RTC source's job (sync/source_rtc.c).
  */
 #ifndef PCF8563_H
 #define PCF8563_H
@@ -55,6 +65,15 @@
 #define PCF8563_VL      0x80U // seconds
 #define PCF8563_CENTURY 0x80U // century/months
 
+/* From the release of STOP to the first seconds increment: 0.507813 to
+ * 0.507935 s by NXP's data sheets for this prescaler (the two lower stages,
+ * 8.192 kHz, are not reset, hence the spread); the middle of that. Clones
+ * may differ: the RTC source measures the result of every aligned write and
+ * corrects the next one, so this is only where it starts. */
+#ifndef PCF8563_START_DELAY_NS
+#define PCF8563_START_DELAY_NS 507874000UL
+#endif
+
 // 2000-01-01T00:00:00Z: the chip's calendar starts here.
 #define PCF8563_FIRST_UTC 946684800UL
 
@@ -68,8 +87,10 @@ typedef enum
     PCF8563_NONE = 0, // no request yet
     PCF8563_READING,
     PCF8563_WRITING,
-    PCF8563_DONE,   // the last request worked
-    PCF8563_FAILED, // the last request failed: see last_result
+    PCF8563_WRITING_STOPPED, // pcf8563_write_stopped()
+    PCF8563_RELEASING,       // pcf8563_release()
+    PCF8563_DONE,            // the last request worked
+    PCF8563_FAILED,          // the last request failed: see last_result
 } Pcf8563Request;
 
 typedef struct
@@ -82,11 +103,13 @@ typedef struct
     bool century;         // the century bit at the last read
     uint32_t utc_seconds; // as last read, if calendar_valid
     uint32_t read_ms;     // the millisecond clock when that read finished
+    uint32_t read_stamp;  // ... and when its I2C start completed (i2c1 stamp clock)
     uint8_t registers[9]; // control/status 1 to years, as last read
     Pcf8563Request request;
     I2cResult last_result;
     uint32_t reads;
     uint32_t writes;
+    uint32_t releases; // STOP cleared by pcf8563_release()
     uint32_t failures;
 } Pcf8563Status;
 
@@ -99,6 +122,13 @@ bool pcf8563_read(void);
 // control registers cleared; read back once done. False if a request is
 // in progress or the time is out of range.
 bool pcf8563_write(uint32_t utc_seconds);
+// As pcf8563_write(), but with STOP set: the chip holds that time, its
+// prescaler in reset, until pcf8563_release(). Not read back.
+bool pcf8563_write_stopped(uint32_t utc_seconds);
+// Clears STOP: a two-byte write, which takes effect at the end of its data
+// byte, about 70 us after it starts on an idle bus. False if a request is in
+// progress or the transfer could not be queued.
+bool pcf8563_release(void);
 bool pcf8563_busy(void);
 
 // The clock's own time, for comparison in what is printed: the UTC second
@@ -109,12 +139,16 @@ typedef struct
     bool known;
 } Pcf8563Reference;
 
-// From the main loop: finishes the request in progress, reads the chip
-// every PCF8563_READ_INTERVAL_MS, and retries an absent one every
-// PCF8563_DETECT_INTERVAL_MS. True once each time a read (or a write's
-// read-back) completes, successfully or not. The first read and each
-// write's read-back are printed, against reference.
+// Every pass of the main loop (cheap when there is nothing to do): finishes
+// the request in progress, reads the chip every PCF8563_READ_INTERVAL_MS,
+// and retries an absent one every PCF8563_DETECT_INTERVAL_MS. True once
+// each time a read (or a write's read-back) completes, successfully or not.
+// The first read and each write's read-back are printed, against reference.
 bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference);
+
+// The periodic reads, on by default: held off while the RTC source has the
+// chip to itself (a search, an aligned write).
+void pcf8563_set_auto_read(bool enabled);
 
 const Pcf8563Status *pcf8563_status(void);
 

@@ -285,8 +285,17 @@ static void print_candidates(const SyncStatus *status)
                : candidate == status->second ? '+'
                                              : ' ',
                sync_source_name(candidate));
-        if (bound == SYNC_BOUND_NONE && candidate < SYNC_SOURCE_COUNT &&
-            status->sources[candidate].usable_run >= SYNC_QUALIFY_EPOCHS)
+        if (candidate < SYNC_SOURCE_COUNT && !sync_source_steers(candidate))
+        {
+            if (status->sources[candidate].bound_ns != 0U)
+            {
+                unit = bound_unit(status->sources[candidate].bound_ns, &scaled);
+                printf(" +/-%lu%s,", (unsigned long)scaled, unit);
+            }
+            printf(" time of day only");
+        }
+        else if (bound == SYNC_BOUND_NONE && candidate < SYNC_SOURCE_COUNT &&
+                 status->sources[candidate].usable_run >= SYNC_QUALIFY_EPOCHS)
         {
             unit = bound_unit(status->sources[candidate].bound_ns, &scaled);
             printf(" +/-%lu%s, fallback only (from free run)", (unsigned long)scaled, unit);
@@ -374,7 +383,8 @@ void sync_report_status(void)
            sync_is_synchronised() ? "synchronised" : "not synchronised");
     printf("Time: ");
     print_time(&status->time);
-    printf(", %lu corrections", (unsigned long)status->time.corrections);
+    printf(", from %s, %lu corrections", sync_source_name(status->time.source),
+           (unsigned long)status->time.corrections);
     if (status->time.leap.change != 0)
     {
         UtcCivil civil;
@@ -383,6 +393,12 @@ void sync_report_status(void)
                status->time.leap.change > 0 ? "23:59:60Z inserted" : "23:59:59Z deleted");
     }
     printf("\r\n");
+    if (status->aligned)
+    {
+        printf("Epoch put on the %s second at start-up: moved %+ld us\r\n",
+               sync_source_name(status->aligned_to),
+               (long)(status->aligned_ticks / (int32_t)TIMING_TICKS_PER_US));
+    }
     print_candidates(status);
     for (source = 0; source < SYNC_SOURCE_COUNT; source++)
     {

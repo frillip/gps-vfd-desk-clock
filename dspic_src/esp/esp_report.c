@@ -13,6 +13,7 @@
 #include "../platform/version.h"
 #include "../scheduler.h"
 #include "../platform/time_ms.h"
+#include "../sync/source_rtc.h"
 #include "../sync/sync_report.h"
 #include "../timing/q16.h"
 #include "../timing/timing_config.h"
@@ -52,7 +53,8 @@ uint8_t esp_report_cause(uint8_t reason)
 
 uint8_t esp_report_source(uint8_t source, uint32_t epochs)
 {
-    static const uint8_t codes[SYNC_SOURCE_COUNT] = {SML_SOURCE_GNSS, SML_SOURCE_NTP};
+    static const uint8_t codes[SYNC_SOURCE_COUNT] = {SML_SOURCE_GNSS, SML_SOURCE_NTP,
+                                                     SML_SOURCE_RTC};
     if (epochs == 0U)
     {
         return SML_SOURCE_INIT;
@@ -114,7 +116,16 @@ void esp_report_time_auth(SML_TIME_AUTH_PAYLOAD *payload)
     uint32_t uncertainty_ns;
 
     memset(payload, 0, sizeof(*payload));
-    payload->source = esp_report_source(status->source, status->epochs);
+    uint8_t source = status->source;
+
+    // With nothing selected, the time from a time-of-day source (the RTC at
+    // start-up) names it; SOURCE_VALID still says whether one is selected.
+    if (source >= SYNC_SOURCE_COUNT && status->time.known &&
+        status->time.source < SYNC_SOURCE_COUNT && !sync_source_steers(status->time.source))
+    {
+        source = status->time.source;
+    }
+    payload->source = esp_report_source(source, status->epochs);
     payload->lock_state = esp_report_lock(status->state, status->epochs);
     if (status->source < SYNC_SOURCE_COUNT)
     {
@@ -433,6 +444,12 @@ static void source_entry(const SyncStatus *status, uint8_t source, uint32_t epoc
     const SyncSourceReport *report = &tracker->report;
     uint32_t bound = sync_candidate_bound(source);
 
+    // A time-of-day source (the RTC) is never a candidate, but has a bound.
+    if (!sync_source_steers(source) && tracker->bound_ns != 0U)
+    {
+        bound = tracker->bound_ns;
+    }
+
     entry->source = esp_report_candidate(source);
     entry->verdict = status->epochs == 0U ? SML_VERDICT_NONE : esp_report_verdict(tracker->check);
     entry->rank = sync_candidate_rank(source);
@@ -586,5 +603,6 @@ void esp_report_print_all(uint32_t now_ms)
     display_print();
     timezone_print(status->time.utc_seconds);
     pcf8563_print(now_ms, clock);
+    source_rtc_print();
     i2c1_print();
 }

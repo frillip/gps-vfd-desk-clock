@@ -6,6 +6,7 @@
 #include "../timing/timing_config.h"
 #include "source_gnss.h"
 #include "source_ntp.h"
+#include "source_rtc.h"
 
 // How a source is consulted and how far it is trusted.
 typedef struct
@@ -28,6 +29,8 @@ typedef struct
     // leaves for holdover.
     const EpochProfile *profile;
     uint32_t holdover_frequency_ns;
+    // False for a source of the time of day only, never to steer by.
+    bool steers;
 } SyncSourceDefinition;
 
 static const EpochProfile ntp_profile = {
@@ -48,10 +51,13 @@ static const SyncSourceDefinition sources[SYNC_SOURCE_COUNT] = {
     // Even 100 us is ten times better than NTP over Wi-Fi (~1-10 ms).
     {"GNSS", source_gnss_report, source_gnss_select, SYNC_GNSS_QUALIFY_NS, SYNC_GNSS_HOLD_NS,
      SYNC_GNSS_TACC_SCALE, SYNC_CAPTURE_RESOLUTION_NS, &epoch_profile_precise,
-     SYNC_HOLDOVER_FREQUENCY_GNSS},
+     SYNC_HOLDOVER_FREQUENCY_GNSS, true},
     // NTP through the ESP: its bound, plus the jitter of its PPS.
     {"NTP", source_ntp_report, source_ntp_select, SYNC_NTP_QUALIFY_NS, SYNC_NTP_HOLD_NS, 1U,
-     SYNC_NTP_EDGE_JITTER_NS, &ntp_profile, SYNC_HOLDOVER_FREQUENCY_NTP},
+     SYNC_NTP_EDGE_JITTER_NS, &ntp_profile, SYNC_HOLDOVER_FREQUENCY_NTP, true},
+    // The RTC: the time of day, and its second placed by polling. Never
+    // captured, so never steers; its bound is SYNC_RTC_UNCERTAINTY_NS.
+    {"RTC", source_rtc_report, NULL, SYNC_RTC_LIMIT_NS, SYNC_RTC_LIMIT_NS, 1U, 0U, NULL, 0U, false},
 };
 
 static SyncStatus status;
@@ -174,6 +180,12 @@ static void update_holdover_bound(void)
 }
 
 
+bool sync_source_steers(uint8_t source)
+{
+    return source < SYNC_SOURCE_COUNT && sources[source].steers;
+}
+
+
 uint32_t sync_candidate_bound(uint8_t candidate)
 {
     if (candidate == SYNC_CANDIDATE_HOLDOVER)
@@ -183,7 +195,7 @@ uint32_t sync_candidate_bound(uint8_t candidate)
                    ? status.holdover.bound_ns
                    : SYNC_BOUND_NONE;
     }
-    if (candidate >= SYNC_SOURCE_COUNT)
+    if (candidate >= SYNC_SOURCE_COUNT || !sources[candidate].steers)
     {
         return SYNC_BOUND_NONE;
     }
@@ -231,7 +243,8 @@ static uint8_t best_fallback(void)
 
     for (index = 0; index < SYNC_SOURCE_COUNT; index++)
     {
-        if (source_fallback(index) && status.sources[index].bound_ns < best_bound)
+        if (sources[index].steers && source_fallback(index) &&
+            status.sources[index].bound_ns < best_bound)
         {
             best = index;
             best_bound = status.sources[index].bound_ns;
@@ -389,6 +402,36 @@ static void acquire(uint8_t source, SyncReason reason, uint32_t epoch, bool fall
     epoch_control_restart(definition->profile, slew);
     enter(SYNC_ACQUIRE, source, reason, epoch);
     status.fallback = fallback;
+    status.steered = true;
+}
+
+
+/* At start-up, still free running and with nothing yet to steer by: puts
+ * the epoch on the second of a time-of-day source (the RTC) once it is
+ * GOOD, in one interval, so the seconds shown change with its seconds.
+ * Once only: from then on the epoch is left to the sources that steer. */
+static void align_to_time_of_day(void)
+{
+    uint8_t index;
+
+    if (status.state != SYNC_FREE_RUN || status.aligned || status.steered)
+    {
+        return;
+    }
+    for (index = 0; index < SYNC_SOURCE_COUNT; index++)
+    {
+        const SyncSourceTracker *tracker = &status.sources[index];
+
+        if (!sources[index].steers && tracker->check == SYNC_CHECK_GOOD &&
+            tracker->good_run >= SYNC_QUALIFY_EPOCHS && tracker->phase_valid)
+        {
+            status.aligned = true;
+            status.aligned_to = index;
+            status.aligned_ticks = -tracker->phase_ticks;
+            epoch_control_free_run_step(status.aligned_ticks);
+            return;
+        }
+    }
 }
 
 
@@ -568,6 +611,7 @@ static void seed_time(const TimingSnapshot *snapshot)
     time->utc_seconds =
         label_epoch(snapshot, &status.sources[best].report, &time->leap, &time->leap_second);
     time->known = true;
+    time->source = best;
 }
 
 
@@ -600,6 +644,7 @@ static void keep_time(const TimingSnapshot *snapshot, bool usable, bool was_lock
         time->utc_seconds = label;
         time->leap_second = label_leap;
         time->known = true;
+        time->source = status.source;
     }
     else if (time->known)
     {
@@ -632,6 +677,8 @@ void sync_init(void)
     status.second_bound_ns = SYNC_BOUND_NONE;
     status.challenger = SYNC_SOURCE_NONE;
     status.holdover.bound_ns = SYNC_BOUND_NONE;
+    status.time.source = SYNC_SOURCE_NONE;
+    status.aligned_to = SYNC_SOURCE_NONE;
     for (index = 0; index < SYNC_SOURCE_COUNT; index++)
     {
         sync_source_reset(&status.sources[index]);
@@ -655,6 +702,7 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     }
     update_holdover_bound();
     follow_sources(snapshot->timer.sequence);
+    align_to_time_of_day();
 
     update.usable = is_tracking() && source_usable(status.source) &&
                     status.sources[status.source].report.captured;
@@ -720,6 +768,13 @@ bool sync_uncertainty(uint32_t *uncertainty_ns)
     {
         *uncertainty_ns = saturate((uint64_t)status.sources[status.source].bound_ns +
                                    ticks_to_ns(status.phase_ticks));
+        return true;
+    }
+    // Free running on the time of a time-of-day source that is still GOOD.
+    if (status.state == SYNC_FREE_RUN && status.time.source < SYNC_SOURCE_COUNT &&
+        !sources[status.time.source].steers && source_good(status.time.source))
+    {
+        *uncertainty_ns = status.sources[status.time.source].bound_ns;
         return true;
     }
     return false;

@@ -119,7 +119,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x13 | TIME-MEAS | PIC→ESP | 40 | ✓ Sent | Every epoch |
 | | 0x20 | TIME-GNSS | PIC→ESP | 54 | ✓ Sent | Every epoch |
 | | 0x30 | TIME-NTP | ESP→PIC | 42 | ✓ Labels the ESP PPS for the NTP sync source; `CORRECTING` holds the PIC's frequency estimate | Every ESP PPS while NTP time is valid |
-| | 0x40 | TIME-RTC | PIC→ESP | 34 | — RTC not yet ported | Every epoch |
+| | 0x40 | TIME-RTC | PIC→ESP | 34 | — Not sent yet: the RTC is a source (in STAT-SOURCES) | Every epoch |
 | | 0x50 | TIME-LEAP | ESP→PIC | 16 | ✓ Applied | On change, and periodically |
 | 0x20 TZ | 0x01 | TZ-STATE | ESP→PIC | 124 | ✓ Applied | On change, after a PIC reset, and every ~10 minutes |
 | | 0x10 | _Retired: TZ-FUTURE_ | — | — | — | Never reuse |
@@ -157,7 +157,7 @@ This is the PIC's statement of the UTC second that its latest epoch edge marks, 
 
 `uncertainty_ns` is a ± **bound** on the UTC error of the edge, not a standard deviation. While tracking, it is the selected source's bound plus the magnitude of the measured phase. A source's bound is made conservative from its own figure: 3 × GNSS tAcc + 25ns of capture resolution, or the ESP's NTP bound + 20µs for the jitter of its PPS. In holdover it is the holdover bound, u0 + f·t + ½·D·t², grown from the bound at the last steered epoch (see `sync/sync.h` on the PIC).
 
-Without `UTC_VALID`, the phase and uncertainty are invalid too. In free run with the time of day still known (counted on from an earlier label), `UTC_VALID` is set and `UNCERTAINTY_VALID` is clear, since there is no honest bound to give. `SOURCE_VALID` means a source is selected.
+Without `UTC_VALID`, the phase and uncertainty are invalid too. In free run with the time of day still known (counted on from an earlier label), `UTC_VALID` is set and `UNCERTAINTY_VALID` is clear, since there is no honest bound to give. The exception is free running on the RTC's time (at start-up, before GNSS or NTP): `source` is `SML_SOURCE_RTC` and the uncertainty is the RTC's bound, ±999ms. `SOURCE_VALID` means a source is selected; the RTC never is.
 
 TIME-AUTH is sent first in each epoch, a few milliseconds after the edge it labels and long before the next. The ESP pairs it with the most recent PIC edge captured on GPIO27.
 
@@ -603,7 +603,7 @@ Each entry is 24 bytes, and entry *k* starts at offset 12 + 24k.
 | 3 | flags | u8 | Bit 0 `PRESENT`, 1 `TIME_VALID`, 2 `EDGE` (seen this epoch), 3 `CAPTURED` (by the capture hardware, so it can steer), 4 `LABELLED`, 5 `PHASE_VALID`, 6 `BOUND_VALID` |
 | 4 | good_run | u16 | Consecutive GOOD epochs, saturating |
 | 6 | usable_run | u16 | Consecutive GOOD or INACCURATE epochs, saturating |
-| 8 | bound_ns | u32 | The ± bound the PIC ranks it by, ns (`BOUND_VALID`) |
+| 8 | bound_ns | u32 | The ± bound the PIC ranks it by, ns (`BOUND_VALID`). The RTC, which only gives the time of day and is never ranked (rank 0), still shows its bound, ±999ms |
 | 12 | uncertainty_ns | u32 | The source's own figure, ns (GNSS tAcc, the ESP's NTP bound); for holdover, the bound when it was last steered (u0) |
 | 16 | phase_ns | i32 | The PIC's epoch minus the source's UTC second, ns (`PHASE_VALID`) |
 | 20 | age_s | u32 | Seconds since its last GOOD epoch; for holdover, since the loop last steered. 0xFFFFFFFF: never |
@@ -650,7 +650,7 @@ Commands run by the PIC:
 | 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI, STAT-SOURCES and STAT-SYS: the message, then ACK. Others: NACK UNSUPPORTED |
 | 0x0010 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
 | 0x0011 | `RESET` | — | ✓ ACK, flush, then software reset |
-| 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY mid-request. The RTC is printed once read back. The clock's own time is not changed |
+| 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 to the nearest second (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY while the RTC source is searching or setting it. The RTC is printed once read back and its second found again. The clock's own time is not changed, but while it is synchronised its next check (every 6 hours) sets the RTC back to the clock's time |
 | 0x0030 | `SET_TZ_OFFSET` | Manual base offset, signed s | ✓ Within ±86399 |
 | 0x0031 | `SET_TZ_AUTO` | 0/1 | ✓ |
 | 0x0032 | `SET_DST_OFFSET` | Manual DST amount, signed s | ✓ Within ±86399 |

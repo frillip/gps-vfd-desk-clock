@@ -314,6 +314,8 @@ void epoch_control_init(void)
     loop.seed_started = false;
     loop.step_hold = 0;
     loop.step_hold_min = 0;
+    loop.free_run_step = 0;
+    loop.free_run_step_taken = 0;
     loop.filtered_pps_period = TIMING_NOMINAL_TICKS;
     loop.predicted_phase_q16 = 0;
     loop.commanded_offset_q16 = 0;
@@ -382,7 +384,18 @@ static EpochUpdateKind hold(const TimingSnapshot *snapshot)
         case EPOCH_STATE_TRACK: request_holdover(); return EPOCH_UPDATE_HOLDOVER;
 
         case EPOCH_STATE_ACQUIRE:
-        default: request_frequency(); return EPOCH_UPDATE_FREE_RUN;
+        default:
+            request_frequency();
+            if (loop.free_run_step != 0)
+            {
+                // On top of the frequency: one interval longer or shorter.
+                loop.commanded_period =
+                    (uint32_t)((int32_t)loop.commanded_period + loop.free_run_step);
+                epoch_timer_set_period(loop.commanded_period);
+                loop.free_run_step_taken = loop.free_run_step;
+                loop.free_run_step = 0;
+            }
+            return EPOCH_UPDATE_FREE_RUN;
     }
 }
 
@@ -408,6 +421,10 @@ EpochUpdate epoch_control_update(const TimingSnapshot *snapshot, bool reference_
                              reference_offset_ticks,
                          loop.filtered_pps_period)
             : 0;
+    if (reference_usable)
+    {
+        loop.free_run_step = 0; // a reference decides the phase now
+    }
     update.kind = reference_usable ? use_reference(snapshot, &update) : hold(snapshot);
     return update;
 }
@@ -436,6 +453,14 @@ void epoch_control_restart(const EpochProfile *profile, bool slew)
     }
     enter_acquire();
     servo_pi_reset(&loop.pi);
+}
+
+
+void epoch_control_free_run_step(int32_t ticks)
+{
+    const int32_t half = (int32_t)(TIMING_NOMINAL_TICKS / 2U);
+
+    loop.free_run_step = ticks > half ? half : ticks < -half ? -half : ticks;
 }
 
 
