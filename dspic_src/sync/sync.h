@@ -162,13 +162,17 @@ typedef enum
  * 2 h 34 / 96 us; the Kalman estimate drifted ~1.8 ppt/s overnight. The
  * bound covers the worst case with margin for temperature: 2.4 us at a
  * minute, 25 us at ten, 176 us at an hour, 420 us at two, ~22 ms at a day.
- * The NTP value is still a guess: no NTP holdover data yet.
+ * After NTP (NTP-only V2 clock, 11 h): the held frequency against the ESP's
+ * PPS was off by RMS / worst 0.16 / 0.47 ms after 10 min and 1.3 / 3.2 ms
+ * after an hour, mostly the ESP's own frequency wandering by 2 ppm between
+ * its 30-minute polls. 1 ppm covers it; next to the ESP's own ~12 ms bound,
+ * which u0 carries, it hardly matters.
  */
 #ifndef SYNC_HOLDOVER_FREQUENCY_GNSS
 #define SYNC_HOLDOVER_FREQUENCY_GNSS 40UL // ns/s
 #endif
 #ifndef SYNC_HOLDOVER_FREQUENCY_NTP
-#define SYNC_HOLDOVER_FREQUENCY_NTP 200UL // ns/s
+#define SYNC_HOLDOVER_FREQUENCY_NTP 1000UL // ns/s
 #endif
 #ifndef SYNC_HOLDOVER_DRIFT_PPT_PER_S
 #define SYNC_HOLDOVER_DRIFT_PPT_PER_S 5UL
