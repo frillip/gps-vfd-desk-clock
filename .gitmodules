@@ -1,6 +1,3 @@
-[submodule "esp_src/libraries/ezTime"]
-	path = esp_src/libraries/ezTime
-	url = https://github.com/frillip/ezTime
 [submodule "esp_src/libraries/WiFiManager"]
 	path = esp_src/libraries/WiFiManager
 	url = https://github.com/tzapu/WiFiManager.git
