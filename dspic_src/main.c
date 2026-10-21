@@ -16,6 +16,7 @@
 #include "drivers/i2c1.h"
 #include "drivers/pcf8563.h"
 #include "esp/esp_link.h"
+#include "esp/esp_report.h"
 #include "gnss/gnss.h"
 #include "platform/system.h"
 #include "scheduler.h"
@@ -174,6 +175,7 @@ int main(void)
     console_init(FCY);
     esp_link_init();
     printf("\033[2J\033[1;1H");
+    esp_report_print_system(); // the version and why the PIC (re)started
 
     debug_init();
     sync_init();

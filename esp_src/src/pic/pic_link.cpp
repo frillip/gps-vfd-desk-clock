@@ -251,6 +251,30 @@ static void pair_time(const SML_TIME_AUTH_PAYLOAD *auth)
 }
 
 
+// STAT-SYS: announce the PIC the first time, and whenever its uptime drops
+// (it restarted), with why.
+static void note_system(const SML_STAT_SYS_PAYLOAD *sys)
+{
+    static bool seen;
+    static uint32_t last_uptime_s;
+    char version[16];
+
+    pic_report_version(version, sizeof(version), sys->pic_version);
+    if (!seen || sys->uptime_s < last_uptime_s)
+    {
+        if (seen)
+        {
+            stats.restarts++;
+        }
+        console_printf("%s: firmware %s, up %lu s, last reset: %s\n",
+                       seen ? "PIC restarted" : "PIC", version, (unsigned long)sys->uptime_s,
+                       pic_report_reset_name(sys->reset_cause));
+    }
+    seen = true;
+    last_uptime_s = sys->uptime_s;
+}
+
+
 static void handle_frame(const SmlFrame *frame)
 {
     const SmlMessage *message = sml_message(frame->class_id, frame->message_id);
@@ -295,6 +319,10 @@ static void handle_frame(const SmlFrame *frame)
     if (frame->class_id == SML_CLASS_TIME && frame->message_id == SML_TIME_AUTH)
     {
         pair_time((const SML_TIME_AUTH_PAYLOAD *)native);
+    }
+    if (frame->class_id == SML_CLASS_STAT && frame->message_id == SML_STAT_SYS)
+    {
+        note_system((const SML_STAT_SYS_PAYLOAD *)native);
     }
     Held *slot = find_held(frame->class_id, frame->message_id, true);
     if (slot != NULL)

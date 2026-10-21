@@ -113,4 +113,8 @@ uint16_t scheduler_slot(void);
 // (which then starts afresh).
 void scheduler_print(void);
 
+// The longest pass of the main loop since the last call, ms; starts afresh.
+// Separate from scheduler_print()'s, so either can be used alone (STAT-SYS).
+uint16_t scheduler_take_longest_pass_ms(void);
+
 #endif // SCHEDULER_H

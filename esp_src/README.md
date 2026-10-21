@@ -144,7 +144,7 @@ SML-TIME-LEAP is built from the PIC's own GNSS leap-second data and sent back to
 
 # PIC link
 
-At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML mode and prompts it to print its status. STAT-NET every 10 seconds and TIME-NTP every second bring the PIC back into SML mode after it resets.
+At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML mode and prompts it to print its status. STAT-NET every 10 seconds and TIME-NTP every second bring the PIC back into SML mode after it resets. The PIC then sends STAT-SYS (SML 1.4) in its first epoch, and every 10 seconds after: its firmware version, uptime and why it last reset. The ESP announces the PIC when it first hears from it, and again whenever the uptime drops.
 
 Anything on the link outside a valid frame is treated as the PIC's console output and printed, as is STAT-DEBUG text. Both go to the USB-UART console and to Telnet.
 
@@ -164,7 +164,7 @@ The names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute` and `tuning`,
 
 # Console output
 
-Information is printed briefly by default, in the manner of chronyc: a line for each of NTP, the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` after `status`, `pic-info`, `pic-show-sources`, `esp-ntp-info` or `esp-wifi-info` prints everything, as before: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, and the link statistics. `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
+Information is printed briefly by default, in the manner of chronyc: a line for each of NTP, the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` after `status`, `pic-info`, `pic-show-sources`, `esp-ntp-info` or `esp-wifi-info` prints everything, as before: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
 
 ```
 ESP:      2.0.0 smolclock, up 00:41:07
@@ -174,7 +174,8 @@ Leap:     TAI-UTC 37 s (GNSS)
 Wi-Fi:    home, 192.168.1.20, -61 dBm
 Telnet:   running, 192.168.1.5 connected
 
-PIC:      2026-10-21T10:53:20Z +/-61 ns, GNSS LOCKED
+PIC:      0.1.0, up 00:40:58, last reset: power-on
+UTC:      2026-10-21T10:53:20Z +/-61 ns, GNSS LOCKED
 Local:    2026-10-21T11:53:20+01:00 DST
 Freq:     -3.7500 ppm (TRACK)
 Sync:     LOCKED on GNSS, synchronised

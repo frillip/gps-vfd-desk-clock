@@ -12,6 +12,7 @@ static uint16_t slot;
 static bool passed;
 static uint32_t pass_start_ms;
 static uint16_t pass_max_ms;
+static uint16_t pass_max_taken_ms; // for scheduler_take_longest_pass_ms()
 static uint32_t passes;
 static SchedulerTask *tasks;   // every task seen, in order of first use
 static SchedulerTask *running; // timed until the next call in
@@ -106,6 +107,7 @@ void scheduler_init(void)
     passed = false;
     passes = 0;
     pass_max_ms = 0;
+    pass_max_taken_ms = 0;
     scheduler_pass();
     report_start_ms = now_ms;
 }
@@ -122,6 +124,10 @@ void scheduler_pass(void)
         if (pass_ms > pass_max_ms)
         {
             pass_max_ms = pass_ms > UINT16_MAX ? UINT16_MAX : (uint16_t)pass_ms;
+        }
+        if (pass_ms > pass_max_taken_ms)
+        {
+            pass_max_taken_ms = pass_ms > UINT16_MAX ? UINT16_MAX : (uint16_t)pass_ms;
         }
     }
     passed = true;
@@ -181,6 +187,15 @@ uint16_t scheduler_slot(void)
 static uint32_t permille(uint32_t part, uint32_t whole)
 {
     return whole == 0U ? 0U : (part * 1000U + whole / 2U) / whole;
+}
+
+
+uint16_t scheduler_take_longest_pass_ms(void)
+{
+    uint16_t longest = pass_max_taken_ms;
+
+    pass_max_taken_ms = 0;
+    return longest;
 }
 
 

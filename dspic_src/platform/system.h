@@ -15,6 +15,9 @@ void system_init(void);
 void delay_ms(uint16_t milliseconds);
 void delay_us(uint16_t microseconds);
 
+// RCON as it was at start-up (bit names as SML_RESET_*): why the PIC reset.
+uint16_t system_reset_cause(void);
+
 // Software reset (RESET instruction): restarts from the reset vector.
 void system_reset(void) __attribute__((noreturn));
 

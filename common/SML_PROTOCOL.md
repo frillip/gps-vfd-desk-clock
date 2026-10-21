@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 1.3 (`SML_PROTOCOL_MAJOR` 1, `SML_PROTOCOL_MINOR` 3) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 1.4 (`SML_PROTOCOL_MAJOR` 1, `SML_PROTOCOL_MINOR` 4) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -129,6 +129,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x30 | STAT-SETTINGS | PIC→ESP | 36 | — Settings store not yet ported | On change, after reset, on request |
 | | 0x40 | STAT-NET | ESP→PIC | 24 | ✓ Received and held | On change, and every 10 seconds |
 | | 0x50 | STAT-SOURCES | PIC→ESP | 108 | ✓ Sent | On change, every 10 seconds, and on request |
+| | 0x60 | STAT-SYS | PIC→ESP | 16 | ✓ Sent | First epoch in SML mode, every 10 seconds, and on request |
 | | 0xF0 | STAT-DEBUG | PIC→ESP | 1–240 | ✓ Sent in SML mode | As text is produced |
 | 0x80 CMD | 0x10 | CMD-USER | Both ways | 10 | ✓ Runs PIC codes, sends ESP codes | On demand |
 | | 0x20 | CMD-RESPONSE | Both ways | 12 | ✓ | One per command |
@@ -609,6 +610,23 @@ Each entry is 24 bytes, and entry *k* starts at offset 12 + 24k.
 
 The PIC sends STAT-SOURCES when the selection, the second choice, the sync state or any verdict changes (at most once an epoch), every 10 seconds, and in answer to `SHOW_SOURCES`, just before the ACK. On the ESP, `pic-show-sources` prints it as a table.
 
+## STAT-SYS (0x60)
+
+_The PIC's firmware, uptime and reset cause. PIC→ESP, 16 bytes._
+
+STAT-SYS is the PIC's counterpart to the uptime and version in STAT-NET: what the ESP needs to notice that the PIC has restarted, and to say why.
+
+| Offset | Field | Type | Unit / values |
+| --- | --- | --- | --- |
+| 0 | flags | u16 | Reserved, zero |
+| 2 | reset_cause | u16 | `SML_RESET_*` bits as found at start-up, see [Reset causes](#reset-causes). More than one may be set |
+| 4 | uptime_s | u32 | Seconds since start-up, counted in epochs; it starts under a second after reset. A drop means the PIC restarted |
+| 8 | pic_version | u32 | PIC firmware: major << 16 \| minor << 8 \| patch, as `esp_version` |
+| 12 | loop_max_ms | u16 | The longest pass of the PIC's main loop since the previous STAT-SYS, ms: anything that held the rest up |
+| 14 | reserved | u16 | Zero |
+
+The PIC sends STAT-SYS in its first epoch in SML mode, so the ESP hears about a restart straight away, then every 10 seconds, and on `REQUEST_MESSAGE`. The ESP shows the version, uptime and reset cause in its status, and prints a line when the uptime drops.
+
 # CMD class (0x80)
 
 ## CMD-USER (0x10)
@@ -629,7 +647,7 @@ Commands run by the PIC:
 | Code | Command | Argument | V2+ PIC |
 | --- | --- | --- | --- |
 | 0x0001 | `INFO` | — | ✓ Prints every module's diagnostics as STAT-DEBUG, then ACK |
-| 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-GNSS and STAT-UI: the message, then ACK. Others: NACK UNSUPPORTED |
+| 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI, STAT-SOURCES and STAT-SYS: the message, then ACK. Others: NACK UNSUPPORTED |
 | 0x0010 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
 | 0x0011 | `RESET` | — | ✓ ACK, flush, then software reset |
 | 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY mid-request. The RTC is printed once read back. The clock's own time is not changed |
@@ -767,6 +785,7 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | STAT-SETTINGS | PIC | On change, after reset, on `SHOW_SETTINGS` |
 | STAT-DEBUG | PIC | As text is produced |
 | STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to `SHOW_SOURCES` |
+| STAT-SYS | PIC | First epoch in SML mode, then every 10 seconds |
 | CMD-RESPONSE | Both | One per CMD-USER or CMD-SETTINGS received, plus a final one for each ACCEPTED |
 | CMD-USER (ESP codes) | PIC | On demand, from the menu |
 | STAT-NET | ESP | On change, and every 10 seconds |
@@ -939,6 +958,21 @@ The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. The
 | 0x0020 | MINUTE | Each minute: scheduler, GNSS and sync reports |
 | 0x0040 | TUNING | Each minute: loop and source statistics |
 
+## Reset causes
+
+`SML_RESET_*`, the bits of STAT-SYS `reset_cause`. They sit where the dsPIC33's RCON register keeps them, so the PIC sends RCON's cause bits unchanged. A power-on sets POR and BOR; a trap with no handler resets through the RESET instruction, so it shows as SWR, with TRAPR too if it was a trap conflict. The ESP names the most telling one, in this order.
+
+| Bit | Name | Cause |
+| --- | --- | --- |
+| 0x0001 | POR | Power-on |
+| 0x0002 | BOR | Brown-out |
+| 0x0010 | WDTO | Watchdog timeout |
+| 0x8000 | TRAPR | Trap conflict |
+| 0x4000 | IOPUWR | Illegal opcode, or an uninitialised W register used as an address |
+| 0x0200 | CM | Configuration mismatch |
+| 0x0080 | EXTR | MCLR pin |
+| 0x0040 | SWR | RESET instruction: the `RESET` command, or a trap with no handler |
+
 ## Results and errors
 
 | Status | Value | | Detail | Value |
@@ -1012,6 +1046,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-21 (1.4) | STAT-SYS (0x60, PIC→ESP, 16 bytes): firmware version, uptime, reset cause (`SML_RESET_*`) and the longest main-loop pass. No existing layout changes |
 | 2026-10-21 (1.3) | STAT-SOURCES (0x50, PIC→ESP, 108 bytes): the PIC's time sources, ranked. `SML_SOURCE_HOLDOVER` (6). TIME-PIC offset 7 becomes `second_source` (was reserved). TIME-NTP flag bit 6 `CORRECTING`, and `SML_NTP_GENTLE_SLEW_PPM`. CMD-USER `SHOW_SOURCES` (0x0074) and `SET_DEBUG` (0x0090) with `SML_DEBUG_*` bits. `SML_VERDICT_*`. No existing layout changes length |
 | 2026-10-20 | Document only, no wire change. Rewritten in the style of the repository README. Definitions and codec now in `common/` (`sml_proto.h`, `sml.c`, `sml.h`). Link speed 921600 baud. Bootloader references reduced to the reserved class. The ESP implementation is complete and described in its own README |
 | 2026-10-19 (1.2) | TIME-CTRL redefined as lossless Kalman and servo fixed-point state (28 → 56 bytes). TIME-MEAS (0x13) added: raw per-epoch measurements for statistics and ADEV. STAT-NET (0x40, ESP→PIC) added; TIME-NTP flag bit 0 (`WIFI_CONNECTED`) retired into it. CMD-USER and CMD-RESPONSE both ways: codes 0x8000 and up run on the ESP (`SML_USER_ESP_*`). Timezone: the PIC always holds the latest TZ-STATE; `TZ_AUTO` selects the base offset and `DST_AUTO` the DST state from it, independently; `SML_UI_TZ_HELD`; `SML_TZ_SOURCE_MANUAL` redefined as ESP-side manual configuration. `SML_RTC_*` 3 is the RV-3028-C7 |

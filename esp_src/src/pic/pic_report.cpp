@@ -112,6 +112,44 @@ const char *pic_report_tz_source_name(uint8_t source)
 }
 
 
+const char *pic_report_reset_name(uint16_t cause)
+{
+    // Most telling first: a power-on also sets BOR, and a trap without a
+    // handler resets through the RESET instruction (SWR). As the PIC's own.
+    static const struct
+    {
+        uint16_t bit;
+        const char *name;
+    } causes[] = {
+        {SML_RESET_POR, "power-on"},
+        {SML_RESET_BOR, "brown-out"},
+        {SML_RESET_WDTO, "watchdog"},
+        {SML_RESET_TRAPR, "trap conflict"},
+        {SML_RESET_IOPUWR, "illegal opcode or uninitialised W"},
+        {SML_RESET_CM, "configuration mismatch"},
+        {SML_RESET_EXTR, "MCLR pin"},
+        {SML_RESET_SWR, "software (reset command or unhandled trap)"},
+    };
+    size_t index;
+
+    for (index = 0; index < sizeof(causes) / sizeof(causes[0]); index++)
+    {
+        if (cause & causes[index].bit)
+        {
+            return causes[index].name;
+        }
+    }
+    return "unknown";
+}
+
+
+void pic_report_version(char *text, size_t size, uint32_t version)
+{
+    snprintf(text, size, "%lu.%lu.%lu", (unsigned long)(version >> 16),
+             (unsigned long)((version >> 8) & 0xFFU), (unsigned long)(version & 0xFFU));
+}
+
+
 static const char *sync_name(uint8_t state)
 {
     static const char *const names[] = {"INIT", "FREE_RUN", "ACQUIRE", "LOCKED", "HOLDOVER"};
@@ -189,7 +227,41 @@ static void print_local(Stream *output, const SML_TIME_AUTH_PAYLOAD *auth, bool 
 }
 
 
-// Compact: "PIC:      <UTC> +/-120 ns, GNSS LOCKED" and the local time.
+// Compact: "PIC:      0.1.0, up 00:12:31, last reset: power-on"; verbose
+// adds the reset bits and the longest main-loop pass.
+static void print_system(Stream *output, bool verbose)
+{
+    SML_STAT_SYS_PAYLOAD sys;
+    char version[16];
+
+    if (!pic_link_get(SML_CLASS_STAT, SML_STAT_SYS, &sys, 30000U))
+    {
+        if (verbose)
+        {
+            output->printf("\n=== PIC system ===\nNo STAT-SYS (needs PIC firmware with SML 1.4)\n");
+        }
+        return;
+    }
+    pic_report_version(version, sizeof(version), sys.pic_version);
+    if (!verbose)
+    {
+        output->printf("PIC:      %s, up ", version);
+        time_print_duration(output, sys.uptime_s);
+        output->printf(", last reset: %s\n", pic_report_reset_name(sys.reset_cause));
+        return;
+    }
+    output->printf("\n=== PIC system ===\n");
+    output->printf("Firmware: %s\n", version);
+    output->printf("Up:       ");
+    time_print_duration(output, sys.uptime_s);
+    output->printf(", %lu restarts seen\n", (unsigned long)pic_link_stats()->restarts);
+    output->printf("Reset:    %s (0x%04X)\n", pic_report_reset_name(sys.reset_cause),
+                   sys.reset_cause);
+    output->printf("Loop:     longest pass %u ms in the last 10 s\n", sys.loop_max_ms);
+}
+
+
+// Compact: "UTC:      <UTC> +/-120 ns, GNSS LOCKED" and the local time.
 static void print_time(Stream *output, bool verbose)
 {
     SML_TIME_AUTH_PAYLOAD auth;
@@ -203,11 +275,11 @@ static void print_time(Stream *output, bool verbose)
     }
     if (!pic_link_get(SML_CLASS_TIME, SML_TIME_AUTH, &auth, PIC_LINK_STATE_TIMEOUT_MS))
     {
-        output->printf("%s%s\n", verbose ? "No TIME-AUTH from the PIC" : "PIC:      no time",
+        output->printf("%s%s\n", verbose ? "No TIME-AUTH from the PIC" : "UTC:      unknown",
                        pic_link_is_sml() ? "" : " (not in SML mode)");
         return;
     }
-    output->printf(verbose ? "UTC:    " : "PIC:      ");
+    output->printf(verbose ? "UTC:    " : "UTC:      ");
     if (auth.flags & SML_AUTH_UTC_VALID)
     {
         time_print_utc(output, auth.utc_seconds);
@@ -612,6 +684,10 @@ void pic_report_print_link(Stream *output)
 
 void pic_report_print(Stream *output, bool verbose)
 {
+    if (!verbose)
+    {
+        print_system(output, false);
+    }
     print_time(output, verbose);
     if (verbose)
     {
@@ -628,6 +704,7 @@ void pic_report_print(Stream *output, bool verbose)
     print_gnss(output, verbose);
     if (verbose)
     {
+        print_system(output, true);
         pic_report_print_link(output);
     }
 }

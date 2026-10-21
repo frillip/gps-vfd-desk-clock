@@ -1,6 +1,7 @@
 #include "esp_report.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "../drivers/i2c1.h"
@@ -8,6 +9,9 @@
 #include "../drivers/tubes.h"
 #include "../gnss/gnss.h"
 #include "../platform/board.h"
+#include "../platform/system.h"
+#include "../platform/version.h"
+#include "../scheduler.h"
 #include "../platform/time_ms.h"
 #include "../sync/sync_report.h"
 #include "../timing/q16.h"
@@ -509,6 +513,66 @@ void esp_report_stat_sources(uint32_t epoch_sequence, SML_STAT_SOURCES_PAYLOAD *
 }
 
 
+const char *esp_report_reset_name(uint16_t cause)
+{
+    // Most telling first: a power-on also sets BOR, and a trap without a
+    // handler resets through the RESET instruction, which sets SWR.
+    if (cause & SML_RESET_POR)
+    {
+        return "power-on";
+    }
+    if (cause & SML_RESET_BOR)
+    {
+        return "brown-out";
+    }
+    if (cause & SML_RESET_WDTO)
+    {
+        return "watchdog";
+    }
+    if (cause & SML_RESET_TRAPR)
+    {
+        return "trap conflict";
+    }
+    if (cause & SML_RESET_IOPUWR)
+    {
+        return "illegal opcode or uninitialised W";
+    }
+    if (cause & SML_RESET_CM)
+    {
+        return "configuration mismatch";
+    }
+    if (cause & SML_RESET_EXTR)
+    {
+        return "MCLR pin";
+    }
+    if (cause & SML_RESET_SWR)
+    {
+        return "software (reset command or unhandled trap)";
+    }
+    return "unknown";
+}
+
+
+void esp_report_stat_sys(uint32_t epoch_sequence, SML_STAT_SYS_PAYLOAD *payload)
+{
+    memset(payload, 0, sizeof(*payload));
+    payload->reset_cause = (uint16_t)(system_reset_cause() & SML_RESET_ALL);
+    payload->uptime_s = epoch_sequence;
+    payload->pic_version = PIC_VERSION_NUMBER;
+    payload->loop_max_ms = scheduler_take_longest_pass_ms();
+}
+
+
+void esp_report_print_system(void)
+{
+    uint16_t cause = system_reset_cause();
+
+    printf("PIC %u.%u.%u, up %lu s, last reset: %s (RCON 0x%04X)\n", PIC_VERSION_MAJOR,
+           PIC_VERSION_MINOR, PIC_VERSION_PATCH, (unsigned long)scheduler_epoch(),
+           esp_report_reset_name((uint16_t)(cause & SML_RESET_ALL)), cause);
+}
+
+
 void esp_report_print_all(uint32_t now_ms)
 {
     const SyncStatus *status = sync_status();
@@ -516,6 +580,7 @@ void esp_report_print_all(uint32_t now_ms)
 
     clock.utc_seconds = status->time.utc_seconds;
     clock.known = status->time.known;
+    esp_report_print_system();
     sync_report_status();
     gnss_print(now_ms);
     display_print();

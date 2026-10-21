@@ -54,7 +54,7 @@
 #define SML_TZ_TRANSITION_MAX 8U
 #define SML_SETTINGS_SCHEMA   1U
 #define SML_PROTOCOL_MAJOR    1U
-#define SML_PROTOCOL_MINOR    3U
+#define SML_PROTOCOL_MINOR    4U
 
 #define SML_CLASS_TIME 0x10U
 #define SML_CLASS_TZ   0x20U
@@ -79,6 +79,7 @@
 #define SML_STAT_SETTINGS 0x30U // SML-STAT-SETTINGS
 #define SML_STAT_NET      0x40U // SML-STAT-NET (ESP -> PIC)
 #define SML_STAT_SOURCES  0x50U // SML-STAT-SOURCES: the PIC's time sources, ranked
+#define SML_STAT_SYS      0x60U // SML-STAT-SYS: the PIC's firmware, uptime, reset cause
 #define SML_STAT_DEBUG    0xF0U // SML-STAT-DEBUG
 #define SML_CMD_USER      0x10U // SML-CMD-USER
 #define SML_CMD_RESPONSE  0x20U // SML-CMD-RESPONSE
@@ -169,6 +170,18 @@
 #define SML_MENU_NONE 0U
 // STAT-SOURCES verdict: the PIC's judgement of a source's latest report, GOOD
 // or the first reason it is not.
+/* STAT-SYS reset causes. The positions are the dsPIC33's RCON bits, so the
+ * PIC sends RCON's cause bits as they are. */
+#define SML_RESET_POR    0x0001U // power-on
+#define SML_RESET_BOR    0x0002U // brown-out (also set at power-on)
+#define SML_RESET_WDTO   0x0010U // watchdog
+#define SML_RESET_SWR    0x0040U // RESET instruction (a command, or a trap without a handler)
+#define SML_RESET_EXTR   0x0080U // MCLR pin
+#define SML_RESET_CM     0x0200U // configuration mismatch
+#define SML_RESET_IOPUWR 0x4000U // illegal opcode or uninitialised W register
+#define SML_RESET_TRAPR  0x8000U // trap conflict
+#define SML_RESET_ALL    0xC2D3U
+
 #define SML_VERDICT_NONE         0U // not judged yet
 #define SML_VERDICT_ABSENT       1U // not answering
 #define SML_VERDICT_NO_TIME      2U // does not know UTC (no fix, NTP unsynced)
@@ -325,6 +338,7 @@
 #define SML_SOURCE_ENTRY_BYTES  24U
 #define SML_SOURCES_ENTRIES     4U
 #define SML_STAT_SOURCES_BYTES  108U
+#define SML_STAT_SYS_BYTES      16U
 #define SML_CMD_USER_BYTES      10U
 #define SML_CMD_RESPONSE_BYTES  12U
 #define SML_CMD_SETTINGS_BYTES  38U
@@ -836,6 +850,28 @@ typedef struct
     SML_SOURCE_ENTRY entries[SML_SOURCES_ENTRIES];
 } SML_STAT_SOURCES_PAYLOAD;
 
+/* SML-STAT-SYS, PIC -> ESP. The PIC's counterpart to STAT-NET's uptime and
+ * version: what the ESP needs to notice and explain a PIC restart. Sent in
+ * the first epoch after the PIC starts (or enters SML mode), every 10 s, and
+ * on REQUEST_MESSAGE.
+ * reset_cause: SML_RESET_* bits as captured at start-up (several may be set:
+ * a power-on sets POR and BOR; a trap with no handler resets through the
+ * RESET instruction, setting TRAPR and SWR).
+ * uptime_s: seconds since start-up, counted in epochs; it starts under a
+ * second after reset, and a drop means the PIC restarted.
+ * pic_version: major << 16 | minor << 8 | patch, as esp_version.
+ * loop_max_ms: the longest pass of the PIC's main loop since the previous
+ * STAT-SYS: work that held everything else up. */
+typedef struct
+{
+    uint16_t flags; // reserved; transmit zero
+    uint16_t reset_cause;
+    uint32_t uptime_s;
+    uint32_t pic_version;
+    uint16_t loop_max_ms;
+    uint16_t reserved;
+} SML_STAT_SYS_PAYLOAD;
+
 /* Shared settings body. No EEPROM marker/checksum or action/reset flags.
  * Persistent selected display only; current runtime mode belongs in STAT-UI.
  * TZ_AUTO: base offset from the held TZ-STATE, else base_offset_s.
@@ -1002,6 +1038,7 @@ SML_SIZE_CHECK(SML_STAT_SETTINGS_PAYLOAD, SML_STAT_SETTINGS_BYTES);
 SML_SIZE_CHECK(SML_STAT_NET_PAYLOAD, SML_STAT_NET_BYTES);
 SML_SIZE_CHECK(SML_SOURCE_ENTRY, SML_SOURCE_ENTRY_BYTES);
 SML_SIZE_CHECK(SML_STAT_SOURCES_PAYLOAD, SML_STAT_SOURCES_BYTES);
+SML_SIZE_CHECK(SML_STAT_SYS_PAYLOAD, SML_STAT_SYS_BYTES);
 SML_SIZE_CHECK(SML_CMD_USER_PAYLOAD, SML_CMD_USER_BYTES);
 SML_SIZE_CHECK(SML_CMD_RESPONSE_PAYLOAD, SML_CMD_RESPONSE_BYTES);
 SML_SIZE_CHECK(SML_CMD_SETTINGS_PAYLOAD, SML_CMD_SETTINGS_BYTES);

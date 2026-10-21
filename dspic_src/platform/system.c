@@ -53,8 +53,19 @@
 
 static void clock_init(void);
 
+// RCON as found at start-up: why the PIC last reset.
+static uint16_t reset_cause;
+
+// RCON's reset-cause bits (the rest are controls and status: SWDTEN,
+// VREGS, VREGSF, SLEEP, IDLE).
+#define RCON_CAUSES 0xC2D3U // TRAPR IOPUWR CM EXTR SWR WDTO BOR POR
+
 void system_init(void)
 {
+    // First, before anything can reset again: the bits stay set until
+    // cleared, so clearing them now makes the next reset's cause its own.
+    reset_cause = RCON;
+    RCON = (uint16_t)(RCON & ~RCON_CAUSES);
     board_init();
     clock_init();
     // Interrupt priorities are set by the module that owns each interrupt:
@@ -115,6 +126,12 @@ void delay_us(uint16_t microseconds)
     {
         __delay_us(1);
     }
+}
+
+
+uint16_t system_reset_cause(void)
+{
+    return reset_cause;
 }
 
 

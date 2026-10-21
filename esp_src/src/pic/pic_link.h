@@ -50,6 +50,7 @@ typedef struct
     uint32_t pairings;    // TIME-AUTH paired with an edge
     uint32_t unpaired;    // ... not paired
     uint32_t backlogs;    // services that found the loop had been held up
+    uint32_t restarts;    // PIC restarts seen (STAT-SYS uptime dropped)
 } PicLinkStats;
 
 typedef struct

@@ -14,8 +14,13 @@ const char *pic_report_error_name(uint16_t error);
 const char *pic_report_source_name(uint8_t source);
 const char *pic_report_lock_name(uint8_t lock);
 const char *pic_report_tz_source_name(uint8_t source);
+// The most telling of the SML_RESET_* bits, as text.
+const char *pic_report_reset_name(uint16_t cause);
+// "0.1.0" from major << 16 | minor << 8 | patch.
+void pic_report_version(char *text, size_t size, uint32_t version);
 
-// Time, synchroniser, loop, sources, GNSS and link. Compact unless verbose:
+// System (firmware, uptime, reset cause), time, synchroniser, loop,
+// sources, GNSS and link. Compact unless verbose:
 // a line or two each, the sources table, and nothing that is only counters.
 void pic_report_print(Stream *output, bool verbose);
 // STAT-SOURCES: the PIC's time sources, ranked (pic-show-sources). Verbose
