@@ -670,6 +670,9 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     update.loop = epoch_control_update(snapshot, update.usable, offset_ticks);
     follow_loop(snapshot, &update.loop);
     follow_holdover(&update.loop);
+    // Again, for the reports and TIME-AUTH: as of this epoch, after any
+    // steering in it has set a new base or ageing has moved it on.
+    update_holdover_bound();
     keep_time(snapshot, update.usable, was_locked);
     rank_second();
 
