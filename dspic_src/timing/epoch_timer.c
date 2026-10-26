@@ -12,6 +12,10 @@ static volatile uint32_t epoch_sequence;
 static volatile uint32_t handler_late;
 static volatile uint16_t current_slot;
 static volatile uint32_t milliseconds;
+// epoch_timer_resume(): slot boundaries made up, and stalls that spanned an
+// epoch.
+static uint32_t resumed_slots;
+static uint32_t resume_spans;
 
 // Requested by the foreground, loaded at the next epoch.
 static volatile uint32_t requested_period = TIMING_NOMINAL_TICKS;
@@ -205,11 +209,9 @@ void __attribute__((interrupt, no_auto_psv)) _T3Interrupt(void)
 }
 
 
-// One slot boundary: slot n begins n ms after the epoch.
-void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void)
+// One slot boundary: the millisecond, and whatever happens at that slot.
+static void advance_slot(void)
 {
-    IFS1bits.T4IF = 0;
-
     milliseconds++;
     if (current_slot < UINT16_MAX)
     {
@@ -226,4 +228,56 @@ void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void)
 
         default: break;
     }
+}
+
+
+// One slot boundary: slot n begins n ms after the epoch.
+void __attribute__((interrupt, no_auto_psv)) _T4Interrupt(void)
+{
+    IFS1bits.T4IF = 0;
+    advance_slot();
+}
+
+
+/*
+ * After interrupts were held off for longer than a slot (a flash erase):
+ * the slot and the milliseconds from where T2/T3 stands, the boundaries
+ * missed counted as if they had run, and T4 put back in phase. If the epoch
+ * itself came and went meanwhile, its interrupt restarts everything as
+ * usual; the milliseconds missed before it are lost, and counted.
+ */
+void epoch_timer_resume(void)
+{
+    uint16_t low;
+    uint32_t since_epoch;
+    uint32_t slot;
+
+    if (!T2CONbits.TON || IFS0bits.T3IF)
+    {
+        if (IFS0bits.T3IF)
+        {
+            resume_spans++;
+        }
+        return;
+    }
+    low = TMR2; // latches TMR3 into TMR3HLD
+    since_epoch = ((uint32_t)TMR3HLD << 16) | low;
+    slot = since_epoch / EPOCH_SLOT_TICKS;
+    if (slot > current_slot)
+    {
+        resumed_slots += slot - current_slot;
+    }
+    while (current_slot < slot && current_slot < UINT16_MAX)
+    {
+        advance_slot();
+    }
+    TMR4 = (uint16_t)(since_epoch % EPOCH_SLOT_TICKS);
+    IFS1bits.T4IF = 0;
+}
+
+
+void epoch_timer_resume_stats(uint32_t *slots, uint32_t *spans)
+{
+    *slots = resumed_slots;
+    *spans = resume_spans;
 }

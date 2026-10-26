@@ -10,9 +10,9 @@
 #include "../drivers/uart1.h"
 #include "../platform/system.h"
 #include "../platform/time_ms.h"
+#include "../settings/settings.h"
 #include "../ui/console.h"
 #include "../ui/debug.h"
-#include "../ui/display.h"
 #include "../ui/timezone.h"
 #include "esp_report.h"
 
@@ -39,6 +39,18 @@ static SML_STAT_NET_PAYLOAD net;
 static bool have_response;
 static SML_CMD_RESPONSE_PAYLOAD esp_response;
 static uint16_t next_token;
+
+// STAT-SETTINGS: the revision and flags last sent, to send again on a
+// change.
+static bool have_settings;
+static uint32_t settings_sent_revision;
+static uint16_t settings_sent_flags;
+
+// SAVE or DEFAULTS answered ACCEPTED: the final answer follows once the
+// settings are stored.
+static bool save_answer_due;
+static uint16_t save_token;
+static uint16_t save_command;
 
 // STAT-SOURCES: what was last sent, to send again on a change.
 static bool have_sources;
@@ -126,7 +138,7 @@ static void respond(uint16_t token, uint16_t command, uint8_t result, uint8_t de
     response.detail = detail;
     response.token = token;
     response.command = command;
-    response.settings_revision = 0; // no settings store yet
+    response.settings_revision = settings_revision();
     if (result == SML_RESULT_NACK)
     {
         stats.nacks++;
@@ -149,6 +161,7 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
         SML_STAT_UI_PAYLOAD ui;
         SML_STAT_SOURCES_PAYLOAD sources;
         SML_STAT_SYS_PAYLOAD sys;
+        SML_STAT_SETTINGS_PAYLOAD settings;
     } payload;
 
     if (class_id == SML_CLASS_TIME && message_id == SML_TIME_AUTH)
@@ -185,6 +198,13 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
     else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_SYS)
     {
         esp_report_stat_sys(last_snapshot.timer.sequence, &payload.sys);
+    }
+    else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_SETTINGS)
+    {
+        settings_stat(&payload.settings);
+        have_settings = true;
+        settings_sent_revision = payload.settings.revision;
+        settings_sent_flags = payload.settings.flags;
     }
     else
     {
@@ -253,6 +273,13 @@ void esp_link_epoch(const TimingSnapshot *snapshot, const SyncUpdate *update, ui
     (void)send_message(SML_CLASS_TIME, SML_TIME_GNSS, now_ms);
     (void)send_message(SML_CLASS_STAT, SML_STAT_UI, now_ms);
     send_sources_if_due();
+    // The first in SML mode, then on a change of revision, DIRTY or
+    // DEFAULTS.
+    if (!have_settings || settings_revision() != settings_sent_revision ||
+        settings_flags() != settings_sent_flags)
+    {
+        (void)send_message(SML_CLASS_STAT, SML_STAT_SETTINGS, now_ms);
+    }
     // Every epoch, so the uptime the ESP shows keeps up; the first in SML
     // mode tells it at once that the PIC (re)started.
     (void)send_message(SML_CLASS_STAT, SML_STAT_SYS, now_ms);
@@ -274,13 +301,93 @@ static bool offset_argument(uint32_t argument)
 }
 
 
-// Applies a command. Returns the error code, SML_ERROR_NONE for an ACK.
-static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms, bool *reset)
+// A change to one setting: the running settings with it changed, applied
+// through settings_write() (which checks it).
+static uint8_t change_flag(uint16_t flag, uint32_t argument)
+{
+    SML_SETTINGS_BODY body;
+
+    if (!flag_argument(argument))
+    {
+        return SML_ERROR_ARGUMENT;
+    }
+    settings_body(&body);
+    body.flags = argument != 0U ? (uint16_t)(body.flags | flag) : (uint16_t)(body.flags & ~flag);
+    return settings_write(&body);
+}
+
+
+static uint8_t change_setting(uint16_t command, uint32_t argument)
+{
+    SML_SETTINGS_BODY body;
+
+    settings_body(&body);
+    switch (command)
+    {
+        case SML_USER_SET_TZ_OFFSET:
+            if (!offset_argument(argument))
+            {
+                return SML_ERROR_ARGUMENT;
+            }
+            body.base_offset_s = (int32_t)argument;
+            break;
+        case SML_USER_SET_DST_OFFSET:
+            if (!offset_argument(argument))
+            {
+                return SML_ERROR_ARGUMENT;
+            }
+            body.dst_offset_s = (int32_t)argument;
+            break;
+        case SML_USER_SET_FOSC: body.calibration_fosc_hz = argument; break;
+        case SML_USER_SET_DISPLAY:
+            if (argument > 0xFFU)
+            {
+                return SML_ERROR_ARGUMENT;
+            }
+            body.selected_display = (uint8_t)argument;
+            break;
+        case SML_USER_SET_BRIGHTNESS:
+            if (argument < TUBES_BRIGHTNESS_OFF || argument > TUBES_BRIGHTNESS_FULL)
+            {
+                return SML_ERROR_ARGUMENT;
+            }
+            body.brightness = (uint16_t)argument;
+            body.flags &= (uint16_t)~SML_SETTING_BRI_AUTO;
+            break;
+        default: return SML_ERROR_UNSUPPORTED;
+    }
+    return settings_write(&body);
+}
+
+
+// SAVE and DEFAULTS: ACCEPTED now, the final answer once stored. One at a
+// time.
+static uint8_t start_save(const SML_CMD_USER_PAYLOAD *command, bool *accepted)
+{
+    if (save_answer_due)
+    {
+        return SML_ERROR_BUSY;
+    }
+    if (command->command == SML_USER_DEFAULTS)
+    {
+        settings_restore_defaults();
+    }
+    settings_save();
+    save_answer_due = true;
+    save_token = command->token;
+    save_command = command->command;
+    *accepted = true;
+    return SML_ERROR_NONE;
+}
+
+
+// Applies a command. Returns the error code, SML_ERROR_NONE for an ACK (or,
+// with accepted set, for ACCEPTED: the final answer comes later).
+static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms, bool *reset,
+                           bool *accepted)
 {
     uint32_t argument = command->argument;
-    TimezoneOffset manual;
 
-    timezone_manual(&manual);
     switch (command->command)
     {
         case SML_USER_INFO:
@@ -312,7 +419,7 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
             {
                 return SML_ERROR_ARGUMENT;
             }
-            debug_set((uint16_t)((debug_mask() & (uint16_t)~clear) | set));
+            settings_set_debug((uint16_t)((settings_debug_mask() & (uint16_t)~clear) | set));
             debug_print();
             return SML_ERROR_NONE;
         }
@@ -329,58 +436,23 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
                 return SML_ERROR_STATE;
             }
             return source_rtc_set(argument) ? SML_ERROR_NONE : SML_ERROR_BUSY;
-        case SML_USER_SET_TZ_AUTO:
-            if (!flag_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            timezone_set_auto(argument != 0U);
-            return SML_ERROR_NONE;
+        case SML_USER_SET_TZ_AUTO: return change_flag(SML_SETTING_TZ_AUTO, argument);
+        case SML_USER_SET_DST_AUTO: return change_flag(SML_SETTING_DST_AUTO, argument);
+        case SML_USER_SET_DST_ACTIVE: return change_flag(SML_SETTING_DST_ACTIVE, argument);
+        case SML_USER_SET_BRI_AUTO: return change_flag(SML_SETTING_BRI_AUTO, 1);
         case SML_USER_SET_TZ_OFFSET:
-            if (!offset_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            timezone_set_manual((int32_t)argument, manual.dst_offset_s, manual.dst_active);
-            return SML_ERROR_NONE;
         case SML_USER_SET_DST_OFFSET:
-            if (!offset_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            timezone_set_manual(manual.base_offset_s, (int32_t)argument, manual.dst_active);
-            return SML_ERROR_NONE;
-        case SML_USER_SET_DST_AUTO:
-            if (!flag_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            timezone_set_dst_auto(argument != 0U);
-            return SML_ERROR_NONE;
-        case SML_USER_SET_DST_ACTIVE:
-            if (!flag_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            timezone_set_manual(manual.base_offset_s, manual.dst_offset_s, argument != 0U);
-            return SML_ERROR_NONE;
+        case SML_USER_SET_FOSC:
         case SML_USER_SET_DISPLAY:
-            if (argument != SML_DISPLAY_HHMM)
-            {
-                // Selectable, but not ported yet; or not selectable at all.
-                return argument > SML_DISPLAY_HHMM && argument < SML_DISPLAY_DASHES
-                           ? SML_ERROR_UNSUPPORTED
-                           : SML_ERROR_ARGUMENT;
-            }
-            display_set_mode(DISPLAY_MODE_HHMM);
-            return SML_ERROR_NONE;
-        case SML_USER_SET_BRIGHTNESS:
-            if (argument < TUBES_BRIGHTNESS_MIN || argument > TUBES_BRIGHTNESS_MAX)
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            tubes_brightness_set((uint16_t)argument);
-            return SML_ERROR_NONE;
+        case SML_USER_SET_BRIGHTNESS: return change_setting(command->command, argument);
+        case SML_USER_SAVE:
+        case SML_USER_DEFAULTS: return start_save(command, accepted);
+        case SML_USER_SHOW_SETTINGS:
+            // What is stored, then the running settings as STAT-SETTINGS.
+            settings_print_stored();
+            return send_message(SML_CLASS_STAT, SML_STAT_SETTINGS, now_ms) ? SML_ERROR_NONE
+                                                                           : SML_ERROR_UNSUPPORTED;
+        case SML_USER_SHOW_CONFIG: settings_print(); return SML_ERROR_NONE;
         default: return SML_ERROR_UNSUPPORTED;
     }
 }
@@ -391,12 +463,16 @@ static void handle_command(const SmlFrame *frame, uint32_t now_ms)
     SML_CMD_USER_PAYLOAD command;
     uint8_t error;
     bool reset = false;
+    bool accepted = false;
 
     (void)sml_decode(sml_message(SML_CLASS_CMD, SML_CMD_USER)->layout, frame->payload, &command);
     stats.commands++;
-    error = run_command(&command, now_ms, &reset);
+    error = run_command(&command, now_ms, &reset, &accepted);
     respond(command.token, command.command,
-            error == SML_ERROR_NONE ? SML_RESULT_ACK : SML_RESULT_NACK, error);
+            error != SML_ERROR_NONE ? SML_RESULT_NACK
+            : accepted              ? SML_RESULT_ACCEPTED
+                                    : SML_RESULT_ACK,
+            error);
     if (reset)
     {
         flush_text();
@@ -424,6 +500,36 @@ static void handle_leap(const SmlFrame *frame)
         announced.change = leap.change;
     }
     sync_set_leap(&announced);
+}
+
+
+// CMD-SETTINGS: every setting at once, if the ESP has seen the latest
+// revision; persisted later if asked.
+static void handle_settings(const SmlFrame *frame)
+{
+    SML_CMD_SETTINGS_PAYLOAD write;
+    uint8_t error;
+
+    (void)sml_decode(sml_message(SML_CLASS_CMD, SML_CMD_SETTINGS)->layout, frame->payload, &write);
+    stats.settings_writes++;
+    if ((write.flags & (uint16_t)~SML_WRITE_PERSIST) != 0U || write.reserved != 0U)
+    {
+        error = SML_ERROR_ARGUMENT;
+    }
+    else if (write.expected_revision != settings_revision())
+    {
+        error = SML_ERROR_STALE_REVISION;
+    }
+    else
+    {
+        error = settings_write(&write.settings);
+    }
+    if (error == SML_ERROR_NONE && (write.flags & SML_WRITE_PERSIST) != 0U)
+    {
+        settings_save();
+    }
+    respond(write.token, SML_OPERATION_SETTINGS_WRITE,
+            error == SML_ERROR_NONE ? SML_RESULT_ACK : SML_RESULT_NACK, error);
 }
 
 
@@ -492,9 +598,7 @@ static void handle_frame(const SmlFrame *frame, uint32_t now_ms)
     }
     else if (frame->class_id == SML_CLASS_CMD && frame->message_id == SML_CMD_SETTINGS)
     {
-        // Token at offset 4, as in CMD-USER.
-        respond(sml_get_u16(&frame->payload[4]), SML_OPERATION_SETTINGS_WRITE, SML_RESULT_NACK,
-                SML_ERROR_UNSUPPORTED);
+        handle_settings(frame);
     }
     stats.handled++;
 }
@@ -510,6 +614,8 @@ void esp_link_init(void)
     have_leap = false;
     have_net = false;
     have_response = false;
+    have_settings = false;
+    save_answer_due = false;
     next_token = 0;
     last_rx_ms = 0;
     if (ESP_LINK_START_SML)
@@ -548,6 +654,14 @@ void esp_link_service(uint32_t now_ms)
     else if (time_ms_has_elapsed(now_ms, last_rx_ms, ESP_LINK_FRAME_TIMEOUT_MS))
     {
         (void)sml_parser_timeout(&parser);
+    }
+    if (save_answer_due && !settings_save_pending())
+    {
+        uint8_t error = settings_save_error();
+
+        save_answer_due = false;
+        respond(save_token, save_command,
+                error == SML_ERROR_NONE ? SML_RESULT_ACK : SML_RESULT_NACK, error);
     }
     flush_text();
 }
@@ -652,11 +766,13 @@ void esp_link_print(void)
            (unsigned long)stats.wrong_length, (unsigned long)parsed->noise_bytes,
            (unsigned long)parsed->crc_errors, (unsigned long)parsed->length_errors,
            (unsigned long)parsed->timeouts, (unsigned long)stats.rx_errors);
-    printf("  TZ-STATE %lu, TIME-LEAP %lu, TIME-NTP %lu, STAT-NET %lu, commands %lu (%lu NACK), "
-           "requests %lu (%lu answered); sent %lu frames (%lu text), %lu waited\r\n",
+    printf("  TZ-STATE %lu, TIME-LEAP %lu, TIME-NTP %lu, STAT-NET %lu, commands %lu "
+           "(%lu settings writes, %lu NACK), requests %lu (%lu answered); sent %lu frames "
+           "(%lu text), %lu waited\r\n",
            (unsigned long)stats.tz_states, (unsigned long)stats.leaps,
            (unsigned long)stats.ntp_times, (unsigned long)stats.net_states,
-           (unsigned long)stats.commands, (unsigned long)stats.nacks, (unsigned long)stats.requests,
+           (unsigned long)stats.commands, (unsigned long)stats.settings_writes,
+           (unsigned long)stats.nacks, (unsigned long)stats.requests,
            (unsigned long)stats.responses, (unsigned long)stats.sent,
            (unsigned long)stats.text_frames, (unsigned long)stats.tx_waits);
 }

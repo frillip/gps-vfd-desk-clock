@@ -31,7 +31,9 @@
  *
  * Persistence: the schedule's CRC (without issued_utc, so periodic resends
  * of the same schedule do not count as changes) tells the settings store
- * when it needs writing; see timezone_take_changed().
+ * when it needs writing; see timezone_take_changed(). It is stored as the
+ * TZ-STATE it came in as (timezone_state), and at start-up goes back in
+ * through timezone_apply(), checked like any other.
  */
 #ifndef TIMEZONE_H
 #define TIMEZONE_H
@@ -111,6 +113,8 @@ TimezoneResult timezone_apply(const SML_TZ_STATE_PAYLOAD *state);
 void timezone_offset_at(uint32_t utc_seconds, TimezoneOffset *offset);
 
 const TimezoneSchedule *timezone_schedule(void);
+// The schedule held, as the TZ-STATE that would set it: false if none.
+bool timezone_state(SML_TZ_STATE_PAYLOAD *state);
 // True once after each change to the schedule's contents (CRC): time to
 // persist it. Never set by a resend of the same schedule.
 bool timezone_take_changed(void);

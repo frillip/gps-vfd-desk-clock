@@ -231,6 +231,35 @@ const TimezoneSchedule *timezone_schedule(void)
 }
 
 
+bool timezone_state(SML_TZ_STATE_PAYLOAD *state)
+{
+    uint8_t index;
+
+    memset(state, 0, sizeof(*state));
+    if (!schedule.held)
+    {
+        return false;
+    }
+    state->flags = (uint16_t)(SML_TZ_VALID | (schedule.ambiguous ? SML_TZ_AMBIGUOUS : 0U));
+    state->source = schedule.source;
+    state->count = (uint8_t)(schedule.count - 1U);
+    state->issued_utc = schedule.issued_utc;
+    state->horizon_end_utc = schedule.horizon_end_utc;
+    state->subsecond_offset_ns = schedule.subsecond_offset_ns;
+    for (index = 0; index < schedule.count; index++)
+    {
+        const TimezoneEntry *entry = &schedule.entries[index];
+        SML_TZ_ENTRY *wire = index == 0U ? &state->current : &state->next[index - 1U];
+
+        wire->utc_seconds = entry->utc_seconds;
+        wire->base_offset_s = entry->base_offset_s;
+        wire->dst_offset_s = entry->dst_offset_s;
+        wire->flags = entry->dst_active ? SML_TZ_ENTRY_DST_ACTIVE : 0U;
+    }
+    return true;
+}
+
+
 bool timezone_take_changed(void)
 {
     bool was = changed;

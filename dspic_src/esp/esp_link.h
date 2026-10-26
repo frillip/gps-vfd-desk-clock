@@ -10,8 +10,9 @@
  *         state goes out every epoch (TIME-AUTH, TIME-PIC, TIME-CTRL,
  *         TIME-MEAS, TIME-GNSS, STAT-UI), with STAT-SOURCES when the
  *         synchroniser's choice or a verdict changes and every
- *         ESP_LINK_SOURCES_EPOCHS, then STAT-SYS (version, uptime, reset
- *         cause), every epoch too.
+ *         ESP_LINK_SOURCES_EPOCHS, STAT-SETTINGS in the first epoch and
+ *         whenever the revision or its flags change, then STAT-SYS
+ *         (version, uptime, reset cause), every epoch too.
  *
  * The link starts in TEXT (or SML with ESP_LINK_START_SML) and moves to SML
  * for good on the first valid SML frame from the ESP: an SML ESP announces
@@ -24,16 +25,22 @@
  *   STAT-NET     -> held for the menu and status (esp_link_net)
  *   CMD-RESPONSE -> the answer to a command sent with esp_link_request()
  *   CMD-USER     -> the commands below, answered with CMD-RESPONSE
- *   CMD-SETTINGS -> NACK UNSUPPORTED until the settings store is ported
+ *   CMD-SETTINGS -> settings_write(): every setting at once, if
+ *                   expected_revision is current (else STALE_REVISION);
+ *                   PERSIST asks for them to be stored
  *
  * Commands handled: INFO, REQUEST_MESSAGE (TIME-AUTH/PIC/CTRL/MEAS/GNSS,
- * STAT-UI, STAT-SOURCES, STAT-SYS), RESET, SET_TZ_OFFSET, SET_DST_OFFSET,
- * SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO, SET_DISPLAY (HHMM only),
- * SET_BRIGHTNESS, SHOW_SOURCES (STAT-SOURCES, then the ACK), SET_DEBUG
- * (clear << 16 | set, ui/debug.h; the resulting mask is printed; setting an
- * undefined bit is NACK ARGUMENT, clearing one is not). The
- * others, and every ESP command code (0x8000 up), are answered NACK
- * UNSUPPORTED. Settings changes are applied, not yet saved.
+ * STAT-UI, STAT-SOURCES, STAT-SETTINGS, STAT-SYS), RESET, SET_TZ_OFFSET,
+ * SET_DST_OFFSET, SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO, SET_FOSC,
+ * SET_DISPLAY (HHMM only), SET_BRIGHTNESS, SHOW_SOURCES (STAT-SOURCES, then
+ * the ACK), SET_DEBUG (clear << 16 | set, ui/debug.h; the resulting mask is
+ * printed; setting an undefined bit is NACK ARGUMENT, clearing one is not),
+ * SAVE and DEFAULTS (ACCEPTED, then ACK or NACK STORAGE/VERIFY once
+ * stored; BUSY while one is under way), SHOW_SETTINGS (what is stored,
+ * printed, then STAT-SETTINGS) and SHOW_CONFIG (the running settings,
+ * printed). The others, and every ESP command code (0x8000 up), are
+ * answered NACK UNSUPPORTED. Settings changes run at once, through
+ * settings/settings.h, and are kept over a reset once saved.
  *
  * The PIC sends commands of its own (SML_USER_ESP_*, e.g. from the menu) with
  * esp_link_request(); the ESP's answer is kept for esp_link_response().
@@ -78,6 +85,7 @@ typedef struct
     uint32_t requests;  // commands sent to the ESP
     uint32_t responses; // ... answers received
     uint32_t commands;
+    uint32_t settings_writes; // CMD-SETTINGS
     uint32_t nacks;
     uint32_t sent;        // frames sent, debug text included
     uint32_t text_frames; // STAT-DEBUG frames

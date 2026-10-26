@@ -260,6 +260,12 @@ bool i2c1_done(const I2cTransfer *transfer)
 }
 
 
+bool i2c1_idle(void)
+{
+    return head == 0;
+}
+
+
 void i2c1_service(uint32_t now_ms)
 {
     bool enabled;

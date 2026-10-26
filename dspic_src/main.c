@@ -9,18 +9,23 @@
  * (gnss/gnss.h); the ESP32 link in esp/ (esp/esp_link.h, SML protocol); the
  * tubes in ui/display.h and local time in ui/timezone.h; the I2C bus and the
  * RTC in drivers/ (drivers/i2c1.h, drivers/pcf8563.h), and the RTC as a time
- * source, kept set, in sync/source_rtc.h.
+ * source, kept set, in sync/source_rtc.h; the settings, and keeping them in
+ * flash, in settings/ (settings/settings.h, drivers/flash.h).
  */
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "drivers/flash.h"
 #include "drivers/i2c1.h"
 #include "drivers/pcf8563.h"
+#include "drivers/tubes.h"
+#include "drivers/veml6040.h"
 #include "esp/esp_link.h"
 #include "esp/esp_report.h"
 #include "gnss/gnss.h"
 #include "platform/system.h"
 #include "scheduler.h"
+#include "settings/settings.h"
 #include "sync/source_ntp.h"
 #include "sync/source_rtc.h"
 #include "sync/sync.h"
@@ -56,6 +61,8 @@ static SchedulerTask every_10ms = SCHEDULER_EVERY("10 ms", 10U);
 static SchedulerTask display_load = SCHEDULER_AT_SLOT("display load", DISPLAY_LOAD_SLOT);
 // The full reports, clear of the epoch work and the GNSS burst.
 static SchedulerTask minute_report = SCHEDULER_AT_SLOT("minute report", REPORT_SLOT);
+// Settings and the time zone schedule to flash, late in the second.
+static SchedulerTask settings_store = SCHEDULER_AT_SLOT("settings store", SETTINGS_STORE_SLOT);
 // The epoch's work, started by timing_snapshot(): timed only.
 static SchedulerTask epoch_work = SCHEDULER_SECTION("epoch");
 
@@ -83,6 +90,17 @@ static Pcf8563Reference rtc_reference(void)
     reference.utc_seconds = status->time.utc_seconds;
     reference.known = status->time.known;
     return reference;
+}
+
+
+// Writing flash stops the CPU for up to ~25 ms (drivers/flash.h): only well
+// before the next epoch, with nothing on the I2C bus and the RTC source not
+// timing reads or a release. The GNSS burst and the ESP's per-second
+// messages are over by this slot.
+static bool flash_quiet(void)
+{
+    return scheduler_slot() <= SETTINGS_STORE_LAST_SLOT && i2c1_idle() &&
+           source_rtc_state()->activity == SOURCE_RTC_IDLE;
 }
 
 
@@ -192,9 +210,22 @@ int main(void)
     i2c1_init();
     i2c1_set_stamp_clock(pps_capture_timebase);
     pcf8563_init(epoch_timer_ms());
+    veml6040_init();
     source_rtc_init();
     timezone_init();
     display_init();
+    // The settings and the time zone schedule kept in flash, applied to the
+    // modules above. Erases and writes are timed on the capture timebase,
+    // and the epoch timer's slots put right after each.
+    if (!flash_init())
+    {
+        printf("Flash: the settings pages are not at 0x%05lX: nothing can be saved\r\n",
+               (unsigned long)FLASH_STORE_BASE);
+    }
+    flash_set_clock(pps_capture_timebase);
+    flash_set_resume_hook(epoch_timer_resume);
+    settings_init();
+    settings_print_start();
     scheduler_init();
 
     while (1)
@@ -213,7 +244,8 @@ int main(void)
         // held to the 10 ms tasks.
         (void)pcf8563_service(scheduler_now_ms(), rtc_reference());
         source_rtc_poll();
-
+        veml6040_service(scheduler_now_ms());
+        
         // Every epoch, at the measurement slot (set by the T4 scheduler
         // interrupt, so the captures of the epoch are read together).
         if (timing_snapshot(&snapshot))
@@ -228,6 +260,7 @@ int main(void)
             esp_link_service(scheduler_now_ms());
             source_ntp_service(scheduler_now_ms());
             i2c1_service(scheduler_now_ms());
+            tubes_brightness_service();
         }
 
         if (scheduler_due(&display_load))
@@ -238,6 +271,11 @@ int main(void)
         if (scheduler_due(&minute_report))
         {
             report_minute();
+        }
+
+        if (scheduler_due(&settings_store))
+        {
+            settings_service(scheduler_epoch(), flash_quiet());
         }
     }
 }

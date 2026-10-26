@@ -56,12 +56,13 @@ cd tests/host && make
 | --- | --- |
 | `main.c`, `scheduler.c/.h` | The task list and the cooperative scheduler that runs it |
 | `platform/` | Clock and configuration bits, the pin map, millisecond helpers, UTC and calendar arithmetic |
-| `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers, I2C1 and the PCF8563 RTC |
+| `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers, I2C1, the PCF8563 RTC, and program flash for the settings |
 | `timing/` | PPS capture, the epoch timer and output, the control loop, and its console report |
 | `sync/` | Time source evaluation and selection, holdover, and the UTC second of each epoch |
 | `gnss/` | UBX parsing, decoding and encoding, receiver detection, epoch assembly, the GNSS state |
 | `esp/` | The ESP link and the SML payloads built from the clock's state |
 | `ui/` | Console, display modes and frames, time zones, the fast text formatter |
+| `settings/` | The settings, and the store that keeps them and the time zone schedule in flash |
 | `tests/host/` | Host tests and the stand-ins they run against |
 
 | Pin | Function |
@@ -90,6 +91,7 @@ Almost everything runs from the main loop. The scheduler there reads its time fr
 | GNSS and ESP link service | Every 10ms |
 | Display load | 500ms into each second, after the latch has closed |
 | Minute reports | 600ms into the second, one report per epoch at 15, 30 and 45 seconds into each minute |
+| Settings store | 700ms into the second, when there is something to write and the moment is quiet |
 
 Only the timing edges, the 1ms slot timer and the UARTs use interrupts. The epoch timer interrupts run at priority 4, the PPS watch at 2, and the captures and UARTs at 1, so nothing in the foreground can delay an epoch. The scheduler report shows each task's worst lateness, its longest run and its share of the time.
 
@@ -182,13 +184,14 @@ Without a schedule, both fall back to the manual values. Past the end of a sched
 
 The PIC starts in text mode, sending its console output raw, which is what the V2 ESP firmware expects. On the first valid SML frame from the ESP it switches to SML mode for good. From then on the console text travels in STAT-DEBUG frames, and each epoch the PIC sends TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS and STAT-UI, about 300 bytes a second.
 
-STAT-SOURCES, the synchroniser's candidates ranked, follows whenever the choice or a verdict changes, every 10 seconds, and on request; the ESP shows it with `pic-show-sources`. STAT-SYS carries the firmware version (`platform/version.h`), the uptime, why the PIC last reset (RCON, captured and cleared first thing in `system_init()`) and the longest main-loop pass. It goes every epoch, last, so the uptime the ESP shows keeps up and it hears about a restart at once. The same version and reset cause are printed at start-up and in `pic-info`. TIME-AUTH goes first, within a few milliseconds of the edge it labels. TIME-MEAS carries the raw measurements of each epoch, which the ESP needs for statistics and Allan deviation.
+STAT-SETTINGS, the settings with their revision and whether they are saved, goes in the first epoch in SML mode and whenever either changes. STAT-SOURCES, the synchroniser's candidates ranked, follows whenever the choice or a verdict changes, every 10 seconds, and on request; the ESP shows it with `pic-show-sources`. STAT-SYS carries the firmware version (`platform/version.h`), the uptime, why the PIC last reset (RCON, captured and cleared first thing in `system_init()`) and the longest main-loop pass. It goes every epoch, last, so the uptime the ESP shows keeps up and it hears about a restart at once. The same version and reset cause are printed at start-up and in `pic-info`. TIME-AUTH goes first, within a few milliseconds of the edge it labels. TIME-MEAS carries the raw measurements of each epoch, which the ESP needs for statistics and Allan deviation.
 
 From the ESP, the PIC acts on:
 
 - TZ-STATE;
 - TIME-LEAP;
-- user commands: INFO, message requests, reset, time zone and DST settings, display mode and brightness, the sources (SHOW_SOURCES) and the debug mask (SET_DEBUG);
+- user commands: INFO, message requests, reset, time zone and DST settings, display mode and brightness, the stored oscillator frequency (SET_FOSC), the sources (SHOW_SOURCES), the debug mask (SET_DEBUG), and saving and showing the settings (SAVE, DEFAULTS, SHOW_SETTINGS, SHOW_CONFIG);
+- CMD-SETTINGS, every setting at once;
 - TIME-NTP, which labels the ESP's PPS for the NTP source;
 - STAT-NET, which it holds for the menu.
 
@@ -196,7 +199,7 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 # Console
 
-The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is not kept over a reset yet. State changes are always printed.
+The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is kept over a reset once saved (`pic-save`), with the other settings; a build with `DEBUG_DEFAULT` adds its own bits to the saved ones. State changes are always printed.
 
 | Bit | Name | What |
 | --- | --- | --- |
@@ -242,7 +245,27 @@ Once the clock is synchronised, the RTC is checked after a minute, then often en
 
 That error corrects the next release, so a part whose start delay differs from the data sheet's (a clone, say) is learnt on the second attempt. An attempt that misses its moment, because the main loop was busy or the bus was in use, is tried again the next second. After three, the time is written plainly, to the nearest second, so the RTC is never left stopped. Nothing is written unless the clock is synchronised, and never next to a leap second, which the RTC cannot hold.
 
-The RTC's bound stays ±999ms. The aligned write makes it much better than that, but the time of the last setting has to survive a power cycle before that can be counted on, and that waits for the settings store. `pic-info` and the minute report show where the RTC's second was last found, its offset from the clock, its rate, the last setting and the learnt correction.
+The RTC's bound stays ±999ms. The aligned write makes it much better than that, but the time of the last setting has to survive a power cycle before that can be counted on. The settings store below can now keep it: that is the next step. `pic-info` and the minute report show where the RTC's second was last found, its offset from the clock, its rate, the last setting and the learnt correction.
+
+# Settings and flash
+
+The settings are those of SML's STAT-SETTINGS: the manual time zone, TZ and DST auto, the brightness, the display mode, the stored oscillator frequency, and the alarm, delta, beep and 12-hour settings the UI does not use yet. The debug mask is kept with them. [settings/settings.c](settings/settings.c) holds them and applies each to its module; the ESP's commands change them there. A change runs at once and is kept once saved, as on V2: `pic-save` (SAVE), `pic-config-clear` (DEFAULTS, which also saves), or CMD-SETTINGS with PERSIST. SAVE and DEFAULTS are answered ACCEPTED, then ACK once the flash has been written, or NACK STORAGE or VERIFY. STAT-SETTINGS shows DIRTY until then. `pic-config-show` prints the running settings, and `pic-eeprom-show` what is stored, the store and the flash timings.
+
+The time zone schedule from the ESP is not a setting, and is kept by itself: a minute after its contents last change, so the CACHE, then GEOIP or GNSS schedules an ESP sends as it starts make one write. A resend of the same schedule is not a change. At start-up it goes back in through `timezone_apply()`, checked like one from the ESP, so local time is right before the ESP has said anything.
+
+They live in two erase pages reserved at the top of program flash, apart from the application:
+
+| Program addresses | |
+| --- | --- |
+| 0x000000–0x0297FF | The application (and any bootloader or update slots) |
+| 0x029800–0x02A7FF | The settings store: two pages of 1024 instructions, 2KB of data each |
+| 0x02A800–0x02AFFF | The last page, with the configuration words from 0x02AFEC: never erased by the application |
+
+[drivers/flash.c](drivers/flash.c) reserves the pages with `address()` and `noload`, so the linker places nothing there and the hex has nothing for them, and writes nowhere else. Reprogramming the application therefore leaves the settings alone, as long as the programmer is told to: the project sets MPLAB's "Preserve program memory" range to 0x29800–0x2A7FF, since programming erases the whole chip first. A bootloader or update scheme must leave the range out in the same way.
+
+[settings/store.c](settings/store.c) keeps a journal in the two pages. Each page has a header with a generation number; records follow it, each with its type, length and a CRC, written a double word at a time with the CRC last. The latest intact record of each type counts, so a record cut short by a reset is passed over and the one before it stands. When a page is full, the other is erased, the latest of each record copied to it, and its header written last: until then the old page is still the one in use, whole. In the host tests a settings record of 42 bytes is written about 38 times between erases, and of 20,000 writes, 6,000 cut short by a simulated power cut at a random point, none lost a record already written. At that rate the flash's rated 10,000 erase cycles per page would take some 750,000 saves.
+
+Erasing a page stops the CPU for roughly 20–30ms, with interrupts held off throughout; writing a double word takes some 50µs. The timers, captures and epoch output carry on in hardware, but the 1ms slot interrupt is missed, so `epoch_timer_resume()` brings the slots and milliseconds back to where T2/T3 stands afterwards. UART bytes arriving while the FIFOs are full would be lost, so the store writes only at 700–900ms into the second: after the GNSS burst and the ESP's per-second messages, well before the next epoch, with the I2C bus idle and the RTC source not timing a read or a release. At most one record is written each second. The erase and write times are measured on the capture timebase and shown by `pic-eeprom-show`; the scheduler report counts the slots made up.
 
 # Not yet ported
 
@@ -251,10 +274,9 @@ The V2 firmware did rather more than this. Still to come:
 - the menu, buttons, buzzer and alarm;
 - the other display modes and the 12-hour format;
 - the light sensor and automatic brightness;
-- the RTC's bound from the time of its last setting (it stays ±999ms until that time can be kept over a power cycle), and SML-TIME-RTC;
-- settings in flash;
+- the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
+- starting the control loop from the stored oscillator frequency, and keeping it up to date;
 - GNSS provisioning;
-- keeping the debug mask over a reset;
 - the watchdog;
 - bootloader entry.
 

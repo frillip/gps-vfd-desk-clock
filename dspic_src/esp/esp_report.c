@@ -12,6 +12,7 @@
 #include "../platform/system.h"
 #include "../platform/version.h"
 #include "../scheduler.h"
+#include "../settings/settings.h"
 #include "../platform/time_ms.h"
 #include "../sync/source_rtc.h"
 #include "../sync/sync_report.h"
@@ -401,6 +402,10 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     {
         payload->flags |= SML_UI_POWER_ON;
     }
+    if (tubes_brightness_auto())
+    {
+        payload->flags |= SML_UI_BRIGHTNESS_AUTO;
+    }
     if (UI_SWITCH_IS_ON())
     {
         payload->flags |= SML_UI_SWITCH;
@@ -602,6 +607,7 @@ void esp_report_print_all(uint32_t now_ms)
     gnss_print(now_ms);
     display_print();
     timezone_print(status->time.utc_seconds);
+    settings_print();
     pcf8563_print(now_ms, clock);
     source_rtc_print();
     i2c1_print();

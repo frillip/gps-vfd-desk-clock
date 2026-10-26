@@ -10,6 +10,8 @@
         <itemPath>drivers/tubes.h</itemPath>
         <itemPath>drivers/i2c1.h</itemPath>
         <itemPath>drivers/pcf8563.h</itemPath>
+        <itemPath>drivers/flash.h</itemPath>
+        <itemPath>drivers/veml6040.h</itemPath>
       </logicalFolder>
       <logicalFolder name="esp" displayName="esp" projectFiles="true">
         <itemPath>esp/esp_link.h</itemPath>
@@ -33,6 +35,10 @@
         <itemPath>platform/time_ms.h</itemPath>
         <itemPath>platform/utc.h</itemPath>
         <itemPath>../common/enums.h</itemPath>
+      </logicalFolder>
+      <logicalFolder name="settings" displayName="settings" projectFiles="true">
+        <itemPath>settings/settings.h</itemPath>
+        <itemPath>settings/store.h</itemPath>
       </logicalFolder>
       <logicalFolder name="sync" displayName="sync" projectFiles="true">
         <itemPath>sync/sync.h</itemPath>
@@ -85,6 +91,8 @@
         <itemPath>drivers/tubes.c</itemPath>
         <itemPath>drivers/i2c1.c</itemPath>
         <itemPath>drivers/pcf8563.c</itemPath>
+        <itemPath>drivers/flash.c</itemPath>
+        <itemPath>drivers/veml6040.c</itemPath>
       </logicalFolder>
       <logicalFolder name="esp" displayName="esp" projectFiles="true">
         <itemPath>esp/esp_link.c</itemPath>
@@ -103,6 +111,10 @@
         <itemPath>platform/board.c</itemPath>
         <itemPath>platform/system.c</itemPath>
         <itemPath>platform/utc.c</itemPath>
+      </logicalFolder>
+      <logicalFolder name="settings" displayName="settings" projectFiles="true">
+        <itemPath>settings/settings.c</itemPath>
+        <itemPath>settings/store.c</itemPath>
       </logicalFolder>
       <logicalFolder name="sync" displayName="sync" projectFiles="true">
         <itemPath>sync/sync.c</itemPath>
@@ -394,8 +406,8 @@
         <property key="programoptions.preservedataflash" value="false"/>
         <property key="programoptions.preserveeeprom" value="false"/>
         <property key="programoptions.preserveeeprom.ranges" value=""/>
-        <property key="programoptions.preserveprogram.ranges" value=""/>
-        <property key="programoptions.preserveprogramrange" value="false"/>
+        <property key="programoptions.preserveprogram.ranges" value="29800-2a7ff"/>
+        <property key="programoptions.preserveprogramrange" value="true"/>
         <property key="programoptions.preserveuserid" value="false"/>
         <property key="programoptions.program.otpconfig" value="false"/>
         <property key="programoptions.programcalmem" value="false"/>
@@ -484,8 +496,8 @@
         <property key="programoptions.preservedataflash" value="false"/>
         <property key="programoptions.preserveeeprom" value="false"/>
         <property key="programoptions.preserveeeprom.ranges" value=""/>
-        <property key="programoptions.preserveprogram.ranges" value=""/>
-        <property key="programoptions.preserveprogramrange" value="false"/>
+        <property key="programoptions.preserveprogram.ranges" value="29800-2a7ff"/>
+        <property key="programoptions.preserveprogramrange" value="true"/>
         <property key="programoptions.preserveuserid" value="false"/>
         <property key="programoptions.program.otpconfig" value="false"/>
         <property key="programoptions.programcalmem" value="false"/>

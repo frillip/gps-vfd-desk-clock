@@ -203,11 +203,21 @@ void scheduler_print(void)
 {
     SchedulerTask *task;
     uint32_t window_ms;
+    uint32_t resumed_slots;
+    uint32_t resume_spans;
 
     stop_running();
     window_ms = time_ms_elapsed(epoch_timer_ms(), report_start_ms);
-    printf("Scheduler: %lu passes in %lu ms, longest %u ms\r\n", (unsigned long)passes,
+    epoch_timer_resume_stats(&resumed_slots, &resume_spans);
+    printf("Scheduler: %lu passes in %lu ms, longest %u ms", (unsigned long)passes,
            (unsigned long)window_ms, pass_max_ms);
+    if (resumed_slots != 0U || resume_spans != 0U)
+    {
+        // Held up by flash erases (drivers/flash.h), since start-up.
+        printf("; %lu slots made up after flash stalls, %lu stalls across an epoch",
+               (unsigned long)resumed_slots, (unsigned long)resume_spans);
+    }
+    printf("\r\n");
     for (task = tasks; task != NULL; task = task->next)
     {
         uint32_t share = permille(task->busy_ms, window_ms);

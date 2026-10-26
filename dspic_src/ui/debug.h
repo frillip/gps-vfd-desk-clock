@@ -4,8 +4,9 @@
  * the ESP by SML_USER_SET_DEBUG (the bits are SML's SML_DEBUG_*).
  *
  * State changes and warnings are printed whatever the mask: they are rare
- * and always worth seeing. Everything periodic is gated here. Not yet kept
- * over a reset: that comes with the settings store.
+ * and always worth seeing. Everything periodic is gated here. The mask is
+ * one of the settings (settings/settings.h): kept over a reset once saved,
+ * with DEBUG_DEFAULT added at start-up.
  */
 #ifndef DEBUG_H
 #define DEBUG_H

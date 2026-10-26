@@ -106,6 +106,9 @@ bool i2c1_submit(I2cTransfer *transfer);
 // and for one never submitted.
 bool i2c1_done(const I2cTransfer *transfer);
 
+// Nothing queued or on the bus.
+bool i2c1_idle(void);
+
 // A free-running clock to stamp each transfer's start with (start_stamp),
 // read from the interrupt: the capture timebase (pps_capture_timebase), so
 // an RTC's second can be placed against the epoch. NULL: none.

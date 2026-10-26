@@ -248,7 +248,7 @@
 #define SML_UI_LOCAL_VALID           0x0001U
 #define SML_UI_ALARM_ENABLED         0x0002U
 #define SML_UI_ALARM_ACTIVE          0x0004U
-#define SML_UI_BRIGHTNESS_MANUAL     0x0008U
+#define SML_UI_BRIGHTNESS_AUTO       0x0008U
 #define SML_UI_POWER_ON              0x0010U
 #define SML_UI_SWITCH                0x0020U
 #define SML_UI_BUTTON                0x0040U
@@ -313,7 +313,7 @@
 #define SML_SETTING_ALARM_ENABLED    0x0008U
 #define SML_SETTING_BEEP_ENABLED     0x0010U
 #define SML_SETTING_FORMAT_12H       0x0020U
-#define SML_SETTING_BRI_MANUAL       0x0040U
+#define SML_SETTING_BRI_AUTO         0x0040U
 
 // Payload lengths. Fixed-length messages must arrive with exactly this
 // length; anything else is answered as SML_ERROR_LENGTH (commands) or
@@ -683,7 +683,7 @@ typedef struct
      * bit 0: SML_UI_LOCAL_VALID
      * bit 1: SML_UI_ALARM_ENABLED
      * bit 2: SML_UI_ALARM_ACTIVE
-     * bit 3: SML_UI_BRIGHTNESS_MANUAL
+     * bit 3: SML_UI_BRIGHTNESS_AUTO
      * bit 4: SML_UI_POWER_ON
      * bit 5: SML_UI_SWITCH
      * bit 6: SML_UI_BUTTON
@@ -892,7 +892,7 @@ typedef struct
      * bit 3: SML_SETTING_ALARM_ENABLED
      * bit 4: SML_SETTING_BEEP_ENABLED
      * bit 5: SML_SETTING_FORMAT_12H
-     * bit 6: SML_SETTING_BRI_MANUAL
+     * bit 6: SML_SETTING_BRI_AUTO
      * All other bits reserved; transmit zero. */
     uint16_t flags;
     int32_t base_offset_s;

@@ -60,4 +60,14 @@ uint16_t epoch_timer_slot(void);
 // is never paired with the wrong epoch across the epoch interrupt.
 void epoch_timer_position(uint32_t *sequence, uint16_t *slot);
 
+// With interrupts held off, after they have been for longer than a slot
+// (a flash erase stops the CPU for ~25 ms): brings the slot and the
+// milliseconds up to where T2/T3 stands, running the slot work missed, and
+// puts T4 back in phase. Nothing to do if the epoch passed meanwhile: its
+// interrupt restarts the slots, and the stall is counted.
+void epoch_timer_resume(void);
+// Slot boundaries made up by epoch_timer_resume(), and stalls that spanned
+// an epoch.
+void epoch_timer_resume_stats(uint32_t *slots, uint32_t *spans);
+
 #endif // EPOCH_TIMER_H
