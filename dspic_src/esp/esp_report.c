@@ -9,7 +9,6 @@
 #include "../drivers/tubes.h"
 #include "../drivers/veml6040.h"
 #include "../gnss/gnss.h"
-#include "../platform/board.h"
 #include "../platform/system.h"
 #include "../platform/version.h"
 #include "../scheduler.h"
@@ -20,6 +19,7 @@
 #include "../timing/q16.h"
 #include "../timing/timing_config.h"
 #include "../ui/brightness.h"
+#include "../ui/controls.h"
 #include "../ui/timezone.h"
 
 #define NS_PER_TICK  25L // 1 / FCY
@@ -388,6 +388,29 @@ void esp_report_time_gnss(uint32_t now_ms, SML_TIME_GNSS_PAYLOAD *payload)
 }
 
 
+// ui/controls.h's presses are SML's button states (a compile-time check).
+typedef char
+    controls_match_sml[(CONTROLS_NONE == SML_BUTTON_NONE && CONTROLS_SHORT == SML_BUTTON_SHORT &&
+                        CONTROLS_LONG == SML_BUTTON_LONG && CONTROLS_HOLD == SML_BUTTON_HOLD)
+                           ? 1
+                           : -1];
+
+// The latest press, if there has been one since the previous STAT-UI.
+static uint8_t new_press(void)
+{
+    static uint32_t reported;
+    uint32_t count;
+    ControlsPress press = controls_press(&count);
+
+    if (count == reported)
+    {
+        return SML_BUTTON_NONE;
+    }
+    reported = count;
+    return (uint8_t)press; // ControlsPress has SML_BUTTON_*'s values
+}
+
+
 void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
 {
     const SyncTime *time = &sync_status()->time;
@@ -397,7 +420,7 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     payload->current_display = esp_report_display(display_mode(), time->known);
     payload->selected_display = esp_report_display(display_mode(), true);
     payload->menu_state = SML_MENU_NONE;
-    payload->button_state = SML_BUTTON_NONE;
+    payload->button_state = new_press();
     payload->brightness = tubes_brightness();
     payload->brightness_target = brightness_target();
     if (tubes_brightness() != TUBES_BRIGHTNESS_OFF)
@@ -408,11 +431,11 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     {
         payload->flags |= SML_UI_BRIGHTNESS_AUTO;
     }
-    if (UI_SWITCH_IS_ON())
+    if (controls_switch_on())
     {
         payload->flags |= SML_UI_SWITCH;
     }
-    if (UI_BUTTON_IS_PRESSED())
+    if (controls_button_down())
     {
         payload->flags |= SML_UI_BUTTON;
     }
@@ -630,6 +653,7 @@ void esp_report_print_all(uint32_t now_ms)
     pcf8563_print(now_ms, clock);
     veml6040_print(now_ms);
     brightness_print();
+    controls_print();
     source_rtc_print();
     i2c1_print();
 }

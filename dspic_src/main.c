@@ -35,6 +35,7 @@
 #include "timing/timing_report.h"
 #include "ui/brightness.h"
 #include "ui/console.h"
+#include "ui/controls.h"
 #include "ui/debug.h"
 #include "ui/display.h"
 #include "ui/timezone.h"
@@ -102,6 +103,31 @@ static bool flash_quiet(void)
 {
     return scheduler_slot() <= SETTINGS_STORE_LAST_SLOT && i2c1_idle() &&
            source_rtc_state()->activity == SOURCE_RTC_IDLE;
+}
+
+
+// The button and the switch, debounced. Nothing acts on them yet (the
+// display modes, menu and alarm will): each press and switch change is
+// printed, as a state change.
+static void service_controls(void)
+{
+    static uint32_t presses;
+    static uint32_t switch_changes;
+    uint32_t count;
+    ControlsPress press;
+
+    controls_service(scheduler_now_ms(), UI_BUTTON_IS_PRESSED(), UI_SWITCH_IS_ON());
+    press = controls_press(&count);
+    if (count != presses)
+    {
+        presses = count;
+        printf("Button: %s press\r\n", controls_press_name(press));
+    }
+    if (controls_switch_changes() != switch_changes)
+    {
+        switch_changes = controls_switch_changes();
+        printf("Switch: %s\r\n", controls_switch_on() ? "on" : "off");
+    }
 }
 
 
@@ -185,6 +211,7 @@ static void report_minute(void)
         pcf8563_print(epoch_timer_ms(), rtc_reference());
         veml6040_print(epoch_timer_ms());
         brightness_print();
+        controls_print();
         source_rtc_print();
         i2c1_print();
         esp_link_print();
@@ -219,6 +246,7 @@ int main(void)
     timezone_init();
     display_init();
     brightness_init();
+    controls_init();
     // The settings and the time zone schedule kept in flash, applied to the
     // modules above. Erases and writes are timed on the capture timebase,
     // and the epoch timer's slots put right after each.
@@ -269,6 +297,7 @@ int main(void)
             source_ntp_service(scheduler_now_ms());
             i2c1_service(scheduler_now_ms());
             brightness_service();
+            service_controls();
         }
 
         if (scheduler_due(&display_load))

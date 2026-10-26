@@ -474,7 +474,7 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 5 | `SWITCH` | 12 | `TZ_HELD`: a TZ-STATE schedule is held |
 | 6 | `BUTTON` | | |
 
-On the V2+ PIC the alarm, delta, menu, 12-hour format and auto-brightness fields stay zero until the UI is ported.
+On the V2+ PIC the alarm, delta, menu and 12-hour format fields stay zero until the UI is ported. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
 
 ## STAT-ENV (0x10)
 

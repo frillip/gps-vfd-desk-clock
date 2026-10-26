@@ -88,7 +88,7 @@ Almost everything runs from the main loop. The scheduler there reads its time fr
 | Task | When |
 | --- | --- |
 | Epoch work | 1ms after each epoch: measure, steer, label the second, send the ESP its messages, render the next second's frame, print the epoch report |
-| GNSS and ESP link service, brightness | Every 10ms |
+| GNSS and ESP link service, brightness, button and switch | Every 10ms |
 | Display load | 500ms into each second, after the latch has closed |
 | Minute reports | 600ms into the second, one report per epoch at 15, 30 and 45 seconds into each minute |
 | Settings store | 700ms into the second, when there is something to write and the moment is quiet |
@@ -199,6 +199,10 @@ From the ESP, the PIC acts on:
 
 Commands it does not support yet are answered with a NACK, never ignored. The PIC can also send commands of its own to the ESP, such as resetting WiFi.
 
+# Button and switch
+
+[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. Nothing acts on them yet: each press and switch change is printed, and STAT-UI carries them to the ESP.
+
 # Console
 
 The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is kept over a reset once saved (`pic-save`), with the other settings; a build with `DEBUG_DEFAULT` adds its own bits to the saved ones. State changes are always printed.
@@ -275,7 +279,7 @@ Erasing a page stops the CPU for roughly 20–30ms, with interrupts held off thr
 
 The V2 firmware did rather more than this. Still to come:
 
-- the menu, buttons, buzzer and alarm;
+- the menu, buzzer and alarm, which will act on the button and switch;
 - the other display modes and the 12-hour format;
 - the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
 - GNSS provisioning;
