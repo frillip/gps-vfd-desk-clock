@@ -33,6 +33,7 @@ static uint32_t revision;
 static bool have_record; // a settings record is stored
 
 static bool save_requested;
+static bool oscillator_requested; // by a save: the estimate too, if it differs
 static uint8_t save_error;
 static bool timezone_pending;
 static uint32_t timezone_changed_epoch;
@@ -322,6 +323,7 @@ void settings_restore_defaults(void)
 void settings_save(void)
 {
     save_requested = true;
+    oscillator_requested = true;
 }
 
 
@@ -400,8 +402,9 @@ static void save_timezone(uint32_t epoch)
 
 // The loop's frequency estimate is worth keeping once it has been learning
 // from a reference that teaches it (GNSS) for a while, and has moved from
-// what is stored; after a write this run, not again for an hour.
-static bool oscillator_due(uint32_t epoch)
+// what is stored; after a write this run, not again for an hour. Asked for
+// (a save): whenever it differs at all.
+static bool oscillator_due(uint32_t epoch, bool asked)
 {
     const EpochControl *control = epoch_control_state();
     int32_t estimate;
@@ -419,6 +422,10 @@ static bool oscillator_due(uint32_t epoch)
     }
     estimate = kalman_phase_q16(&control->pps_kf);
     change = estimate > oscillator_q16 ? estimate - oscillator_q16 : oscillator_q16 - estimate;
+    if (asked)
+    {
+        return change != 0;
+    }
     return change >= SETTINGS_OSCILLATOR_CHANGE_Q16 &&
            (!oscillator_saved || epoch - oscillator_saved_epoch >= SETTINGS_OSCILLATOR_EPOCHS);
 }
@@ -467,9 +474,15 @@ void settings_service(uint32_t epoch, bool quiet)
     {
         save_timezone(epoch);
     }
-    else if (oscillator_due(epoch))
+    else
     {
-        save_oscillator(epoch);
+        bool asked = oscillator_requested;
+
+        oscillator_requested = false;
+        if (oscillator_due(epoch, asked))
+        {
+            save_oscillator(epoch);
+        }
     }
 }
 
@@ -505,7 +518,7 @@ static void print_values(const Values *values)
     printf(", DST ");
     print_offset(body->dst_offset_s);
     printf(" %s\r\n", (flags & SML_SETTING_DST_ACTIVE) ? "active" : "inactive");
-    printf("  brightness %u%s, display %u, %s; oscillator %lu Hz; debug 0x%04X\r\n",
+    printf("  brightness %u%s, display %u, %s; fosc setting %lu Hz (not used); debug 0x%04X\r\n",
            body->brightness, (flags & SML_SETTING_BRI_AUTO) ? " (auto)" : "",
            body->selected_display, (flags & SML_SETTING_FORMAT_12H) ? "12 h" : "24 h",
            (unsigned long)body->calibration_fosc_hz, values->debug_mask);
@@ -518,10 +531,58 @@ static void print_values(const Values *values)
 }
 
 
-// Q16 ticks a second to parts per billion of FCY.
+// Q16 ticks a second to parts per billion of FCY, to the nearest.
 static int32_t ppb(int32_t offset_q16)
 {
-    return (int32_t)((int64_t)offset_q16 * 1000000000LL / ((int64_t)FCY * 65536LL));
+    const int64_t divisor = (int64_t)FCY * 65536LL;
+    int64_t scaled = (int64_t)offset_q16 * 1000000000LL;
+
+    scaled += scaled < 0 ? -divisor / 2 : divisor / 2;
+    return (int32_t)(scaled / divisor);
+}
+
+
+// The oscillator's frequency for an estimate (period - nominal, Q16 ticks a
+// second): "39999920.512 Hz (-1.988 ppm)".
+static void print_frequency(int32_t offset_q16)
+{
+    // Positive throughout (FCY dwarfs any offset), so the division rounds.
+    int64_t millihertz =
+        ((int64_t)FCY * 65536000LL + (int64_t)offset_q16 * 1000LL + 32768LL) / 65536LL;
+    int32_t parts = ppb(offset_q16);
+    uint32_t magnitude = (uint32_t)(parts < 0 ? -parts : parts);
+
+    printf("%lu.%03u Hz (%c%lu.%03u ppm)", (unsigned long)(millihertz / 1000LL),
+           (unsigned)(millihertz % 1000LL), parts < 0 ? '-' : '+',
+           (unsigned long)(magnitude / 1000U), (unsigned)(magnitude % 1000U));
+}
+
+
+// The loop's estimate now, and what is stored for the next start.
+static void print_oscillator(void)
+{
+    const EpochControl *control = epoch_control_state();
+
+    printf("  oscillator ");
+    if (control->pps_kf.initialized)
+    {
+        print_frequency(kalman_phase_q16(&control->pps_kf));
+        printf(", the loop's estimate");
+    }
+    else
+    {
+        printf("not learnt yet (nominal %lu Hz)", (unsigned long)FCY);
+    }
+    printf("; stored ");
+    if (have_oscillator)
+    {
+        print_frequency(oscillator_q16);
+    }
+    else
+    {
+        printf("none");
+    }
+    printf("\r\n");
 }
 
 
@@ -541,7 +602,8 @@ void settings_print_start(void)
     }
     if (stats.oscillator_restored)
     {
-        printf("; oscillator from flash, %+ld ppb", (long)ppb(oscillator_q16));
+        printf("; oscillator from flash, ");
+        print_frequency(oscillator_q16);
     }
     printf("\r\n");
 }
@@ -555,6 +617,7 @@ void settings_print(void)
            (flags & SML_SETTINGS_DIRTY) ? "NOT SAVED (pic-save)" : "saved",
            (flags & SML_SETTINGS_DEFAULTS) ? ", factory defaults" : "");
     print_values(&running);
+    print_oscillator();
 }
 
 
@@ -601,8 +664,9 @@ static void print_stored_oscillator(void)
 
     if (read_oscillator(&offset_q16, &epochs))
     {
-        printf("Stored oscillator: %+ld ppb, learnt over %lu s\r\n", (long)ppb(offset_q16),
-               (unsigned long)epochs);
+        printf("Stored oscillator: ");
+        print_frequency(offset_q16);
+        printf(", learnt over %lu s\r\n", (unsigned long)epochs);
     }
     else
     {

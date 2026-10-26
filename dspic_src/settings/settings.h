@@ -30,7 +30,9 @@
  * is found, and an NTP-only start steps with it. It is written once the
  * loop has tracked a reference that teaches it for
  * SETTINGS_OSCILLATOR_TRACK_EPOCHS, and again when it has moved by
- * SETTINGS_OSCILLATOR_CHANGE_Q16, at most every SETTINGS_OSCILLATOR_EPOCHS.
+ * SETTINGS_OSCILLATOR_CHANGE_Q16, at most every SETTINGS_OSCILLATOR_EPOCHS;
+ * and by a save (settings_save), if it differs at all, once the loop has
+ * tracked that long.
  * This is not calibration_fosc_hz: that is a setting, changed only by
  * command.
  *
