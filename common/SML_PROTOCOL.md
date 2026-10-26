@@ -662,7 +662,7 @@ Commands run by the PIC:
 | 0x0050 | `SET_ALARM_ENABLE` | 0/1 | NACK UNSUPPORTED (UI) |
 | 0x0051 | `SET_ALARM` | Seconds of day | NACK UNSUPPORTED (UI) |
 | 0x0052 | `SET_DELTA` | UTC epoch | NACK UNSUPPORTED (UI) |
-| 0x0053 | `SET_BEEP` | 0/1 | NACK UNSUPPORTED (UI) |
+| 0x0053 | `SET_BEEP` | 0/1 | ✓ Quarter-hour chimes (the hour counted out on the hour) and button clicks, as V2 |
 | 0x0060 | `SET_DISPLAY` | `SML_DISPLAY_*` | ✓ HHMM. Other selectable modes UNSUPPORTED, runtime-only values ARGUMENT |
 | 0x0061 | `SET_BRI_AUTO` | Ignored (send 0) | ✓ Brightness from the light sensor, as V2's `pic-set-brightness-auto`. `SET_BRIGHTNESS` turns it off |
 | 0x0062 | `SET_BRIGHTNESS` | 0–4000 | ✓ Manual brightness, and auto off: below 200 the tubes are off, above 3800 lit continuously |

@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "drivers/buzzer.h"
 #include "drivers/flash.h"
 #include "drivers/i2c1.h"
 #include "drivers/pcf8563.h"
@@ -33,6 +34,7 @@
 #include "sync/sync_tuning.h"
 #include "timing/timing.h"
 #include "timing/timing_report.h"
+#include "ui/beeps.h"
 #include "ui/brightness.h"
 #include "ui/console.h"
 #include "ui/controls.h"
@@ -107,8 +109,8 @@ static bool flash_quiet(void)
 
 
 // The button and the switch, debounced. Nothing acts on them yet (the
-// display modes, menu and alarm will): each press and switch change is
-// printed, as a state change.
+// display modes, menu and alarm will) beyond a click for each press: each
+// press and switch change is printed, as a state change.
 static void service_controls(void)
 {
     static uint32_t presses;
@@ -121,6 +123,7 @@ static void service_controls(void)
     if (count != presses)
     {
         presses = count;
+        beeps_button();
         printf("Button: %s press\r\n", controls_press_name(press));
     }
     if (controls_switch_changes() != switch_changes)
@@ -128,6 +131,18 @@ static void service_controls(void)
         switch_changes = controls_switch_changes();
         printf("Switch: %s\r\n", controls_switch_on() ? "on" : "off");
     }
+}
+
+
+// The chimes, at the start of the second that has just begun: local time,
+// as the display shows it.
+static void sound_epoch(void)
+{
+    const SyncTime *time = &sync_status()->time;
+    TimezoneOffset zone;
+
+    timezone_offset_at(time->utc_seconds, &zone);
+    beeps_epoch(time->known, time->leap_second, time->utc_seconds + (uint32_t)zone.offset_s);
 }
 
 
@@ -153,6 +168,7 @@ static void run_epoch(const TimingSnapshot *snapshot)
     SyncUpdate update;
 
     update = sync_update(snapshot, epoch_timer_ms());
+    sound_epoch();
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
     source_rtc_epoch(snapshot);
     prepare_display();
@@ -247,6 +263,8 @@ int main(void)
     display_init();
     brightness_init();
     controls_init();
+    buzzer_init();
+    beeps_init();
     // The settings and the time zone schedule kept in flash, applied to the
     // modules above. Erases and writes are timed on the capture timebase,
     // and the epoch timer's slots put right after each.

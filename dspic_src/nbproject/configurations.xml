@@ -11,6 +11,7 @@
         <itemPath>drivers/i2c1.h</itemPath>
         <itemPath>drivers/pcf8563.h</itemPath>
         <itemPath>drivers/flash.h</itemPath>
+        <itemPath>drivers/buzzer.h</itemPath>
         <itemPath>drivers/veml6040.h</itemPath>
       </logicalFolder>
       <logicalFolder name="esp" displayName="esp" projectFiles="true">
@@ -72,6 +73,7 @@
         <itemPath>ui/debug.h</itemPath>
         <itemPath>ui/brightness.h</itemPath>
         <itemPath>ui/controls.h</itemPath>
+        <itemPath>ui/beeps.h</itemPath>
       </logicalFolder>
       <itemPath>scheduler.h</itemPath>
     </logicalFolder>
@@ -94,6 +96,7 @@
         <itemPath>drivers/i2c1.c</itemPath>
         <itemPath>drivers/pcf8563.c</itemPath>
         <itemPath>drivers/flash.c</itemPath>
+        <itemPath>drivers/buzzer.c</itemPath>
         <itemPath>drivers/veml6040.c</itemPath>
       </logicalFolder>
       <logicalFolder name="esp" displayName="esp" projectFiles="true">
@@ -148,6 +151,7 @@
         <itemPath>ui/debug.c</itemPath>
         <itemPath>ui/brightness.c</itemPath>
         <itemPath>ui/controls.c</itemPath>
+        <itemPath>ui/beeps.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
       <itemPath>scheduler.c</itemPath>

@@ -449,6 +449,7 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
         case SML_USER_SET_TZ_AUTO: return change_flag(SML_SETTING_TZ_AUTO, argument);
         case SML_USER_SET_DST_AUTO: return change_flag(SML_SETTING_DST_AUTO, argument);
         case SML_USER_SET_DST_ACTIVE: return change_flag(SML_SETTING_DST_ACTIVE, argument);
+        case SML_USER_SET_BEEP: return change_flag(SML_SETTING_BEEP_ENABLED, argument);
         // As V2's pic-set-brightness-auto: no argument, auto on. A level
         // (SET_BRIGHTNESS) turns it off.
         case SML_USER_SET_BRI_AUTO: return change_flag(SML_SETTING_BRI_AUTO, 1U);

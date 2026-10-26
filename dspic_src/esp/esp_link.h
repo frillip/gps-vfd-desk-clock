@@ -34,7 +34,8 @@
  * STAT-UI, STAT-ENV, STAT-SOURCES, STAT-SETTINGS, STAT-SYS), RESET,
  * SET_TZ_OFFSET, SET_DST_OFFSET, SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO,
  * SET_FOSC, SET_DISPLAY (HHMM only), SET_BRIGHTNESS (0 to 4000, and auto
- * off), SET_BRI_AUTO (auto on, argument ignored), SHOW_SOURCES (STAT-SOURCES, then
+ * off), SET_BRI_AUTO (auto on, argument ignored), SET_BEEP (chimes and
+ * button clicks), SHOW_SOURCES (STAT-SOURCES, then
  * the ACK), SET_DEBUG (clear << 16 | set, ui/debug.h; the resulting mask is
  * printed; setting an undefined bit is NACK ARGUMENT, clearing one is not),
  * SAVE and DEFAULTS (ACCEPTED, then ACK or NACK STORAGE/VERIFY once

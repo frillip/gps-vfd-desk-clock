@@ -7,6 +7,7 @@
 #include "../drivers/tubes.h"
 #include "../platform/clock.h"
 #include "../timing/epoch_control.h"
+#include "../ui/beeps.h"
 #include "../ui/brightness.h"
 #include "../ui/debug.h"
 #include "../ui/display.h"
@@ -88,8 +89,8 @@ uint8_t settings_check(const SML_SETTINGS_BODY *body)
 }
 
 
-// Each value to the module it belongs to. The alarm, delta, beep and
-// 12-hour settings are only kept until the UI uses them.
+// Each value to the module it belongs to. The alarm, delta and 12-hour
+// settings are only kept until the UI uses them.
 static void apply(void)
 {
     const SML_SETTINGS_BODY *body = &running.body;
@@ -100,6 +101,7 @@ static void apply(void)
                         (body->flags & SML_SETTING_DST_ACTIVE) != 0U);
     brightness_set_level(body->brightness);
     brightness_set_auto((body->flags & SML_SETTING_BRI_AUTO) != 0U);
+    beeps_set_enabled((body->flags & SML_SETTING_BEEP_ENABLED) != 0U);
     display_set_mode(DISPLAY_MODE_HHMM); // the only one so far (settings_check)
 }
 

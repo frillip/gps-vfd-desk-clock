@@ -93,7 +93,7 @@ Almost everything runs from the main loop. The scheduler there reads its time fr
 | Minute reports | 600ms into the second, one report per epoch at 15, 30 and 45 seconds into each minute |
 | Settings store | 700ms into the second, when there is something to write and the moment is quiet |
 
-Only the timing edges, the 1ms slot timer and the UARTs use interrupts. The epoch timer interrupts run at priority 4, the PPS watch at 2, and the captures and UARTs at 1, so nothing in the foreground can delay an epoch. The scheduler report shows each task's worst lateness, its longest run and its share of the time.
+Only the timing edges, the 1ms slot timer, the UARTs, I2C1 and the buzzer's timer use interrupts. The epoch timer interrupts run at priority 4, the PPS watch at 2, and the captures, UARTs, I2C1 and the buzzer at 1, so nothing in the foreground can delay an epoch. The scheduler report shows each task's worst lateness, its longest run and its share of the time.
 
 # Time
 
@@ -203,6 +203,18 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 [ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. Nothing acts on them yet: each press and switch change is printed, and STAT-UI carries them to the ESP.
 
+# Buzzer
+
+[drivers/buzzer.c](drivers/buzzer.c) plays sounds described by a pattern and a count, as V2's chimes: count beeps of a length, a gap apart, in groups with a pause between them, optionally repeating until stopped. V2 built a 100-step buffer for each sound; a pattern does the same in a few bytes. Timer5 steps it at 1ms, running only while a sound plays, so a busy main loop (a minute report, a flash erase) does not stretch a beep. One sound plays at a time, by priority: a button click never cuts into a chime, and nothing cuts into the alarm.
+
+| Sound | Pattern | Priority |
+| --- | --- | --- |
+| Button | One 60ms click | Lowest |
+| Chime | 100ms beeps, 100ms apart, in fours with 300ms between | Middle |
+| Alarm | As the chime, 500ms between groups, repeating until stopped | Highest |
+
+[ui/beeps.c](ui/beeps.c) decides when, with the beeps setting on (`pic-set-beeps 1`, saved with `pic-save`): a chime every quarter hour of local time, starting within a millisecond of the epoch, one beep, or on the hour the hour on a 12-hour count (midnight and noon 12, in fours); and a click for each button press. Chimes need the time of day and skip a leap second. V2 counted no beeps at midnight; that is fixed. The alarm will use the alarm pattern whatever the setting.
+
 # Console
 
 The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is kept over a reset once saved (`pic-save`), with the other settings; a build with `DEBUG_DEFAULT` adds its own bits to the saved ones. State changes are always printed.
@@ -279,7 +291,7 @@ Erasing a page stops the CPU for roughly 20–30ms, with interrupts held off thr
 
 The V2 firmware did rather more than this. Still to come:
 
-- the menu, buzzer and alarm, which will act on the button and switch;
+- the menu and alarm, which will act on the button and switch;
 - the other display modes and the 12-hour format;
 - the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
 - GNSS provisioning;
