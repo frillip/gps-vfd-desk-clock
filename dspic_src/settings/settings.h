@@ -6,7 +6,7 @@
  * TZ and DST auto, the brightness, the display, the stored oscillator
  * frequency, and the alarm, delta and format settings the V2+ UI does not
  * use yet. This module holds them and applies each to the module it belongs
- * to (ui/timezone.h, drivers/tubes.h, ui/display.h, ui/debug.h); the ESP's
+ * to (ui/timezone.h, ui/brightness.h, ui/display.h, ui/debug.h); the ESP's
  * commands change them here (esp/esp_link.c), never in those modules.
  *
  *   revision  counts changes to the body (not to the debug mask), kept with
@@ -24,7 +24,17 @@
  * sends as it starts make one write, not three), and is back in force at
  * start-up before the ESP has said anything.
  *
- * Both are records in the store (settings/store.h). Writing to flash stops
+ * The oscillator's frequency, as the control loop learnt it from GNSS
+ * (the Kalman estimate), is kept too, so the next start runs at it from
+ * the first second rather than at nominal: free running before any source
+ * is found, and an NTP-only start steps with it. It is written once the
+ * loop has tracked a reference that teaches it for
+ * SETTINGS_OSCILLATOR_TRACK_EPOCHS, and again when it has moved by
+ * SETTINGS_OSCILLATOR_CHANGE_Q16, at most every SETTINGS_OSCILLATOR_EPOCHS.
+ * This is not calibration_fosc_hz: that is a setting, changed only by
+ * command.
+ *
+ * All three are records in the store (settings/store.h). Writing to flash stops
  * the CPU (drivers/flash.h), so settings_service() writes only when told
  * the moment is quiet: once an epoch, late in the second, away from the
  * epoch's work, the GNSS burst and the ESP's per-second traffic, with the
@@ -39,9 +49,9 @@
 #include "../../common/sml_proto.h"
 
 // The store's record types.
-#define SETTINGS_RECORD_SETTINGS 1U
-#define SETTINGS_RECORD_TIMEZONE 2U
-#define SETTINGS_RECORD_TIMING   3U
+#define SETTINGS_RECORD_SETTINGS   1U
+#define SETTINGS_RECORD_TIMEZONE   2U
+#define SETTINGS_RECORD_OSCILLATOR 3U
 
 // The settings record: version, STAT-SETTINGS as on the wire (its flags
 // zero), the debug mask, reserved.
@@ -57,13 +67,24 @@
 // The stored oscillator frequency may differ from FCY by this much.
 #define SETTINGS_FOSC_LIMIT_PPM 1000UL
 
+// The oscillator record: version, flags (0), the Kalman estimate (period -
+// nominal, Q16 ticks), epochs tracked.
+#define SETTINGS_OSCILLATOR_VERSION      1U
+#define SETTINGS_OSCILLATOR_BYTES        12U
+#define SETTINGS_OSCILLATOR_TRACK_EPOCHS 600UL                 // 10 min: the filter has settled
+#define SETTINGS_OSCILLATOR_EPOCHS       3600UL                // at most hourly
+#define SETTINGS_OSCILLATOR_CHANGE_Q16   ((int32_t)2 << 16)    // 2 ticks a second: 50 ppb
+#define SETTINGS_OSCILLATOR_LIMIT_Q16    ((int32_t)4000 << 16) // 100 ppm: anything more is not ours
+
 typedef struct
 {
-    bool loaded;            // settings came from the store at start-up
-    bool load_rejected;     // a settings record was found but not used
-    bool timezone_restored; // a schedule came from the store at start-up
-    uint32_t saves;         // settings records written
+    bool loaded;              // settings came from the store at start-up
+    bool load_rejected;       // a settings record was found but not used
+    bool timezone_restored;   // a schedule came from the store at start-up
+    bool oscillator_restored; // ... and the oscillator's frequency
+    uint32_t saves;           // settings records written
     uint32_t timezone_saves;
+    uint32_t oscillator_saves;
     uint32_t save_failures;
 } SettingsStats;
 

@@ -1,12 +1,10 @@
 #include "tubes.h"
 
-#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include <xc.h>
 
 #include "../platform/board.h"
-#include "veml6040.h"
 
 /*
  * Board wiring (V2). The drivers' outputs are numbered as bits of one 64-bit
@@ -42,22 +40,13 @@ static const uint8_t word_shift[TUBES_WORDS] = {24U, 32U, 16U, 0U};
 #define OC3CON2_VALUE 0x001FU
 #define OC3_OCM_MASK  0x0007U
 
-typedef struct
-{
-    bool brightness_auto;
-    uint16_t brightness;
-    uint16_t brightness_target;
-    uint16_t brightness_setting;
-} TubesBrightness;
-
-TubesBrightness brightness;
-
 // LATCH_GPIO high for at least 1 us.
 #define LATCH_PULSE_LOOPS 10U
 
 static TubesFrame shown;
 static TubesFrame loaded;
 static bool load_pending; // loaded differs from shown, awaiting an epoch
+static uint16_t brightness;
 static TubesStats stats;
 
 // --------------------------------------------------------------------------
@@ -177,6 +166,20 @@ static void spi_init(void)
 // Interface
 // --------------------------------------------------------------------------
 
+void tubes_init(void)
+{
+    memset(&shown, 0, sizeof(shown));
+    memset(&loaded, 0, sizeof(loaded));
+    memset(&stats, 0, sizeof(stats));
+    load_pending = false;
+
+    spi_init();
+    shift(&loaded);
+    latch_pulse();
+    tubes_brightness_set(TUBES_BRIGHTNESS_DEFAULT);
+}
+
+
 void tubes_load(const TubesFrame *frame)
 {
     if (frame == NULL)
@@ -242,13 +245,13 @@ void tubes_brightness_set(uint16_t level)
     {
         OC3CON1 &= (uint16_t)~OC3_OCM_MASK; // output reverts to the latch:
         DISPLAY_BLANK_SET_HIGH();           // blanked
-        brightness.brightness = TUBES_BRIGHTNESS_OFF;
+        brightness = TUBES_BRIGHTNESS_OFF;
     }
     else if (level > TUBES_BRIGHTNESS_MAX)
     {
         OC3CON1 &= (uint16_t)~OC3_OCM_MASK;
         DISPLAY_BLANK_SET_LOW(); // lit continuously
-        brightness.brightness = TUBES_BRIGHTNESS_FULL;
+        brightness = TUBES_BRIGHTNESS_FULL;
     }
     else
     {
@@ -260,121 +263,14 @@ void tubes_brightness_set(uint16_t level)
             OC3CON2 = OC3CON2_VALUE;
             OC3CON1 = OC3CON1_VALUE;
         }
-        brightness.brightness = level;
+        brightness = level;
     }
-}
-
-
-void tubes_init(void)
-{
-    memset(&shown, 0, sizeof(shown));
-    memset(&loaded, 0, sizeof(loaded));
-    memset(&stats, 0, sizeof(stats));
-    load_pending = false;
-
-    spi_init();
-    shift(&loaded);
-    latch_pulse();
-    
-    brightness.brightness_auto = TUBES_AUTO_BRIGHTNESS_DEFAULT;
-    brightness.brightness_target = TUBES_BRIGHTNESS_DEFAULT;
-    
-    tubes_brightness_set(TUBES_BRIGHTNESS_DEFAULT);
-}
-
-
-uint16_t lux_x10_to_level(uint16_t lux_x10)
-{
-    uint32_t level = TUBES_BRIGHTNESS_CONST;
-    level += (TUBES_BRIGHTNESS_FIRST * lux_x10);
-    level += (TUBES_BRIGHTNESS_SECOND * (lux_x10 * lux_x10));
-    if(level > UINT16_MAX)
-    {
-        level = UINT16_MAX;
-    }
-    return (uint16_t)level;
-}
-
-
-void tubes_brightness_service(void)
-{
-    if(brightness.brightness_auto)
-    {
-        const Veml6040Status *als = veml6040_status();
-        if(als->present)
-        {
-            if(als->lux_valid)
-            {
-                uint16_t target = lux_x10_to_level(veml6040_lux_x10());
-                target += (TUBES_BRIGHTNESS_TARGET_STEP/2);
-                target /= TUBES_BRIGHTNESS_TARGET_STEP;
-                target *= TUBES_BRIGHTNESS_TARGET_STEP;
-                if(target < TUBES_BRIGHTNESS_MIN) target = TUBES_BRIGHTNESS_MIN;
-                else if(target > TUBES_BRIGHTNESS_MAX) target = TUBES_BRIGHTNESS_MAX;
-                brightness.brightness_target = target;
-            }
-            else if(als->too_dark)
-            {
-                brightness.brightness_target = TUBES_BRIGHTNESS_MIN;
-            }
-            else if(als->saturated)
-            {
-                brightness.brightness_target = TUBES_BRIGHTNESS_MAX;
-            }
-            else
-            {
-                brightness.brightness_target = TUBES_BRIGHTNESS_DEFAULT;
-            }
-        }
-        else
-        {
-            brightness.brightness_target = TUBES_BRIGHTNESS_DEFAULT;
-        }
-        
-        if(brightness.brightness_target > brightness.brightness)
-        {
-            tubes_brightness_set(brightness.brightness + TUBES_BRIGHTNESS_TARGET_STEP);
-        }
-        else if(brightness.brightness_target < brightness.brightness)
-        {
-            tubes_brightness_set(brightness.brightness - TUBES_BRIGHTNESS_TARGET_STEP);
-        }
-    }
-    
-    else
-    {
-        tubes_brightness_set(brightness.brightness_setting);
-    }
-}
-
-
-void tubes_brightness_set_level(uint16_t level)
-{
-    //brightness.brightness_auto = 1;
-    brightness.brightness_setting = level;
-}
-
-
-void tubes_brightness_set_auto(bool brightness_auto)
-{
-    brightness.brightness_auto = brightness_auto;
 }
 
 
 uint16_t tubes_brightness(void)
 {
-    return brightness.brightness;
-}
-
-bool tubes_brightness_auto(void)
-{
-    return brightness.brightness_auto;
-}
-
-
-void tubes_brightness_print(uint32_t now_ms)
-{
-    printf("TUBES: Brightness: %4u Target: %4u Auto: %u\n", brightness.brightness, brightness.brightness_target, brightness.brightness_auto);
+    return brightness;
 }
 
 

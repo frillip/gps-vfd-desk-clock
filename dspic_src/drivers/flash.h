@@ -46,7 +46,7 @@
 #define FLASH_STORE_PAGES 2U
 #define FLASH_STORE_END   (FLASH_STORE_BASE + FLASH_STORE_PAGES * FLASH_PAGE_ADDRESSES)
 
-#define PROGRAM_ADDRESS_MASK  0x00FFFFFFUL
+#define FLASH_ADDRESS_MASK 0x00FFFFFFUL // a program address: 24 bits
 
 typedef enum
 {
@@ -88,5 +88,6 @@ void flash_set_clock(uint32_t (*clock)(void));
 void flash_set_resume_hook(void (*hook)(void));
 
 const FlashStats *flash_stats(void);
+const char *flash_result_name(FlashResult result);
 
 #endif // FLASH_H

@@ -72,13 +72,6 @@ typedef struct
 #define TUBES_BRIGHTNESS_DEFAULT 2000U
 #define TUBES_BRIGHTNESS_OFF     0U
 
-#define TUBES_AUTO_BRIGHTNESS_DEFAULT   1
-
-#define TUBES_BRIGHTNESS_CONST       (0UL)
-#define TUBES_BRIGHTNESS_FIRST       (3UL)
-#define TUBES_BRIGHTNESS_SECOND      (0UL)
-#define TUBES_BRIGHTNESS_TARGET_STEP (10U)
-
 #define TUBES_WORDS 4U // 16-bit words per frame on the wire
 
 typedef struct
@@ -99,12 +92,8 @@ void tubes_show(const TubesFrame *frame);
 // The epoch pulse is high: the drivers' outputs follow whatever is loaded.
 bool tubes_latch_open(void);
 
-void tubes_brightness_service(void);
+void tubes_brightness_set(uint16_t level);
 uint16_t tubes_brightness(void);
-bool tubes_brightness_auto(void);
-void tubes_brightness_set_level(uint16_t level);
-void tubes_brightness_set_auto(bool brightness_auto);
-void tubes_brightness_print(uint32_t now_ms);
 
 // Call once per epoch, after it: the epoch pulse has latched what was loaded.
 void tubes_epoch(void);

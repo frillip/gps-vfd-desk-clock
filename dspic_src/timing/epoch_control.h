@@ -163,6 +163,14 @@ void epoch_control_source_stepped(void);
  */
 void epoch_control_free_run_step(int32_t ticks);
 
+// At start-up, before the first epoch_control_update(): the oscillator's
+// frequency as last learnt (period - nominal, Q16 ticks, from the settings
+// store). The loop holds it while free running, and a profile that never
+// teaches the filter steps with it instead of seeding from its reference.
+// A reference that teaches the filter refines it from there; one far from
+// it is re-acquired after KALMAN_REJECT_LIMIT rejections.
+void epoch_control_seed(int32_t offset_q16);
+
 // The offset from nominal the loop would hold in holdover now: the Kalman
 // estimate less the servo integral, Q16 ticks.
 int32_t epoch_control_holdover_offset_q16(void);

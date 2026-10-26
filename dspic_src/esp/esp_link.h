@@ -10,7 +10,8 @@
  *         state goes out every epoch (TIME-AUTH, TIME-PIC, TIME-CTRL,
  *         TIME-MEAS, TIME-GNSS, STAT-UI), with STAT-SOURCES when the
  *         synchroniser's choice or a verdict changes and every
- *         ESP_LINK_SOURCES_EPOCHS, STAT-SETTINGS in the first epoch and
+ *         ESP_LINK_SOURCES_EPOCHS, STAT-ENV every ESP_LINK_ENV_EPOCHS,
+ *         STAT-SETTINGS in the first epoch and
  *         whenever the revision or its flags change, then STAT-SYS
  *         (version, uptime, reset cause), every epoch too.
  *
@@ -30,9 +31,10 @@
  *                   PERSIST asks for them to be stored
  *
  * Commands handled: INFO, REQUEST_MESSAGE (TIME-AUTH/PIC/CTRL/MEAS/GNSS,
- * STAT-UI, STAT-SOURCES, STAT-SETTINGS, STAT-SYS), RESET, SET_TZ_OFFSET,
- * SET_DST_OFFSET, SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO, SET_FOSC,
- * SET_DISPLAY (HHMM only), SET_BRIGHTNESS, SHOW_SOURCES (STAT-SOURCES, then
+ * STAT-UI, STAT-ENV, STAT-SOURCES, STAT-SETTINGS, STAT-SYS), RESET,
+ * SET_TZ_OFFSET, SET_DST_OFFSET, SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO,
+ * SET_FOSC, SET_DISPLAY (HHMM only), SET_BRIGHTNESS (0 to 4000, and auto
+ * off), SET_BRI_AUTO (auto on, argument ignored), SHOW_SOURCES (STAT-SOURCES, then
  * the ACK), SET_DEBUG (clear << 16 | set, ui/debug.h; the resulting mask is
  * printed; setting an undefined bit is NACK ARGUMENT, clearing one is not),
  * SAVE and DEFAULTS (ACCEPTED, then ACK or NACK STORAGE/VERIFY once
@@ -69,6 +71,9 @@
 #define ESP_LINK_NET_TIMEOUT_MS 30000UL
 // STAT-SOURCES goes out at least this often, changed or not.
 #define ESP_LINK_SOURCES_EPOCHS 10UL
+// STAT-ENV (the light sensor) goes out in every epoch numbered a multiple
+// of this.
+#define ESP_LINK_ENV_EPOCHS 5UL
 
 typedef struct
 {

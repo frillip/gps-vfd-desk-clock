@@ -56,12 +56,12 @@ cd tests/host && make
 | --- | --- |
 | `main.c`, `scheduler.c/.h` | The task list and the cooperative scheduler that runs it |
 | `platform/` | Clock and configuration bits, the pin map, millisecond helpers, UTC and calendar arithmetic |
-| `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers, I2C1, the PCF8563 RTC, and program flash for the settings |
+| `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers, I2C1, the PCF8563 RTC, the VEML6040 light sensor, and program flash for the settings |
 | `timing/` | PPS capture, the epoch timer and output, the control loop, and its console report |
 | `sync/` | Time source evaluation and selection, holdover, and the UTC second of each epoch |
 | `gnss/` | UBX parsing, decoding and encoding, receiver detection, epoch assembly, the GNSS state |
 | `esp/` | The ESP link and the SML payloads built from the clock's state |
-| `ui/` | Console, display modes and frames, time zones, the fast text formatter |
+| `ui/` | Console, display modes and frames, brightness, time zones, the fast text formatter |
 | `settings/` | The settings, and the store that keeps them and the time zone schedule in flash |
 | `tests/host/` | Host tests and the stand-ins they run against |
 
@@ -78,7 +78,7 @@ cd tests/host && make
 | RA10 | Status LED, lit for the 100ms epoch pulse |
 | RA7 / RA0 | Push button / toggle switch |
 | RB7 | Buzzer |
-| RB8 / RB9 | I2C1 on its alternate pins ASCL1/ASDA1 (ALTI2C1 = ON): the PCF8563 RTC (and, to come, the light sensor) |
+| RB8 / RB9 | I2C1 on its alternate pins ASCL1/ASDA1 (ALTI2C1 = ON): the PCF8563 RTC and the VEML6040 light sensor |
 | RB13 | Not connected: pulsed at startup to check that the capture timebases agree |
 
 The full pin table, with the remappable pin numbers, is at the top of [platform/board.h](platform/board.h). Code elsewhere uses the function names, never the port names.
@@ -88,7 +88,7 @@ Almost everything runs from the main loop. The scheduler there reads its time fr
 | Task | When |
 | --- | --- |
 | Epoch work | 1ms after each epoch: measure, steer, label the second, send the ESP its messages, render the next second's frame, print the epoch report |
-| GNSS and ESP link service | Every 10ms |
+| GNSS and ESP link service, brightness | Every 10ms |
 | Display load | 500ms into each second, after the latch has closed |
 | Minute reports | 600ms into the second, one report per epoch at 15, 30 and 45 seconds into each minute |
 | Settings store | 700ms into the second, when there is something to write and the moment is quiet |
@@ -169,6 +169,8 @@ Leap seconds come from the receiver's NAV-TIMELS. Failing that, they come from S
 
 The tube driver takes a logical frame (segments, separators and dots) and turns it into the V2 wire format, so the wiring lives in one place. Each frame is rendered a second ahead, shifted into the drivers at 500ms, and latched by the next epoch pulse. The tubes therefore change exactly on the second, and the display can be no later than the clock. Brightness is a 10kHz PWM on the BLANK input.
 
+Brightness is automatic by default, as on V2. The VEML6040 is read every half second over I2C1 ([drivers/veml6040.c](drivers/veml6040.c), V2's driver ported as the PCF8563 was), its green channel giving lux, and [ui/brightness.c](ui/brightness.c) turns that into a level: 3 per 0.1 lux, between 200 and 3800 of 4000, so the brightest from about 127 lux. Too dark to measure gives the dimmest, a saturated sensor the brightest, and with no reading at all the manual level stands in. `pic-set-brightness n` (0–4000) sets the manual level and turns auto off; below 200 the tubes are off, above 3800 lit continuously. `pic-set-brightness-auto` turns it back on. In auto the tubes fade to a new level by 10 every 10ms rather than jumping; a manual level takes effect at once. The light goes to the ESP in STAT-ENV every five seconds, and `pic-info` and the minute report show it with the brightness.
+
 Only the HH:MM mode has been ported so far. The colon blinks with the seconds while the clock is synchronised and stays lit while it is free running. Dashes are shown until the time of day is known.
 
 Local time is UTC plus offsets. The clock itself never moves. The PIC keeps the latest SML-TZ-STATE schedule from the ESP: the entry in force and up to eight future transitions. It moves to each new entry at its UTC second. Two settings decide what is taken from the schedule:
@@ -190,7 +192,7 @@ From the ESP, the PIC acts on:
 
 - TZ-STATE;
 - TIME-LEAP;
-- user commands: INFO, message requests, reset, time zone and DST settings, display mode and brightness, the stored oscillator frequency (SET_FOSC), the sources (SHOW_SOURCES), the debug mask (SET_DEBUG), and saving and showing the settings (SAVE, DEFAULTS, SHOW_SETTINGS, SHOW_CONFIG);
+- user commands: INFO, message requests, reset, time zone and DST settings, display mode, brightness and automatic brightness, the stored oscillator frequency (SET_FOSC), the sources (SHOW_SOURCES), the debug mask (SET_DEBUG), and saving and showing the settings (SAVE, DEFAULTS, SHOW_SETTINGS, SHOW_CONFIG);
 - CMD-SETTINGS, every setting at once;
 - TIME-NTP, which labels the ESP's PPS for the NTP source;
 - STAT-NET, which it holds for the menu.
@@ -251,6 +253,8 @@ The RTC's bound stays ±999ms. The aligned write makes it much better than that,
 
 The settings are those of SML's STAT-SETTINGS: the manual time zone, TZ and DST auto, the brightness, the display mode, the stored oscillator frequency, and the alarm, delta, beep and 12-hour settings the UI does not use yet. The debug mask is kept with them. [settings/settings.c](settings/settings.c) holds them and applies each to its module; the ESP's commands change them there. A change runs at once and is kept once saved, as on V2: `pic-save` (SAVE), `pic-config-clear` (DEFAULTS, which also saves), or CMD-SETTINGS with PERSIST. SAVE and DEFAULTS are answered ACCEPTED, then ACK once the flash has been written, or NACK STORAGE or VERIFY. STAT-SETTINGS shows DIRTY until then. `pic-config-show` prints the running settings, and `pic-eeprom-show` what is stored, the store and the flash timings.
 
+The oscillator's frequency, as the control loop learnt it from GNSS, is kept too: once the loop has tracked GNSS for 10 minutes, and again whenever it has moved by 50ppb, at most hourly. At start-up the loop is seeded with it, so a clock free running before any source is found keeps time at the learnt frequency rather than nominal (a couple of ppm out on the bench boards), and an NTP-only start steps with it. GNSS refines it from there. This is not `calibration_fosc_hz`, the setting `pic-set-fosc-freq` changes, which nothing uses yet.
+
 The time zone schedule from the ESP is not a setting, and is kept by itself: a minute after its contents last change, so the CACHE, then GEOIP or GNSS schedules an ESP sends as it starts make one write. A resend of the same schedule is not a change. At start-up it goes back in through `timezone_apply()`, checked like one from the ESP, so local time is right before the ESP has said anything.
 
 They live in two erase pages reserved at the top of program flash, apart from the application:
@@ -273,9 +277,7 @@ The V2 firmware did rather more than this. Still to come:
 
 - the menu, buttons, buzzer and alarm;
 - the other display modes and the 12-hour format;
-- the light sensor and automatic brightness;
 - the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
-- starting the control loop from the stored oscillator frequency, and keeping it up to date;
 - GNSS provisioning;
 - the watchdog;
 - bootloader entry.

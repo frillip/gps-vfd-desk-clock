@@ -37,6 +37,8 @@ void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *upda
                           SML_TIME_MEAS_PAYLOAD *payload);
 void esp_report_time_gnss(uint32_t now_ms, SML_TIME_GNSS_PAYLOAD *payload);
 void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload);
+// The sensors: the ambient light so far (no BME280 on V2+ yet).
+void esp_report_stat_env(SML_STAT_ENV_PAYLOAD *payload);
 // The synchroniser's candidates. epoch_sequence: the latest epoch's.
 void esp_report_stat_sources(uint32_t epoch_sequence, SML_STAT_SOURCES_PAYLOAD *payload);
 

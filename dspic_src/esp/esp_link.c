@@ -162,6 +162,7 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
         SML_STAT_SOURCES_PAYLOAD sources;
         SML_STAT_SYS_PAYLOAD sys;
         SML_STAT_SETTINGS_PAYLOAD settings;
+        SML_STAT_ENV_PAYLOAD env;
     } payload;
 
     if (class_id == SML_CLASS_TIME && message_id == SML_TIME_AUTH)
@@ -198,6 +199,10 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
     else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_SYS)
     {
         esp_report_stat_sys(last_snapshot.timer.sequence, &payload.sys);
+    }
+    else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_ENV)
+    {
+        esp_report_stat_env(&payload.env);
     }
     else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_SETTINGS)
     {
@@ -273,6 +278,10 @@ void esp_link_epoch(const TimingSnapshot *snapshot, const SyncUpdate *update, ui
     (void)send_message(SML_CLASS_TIME, SML_TIME_GNSS, now_ms);
     (void)send_message(SML_CLASS_STAT, SML_STAT_UI, now_ms);
     send_sources_if_due();
+    if (last_snapshot.timer.sequence % ESP_LINK_ENV_EPOCHS == 0U)
+    {
+        (void)send_message(SML_CLASS_STAT, SML_STAT_ENV, now_ms);
+    }
     // The first in SML mode, then on a change of revision, DIRTY or
     // DEFAULTS.
     if (!have_settings || settings_revision() != settings_sent_revision ||
@@ -347,7 +356,8 @@ static uint8_t change_setting(uint16_t command, uint32_t argument)
             body.selected_display = (uint8_t)argument;
             break;
         case SML_USER_SET_BRIGHTNESS:
-            if (argument < TUBES_BRIGHTNESS_OFF || argument > TUBES_BRIGHTNESS_FULL)
+            // A level means manual brightness: auto goes off.
+            if (argument > TUBES_BRIGHTNESS_FULL)
             {
                 return SML_ERROR_ARGUMENT;
             }
@@ -439,7 +449,9 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
         case SML_USER_SET_TZ_AUTO: return change_flag(SML_SETTING_TZ_AUTO, argument);
         case SML_USER_SET_DST_AUTO: return change_flag(SML_SETTING_DST_AUTO, argument);
         case SML_USER_SET_DST_ACTIVE: return change_flag(SML_SETTING_DST_ACTIVE, argument);
-        case SML_USER_SET_BRI_AUTO: return change_flag(SML_SETTING_BRI_AUTO, 1);
+        // As V2's pic-set-brightness-auto: no argument, auto on. A level
+        // (SET_BRIGHTNESS) turns it off.
+        case SML_USER_SET_BRI_AUTO: return change_flag(SML_SETTING_BRI_AUTO, 1U);
         case SML_USER_SET_TZ_OFFSET:
         case SML_USER_SET_DST_OFFSET:
         case SML_USER_SET_FOSC:

@@ -7,8 +7,7 @@
 #include "../drivers/tubes.h"
 #include "../platform/clock.h"
 #include "../timing/epoch_control.h"
-#include "../timing/kalman.h"
-#include "../sync/sync.h"
+#include "../ui/brightness.h"
 #include "../ui/debug.h"
 #include "../ui/display.h"
 #include "../ui/timezone.h"
@@ -28,24 +27,6 @@ typedef struct
     uint16_t debug_mask;
 } Values;
 
-typedef struct {
-    uint16_t schema_version;
-    /* flags:
-     * bit 0: KF_INITIALISED
-     * All other bits reserved; transmit zero. */
-    uint16_t flags;
-    uint32_t epoch;
-    int32_t kalman_phase_q16;
-    uint32_t kalman_epochs;
-    uint8_t reserved1;
-    uint8_t reserved2;
-} TimingState;
-
-#define SETTINGS_TIMING_STATE_VERSION   1U
-#define TIMING_STATE_BYTES              18
-#define SETTINGS_TIMING_STATE_BYTES     (2U + TIMING_STATE_BYTES + 4U)
-#define TIMING_STATE_MIN_TRACK_AGE      30U
-
 static Values running;
 static Values stored; // as last stored, or the defaults while nothing is
 static uint32_t revision;
@@ -56,6 +37,12 @@ static uint8_t save_error;
 static bool timezone_pending;
 static uint32_t timezone_changed_epoch;
 static SettingsStats stats;
+
+// The oscillator record: what is stored, and when it was written this run.
+static bool have_oscillator;
+static int32_t oscillator_q16;
+static bool oscillator_saved;
+static uint32_t oscillator_saved_epoch;
 
 void settings_defaults(SML_SETTINGS_BODY *body)
 {
@@ -92,8 +79,7 @@ uint8_t settings_check(const SML_SETTINGS_BODY *body)
         !offset_ok(body->base_offset_s) || !offset_ok(body->dst_offset_s) ||
         body->calibration_fosc_hz < FCY - FOSC_LIMIT_HZ ||
         body->calibration_fosc_hz > FCY + FOSC_LIMIT_HZ ||
-        body->alarm_offset_s >= SECONDS_PER_DAY || body->brightness < TUBES_BRIGHTNESS_OFF ||
-        body->brightness > TUBES_BRIGHTNESS_FULL)
+        body->alarm_offset_s >= SECONDS_PER_DAY || body->brightness > TUBES_BRIGHTNESS_FULL)
     {
         return SML_ERROR_ARGUMENT;
     }
@@ -101,8 +87,8 @@ uint8_t settings_check(const SML_SETTINGS_BODY *body)
 }
 
 
-// Each value to the module it belongs to. The alarm, delta, beep, 12-hour
-// and manual-brightness settings are only kept until the UI uses them.
+// Each value to the module it belongs to. The alarm, delta, beep and
+// 12-hour settings are only kept until the UI uses them.
 static void apply(void)
 {
     const SML_SETTINGS_BODY *body = &running.body;
@@ -111,8 +97,8 @@ static void apply(void)
     timezone_set_dst_auto((body->flags & SML_SETTING_DST_AUTO) != 0U);
     timezone_set_manual(body->base_offset_s, body->dst_offset_s,
                         (body->flags & SML_SETTING_DST_ACTIVE) != 0U);
-    tubes_brightness_set_level(body->brightness);
-    tubes_brightness_set_auto((body->flags & SML_SETTING_BRI_AUTO) != 0U);
+    brightness_set_level(body->brightness);
+    brightness_set_auto((body->flags & SML_SETTING_BRI_AUTO) != 0U);
     display_set_mode(DISPLAY_MODE_HHMM); // the only one so far (settings_check)
 }
 
@@ -186,6 +172,50 @@ static void restore_timezone(void)
 }
 
 
+// The oscillator record: version, flags (0), the Kalman estimate (period -
+// nominal, Q16 ticks), and how many epochs it had tracked for.
+static void encode_oscillator(int32_t offset_q16, uint32_t epochs, uint8_t *record)
+{
+    memset(record, 0, SETTINGS_OSCILLATOR_BYTES);
+    sml_put_u16(&record[0], SETTINGS_OSCILLATOR_VERSION);
+    sml_put_u32(&record[4], (uint32_t)offset_q16);
+    sml_put_u32(&record[8], epochs);
+}
+
+
+static bool read_oscillator(int32_t *offset_q16, uint32_t *epochs)
+{
+    uint8_t record[SETTINGS_OSCILLATOR_BYTES];
+    uint16_t length;
+
+    if (!store_read(SETTINGS_RECORD_OSCILLATOR, record, sizeof(record), &length) ||
+        length != SETTINGS_OSCILLATOR_BYTES ||
+        sml_get_u16(&record[0]) != SETTINGS_OSCILLATOR_VERSION)
+    {
+        return false;
+    }
+    *offset_q16 = (int32_t)sml_get_u32(&record[4]);
+    *epochs = sml_get_u32(&record[8]);
+    return *offset_q16 >= -SETTINGS_OSCILLATOR_LIMIT_Q16 &&
+           *offset_q16 <= SETTINGS_OSCILLATOR_LIMIT_Q16;
+}
+
+
+// The loop starts from the stored estimate rather than from nominal.
+static void restore_oscillator(void)
+{
+    uint32_t epochs;
+
+    have_oscillator = read_oscillator(&oscillator_q16, &epochs);
+    oscillator_saved = false;
+    if (have_oscillator)
+    {
+        epoch_control_seed(oscillator_q16);
+        stats.oscillator_restored = true;
+    }
+}
+
+
 void settings_init(void)
 {
     memset(&stats, 0, sizeof(stats));
@@ -205,6 +235,7 @@ void settings_init(void)
     // A build for the bench (DEBUG_DEFAULT) adds its own on top.
     debug_set((uint16_t)(running.debug_mask | DEBUG_DEFAULT));
     restore_timezone();
+    restore_oscillator();
 }
 
 
@@ -367,6 +398,55 @@ static void save_timezone(uint32_t epoch)
 }
 
 
+// The loop's frequency estimate is worth keeping once it has been learning
+// from a reference that teaches it (GNSS) for a while, and has moved from
+// what is stored; after a write this run, not again for an hour.
+static bool oscillator_due(uint32_t epoch)
+{
+    const EpochControl *control = epoch_control_state();
+    int32_t estimate;
+    int32_t change;
+
+    if (control->state != EPOCH_STATE_TRACK || !control->profile->learn_frequency ||
+        !control->pps_kf.initialized ||
+        control->reference_epochs < SETTINGS_OSCILLATOR_TRACK_EPOCHS)
+    {
+        return false;
+    }
+    if (!have_oscillator)
+    {
+        return true;
+    }
+    estimate = kalman_phase_q16(&control->pps_kf);
+    change = estimate > oscillator_q16 ? estimate - oscillator_q16 : oscillator_q16 - estimate;
+    return change >= SETTINGS_OSCILLATOR_CHANGE_Q16 &&
+           (!oscillator_saved || epoch - oscillator_saved_epoch >= SETTINGS_OSCILLATOR_EPOCHS);
+}
+
+
+static void save_oscillator(uint32_t epoch)
+{
+    const EpochControl *control = epoch_control_state();
+    uint8_t record[SETTINGS_OSCILLATOR_BYTES];
+    int32_t estimate = kalman_phase_q16(&control->pps_kf);
+
+    encode_oscillator(estimate, control->reference_epochs, record);
+    // Tried again in an hour if it fails.
+    oscillator_saved = true;
+    oscillator_saved_epoch = epoch;
+    if (store_write(SETTINGS_RECORD_OSCILLATOR, record, sizeof(record)) == STORE_OK)
+    {
+        have_oscillator = true;
+        oscillator_q16 = estimate;
+        stats.oscillator_saves++;
+    }
+    else
+    {
+        stats.save_failures++;
+    }
+}
+
+
 void settings_service(uint32_t epoch, bool quiet)
 {
     if (timezone_take_changed())
@@ -386,6 +466,10 @@ void settings_service(uint32_t epoch, bool quiet)
     else if (timezone_pending && epoch - timezone_changed_epoch >= SETTINGS_TIMEZONE_DELAY_EPOCHS)
     {
         save_timezone(epoch);
+    }
+    else if (oscillator_due(epoch))
+    {
+        save_oscillator(epoch);
     }
 }
 
@@ -434,6 +518,13 @@ static void print_values(const Values *values)
 }
 
 
+// Q16 ticks a second to parts per billion of FCY.
+static int32_t ppb(int32_t offset_q16)
+{
+    return (int32_t)((int64_t)offset_q16 * 1000000000LL / ((int64_t)FCY * 65536LL));
+}
+
+
 void settings_print_start(void)
 {
     const TimezoneSchedule *schedule = timezone_schedule();
@@ -447,6 +538,10 @@ void settings_print_start(void)
     {
         printf("; time zone schedule from flash (source %u, %u entries)", schedule->source,
                schedule->count);
+    }
+    if (stats.oscillator_restored)
+    {
+        printf("; oscillator from flash, %+ld ppb", (long)ppb(oscillator_q16));
     }
     printf("\r\n");
 }
@@ -499,6 +594,23 @@ static void print_stored_timezone(void)
 }
 
 
+static void print_stored_oscillator(void)
+{
+    int32_t offset_q16;
+    uint32_t epochs;
+
+    if (read_oscillator(&offset_q16, &epochs))
+    {
+        printf("Stored oscillator: %+ld ppb, learnt over %lu s\r\n", (long)ppb(offset_q16),
+               (unsigned long)epochs);
+    }
+    else
+    {
+        printf("Stored oscillator: none\r\n");
+    }
+}
+
+
 void settings_print_stored(void)
 {
     Values values;
@@ -515,43 +627,7 @@ void settings_print_stored(void)
         printf("Stored settings: %s\r\n", rejected ? "unusable record" : "none (factory defaults)");
     }
     print_stored_timezone();
+    print_stored_oscillator();
     store_print();
     print_flash();
-}
-
-static void save_timing_state(uint32_t epoch)
-{
-    uint8_t record[SETTINGS_TIMING_STATE_BYTES];
-    TimingState state;
-    const EpochControl *control = epoch_control_state();
-
-    memset(record, 0, SETTINGS_TIMING_STATE_BYTES);
-    memset(&state, 0, TIMING_STATE_BYTES);
-
-    state.schema_version = SETTINGS_TIMING_STATE_VERSION;
-    state.epoch = epoch;
-    
-    if (control->pps_kf.initialized &&
-        control->state == EPOCH_STATE_TRACK &&
-        control->reference_epochs >= TIMING_STATE_MIN_TRACK_AGE)
-    {
-        state.flags = 0x01; // Valid
-        state.kalman_epochs = control->reference_epochs;
-        state.kalman_phase_q16 = kalman_phase_q16(&control->pps_kf);
-    }
-    
-
-    sml_put_u16(&record[0], SETTINGS_TIMING_STATE_VERSION);
-    memcpy(&record[2], &state, TIMING_STATE_BYTES);
-    sml_put_u32(&record[2U + TIMING_STATE_BYTES], epoch);
-    
-    save_error = store_error(store_write(SETTINGS_RECORD_TIMING, record, sizeof(record)));
-    if (save_error == SML_ERROR_NONE)
-    {
-        stats.saves++;
-    }
-    else
-    {
-        stats.save_failures++;
-    }
 }

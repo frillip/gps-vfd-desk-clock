@@ -7,6 +7,7 @@
 #include "../drivers/i2c1.h"
 #include "../drivers/pcf8563.h"
 #include "../drivers/tubes.h"
+#include "../drivers/veml6040.h"
 #include "../gnss/gnss.h"
 #include "../platform/board.h"
 #include "../platform/system.h"
@@ -18,6 +19,7 @@
 #include "../sync/sync_report.h"
 #include "../timing/q16.h"
 #include "../timing/timing_config.h"
+#include "../ui/brightness.h"
 #include "../ui/timezone.h"
 
 #define NS_PER_TICK  25L // 1 / FCY
@@ -397,12 +399,12 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     payload->menu_state = SML_MENU_NONE;
     payload->button_state = SML_BUTTON_NONE;
     payload->brightness = tubes_brightness();
-    payload->brightness_target = tubes_brightness();
+    payload->brightness_target = brightness_target();
     if (tubes_brightness() != TUBES_BRIGHTNESS_OFF)
     {
         payload->flags |= SML_UI_POWER_ON;
     }
-    if (tubes_brightness_auto())
+    if (brightness_is_auto())
     {
         payload->flags |= SML_UI_BRIGHTNESS_AUTO;
     }
@@ -437,6 +439,23 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     {
         payload->flags |= SML_UI_LOCAL_VALID;
         payload->local_seconds = time->utc_seconds + (uint32_t)zone.offset_s;
+    }
+}
+
+
+void esp_report_stat_env(SML_STAT_ENV_PAYLOAD *payload)
+{
+    const Veml6040Status *light = veml6040_status();
+
+    memset(payload, 0, sizeof(*payload));
+    if (light->present)
+    {
+        payload->flags |= SML_ENV_LUX_PRESENT;
+    }
+    if (light->present && light->lux_valid)
+    {
+        payload->flags |= SML_ENV_LUX_VALID;
+        payload->lux = (uint16_t)(((uint32_t)light->lux_x10 + 5UL) / 10UL);
     }
 }
 
@@ -609,6 +628,8 @@ void esp_report_print_all(uint32_t now_ms)
     timezone_print(status->time.utc_seconds);
     settings_print();
     pcf8563_print(now_ms, clock);
+    veml6040_print(now_ms);
+    brightness_print();
     source_rtc_print();
     i2c1_print();
 }

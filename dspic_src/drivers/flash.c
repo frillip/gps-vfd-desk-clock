@@ -21,11 +21,10 @@ static FlashStats stats;
 
 bool flash_init(void)
 {
-    uint32_t actual_address =
-        __builtin_tbladdress(&flash_store_area[0]) & PROGRAM_ADDRESS_MASK;
-
-    reserved = (actual_address == FLASH_STORE_BASE);
-
+    // The table address carries more than the program address in its top
+    // byte: compare the 24 bits that are the address.
+    reserved =
+        (__builtin_tbladdress(&flash_store_area[0]) & FLASH_ADDRESS_MASK) == FLASH_STORE_BASE;
     return reserved;
 }
 
@@ -45,6 +44,13 @@ void flash_set_resume_hook(void (*hook)(void))
 const FlashStats *flash_stats(void)
 {
     return &stats;
+}
+
+
+const char *flash_result_name(FlashResult result)
+{
+    static const char *const names[] = {"ok", "bad address", "not reserved", "failed"};
+    return (unsigned)result < sizeof(names) / sizeof(names[0]) ? names[result] : "?";
 }
 
 
@@ -152,11 +158,8 @@ FlashResult flash_write_double_word(uint32_t address, uint16_t first, uint16_t s
     __builtin_tblwth(0U, 0x00FFU);
     __builtin_tblwtl(2U, second);
     __builtin_tblwth(2U, 0x00FFU);
-
     ticks = run_operation();
-
     TBLPAG = saved;
-    
     if (ticks > stats.longest_write_ticks)
     {
         stats.longest_write_ticks = ticks;
@@ -164,4 +167,3 @@ FlashResult flash_write_double_word(uint32_t address, uint16_t first, uint16_t s
     stats.writes++;
     return finish();
 }
-

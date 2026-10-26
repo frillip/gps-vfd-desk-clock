@@ -70,6 +70,7 @@
         <itemPath>ui/timezone.h</itemPath>
         <itemPath>ui/text.h</itemPath>
         <itemPath>ui/debug.h</itemPath>
+        <itemPath>ui/brightness.h</itemPath>
       </logicalFolder>
       <itemPath>scheduler.h</itemPath>
     </logicalFolder>
@@ -144,6 +145,7 @@
         <itemPath>ui/timezone.c</itemPath>
         <itemPath>ui/text.c</itemPath>
         <itemPath>ui/debug.c</itemPath>
+        <itemPath>ui/brightness.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
       <itemPath>scheduler.c</itemPath>

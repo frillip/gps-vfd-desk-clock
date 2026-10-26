@@ -124,7 +124,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | 0x20 TZ | 0x01 | TZ-STATE | ESP→PIC | 124 | ✓ Applied | On change, after a PIC reset, and every ~10 minutes |
 | | 0x10 | _Retired: TZ-FUTURE_ | — | — | — | Never reuse |
 | 0x30 STAT | 0x01 | STAT-UI | PIC→ESP | 32 | ✓ Sent | Every epoch |
-| | 0x10 | STAT-ENV | PIC→ESP | 14 | — I²C not yet ported | Every few seconds |
+| | 0x10 | STAT-ENV | PIC→ESP | 14 | ✓ Sent: light only | Every 5 seconds |
 | | 0x20 | STAT-SUPPLY | PIC→ESP | 14 | — V3 hardware | Every few seconds |
 | | 0x30 | STAT-SETTINGS | PIC→ESP | 36 | ✓ Sent | On change, after reset, on request |
 | | 0x40 | STAT-NET | ESP→PIC | 24 | ✓ Received and held | On change, and every 10 seconds |
@@ -469,7 +469,7 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 0 | `LOCAL_VALID` | 7 | `UPDATE_PENDING` |
 | 1 | `ALARM_ENABLED` | 8 | `FORMAT_12H` |
 | 2 | `ALARM_ACTIVE` | 9 | `DST_ACTIVE` |
-| 3 | `BRIGHTNESS_MANUAL` | 10 | `TZ_STALE` |
+| 3 | `BRIGHTNESS_AUTO` | 10 | `TZ_STALE` |
 | 4 | `POWER_ON` | 11 | `TZ_AMBIGUOUS` |
 | 5 | `SWITCH` | 12 | `TZ_HELD`: a TZ-STATE schedule is held |
 | 6 | `BUTTON` | | |
@@ -491,6 +491,8 @@ _Sensors. PIC→ESP, 14 bytes._
 | 12 | humidity_centipercent | u16 | 0.01% RH, 0–10000 |
 
 A value out of range clears its validity flag rather than wrapping. There are no sentinel values and no sample ages.
+
+The V2+ PIC sends STAT-ENV in every epoch numbered a multiple of 5, and on request. Only the light is filled in so far, from the VEML6040: `LUX_PRESENT` while it answers, `LUX_VALID` while its reading is neither saturated nor too dark to measure, the lux rounded to whole lux.
 
 ## STAT-SUPPLY (0x20)
 
@@ -522,7 +524,7 @@ The settings body is shared with CMD-SETTINGS, and its offsets are relative to t
 | Body offset | Field | Type | Unit / values |
 | --- | --- | --- | --- |
 | 0 | schema_version | u16 | `SML_SETTINGS_SCHEMA` (1) |
-| 2 | flags | u16 | Bit 0 `TZ_AUTO` (base from TZ-STATE), 1 `DST_AUTO` (DST from TZ-STATE), 2 `DST_ACTIVE` (manual DST state), 3 `ALARM_ENABLED`, 4 `BEEP_ENABLED`, 5 `FORMAT_12H`, 6 `BRI_MANUAL` |
+| 2 | flags | u16 | Bit 0 `TZ_AUTO` (base from TZ-STATE), 1 `DST_AUTO` (DST from TZ-STATE), 2 `DST_ACTIVE` (manual DST state), 3 `ALARM_ENABLED`, 4 `BEEP_ENABLED`, 5 `FORMAT_12H`, 6 `BRI_AUTO` (brightness from the light sensor) |
 | 4 | base_offset_s | i32 | **Manual** base offset, s |
 | 8 | dst_offset_s | i32 | **Manual** DST amount, s |
 | 12 | calibration_fosc_hz | u32 | Stored oscillator baseline (FCY), Hz; not live telemetry |
@@ -647,7 +649,7 @@ Commands run by the PIC:
 | Code | Command | Argument | V2+ PIC |
 | --- | --- | --- | --- |
 | 0x0001 | `INFO` | — | ✓ Prints every module's diagnostics as STAT-DEBUG, then ACK |
-| 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI, STAT-SOURCES, STAT-SETTINGS and STAT-SYS: the message, then ACK. Others: NACK UNSUPPORTED |
+| 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI, STAT-ENV, STAT-SOURCES, STAT-SETTINGS and STAT-SYS: the message, then ACK. Others: NACK UNSUPPORTED |
 | 0x0010 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
 | 0x0011 | `RESET` | — | ✓ ACK, flush, then software reset |
 | 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 to the nearest second (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY while the RTC source is searching or setting it. The RTC is printed once read back and its second found again. The clock's own time is not changed, but while it is synchronised its next check (every 6 hours) sets the RTC back to the clock's time |
@@ -662,8 +664,8 @@ Commands run by the PIC:
 | 0x0052 | `SET_DELTA` | UTC epoch | NACK UNSUPPORTED (UI) |
 | 0x0053 | `SET_BEEP` | 0/1 | NACK UNSUPPORTED (UI) |
 | 0x0060 | `SET_DISPLAY` | `SML_DISPLAY_*` | ✓ HHMM. Other selectable modes UNSUPPORTED, runtime-only values ARGUMENT |
-| 0x0061 | `SET_BRI_AUTO` | 0/1 | NACK UNSUPPORTED (light sensor) |
-| 0x0062 | `SET_BRIGHTNESS` | 200–3800 | ✓ |
+| 0x0061 | `SET_BRI_AUTO` | Ignored (send 0) | ✓ Brightness from the light sensor, as V2's `pic-set-brightness-auto`. `SET_BRIGHTNESS` turns it off |
+| 0x0062 | `SET_BRIGHTNESS` | 0–4000 | ✓ Manual brightness, and auto off: below 200 the tubes are off, above 3800 lit continuously |
 | 0x0070 | `SHOW_SETTINGS` | — | ✓ Prints what is stored (the settings, the time zone schedule, the store and flash timings) as STAT-DEBUG, sends STAT-SETTINGS, then ACK |
 | 0x0071 | `SHOW_CONFIG` | — | ✓ Prints the running settings as STAT-DEBUG, then ACK |
 | 0x0072 | `DEFAULTS` | — | ✓ Applies the factory settings (debug mask none) and saves them: ACCEPTED, then as `SAVE` |
@@ -783,7 +785,8 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | Message | Sender | When |
 | --- | --- | --- |
 | TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI | PIC | Every epoch, in this order, within a few ms of the edge (SML mode only) |
-| TIME-RTC, STAT-ENV, STAT-SUPPLY, TIME-VCTCXO | PIC | Once ported: RTC and VCTCXO every epoch, sensors every few seconds |
+| STAT-ENV | PIC | Every epoch numbered a multiple of 5, after STAT-SOURCES |
+| TIME-RTC, STAT-SUPPLY, TIME-VCTCXO | PIC | Once ported: RTC and VCTCXO every epoch, the supply every few seconds |
 | STAT-SETTINGS | PIC | First epoch in SML mode, whenever the revision or the flags change (at most once an epoch, before STAT-SYS), and before the ACK to `SHOW_SETTINGS` |
 | STAT-DEBUG | PIC | As text is produced |
 | STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to `SHOW_SOURCES` |
@@ -1046,6 +1049,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-26 | STAT-UI flag bit 3 is `BRIGHTNESS_AUTO` (was `BRIGHTNESS_MANUAL`), and STAT-SETTINGS / CMD-SETTINGS settings flag bit 6 `BRI_AUTO` (was `BRI_MANUAL`): the same bits, the opposite sense, automatic brightness being the default. `SET_BRIGHTNESS` takes 0–4000 and turns auto off; `SET_BRI_AUTO` turns it on. The V2+ PIC sends STAT-ENV (light only) |
 | 2026-10-23 | Document only, no wire change. The V2+ PIC implements STAT-SETTINGS, CMD-SETTINGS, `SAVE`, `DEFAULTS`, `SHOW_SETTINGS`, `SHOW_CONFIG` and `SET_FOSC`, and CMD-RESPONSE `settings_revision`. The TZ-STATE schedule is kept over a reset |
 | 2026-10-21 (1.4) | STAT-SYS (0x60, PIC→ESP, 16 bytes): firmware version, uptime, reset cause (`SML_RESET_*`) and the longest main-loop pass. No existing layout changes |
 | 2026-10-21 (1.3) | STAT-SOURCES (0x50, PIC→ESP, 108 bytes): the PIC's time sources, ranked. `SML_SOURCE_HOLDOVER` (6). TIME-PIC offset 7 becomes `second_source` (was reserved). TIME-NTP flag bit 6 `CORRECTING`, and `SML_NTP_GENTLE_SLEW_PPM`. CMD-USER `SHOW_SOURCES` (0x0074) and `SET_DEBUG` (0x0090) with `SML_DEBUG_*` bits. `SML_VERDICT_*`. No existing layout changes length |

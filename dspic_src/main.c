@@ -9,7 +9,8 @@
  * (gnss/gnss.h); the ESP32 link in esp/ (esp/esp_link.h, SML protocol); the
  * tubes in ui/display.h and local time in ui/timezone.h; the I2C bus and the
  * RTC in drivers/ (drivers/i2c1.h, drivers/pcf8563.h), and the RTC as a time
- * source, kept set, in sync/source_rtc.h; the settings, and keeping them in
+ * source, kept set, in sync/source_rtc.h; the light sensor in
+ * drivers/veml6040.h and automatic brightness in ui/brightness.h; the settings, and keeping them in
  * flash, in settings/ (settings/settings.h, drivers/flash.h).
  */
 #include <stdbool.h>
@@ -18,7 +19,6 @@
 #include "drivers/flash.h"
 #include "drivers/i2c1.h"
 #include "drivers/pcf8563.h"
-#include "drivers/tubes.h"
 #include "drivers/veml6040.h"
 #include "esp/esp_link.h"
 #include "esp/esp_report.h"
@@ -33,6 +33,7 @@
 #include "sync/sync_tuning.h"
 #include "timing/timing.h"
 #include "timing/timing_report.h"
+#include "ui/brightness.h"
 #include "ui/console.h"
 #include "ui/debug.h"
 #include "ui/display.h"
@@ -182,6 +183,8 @@ static void report_minute(void)
         display_print();
         timezone_print(sync_status()->time.utc_seconds);
         pcf8563_print(epoch_timer_ms(), rtc_reference());
+        veml6040_print(epoch_timer_ms());
+        brightness_print();
         source_rtc_print();
         i2c1_print();
         esp_link_print();
@@ -206,7 +209,8 @@ int main(void)
     timing_report_sync(&capture_sync);
     gnss_init(FCY, epoch_timer_ms());
     // The RTC: its reads stamped on the capture timebase, so the RTC source
-    // can place its second against the epoch.
+    // can place its second against the epoch. The light sensor on the same
+    // bus.
     i2c1_init();
     i2c1_set_stamp_clock(pps_capture_timebase);
     pcf8563_init(epoch_timer_ms());
@@ -214,6 +218,7 @@ int main(void)
     source_rtc_init();
     timezone_init();
     display_init();
+    brightness_init();
     // The settings and the time zone schedule kept in flash, applied to the
     // modules above. Erases and writes are timed on the capture timebase,
     // and the epoch timer's slots put right after each.
@@ -244,8 +249,11 @@ int main(void)
         // held to the 10 ms tasks.
         (void)pcf8563_service(scheduler_now_ms(), rtc_reference());
         source_rtc_poll();
-        veml6040_service(scheduler_now_ms());
-        
+        // The light sensor leaves the bus to the RTC source while it is
+        // searching or timing a release.
+        veml6040_set_auto_read(source_rtc_state()->activity == SOURCE_RTC_IDLE);
+        (void)veml6040_service(scheduler_now_ms());
+
         // Every epoch, at the measurement slot (set by the T4 scheduler
         // interrupt, so the captures of the epoch are read together).
         if (timing_snapshot(&snapshot))
@@ -260,7 +268,7 @@ int main(void)
             esp_link_service(scheduler_now_ms());
             source_ntp_service(scheduler_now_ms());
             i2c1_service(scheduler_now_ms());
-            tubes_brightness_service();
+            brightness_service();
         }
 
         if (scheduler_due(&display_load))

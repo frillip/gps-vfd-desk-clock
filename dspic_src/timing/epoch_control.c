@@ -456,6 +456,13 @@ void epoch_control_restart(const EpochProfile *profile, bool slew)
 }
 
 
+void epoch_control_seed(int32_t offset_q16)
+{
+    kalman_seed(&loop.pps_kf, offset_q16);
+    loop.filtered_pps_period = kalman_period(&loop.pps_kf);
+}
+
+
 void epoch_control_free_run_step(int32_t ticks)
 {
     const int32_t half = (int32_t)(TIMING_NOMINAL_TICKS / 2U);

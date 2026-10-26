@@ -72,6 +72,7 @@ typedef struct
     uint32_t page_changes;
     uint32_t failures;
     StoreResult last_result;
+    FlashResult last_flash; // what the flash said to the last erase or write
 } StoreStatus;
 
 // Finds the page in use and the latest record of each type. Reads only.

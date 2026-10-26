@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "../../common/sml.h"
-#include "../ui/console.h"
 
 #define ERASED 0xFFFFU
 // Header, length, data, CRC: STORE_RECORD_MAX_BYTES of data at most.
@@ -14,8 +13,6 @@ static StoreStatus status;
 // Where the latest record of each type starts (0: none), and its length.
 static uint16_t record_word[STORE_TYPES];
 static uint16_t record_length[STORE_TYPES];
-
-static const char *const FlashResultnames[] = {"FLASH_OK", "FLASH_BAD_ADDRESS", "FLASH_NOT_RESERVED", "FLASH_FAILED"};
 
 static uint32_t word_address(uint8_t page, uint16_t word)
 {
@@ -212,10 +209,9 @@ static StoreResult write_words(uint8_t page, uint16_t word, const uint16_t *word
 
     for (index = 0; index < count; index += 2U)
     {
-        
-        FlashResult res = flash_write_double_word(word_address(page, (uint16_t)(word + index)), words[index],
-                                    words[index + 1U]);
-        if ( res != FLASH_OK)
+        status.last_flash = flash_write_double_word(word_address(page, (uint16_t)(word + index)),
+                                                    words[index], words[index + 1U]);
+        if (status.last_flash != FLASH_OK)
         {
             return STORE_FLASH_FAILED;
         }
@@ -267,8 +263,8 @@ static StoreResult change_page(uint8_t type, const uint8_t *data, uint16_t lengt
     uint8_t other;
     StoreResult result;
 
-    FlashResult res = flash_erase_page(word_address(target, 0U));
-    if ( res != FLASH_OK)
+    status.last_flash = flash_erase_page(word_address(target, 0U));
+    if (status.last_flash != FLASH_OK)
     {
         return STORE_FLASH_FAILED;
     }
@@ -414,6 +410,11 @@ void store_print(void)
     }
     printf("; %lu appends, %lu page changes, %lu failures", (unsigned long)status.appends,
            (unsigned long)status.page_changes, (unsigned long)status.failures);
+    if (status.last_result != STORE_OK)
+    {
+        printf(", last: %s (flash %s)", store_result_name(status.last_result),
+               flash_result_name(status.last_flash));
+    }
     if (status.torn != 0U || status.unreadable)
     {
         printf(", %u torn%s", status.torn, status.unreadable ? ", unreadable data" : "");
