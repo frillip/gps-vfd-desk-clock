@@ -277,9 +277,11 @@ They live in two erase pages reserved at the top of program flash, apart from th
 
 | Program addresses | |
 | --- | --- |
-| 0x000000–0x0297FF | The application (and any bootloader or update slots) |
+| 0x000000–0x0297FF | The application (and the bootloader, and the application's version and CRC trailer, to come) |
 | 0x029800–0x02A7FF | The settings store: two pages of 1024 instructions, 2KB of data each |
-| 0x02A800–0x02AFFF | The last page, with the configuration words from 0x02AFEC: never erased by the application |
+| 0x02A800–0x02AFFF | The last page: the configuration words from 0x02AFEC, and nothing else |
+
+The rest of the last page is reserved too, empty, so no application code lands in it. Anything else there could only be rewritten by erasing the page, configuration words and all, and a reset before they were written back would start the chip on the erased defaults (watchdog on, another oscillator), which no bootloader could recover from. With the page left alone, the configuration words are programmed once with the bootloader and an update never erases them. The application's version and CRC trailer, for the bootloader to check, will go below the store, in 0x029000–0x0297FF, written last on an update.
 
 [drivers/flash.c](drivers/flash.c) reserves the pages with `address()` and `noload`, so the linker places nothing there and the hex has nothing for them, and writes nowhere else. Reprogramming the application therefore leaves the settings alone, as long as the programmer is told to: the project sets MPLAB's "Preserve program memory" range to 0x29800–0x2A7FF, since programming erases the whole chip first. A bootloader or update scheme must leave the range out in the same way.
 

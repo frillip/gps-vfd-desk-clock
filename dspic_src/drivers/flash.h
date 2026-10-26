@@ -5,10 +5,19 @@
  * Only the store's own pages can be written. They are reserved here, at a
  * fixed address apart from the application:
  *
- *   0x000000 - 0x0297FF  application (and any bootloader or update slots)
+ *   0x000000 - 0x0297FF  application (and the bootloader, and the
+ *                        application's version and CRC trailer, to come)
  *   0x029800 - 0x02A7FF  the store: FLASH_STORE_PAGES erase pages
- *   0x02A800 - 0x02AFFF  the last page, with the configuration words
- *                        (0x02AFEC on): never erased by the application
+ *   0x02A800 - 0x02AFFF  the last page: the configuration words from
+ *                        0x02AFEC, and nothing else
+ *
+ * The last page is reserved too, up to the configuration words, so no
+ * application code lands in it. Rewriting anything in it means erasing it,
+ * configuration words and all; a reset before they were written again
+ * would start the chip on the erased defaults (watchdog on, another
+ * oscillator), which a bootloader could not recover from. With nothing
+ * else there, an update never needs to erase it: the configuration words
+ * are programmed once, with the bootloader.
  *
  * The reservation (flash.c) is placed with address() and marked noload, so
  * the linker puts nothing else there and the application's hex holds
@@ -46,6 +55,10 @@
 #define FLASH_STORE_PAGES 2U
 #define FLASH_STORE_END   (FLASH_STORE_BASE + FLASH_STORE_PAGES * FLASH_PAGE_ADDRESSES)
 
+// The last page, and where its configuration words start.
+#define FLASH_CONFIG_PAGE  0x02A800UL
+#define FLASH_CONFIG_WORDS 0x02AFECUL
+
 #define FLASH_ADDRESS_MASK 0x00FFFFFFUL // a program address: 24 bits
 
 typedef enum
@@ -67,7 +80,7 @@ typedef struct
     uint32_t longest_write_ticks;
 } FlashStats;
 
-// Checks that the reservation sits at FLASH_STORE_BASE; nothing is written
+// Checks that the reservations sit where they should; nothing is written
 // if not.
 bool flash_init(void);
 

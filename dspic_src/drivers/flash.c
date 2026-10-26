@@ -13,6 +13,10 @@
 // noload so the application's hex never writes them (flash.h).
 static __prog__ uint16_t flash_store_area[FLASH_STORE_PAGES * FLASH_PAGE_INSTRUCTIONS]
     __attribute__((space(prog), address(FLASH_STORE_BASE), noload));
+// The last page below its configuration words: kept empty, so updates never
+// need to erase the page that holds them (flash.h).
+static __prog__ uint16_t flash_config_page_free[(FLASH_CONFIG_WORDS - FLASH_CONFIG_PAGE) / 2UL]
+    __attribute__((space(prog), address(FLASH_CONFIG_PAGE), noload));
 
 static bool reserved;
 static uint32_t (*op_clock)(void);
@@ -24,7 +28,9 @@ bool flash_init(void)
     // The table address carries more than the program address in its top
     // byte: compare the 24 bits that are the address.
     reserved =
-        (__builtin_tbladdress(&flash_store_area[0]) & FLASH_ADDRESS_MASK) == FLASH_STORE_BASE;
+        (__builtin_tbladdress(&flash_store_area[0]) & FLASH_ADDRESS_MASK) == FLASH_STORE_BASE &&
+        (__builtin_tbladdress(&flash_config_page_free[0]) & FLASH_ADDRESS_MASK) ==
+            FLASH_CONFIG_PAGE;
     return reserved;
 }
 
