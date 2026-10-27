@@ -6,7 +6,8 @@
  * range is put back to its default and reported, and the rest are kept. A
  * blob of the wrong size or with the wrong header resets everything.
  *
- * Changes made from the console apply at once; esp-save writes them.
+ * Changes made from the console apply at once; "save" (or "esp save") writes
+ * them.
  */
 #ifndef USER_PREFS_H
 #define USER_PREFS_H
@@ -107,6 +108,9 @@ extern UserPrefs user_prefs;
 void user_prefs_init(Stream *output);
 void user_prefs_reset(void);
 void user_prefs_save(void);
+// The settings differ from those last loaded or saved.
+bool user_prefs_unsaved(void);
+// Every setting, by what it does, and whether they are saved.
 void user_prefs_print(Stream *output);
 
 // Copies a string setting, NUL-terminated and truncated to fit.

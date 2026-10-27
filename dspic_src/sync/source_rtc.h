@@ -194,6 +194,9 @@ void source_rtc_poll(void);
 // second, then the RTC's second is found again. False if the RTC is absent
 // or busy, or the time is before 2000.
 bool source_rtc_set(uint32_t utc_seconds);
+// True once after a source_rtc_set(): its read-back (the next
+// pcf8563_report_due()) answers a command, so is printed whatever the debug.
+bool source_rtc_take_set(void);
 
 const SourceRtcState *source_rtc_state(void);
 // Its rate in tenths of a ppm, + = fast; 0 until one has been learnt.
@@ -201,7 +204,8 @@ int32_t source_rtc_rate_ppm10(void);
 // Epochs between checks at the rate learnt.
 uint32_t source_rtc_check_interval(void);
 const char *source_rtc_activity_name(SourceRtcActivity activity);
-// The RTC's second and how it is kept: one or two lines.
-void source_rtc_print(void);
+// The RTC's second and its rate, when the clock last set it and the next
+// check: two lines. verbose: the learnt start delay and the counts.
+void source_rtc_print(bool verbose);
 
 #endif // SOURCE_RTC_H

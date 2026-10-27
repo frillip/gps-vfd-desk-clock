@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "../../common/sml.h"
+#include "../platform/utc.h"
 
 #define OPEN_ENDED_UTC 0xFFFFFFFFUL
 #define NS_PER_SECOND  1000000000L
@@ -282,64 +283,107 @@ const char *timezone_result_name(TimezoneResult result)
 }
 
 
-static void print_offset(int32_t seconds)
+const char *timezone_source_name(uint8_t source)
 {
-    uint32_t magnitude = (uint32_t)(seconds < 0 ? -seconds : seconds);
+    static const char *const names[] = {"NONE",   "CACHE",  "GEOIP",  "GNSS",
+                                        "MANUAL", "PINNED", "SPECIAL"};
 
-    printf("%c%02lu:%02lu", seconds < 0 ? '-' : '+', (unsigned long)(magnitude / 3600U),
-           (unsigned long)(magnitude / 60U % 60U));
-    if (magnitude % 60U != 0U)
+    return source < sizeof(names) / sizeof(names[0]) ? names[source] : "?";
+}
+
+
+// AUTO from the schedule, MANUAL, or AUTO falling back to manual (none held).
+static const char *origin(bool from_schedule, bool automatic_setting)
+{
+    return from_schedule ? "AUTO" : automatic_setting ? "AUTO (none held: manual)" : "MANUAL";
+}
+
+
+static void print_entry_offset(const TimezoneEntry *entry)
+{
+    printf("UTC");
+    utc_print_offset(entry->base_offset_s + (entry->dst_active ? entry->dst_offset_s : 0));
+    if (entry->dst_active)
     {
-        printf(":%02lu", (unsigned long)(magnitude % 60U));
+        printf(" DST");
     }
 }
 
 
-void timezone_print(uint32_t utc_seconds)
+void timezone_print(uint32_t utc_seconds, bool verbose)
 {
     TimezoneOffset offset;
     uint8_t index;
+    uint8_t next;
 
     timezone_offset_at(utc_seconds, &offset);
-    // An auto setting with no schedule held falls back to the manual value.
-    printf("Time zone: base %s, DST %s, UTC",
-           offset.base_automatic ? "auto"
-           : automatic           ? "auto (no schedule, manual)"
-                                 : "manual",
-           offset.dst_automatic ? "auto"
-           : dst_automatic      ? "auto (no schedule, manual)"
-                                : "manual");
-    print_offset(offset.offset_s);
-    printf(" (base ");
-    print_offset(offset.base_offset_s);
-    printf(", DST ");
-    print_offset(offset.dst_offset_s);
-    printf(" %s)%s%s\r\n", offset.dst_active ? "active" : "inactive", offset.stale ? ", STALE" : "",
-           offset.ambiguous ? ", ambiguous" : "");
+    printf("Time zone: UTC");
+    utc_print_offset(offset.offset_s);
+    printf("; base ");
+    utc_print_offset(offset.base_offset_s);
+    printf(" %s; DST ", origin(offset.base_automatic, automatic));
+    utc_print_offset(offset.dst_offset_s);
+    printf(" %s %s%s%s\r\n", offset.dst_active ? "ON" : "OFF",
+           origin(offset.dst_automatic, dst_automatic), offset.stale ? ", STALE" : "",
+           offset.ambiguous ? ", AMBIGUOUS" : "");
     if (!schedule.held)
     {
-        printf("  no schedule from the ESP\r\n");
+        printf("  Schedule: none held\r\n");
         return;
     }
-    printf("  schedule: source %u, issued %lu, horizon %lu, %u entries, sub-second %ld ns\r\n",
-           schedule.source, (unsigned long)schedule.issued_utc,
-           (unsigned long)schedule.horizon_end_utc, schedule.count,
-           (long)schedule.subsecond_offset_ns);
+    printf("  Schedule: %s, issued ", timezone_source_name(schedule.source));
+    utc_print(schedule.issued_utc);
+    if (schedule.horizon_end_utc != UTC_NEVER)
+    {
+        printf(", until ");
+        utc_print(schedule.horizon_end_utc);
+    }
+    for (next = 0; next < schedule.count; next++)
+    {
+        if (schedule.entries[next].utc_seconds > utc_seconds)
+        {
+            break;
+        }
+    }
+    if (next < schedule.count)
+    {
+        printf(", next ");
+        utc_print(schedule.entries[next].utc_seconds);
+        printf(" ");
+        print_entry_offset(&schedule.entries[next]);
+    }
+    if (schedule.subsecond_offset_ns != 0)
+    {
+        printf(", %+ld ms (not shown)", (long)(schedule.subsecond_offset_ns / 1000000L));
+    }
+    printf("\r\n");
+    if (!verbose)
+    {
+        return;
+    }
     for (index = 0; index < schedule.count; index++)
     {
         const TimezoneEntry *entry = &schedule.entries[index];
         bool in_force = utc_seconds >= entry->utc_seconds &&
                         (index + 1U == schedule.count ||
                          utc_seconds < schedule.entries[index + 1U].utc_seconds);
-        printf("  %c %10lu ", in_force ? '>' : ' ', (unsigned long)entry->utc_seconds);
-        print_offset(entry->base_offset_s);
-        printf(" DST ");
-        print_offset(entry->dst_offset_s);
-        printf("%s\r\n", entry->dst_active ? " active" : "");
+
+        printf("  %c ", in_force ? '>' : ' ');
+        if (entry->utc_seconds == 0U)
+        {
+            printf("%-20s", "(before the data)");
+        }
+        else
+        {
+            utc_print(entry->utc_seconds);
+        }
+        printf("  ");
+        print_entry_offset(entry);
+        printf("\r\n");
     }
     for (index = 0; index < TIMEZONE_RESULT_COUNT; index++)
     {
-        printf("%s%s %lu", index == 0U ? "  updates: " : ", ",
+        printf("%s%s %lu", index == 0U ? "  Received: " : ", ",
                timezone_result_name((TimezoneResult)index), (unsigned long)stats.results[index]);
     }
     printf("\r\n");

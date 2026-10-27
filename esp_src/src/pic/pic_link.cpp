@@ -32,11 +32,25 @@ typedef struct
 typedef struct
 {
     uint16_t token;
-    uint16_t command;
+    uint16_t command; // SML_USER_*, or SML_OPERATION_SETTINGS_WRITE
+    uint32_t argument;
     Stream *reply_to;
     bool verbose; // for what is printed with the answer
     uint32_t sent_ms;
 } Pending;
+
+// The PIC's settings as last known: from STAT-SETTINGS, with our own writes
+// folded in. A change made while a write is unanswered waits in body, and
+// goes when the answer brings the new revision.
+typedef struct
+{
+    bool valid;
+    uint32_t revision;
+    SML_SETTINGS_BODY body;
+    bool writing;          // a CMD-SETTINGS is unanswered
+    bool waiting;          // body holds changes not yet sent
+    Stream *waiting_reply; // ... for the latest of them
+} Settings;
 
 static HardwareSerial uart(BOARD_PIC_UART);
 static SmlStream stream;
@@ -45,6 +59,7 @@ static Held held[HELD_MAX];
 static Pending pending[PENDING_MAX];
 static PicCommandHandler command_handler;
 static PicTime pic_time;
+static Settings settings;
 static uint16_t next_token = 1;
 static uint32_t last_byte_ms;
 static uint32_t last_frame_ms;
@@ -79,7 +94,6 @@ static Held *find_held(uint8_t class_id, uint8_t message_id, bool create)
     return NULL;
 }
 
-
 void pic_link_send(uint8_t class_id, uint8_t message_id, const void *native)
 {
     uint8_t frame[SML_MAX_FRAME_BYTES];
@@ -93,7 +107,6 @@ void pic_link_send(uint8_t class_id, uint8_t message_id, const void *native)
     }
 }
 
-
 static void respond(uint16_t token, uint16_t command, uint16_t result, uint16_t detail)
 {
     SML_CMD_RESPONSE_PAYLOAD response;
@@ -106,10 +119,9 @@ static void respond(uint16_t token, uint16_t command, uint16_t result, uint16_t 
     pic_link_send(SML_CLASS_CMD, SML_CMD_RESPONSE, &response);
 }
 
-
-uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to, bool verbose)
+// A slot for an answer to wait in, with the next token.
+static Pending *take_slot(uint16_t command, uint32_t argument, Stream *reply_to, bool verbose)
 {
-    SML_CMD_USER_PAYLOAD request;
     Pending *slot = &pending[0];
     int index;
 
@@ -125,21 +137,116 @@ uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to,
             slot = &pending[index]; // full: reuse the oldest
         }
     }
-    memset(&request, 0, sizeof(request));
-    request.command = command;
-    request.token = next_token;
-    request.argument = argument;
     slot->token = next_token;
     slot->command = command;
+    slot->argument = argument;
     slot->reply_to = reply_to;
     slot->verbose = verbose;
     slot->sent_ms = millis();
     next_token = next_token == 0xFFFF ? 1 : next_token + 1;
-    pic_link_send(SML_CLASS_CMD, SML_CMD_USER, &request);
     stats.requests++;
+    return slot;
+}
+
+uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to, bool verbose)
+{
+    SML_CMD_USER_PAYLOAD request;
+    Pending *slot = take_slot(command, argument, reply_to, verbose);
+
+    memset(&request, 0, sizeof(request));
+    request.command = command;
+    request.token = slot->token;
+    request.argument = argument;
+    pic_link_send(SML_CLASS_CMD, SML_CMD_USER, &request);
     return request.token;
 }
 
+// ---- Settings ---------------------------------------------------------------
+
+static void send_settings(Stream *reply_to)
+{
+    SML_CMD_SETTINGS_PAYLOAD write;
+    Pending *slot = take_slot(SML_OPERATION_SETTINGS_WRITE, 0, reply_to, false);
+
+    memset(&write, 0, sizeof(write));
+    write.token = slot->token;
+    write.expected_revision = settings.revision;
+    write.settings = settings.body;
+    pic_link_send(SML_CLASS_CMD, SML_CMD_SETTINGS, &write);
+    settings.writing = true;
+}
+
+// STAT-SETTINGS, for a link (or an ESP) that has not seen it yet.
+static void ask_for_settings(void)
+{
+    (void)pic_link_request(SML_USER_REQUEST_MESSAGE,
+                           (uint32_t)SML_CLASS_STAT << 8 | SML_STAT_SETTINGS, NULL);
+}
+
+bool pic_link_settings(SML_SETTINGS_BODY *body)
+{
+    if (!settings.valid)
+    {
+        ask_for_settings(); // for next time
+        return false;
+    }
+    *body = settings.body;
+    return true;
+}
+
+bool pic_link_write_settings(const SML_SETTINGS_BODY *body, Stream *reply_to)
+{
+    if (!settings.valid)
+    {
+        ask_for_settings(); // for next time
+        return false;
+    }
+    settings.body = *body;
+    if (settings.writing)
+    {
+        settings.waiting = true;
+        settings.waiting_reply = reply_to;
+        return true;
+    }
+    send_settings(reply_to);
+    return true;
+}
+
+// A write answered: ACK brings the revision for the next. Anything else, or
+// no answer, leaves what the PIC holds unknown until it sends STAT-SETTINGS
+// again, which is asked for; a change waiting is dropped.
+static void settings_answered(const SML_CMD_RESPONSE_PAYLOAD *response)
+{
+    settings.writing = false;
+    if (response != NULL && response->status == SML_RESULT_ACK)
+    {
+        settings.revision = response->settings_revision;
+        if (settings.waiting)
+        {
+            settings.waiting = false;
+            send_settings(settings.waiting_reply);
+        }
+        return;
+    }
+    if (settings.waiting && settings.waiting_reply != NULL)
+    {
+        settings.waiting_reply->printf("PIC settings: not sent, the change before was refused\n");
+    }
+    settings.waiting = false;
+    settings.valid = false;
+    ask_for_settings();
+}
+
+static void note_settings(const SML_STAT_SETTINGS_PAYLOAD *stat)
+{
+    if (settings.writing || (stat->flags & SML_SETTINGS_VALID) == 0)
+    {
+        return; // our write's answer comes first
+    }
+    settings.valid = true;
+    settings.revision = stat->revision;
+    settings.body = stat->settings;
+}
 
 static void handle_response(const SML_CMD_RESPONSE_PAYLOAD *response)
 {
@@ -156,12 +263,16 @@ static void handle_response(const SML_CMD_RESPONSE_PAYLOAD *response)
         }
         if (slot->reply_to != NULL)
         {
-            // The PIC sends STAT-SOURCES before its ACK; the table is the
-            // answer, so the ACK itself only shows with -v.
-            bool table =
-                slot->command == SML_USER_SHOW_SOURCES && response->status == SML_RESULT_ACK;
+            // What is asked for (the PIC's text for SHOW, the message for
+            // REQUEST_MESSAGE, the sources table) is the answer, so the ACK
+            // itself only shows with -v.
+            bool shown =
+                (slot->command == SML_USER_SHOW || slot->command == SML_USER_REQUEST_MESSAGE) &&
+                response->status == SML_RESULT_ACK;
+            bool table = shown && slot->command == SML_USER_REQUEST_MESSAGE &&
+                         slot->argument == ((uint32_t)SML_CLASS_STAT << 8 | SML_STAT_SOURCES);
 
-            if (!table || slot->verbose)
+            if (!shown || slot->verbose)
             {
                 slot->reply_to->printf("PIC %s: %s", pic_report_command_name(slot->command),
                                        pic_report_result_name(response->status));
@@ -179,11 +290,14 @@ static void handle_response(const SML_CMD_RESPONSE_PAYLOAD *response)
         if (response->status != SML_RESULT_ACCEPTED)
         {
             slot->token = 0; // final answer
+            if (slot->command == SML_OPERATION_SETTINGS_WRITE)
+            {
+                settings_answered(response);
+            }
         }
         return;
     }
 }
-
 
 static void expire_requests(void)
 {
@@ -202,10 +316,13 @@ static void expire_requests(void)
             }
             slot->token = 0;
             stats.unanswered++;
+            if (slot->command == SML_OPERATION_SETTINGS_WRITE)
+            {
+                settings_answered(NULL);
+            }
         }
     }
 }
-
 
 static void handle_command(const SML_CMD_USER_PAYLOAD *command)
 {
@@ -228,7 +345,6 @@ static void handle_command(const SML_CMD_USER_PAYLOAD *command)
     }
 }
 
-
 static void pair_time(const SML_TIME_AUTH_PAYLOAD *auth)
 {
     PpsEdge edge;
@@ -249,7 +365,6 @@ static void pair_time(const SML_TIME_AUTH_PAYLOAD *auth)
     pic_time.lock_state = auth->lock_state;
     stats.pairings++;
 }
-
 
 // STAT-SYS: announce the PIC the first time, and whenever its uptime drops
 // (it restarted), with why.
@@ -273,7 +388,6 @@ static void note_system(const SML_STAT_SYS_PAYLOAD *sys)
     seen = true;
     last_uptime_s = sys->uptime_s;
 }
-
 
 static void handle_frame(const SmlFrame *frame)
 {
@@ -324,6 +438,10 @@ static void handle_frame(const SmlFrame *frame)
     {
         note_system((const SML_STAT_SYS_PAYLOAD *)native);
     }
+    if (frame->class_id == SML_CLASS_STAT && frame->message_id == SML_STAT_SETTINGS)
+    {
+        note_settings((const SML_STAT_SETTINGS_PAYLOAD *)native);
+    }
     Held *slot = find_held(frame->class_id, frame->message_id, true);
     if (slot != NULL)
     {
@@ -332,7 +450,6 @@ static void handle_frame(const SmlFrame *frame)
         slot->valid = true;
     }
 }
-
 
 // Text outside frames: the PIC's raw console output. Printable only.
 static void on_text(const uint8_t *text, uint16_t length, void *context)
@@ -358,13 +475,11 @@ static void on_text(const uint8_t *text, uint16_t length, void *context)
     }
 }
 
-
 static void on_frame(const SmlFrame *frame, void *context)
 {
     (void)context;
     handle_frame(frame);
 }
-
 
 void pic_link_init(void)
 {
@@ -374,14 +489,16 @@ void pic_link_init(void)
     sml_stream_init(&stream, on_frame, on_text, NULL);
     last_service_ms = millis();
 
-    SML_CMD_USER_PAYLOAD info;
-    memset(&info, 0, sizeof(info));
-    info.command = SML_USER_INFO;
-    info.token = 0;
+    SML_CMD_USER_PAYLOAD show;
+    memset(&show, 0, sizeof(show));
+    show.command = SML_USER_SHOW;
+    show.argument = SML_SHOW_ALL;
+    show.token = 0;
     // Announce SML: the PIC switches modes on this frame and prints its state.
-    pic_link_send(SML_CLASS_CMD, SML_CMD_USER, &info);
+    pic_link_send(SML_CLASS_CMD, SML_CMD_USER, &show);
+    // A PIC already in SML mode sends STAT-SETTINGS only on a change.
+    ask_for_settings();
 }
-
 
 void pic_link_service(void)
 {
@@ -405,18 +522,15 @@ void pic_link_service(void)
     expire_requests();
 }
 
-
 void pic_link_set_command_handler(PicCommandHandler handler)
 {
     command_handler = handler;
 }
 
-
 bool pic_link_is_sml(void)
 {
     return stats.frames != 0 && millis() - last_frame_ms < SML_TIMEOUT_MS;
 }
-
 
 bool pic_link_get(uint8_t class_id, uint8_t message_id, void *native, uint32_t max_age_ms)
 {
@@ -434,13 +548,11 @@ bool pic_link_get(uint8_t class_id, uint8_t message_id, void *native, uint32_t m
     return true;
 }
 
-
 bool pic_link_time(PicTime *time)
 {
     *time = pic_time;
     return pic_time.valid;
 }
-
 
 bool pic_link_utc_now(uint32_t *utc_seconds)
 {
@@ -454,18 +566,15 @@ bool pic_link_utc_now(uint32_t *utc_seconds)
     return true;
 }
 
-
 HardwareSerial *pic_link_uart(void)
 {
     return &uart;
 }
 
-
 const PicLinkStats *pic_link_stats(void)
 {
     return &stats;
 }
-
 
 const SmlParserStats *pic_link_parser_stats(void)
 {

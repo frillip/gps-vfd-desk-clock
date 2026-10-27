@@ -7,6 +7,7 @@
 #include "../console/debug.h"
 #include "../drivers/tubes.h"
 #include "../platform/clock.h"
+#include "../platform/utc.h"
 #include "../timing/epoch_control.h"
 #include "../ui/beeps.h"
 #include "../ui/brightness.h"
@@ -495,41 +496,49 @@ const SettingsStats *settings_stats(void)
 }
 
 
-static void print_offset(int32_t seconds)
+// The display modes a setting can select, by SML_DISPLAY_* value.
+static const char *display_name(uint8_t selected)
 {
-    uint32_t magnitude = (uint32_t)(seconds < 0 ? -seconds : seconds);
+    static const char *const names[] = {"?", "HHMM", "MMSS", "SSMM", "YYYY", "MMDD", "DELTA"};
 
-    printf("%c%02lu:%02lu", seconds < 0 ? '-' : '+', (unsigned long)(magnitude / 3600U),
-           (unsigned long)(magnitude / 60U % 60U));
-    if (magnitude % 60U != 0U)
-    {
-        printf(":%02lu", (unsigned long)(magnitude % 60U));
-    }
+    return selected < sizeof(names) / sizeof(names[0]) ? names[selected] : "?";
 }
 
 
+static const char *on_off(bool on)
+{
+    return on ? "ON" : "OFF";
+}
+
+
+// Each setting: AUTO or MANUAL with the manual value kept.
 static void print_values(const Values *values)
 {
     const SML_SETTINGS_BODY *body = &values->body;
     uint16_t flags = body->flags;
 
-    printf("  time zone %s, DST %s; manual: base ",
-           (flags & SML_SETTING_TZ_AUTO) ? "auto" : "manual",
-           (flags & SML_SETTING_DST_AUTO) ? "auto" : "manual");
-    print_offset(body->base_offset_s);
-    printf(", DST ");
-    print_offset(body->dst_offset_s);
-    printf(" %s\r\n", (flags & SML_SETTING_DST_ACTIVE) ? "active" : "inactive");
-    printf("  brightness %u%s, display %u, %s; fosc setting %lu Hz (not used); debug 0x%04X\r\n",
-           body->brightness, (flags & SML_SETTING_BRI_AUTO) ? " (auto)" : "",
-           body->selected_display, (flags & SML_SETTING_FORMAT_12H) ? "12 h" : "24 h",
-           (unsigned long)body->calibration_fosc_hz, values->debug_mask);
-    printf("  alarm %s at %02lu:%02lu:%02lu, beep %s, delta from %lu\r\n",
-           (flags & SML_SETTING_ALARM_ENABLED) ? "on" : "off",
+    printf("  TZ: base %s (", (flags & SML_SETTING_TZ_AUTO) ? "AUTO" : "MANUAL");
+    utc_print_offset(body->base_offset_s);
+    printf("), DST %s (", (flags & SML_SETTING_DST_AUTO) ? "AUTO" : "MANUAL");
+    utc_print_offset(body->dst_offset_s);
+    printf(" %s)\r\n", on_off((flags & SML_SETTING_DST_ACTIVE) != 0U));
+    printf("  Display: %s, %s h", display_name(body->selected_display),
+           (flags & SML_SETTING_FORMAT_12H) ? "12" : "24");
+    if (body->delta_epoch_utc != 0U)
+    {
+        printf(", delta from ");
+        utc_print(body->delta_epoch_utc);
+    }
+    printf("; brightness %s (%u); beeps %s; alarm %s (%02lu:%02lu:%02lu)\r\n",
+           (flags & SML_SETTING_BRI_AUTO) ? "AUTO" : "MANUAL", body->brightness,
+           on_off((flags & SML_SETTING_BEEP_ENABLED) != 0U),
+           on_off((flags & SML_SETTING_ALARM_ENABLED) != 0U),
            (unsigned long)(body->alarm_offset_s / 3600U),
            (unsigned long)(body->alarm_offset_s / 60U % 60U),
-           (unsigned long)(body->alarm_offset_s % 60U),
-           (flags & SML_SETTING_BEEP_ENABLED) ? "on" : "off", (unsigned long)body->delta_epoch_utc);
+           (unsigned long)(body->alarm_offset_s % 60U));
+    printf("  Debug: ");
+    debug_print_names(values->debug_mask);
+    printf("\r\n");
 }
 
 
@@ -560,66 +569,18 @@ static void print_frequency(int32_t offset_q16)
 }
 
 
-// The loop's estimate now, and what is stored for the next start.
-static void print_oscillator(void)
-{
-    const EpochControl *control = epoch_control_state();
-
-    printf("  oscillator ");
-    if (control->pps_kf.initialized)
-    {
-        print_frequency(kalman_phase_q16(&control->pps_kf));
-        printf(", the loop's estimate");
-    }
-    else
-    {
-        printf("not learnt yet (nominal %lu Hz)", (unsigned long)FCY);
-    }
-    printf("; stored ");
-    if (have_oscillator)
-    {
-        print_frequency(oscillator_q16);
-    }
-    else
-    {
-        printf("none");
-    }
-    printf("\r\n");
-}
-
-
-void settings_print_start(void)
-{
-    const TimezoneSchedule *schedule = timezone_schedule();
-
-    printf("Settings: %s, revision %lu",
-           stats.loaded          ? "from flash"
-           : stats.load_rejected ? "stored record unusable, defaults"
-                                 : "defaults (nothing stored)",
-           (unsigned long)revision);
-    if (stats.timezone_restored)
-    {
-        printf("; time zone schedule from flash (source %u, %u entries)", schedule->source,
-               schedule->count);
-    }
-    if (stats.oscillator_restored)
-    {
-        printf("; oscillator from flash, ");
-        print_frequency(oscillator_q16);
-    }
-    printf("\r\n");
-}
-
-
-void settings_print(void)
+void settings_print(bool verbose)
 {
     uint16_t flags = settings_flags();
 
-    printf("Settings: revision %lu, %s%s\r\n", (unsigned long)revision,
-           (flags & SML_SETTINGS_DIRTY) ? "NOT SAVED (pic-save)" : "saved",
-           (flags & SML_SETTINGS_DEFAULTS) ? ", factory defaults" : "");
+    printf("Settings: %s%s", (flags & SML_SETTINGS_DIRTY) ? "NOT SAVED" : "saved",
+           (flags & SML_SETTINGS_DEFAULTS) ? ", DEFAULTS" : "");
+    if (verbose)
+    {
+        printf(", revision %lu", (unsigned long)revision);
+    }
+    printf("\r\n");
     print_values(&running);
-    print_oscillator();
 }
 
 
@@ -628,7 +589,7 @@ static void print_flash(void)
 {
     const FlashStats *flash = flash_stats();
 
-    printf("Flash: %lu erases (last %lu us, longest %lu us), %lu double words written (longest "
+    printf("  Flash: %lu erases (last %lu us, longest %lu us), %lu double words written (longest "
            "%lu us), %lu failures\r\n",
            (unsigned long)flash->erases, (unsigned long)(flash->last_erase_ticks / TICKS_PER_US),
            (unsigned long)(flash->longest_erase_ticks / TICKS_PER_US), (unsigned long)flash->writes,
@@ -643,57 +604,127 @@ static void print_stored_timezone(void)
     SML_TZ_STATE_PAYLOAD state;
     uint16_t length;
 
-    printf("Stored time zone schedule: ");
+    printf("Time zone: ");
     if (!store_read(SETTINGS_RECORD_TIMEZONE, record, sizeof(record), &length) ||
         length != SML_TZ_STATE_BYTES)
     {
-        printf("none");
+        printf("NONE");
     }
     else
     {
         (void)sml_decode(sml_message(SML_CLASS_TZ, SML_TZ_STATE)->layout, record, &state);
-        printf("source %u, issued %lu, %u transitions, horizon %lu", state.source,
-               (unsigned long)state.issued_utc, state.count, (unsigned long)state.horizon_end_utc);
+        printf("%s, issued ", timezone_source_name(state.source));
+        utc_print(state.issued_utc);
+        printf(", %u entries", state.count);
+        if (state.horizon_end_utc != UTC_NEVER)
+        {
+            printf(", until ");
+            utc_print(state.horizon_end_utc);
+        }
     }
-    printf("%s\r\n", timezone_pending ? " (a newer one is to be written)" : "");
+    printf("%s\r\n", timezone_pending ? " (newer one PENDING)" : "");
 }
 
 
-static void print_stored_oscillator(void)
+static void print_stored_oscillator(const char *label)
 {
     int32_t offset_q16;
     uint32_t epochs;
 
+    printf("%s", label);
     if (read_oscillator(&offset_q16, &epochs))
     {
-        printf("Stored oscillator: ");
         print_frequency(offset_q16);
-        printf(", learnt over %lu s\r\n", (unsigned long)epochs);
+        printf(", over ");
+        utc_print_duration(epochs);
+        printf("\r\n");
     }
     else
     {
-        printf("Stored oscillator: none\r\n");
+        printf("NONE\r\n");
     }
 }
 
 
-void settings_print_stored(void)
+void settings_print_stored(bool verbose)
 {
+    static const char *const record_names[STORE_TYPES] = {NULL, "settings", "time zone",
+                                                          "oscillator"};
     Values values;
     uint32_t record_revision = 0;
     bool rejected;
 
     if (read_record(&values, &record_revision, &rejected))
     {
-        printf("Stored settings: revision %lu\r\n", (unsigned long)record_revision);
+        printf("Settings: stored");
+        if (verbose)
+        {
+            printf(", revision %lu", (unsigned long)record_revision);
+        }
+        printf("\r\n");
         print_values(&values);
     }
     else
     {
-        printf("Stored settings: %s\r\n", rejected ? "unusable record" : "none (factory defaults)");
+        printf("Settings: %s\r\n", rejected ? "UNUSABLE record, DEFAULTS" : "NONE, DEFAULTS");
     }
     print_stored_timezone();
-    print_stored_oscillator();
-    store_print();
-    print_flash();
+    print_stored_oscillator("Oscillator: ");
+    store_print(record_names, verbose);
+    if (verbose)
+    {
+        print_flash();
+    }
+}
+
+
+// The loop's estimate now, and what is stored for the next start.
+void settings_print_oscillator(bool verbose)
+{
+    const EpochControl *control = epoch_control_state();
+
+    printf("Oscillator: ");
+    if (control->pps_kf.initialized)
+    {
+        print_frequency(kalman_phase_q16(&control->pps_kf));
+        printf(", measured\r\n");
+    }
+    else
+    {
+        printf("not measured (nominal %lu Hz)\r\n", (unsigned long)FCY);
+    }
+    print_stored_oscillator("  Stored: ");
+    if (verbose)
+    {
+        printf("  Baseline setting: %lu Hz (unused)\r\n",
+               (unsigned long)running.body.calibration_fosc_hz);
+    }
+}
+
+
+void settings_print_start(bool detail)
+{
+    const TimezoneSchedule *schedule = timezone_schedule();
+
+    if (!detail && !stats.load_rejected)
+    {
+        return;
+    }
+
+    printf("Settings: %s, revision %lu",
+           stats.loaded          ? "from flash"
+           : stats.load_rejected ? "stored record unusable, defaults"
+                                 : "defaults (nothing stored)",
+           (unsigned long)revision);
+    if (stats.timezone_restored)
+    {
+        printf("; time zone from flash (%s, %u entries)", timezone_source_name(schedule->source),
+               schedule->count);
+    }
+    if (stats.oscillator_restored)
+    {
+        printf("; oscillator from flash, ");
+        print_frequency(oscillator_q16);
+    }
+    printf("\r\n");
 }

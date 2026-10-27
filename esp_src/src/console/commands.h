@@ -1,7 +1,17 @@
 /*
- * Console commands (serial and telnet): one table of names, arguments and
- * help. PIC commands become SML-CMD-USER requests; the PIC's answer is
- * printed to the console that asked. An empty line prints the status.
+ * Console commands (serial and telnet), one grammar for all of them:
+ *
+ *   <command>                  shows it (-v: everything)
+ *   <command> <setting>        shows that setting
+ *   <command> <setting> <v>    sets it, at once; kept once saved (save)
+ *   <command> <action> [arg]   does it
+ *
+ * A command that is itself a setting takes its value directly ("brightness
+ * auto", "beeps on"). The table of commands, their settings and actions,
+ * the values each takes and the help are in commands.cpp. Settings held by
+ * the PIC are written whole with CMD-SETTINGS (pic_link_write_settings), and
+ * PIC actions sent as CMD-USER; the PIC's answer is printed to the console
+ * that asked. An empty line prints the status.
  *
  * Also the ESP commands the PIC sends (SML_USER_ESP_*, from its menu).
  */

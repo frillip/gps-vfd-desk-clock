@@ -1,8 +1,11 @@
 #include "debug.h"
 
+#include <stdio.h>
+
 #include "text.h"
 
-static const char *const names[] = {"TIMING", "GNSS", "SYNC", "SOURCES", "NTP", "MINUTE", "TUNING"};
+static const char *const names[] = {"TIMING", "GNSS",   "SYNC", "SOURCES", "NTP",
+                                    "MINUTE", "TUNING", "RTC",  "EVENTS"};
 
 static uint16_t mask = DEBUG_DEFAULT;
 
@@ -30,23 +33,59 @@ void debug_set(uint16_t new_mask)
 }
 
 
-void debug_print(void)
+// The names of the bits in a mask, space-separated, or "none".
+static void add_names(TextLine *line, uint16_t bits)
 {
     uint8_t bit;
+    bool first = true;
+
+    for (bit = 0; bit < sizeof(names) / sizeof(names[0]); bit++)
+    {
+        if ((bits & (1U << bit)) != 0U)
+        {
+            if (!first)
+            {
+                text_char(line, ' ');
+            }
+            text_str(line, names[bit]);
+            first = false;
+        }
+    }
+    if (first)
+    {
+        text_str(line, "NONE");
+    }
+}
+
+
+// With printf, so it keeps its place among other printf output.
+void debug_print_names(uint16_t bits)
+{
+    uint8_t bit;
+    bool first = true;
+
+    for (bit = 0; bit < sizeof(names) / sizeof(names[0]); bit++)
+    {
+        if ((bits & (1U << bit)) != 0U)
+        {
+            printf("%s%s", first ? "" : " ", names[bit]);
+            first = false;
+        }
+    }
+    if (first)
+    {
+        printf("NONE");
+    }
+}
+
+
+void debug_print(void)
+{
     TextLine line;
 
     text_start(&line);
-    text_str(&line, "PIC debug 0x");
-    text_hex16(&line, mask);
-    text_char(&line, ':');
-    for (bit = 0; bit < sizeof(names) / sizeof(names[0]); bit++)
-    {
-        if ((mask & (1U << bit)) != 0U)
-        {
-            text_char(&line, ' ');
-            text_str(&line, names[bit]);
-        }
-    }
-    text_str(&line, mask == 0U ? " none\r\n" : "\r\n");
+    text_str(&line, "PIC debug: ");
+    add_names(&line, mask);
+    text_str(&line, "\r\n");
     text_send(&line);
 }

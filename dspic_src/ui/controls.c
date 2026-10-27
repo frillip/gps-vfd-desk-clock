@@ -145,17 +145,21 @@ const ControlsStats *controls_stats(void)
 
 const char *controls_press_name(ControlsPress press)
 {
-    static const char *const names[CONTROLS_PRESS_COUNT] = {"none", "short", "long", "hold"};
+    static const char *const names[CONTROLS_PRESS_COUNT] = {"NONE", "SHORT", "LONG", "HOLD"};
     return press < CONTROLS_PRESS_COUNT ? names[press] : "?";
 }
 
 
-void controls_print(void)
+void controls_print(bool verbose)
 {
-    printf("Controls: button %s, switch %s; %lu short, %lu long presses, %lu switch changes, "
-           "%lu bounces\r\n",
-           button.level ? "down" : "up", toggle.level ? "on" : "off",
-           (unsigned long)stats.presses[CONTROLS_SHORT],
-           (unsigned long)stats.presses[CONTROLS_LONG], (unsigned long)stats.switch_changes,
-           (unsigned long)stats.bounces);
+    printf("Controls: button %s, switch %s", button.level ? "DOWN" : "UP",
+           toggle.level ? "ON" : "OFF");
+    if (verbose)
+    {
+        printf("; %lu short, %lu long presses, %lu switch changes, %lu bounces",
+               (unsigned long)stats.presses[CONTROLS_SHORT],
+               (unsigned long)stats.presses[CONTROLS_LONG], (unsigned long)stats.switch_changes,
+               (unsigned long)stats.bounces);
+    }
+    printf("\r\n");
 }

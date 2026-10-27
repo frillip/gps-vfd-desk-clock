@@ -16,9 +16,9 @@
  *             factory defaults, while nothing is stored).
  *   defaults  the body is the factory defaults.
  *
- * Saving is asked for (settings_save: SAVE, DEFAULTS, CMD-SETTINGS with
- * PERSIST), never automatic: as V2, a change by command runs at once and
- * is kept only once saved. The time zone schedule from the ESP is not a
+ * Saving is asked for (settings_save: SAVE, CMD-SETTINGS with PERSIST),
+ * never automatic: as V2, a change runs at once and is kept only once
+ * saved. DEFAULTS is a change like any other. The time zone schedule from the ESP is not a
  * setting: it is stored by itself, SETTINGS_TIMEZONE_DELAY_EPOCHS after its
  * contents last changed (so the CACHE, then GEOIP or GNSS schedules an ESP
  * sends as it starts make one write, not three), and is back in force at
@@ -111,7 +111,7 @@ uint8_t settings_check(const SML_SETTINGS_BODY *body);
 // anything changed. Nothing changes on an error.
 uint8_t settings_write(const SML_SETTINGS_BODY *body);
 void settings_set_debug(uint16_t mask);
-// The factory defaults, applied (the debug mask too).
+// The factory defaults, applied (the debug mask too); not saved.
 void settings_restore_defaults(void);
 
 // Asks for the settings to be stored at the next quiet moment.
@@ -124,11 +124,17 @@ uint8_t settings_save_error(void);
 void settings_service(uint32_t epoch, bool quiet);
 
 const SettingsStats *settings_stats(void);
-// At start-up: where the settings and the schedule came from. One line.
-void settings_print_start(void);
-// The running settings, with the revision and flags.
-void settings_print(void);
-// What the store holds, and the store itself.
-void settings_print_stored(void);
+// At start-up: where the settings and the schedule came from. One line,
+// with detail or when the stored record was unusable.
+void settings_print_start(bool detail);
+// The running settings, by what each does, and whether they are saved.
+// verbose: the revision too.
+void settings_print(bool verbose);
+// What is stored: the settings, the time zone and the oscillator, and how
+// full the store is. verbose: the store's internals and the flash timings.
+void settings_print_stored(bool verbose);
+// The oscillator: the control loop's measurement, and what is stored for
+// the next start. verbose: the baseline setting, which nothing uses yet.
+void settings_print_oscillator(bool verbose);
 
 #endif // SETTINGS_H

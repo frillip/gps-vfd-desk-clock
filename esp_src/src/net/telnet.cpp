@@ -35,25 +35,21 @@ static void on_connect(String ip)
     connections++;
 }
 
-
 static void on_disconnect(String ip)
 {
     Serial.printf("Telnet: %s disconnected\n", ip.c_str());
     disconnections++;
 }
 
-
 static void on_reconnect(String ip)
 {
     Serial.printf("\nTelnet: %s reconnected\n", ip.c_str());
 }
 
-
 static void on_attempt(String ip)
 {
     Serial.printf("Telnet: %s tried to connect\n", ip.c_str());
 }
-
 
 void telnet_init(Stream *output)
 {
@@ -67,10 +63,9 @@ void telnet_init(Stream *output)
     }
     else
     {
-        output->printf("Telnet disabled, enable with \"esp-telnet-enable\"\n");
+        output->printf("Telnet disabled, enable with \"telnet on\"\n");
     }
 }
-
 
 void telnet_service(void)
 {
@@ -101,7 +96,6 @@ void telnet_service(void)
     }
 }
 
-
 void telnet_start(Stream *output)
 {
     if (running)
@@ -116,7 +110,6 @@ void telnet_start(Stream *output)
                    user_prefs.fields.telnet.port);
 }
 
-
 void telnet_stop(Stream *output)
 {
     if (!running)
@@ -127,12 +120,11 @@ void telnet_stop(Stream *output)
     output->printf("Telnet stopping; the current session stays open\n");
     if (user_prefs.fields.telnet.flags.enabled)
     {
-        output->printf("It starts again at reset: disable it with \"esp-telnet-disable\"\n");
+        output->printf("It starts again at reset: turn that off with \"telnet off\"\n");
     }
     telnet.stop(false);
     running = false;
 }
-
 
 void telnet_enable(Stream *output)
 {
@@ -144,14 +136,12 @@ void telnet_enable(Stream *output)
     }
 }
 
-
 void telnet_disable(Stream *output)
 {
     user_prefs.fields.telnet.flags.enabled = 0;
     output->printf("Telnet disabled%s\n",
-                   running ? " but still running: stop it with \"esp-telnet-stop\"" : "");
+                   running ? " but still running: stop it with \"telnet stop\"" : "");
 }
-
 
 void telnet_set_port(Stream *output, uint16_t port)
 {
@@ -167,18 +157,15 @@ void telnet_set_port(Stream *output, uint16_t port)
     }
 }
 
-
 bool telnet_is_running(void)
 {
     return running;
 }
 
-
 Stream *telnet_client(void)
 {
     return running && telnet.isConnected() ? &telnet : NULL;
 }
-
 
 // Into the buffer; what does not fit is dropped and counted.
 static void buffer_text(const uint8_t *text, size_t length)
@@ -202,7 +189,6 @@ static void buffer_text(const uint8_t *text, size_t length)
     tx_count += (uint32_t)length;
 }
 
-
 void telnet_write_text(const uint8_t *text, size_t length)
 {
     if (!running || !telnet.isConnected())
@@ -220,7 +206,6 @@ void telnet_write_text(const uint8_t *text, size_t length)
     }
     buffer_text(text, length);
 }
-
 
 /*
  * As much of the buffer as the socket takes now, without waiting. One send
@@ -261,13 +246,22 @@ static void tx_flush(void)
     }
 }
 
-
 void telnet_print(Stream *output, bool verbose)
 {
-    output->printf("Telnet:   %s", running ? "running" : "stopped");
+    uint16_t port = user_prefs.fields.telnet.port;
+
+    if (running && WiFi.isConnected())
+    {
+        output->printf("Telnet:   RUNNING %s:%u", WiFi.localIP().toString().c_str(), port);
+    }
+    else
+    {
+        output->printf("Telnet:   %s, port %u", running ? "RUNNING, no network" : "STOPPED", port);
+    }
+    output->printf(", start-up %s", user_prefs.fields.telnet.flags.enabled ? "ON" : "OFF");
     if (running && telnet.isConnected())
     {
-        output->printf(", %s connected", telnet.getIP().c_str());
+        output->printf(", client %s", telnet.getIP().c_str());
     }
     if (!verbose)
     {

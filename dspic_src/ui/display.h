@@ -78,7 +78,8 @@ void display_service(void);
 
 const DisplayStats *display_stats(void);
 const char *display_mode_name(DisplayMode mode);
-// One line: mode, offset, frames, tube driver counters.
+// One line, for diagnostics: the mode, the local offset of the last frame,
+// and the frame and tube driver counters.
 void display_print(void);
 
 #endif // DISPLAY_H

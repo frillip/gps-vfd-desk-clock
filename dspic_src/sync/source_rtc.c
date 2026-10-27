@@ -12,7 +12,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../console/debug.h"
 #include "../drivers/pcf8563.h"
+#include "../platform/utc.h"
 #include "../timing/timing_config.h"
 
 #define SECOND_TICKS ((uint32_t)TIMING_NOMINAL_TICKS)
@@ -58,6 +60,7 @@ static uint32_t activity_epoch; // the epoch the current step began
 
 // An RTC found stopped: released, then to be read back.
 static bool stopped_released;
+static bool set_by_command; // source_rtc_set's write: report its read-back
 
 // Checks.
 static bool was_synchronised;
@@ -466,25 +469,31 @@ static void confirmed(void)
         state.next_check_epoch = epoch_sequence + source_rtc_check_interval();
         state.rate_due = true; // how far it has gone by then shows its rate
         state.rate_due_epoch = epoch_sequence + SOURCE_RTC_RATE_EPOCHS;
-        printf("RTC: set, its second ");
-        print_us(error);
-        printf(" from the epoch (start delay correction ");
-        print_us(state.release_correction_ticks);
-        printf(")\n");
+        if (debug_enabled(DEBUG_RTC))
+        {
+            printf("RTC: set, its second ");
+            print_us(error);
+            printf(" from the epoch (start delay correction ");
+            print_us(state.release_correction_ticks);
+            printf(")\n");
+        }
         return;
     }
-    printf("RTC: aligned write landed ");
-    if (label_ok)
+    if (debug_enabled(DEBUG_RTC))
     {
-        print_us(error);
-        printf(" from the epoch");
+        printf("RTC: aligned write landed ");
+        if (label_ok)
+        {
+            print_us(error);
+            printf(" from the epoch");
+        }
+        else
+        {
+            printf("on the wrong second (%lu, not %lu)", (unsigned long)state.second_label,
+                   (unsigned long)expect_label);
+        }
+        printf(", attempt %u\n", (unsigned)(state.attempts + 1U));
     }
-    else
-    {
-        printf("on the wrong second (%lu, not %lu)", (unsigned long)state.second_label,
-               (unsigned long)expect_label);
-    }
-    printf(", attempt %u\n", (unsigned)(state.attempts + 1U));
     state.writes_failed++;
     state.attempts++;
     if (state.attempts < SOURCE_RTC_SYNC_ATTEMPTS)
@@ -510,7 +519,10 @@ static void search_result(const SyncTime *time, bool synchronised)
     search_done = false;
     if (!search_found)
     {
-        printf("RTC: second not found\n");
+        if (debug_enabled(DEBUG_RTC))
+        {
+            printf("RTC: second not found\n");
+        }
         if (purpose == PURPOSE_CONFIRM)
         {
             abort_write();
@@ -531,18 +543,21 @@ static void search_result(const SyncTime *time, bool synchronised)
         confirmed();
         return;
     }
-    printf("RTC: second found to %lu us",
-           (unsigned long)(state.resolution_ticks / SOURCE_RTC_TICKS_PER_US));
-    if (state.offset_valid)
+    if (debug_enabled(DEBUG_RTC))
     {
-        printf(", %+ld ms against the clock", (long)state.offset_ms);
+        printf("RTC: second found to %lu us",
+               (unsigned long)(state.resolution_ticks / SOURCE_RTC_TICKS_PER_US));
+        if (state.offset_valid)
+        {
+            printf(", %+ld ms against the clock", (long)state.offset_ms);
+        }
+        if (state.rate_valid)
+        {
+            printf(", rate ");
+            print_rate();
+        }
+        printf("\n");
     }
-    if (state.rate_valid)
-    {
-        printf(", rate ");
-        print_rate();
-    }
-    printf("\n");
     if (purpose != PURPOSE_CHECK)
     {
         // A rate learnt may bring the next check forward.
@@ -581,6 +596,7 @@ void source_rtc_init(void)
     was_synchronised = false;
     corrections_seen = 0;
     stopped_released = false;
+    set_by_command = false;
     set_activity(SOURCE_RTC_IDLE);
 }
 
@@ -687,7 +703,10 @@ void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool
             state.plain_writes++;
             state.second_valid = false;
             state.baseline_valid = false;
-            printf("RTC: aligned write failed: set to the nearest second\n");
+            if (debug_enabled(DEBUG_RTC))
+            {
+                printf("RTC: aligned write failed: set to the nearest second\n");
+            }
         }
         return;
     }
@@ -714,7 +733,7 @@ void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool
         {
             stopped_released = pcf8563_release();
             state.second_valid = false;
-            if (stopped_released)
+            if (stopped_released && debug_enabled(DEBUG_RTC))
             {
                 printf("RTC: found stopped: released\n");
             }
@@ -810,7 +829,17 @@ bool source_rtc_set(uint32_t utc_seconds)
     measure_due_epoch = epoch_sequence;
     write_wanted = false;
     plain_wanted = false;
+    set_by_command = true;
     return true;
+}
+
+
+bool source_rtc_take_set(void)
+{
+    bool set = set_by_command;
+
+    set_by_command = false;
+    return set;
 }
 
 
@@ -824,58 +853,79 @@ const char *source_rtc_activity_name(SourceRtcActivity activity)
 {
     switch (activity)
     {
-        case SOURCE_RTC_IDLE: return "idle";
-        case SOURCE_RTC_SEARCHING: return "searching";
-        case SOURCE_RTC_LOADING: return "loading";
-        case SOURCE_RTC_WAITING: return "waiting to release";
-        case SOURCE_RTC_RELEASING: return "releasing";
-        case SOURCE_RTC_CONFIRMING: return "confirming";
+        case SOURCE_RTC_IDLE: return "IDLE";
+        case SOURCE_RTC_SEARCHING: return "SEARCHING";
+        case SOURCE_RTC_LOADING: return "LOADING";
+        case SOURCE_RTC_WAITING: return "WAITING";
+        case SOURCE_RTC_RELEASING: return "RELEASING";
+        case SOURCE_RTC_CONFIRMING: return "CONFIRMING";
         default: return "?";
     }
 }
 
 
-void source_rtc_print(void)
+void source_rtc_print(bool verbose)
 {
-    printf("RTC sync: %s", source_rtc_activity_name(state.activity));
+    int32_t next_check = (int32_t)(state.next_check_epoch - epoch_sequence);
+
+    printf("  Second: ");
     if (state.second_valid)
     {
-        printf(", second found %lu s ago to %lu us",
-               (unsigned long)(epoch_sequence - state.measured_epoch),
+        utc_print_duration(epoch_sequence - state.measured_epoch);
+        printf(" ago, +/-%lu us",
                (unsigned long)(state.resolution_ticks / SOURCE_RTC_TICKS_PER_US));
+        if (state.offset_valid)
+        {
+            printf(", %+ld ms", (long)state.offset_ms);
+        }
     }
     else
     {
-        printf(", second not found");
+        printf("NOT FOUND");
     }
-    if (state.offset_valid)
-    {
-        printf(", %+ld ms against the clock %lu s ago", (long)state.offset_ms,
-               (unsigned long)(epoch_sequence - state.offset_epoch));
-    }
-    printf(", rate ");
+    printf("; rate ");
     if (state.rate_valid)
     {
         print_rate();
-        printf(" (%lu updates)", (unsigned long)state.rate_updates);
     }
     else
     {
-        printf("not known yet");
+        printf("unknown");
     }
-    printf("\n  ");
+    if (state.activity != SOURCE_RTC_IDLE)
+    {
+        printf("; %s", source_rtc_activity_name(state.activity));
+    }
+    printf("\n  Set: ");
     if (state.last_write_valid)
     {
-        printf("last set to the epoch of %lu, ", (unsigned long)state.last_write_utc);
+        utc_print(state.last_write_utc);
+        printf(", ");
         print_us(state.last_write_error_ticks);
-        printf(" off; ");
     }
-    printf("start delay correction ");
-    print_us(state.release_correction_ticks);
-    printf("; next check in %ld s; %lu searches (%lu failed), %lu checks, %lu set (%lu failed, "
-           "%lu late), %lu plain\n",
-           (long)(int32_t)(state.next_check_epoch - epoch_sequence), (unsigned long)state.searches,
-           (unsigned long)state.searches_failed, (unsigned long)state.checks,
-           (unsigned long)state.writes, (unsigned long)state.writes_failed,
-           (unsigned long)state.late_releases, (unsigned long)state.plain_writes);
+    else
+    {
+        printf("never");
+    }
+    printf("; next check ");
+    if (next_check > 0)
+    {
+        utc_print_duration((uint32_t)next_check);
+    }
+    else
+    {
+        printf("when synchronised");
+    }
+    printf("\n");
+    if (verbose)
+    {
+        printf("  Start delay correction ");
+        print_us(state.release_correction_ticks);
+        printf("; %lu rate updates, %lu searches (%lu failed), %lu checks, %lu set (%lu failed, "
+               "%lu late), %lu plain\n",
+               (unsigned long)state.rate_updates, (unsigned long)state.searches,
+               (unsigned long)state.searches_failed, (unsigned long)state.checks,
+               (unsigned long)state.writes, (unsigned long)state.writes_failed,
+               (unsigned long)state.late_releases, (unsigned long)state.plain_writes);
+    }
 }

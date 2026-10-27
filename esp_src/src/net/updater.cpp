@@ -19,12 +19,10 @@ static String url(void)
     return String("https://") + user_prefs.fields.updater.server + user_prefs.fields.updater.path;
 }
 
-
 void updater_set_server(const char *server)
 {
     user_prefs_set_string(user_prefs.fields.updater.server, server);
 }
-
 
 void updater_set_path(const char *path)
 {
@@ -37,13 +35,11 @@ void updater_set_path(const char *path)
     user_prefs_set_string(user_prefs.fields.updater.path, value.c_str());
 }
 
-
 void updater_set_config(const char *config)
 {
     user_prefs_set_string(user_prefs.fields.updater.config,
                           strcmp(config, "default") == 0 ? UPDATER_CONFIG_DEFAULT : config);
 }
-
 
 static void print_version(Stream *output)
 {
@@ -54,7 +50,6 @@ static void print_version(Stream *output)
     }
     output->printf("\n");
 }
-
 
 static void on_progress(int offset, int total)
 {
@@ -67,7 +62,6 @@ static void on_progress(int offset, int total)
         previous = percent;
     }
 }
-
 
 static const char *result_name(int code)
 {
@@ -84,7 +78,6 @@ static const char *result_name(int code)
         default: return code > 0 ? "unexpected HTTP status" : "unknown error";
     }
 }
-
 
 // One request; action as ESP32OTAPull. Prints the outcome.
 static int request(Stream *output, ESP32OTAPull::ActionType action, bool any_version)
@@ -104,7 +97,6 @@ static int request(Stream *output, ESP32OTAPull::ActionType action, bool any_ver
     return result;
 }
 
-
 bool updater_check(Stream *output)
 {
     print_version(output);
@@ -116,16 +108,14 @@ bool updater_check(Stream *output)
     return available;
 }
 
-
 void updater_pull(Stream *output)
 {
     print_version(output);
     if (request(output, ESP32OTAPull::UPDATE_BUT_NO_BOOT, false) == ESP32OTAPull::UPDATE_OK)
     {
-        output->printf("Use esp-reset to finish the update\n");
+        output->printf("Use \"esp reset\" to finish the update\n");
     }
 }
-
 
 void updater_force(Stream *output)
 {
@@ -133,7 +123,6 @@ void updater_force(Stream *output)
     output->printf("Installing whatever the server offers, then restarting\n");
     request(output, ESP32OTAPull::UPDATE_AND_BOOT, true);
 }
-
 
 void updater_service(bool have_local, uint32_t local_seconds)
 {
@@ -164,12 +153,10 @@ void updater_service(bool have_local, uint32_t local_seconds)
     }
 }
 
-
 bool updater_is_available(void)
 {
     return available;
 }
-
 
 bool updater_is_running(void)
 {

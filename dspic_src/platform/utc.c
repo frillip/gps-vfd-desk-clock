@@ -1,6 +1,7 @@
 #include "utc.h"
 
 #include <stddef.h>
+#include <stdio.h>
 
 // 1970-01-01 is day 719468 of the era-based count from 0000-03-01.
 #define DAYS_TO_1970            ((uint32_t)719468)
@@ -147,4 +148,43 @@ bool utc_civil_is_valid(const UtcCivil *civil)
     }
     second_of_day = (uint32_t)civil->hour * 3600U + (uint32_t)civil->minute * 60U + civil->second;
     return civil->month == 2U && civil->day == 7U && second_of_day <= LAST_SECOND_OF_LAST_DAY;
+}
+
+
+void utc_print(uint32_t utc_seconds)
+{
+    UtcCivil civil;
+
+    if (utc_seconds == UTC_NEVER)
+    {
+        printf("never");
+        return;
+    }
+    utc_to_civil(utc_seconds, false, &civil);
+    printf("%04u-%02u-%02uT%02u:%02u:%02uZ", civil.year, civil.month, civil.day, civil.hour,
+           civil.minute, civil.second);
+}
+
+
+void utc_print_offset(int32_t offset_s)
+{
+    uint32_t magnitude = offset_s < 0 ? (uint32_t)(-(offset_s + 1)) + 1U : (uint32_t)offset_s;
+
+    printf("%c%02lu:%02lu", offset_s < 0 ? '-' : '+', (unsigned long)(magnitude / 3600U),
+           (unsigned long)(magnitude / 60U % 60U));
+    if (magnitude % 60U != 0U)
+    {
+        printf(":%02lu", (unsigned long)(magnitude % 60U));
+    }
+}
+
+
+void utc_print_duration(uint32_t seconds)
+{
+    if (seconds >= UTC_SECONDS_PER_DAY)
+    {
+        printf("%lud ", (unsigned long)(seconds / UTC_SECONDS_PER_DAY));
+    }
+    printf("%02lu:%02lu:%02lu", (unsigned long)(seconds / 3600U % 24U),
+           (unsigned long)(seconds / 60U % 60U), (unsigned long)(seconds % 60U));
 }

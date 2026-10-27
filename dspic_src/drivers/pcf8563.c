@@ -25,7 +25,8 @@ static const uint8_t release_buffer[2] = {PCF8563_CONTROL_STATUS_1, 0x00U};
 static I2cTransfer release_transfer =
     I2C_TRANSFER(PCF8563_ADDRESS, release_buffer, sizeof(release_buffer), 0, 0U);
 static uint32_t last_attempt_ms;
-static bool print_next; // report the next completed read on the console
+static bool report_next; // the next completed read is worth reporting
+static bool report_due;  // ... and has completed
 static bool auto_read = true;
 
 uint8_t pcf8563_bcd_to_binary(uint8_t bcd)
@@ -101,7 +102,7 @@ void pcf8563_init(uint32_t now_ms)
     status.request = PCF8563_NONE;
     status.last_result = I2C_IDLE;
     last_attempt_ms = now_ms;
-    print_next = true;
+    report_next = true;
     (void)pcf8563_read();
 }
 
@@ -156,7 +157,7 @@ bool pcf8563_write(uint32_t utc_seconds)
     {
         return false;
     }
-    print_next = true;
+    report_next = true;
     return true;
 }
 
@@ -239,7 +240,7 @@ static bool finish(const I2cTransfer *transfer, uint32_t now_ms)
 }
 
 
-bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference)
+bool pcf8563_service(uint32_t now_ms)
 {
     bool read_done = false;
 
@@ -256,10 +257,10 @@ bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference)
     {
         read_done = finish(&release_transfer, now_ms);
     }
-    if (read_done && print_next)
+    if (read_done && report_next)
     {
-        print_next = false;
-        pcf8563_print(now_ms, reference);
+        report_next = false;
+        report_due = true;
     }
     if (auto_read && !pcf8563_busy() &&
         now_ms - last_attempt_ms >=
@@ -269,6 +270,15 @@ bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference)
         (void)pcf8563_read();
     }
     return read_done;
+}
+
+
+bool pcf8563_report_due(void)
+{
+    bool due = report_due;
+
+    report_due = false;
+    return due;
 }
 
 
@@ -297,60 +307,60 @@ bool pcf8563_now(uint32_t now_ms, uint32_t *utc_seconds)
 }
 
 
-static void print_utc(uint32_t utc_seconds)
-{
-    UtcCivil civil;
-
-    utc_to_civil(utc_seconds, false, &civil);
-    printf("%04u-%02u-%02uT%02u:%02u:%02uZ", civil.year, civil.month, civil.day, civil.hour,
-           civil.minute, civil.second);
-}
-
-
-void pcf8563_print(uint32_t now_ms, Pcf8563Reference reference)
+void pcf8563_print(uint32_t now_ms, Pcf8563Reference reference, bool verbose)
 {
     uint32_t rtc_now;
+    uint32_t age_s = (now_ms - status.read_ms) / 1000UL;
 
-    printf("RTC: PCF8563 ");
+    printf("RTC: PCF8563, ");
     if (!status.present)
     {
-        printf("%s\n", status.request == PCF8563_NONE ? "not read yet" : "not found");
+        printf("%s\n", status.request == PCF8563_NONE ? "not read yet" : "NOT FOUND");
         return;
-    }
-    if (status.request == PCF8563_FAILED)
-    {
-        printf("%s, ", i2c1_result_name(status.last_result));
     }
     if (status.reads == 0U)
     {
-        printf("not read yet\n");
-        return;
+        printf("not read yet");
     }
-    if (!pcf8563_now(now_ms, &rtc_now))
+    else if (!pcf8563_now(now_ms, &rtc_now))
     {
-        printf("no date (registers %02X %02X %02X %02X %02X %02X %02X), read %lu s ago",
-               status.registers[2], status.registers[3], status.registers[4], status.registers[5],
-               status.registers[6], status.registers[7], status.registers[8],
-               (unsigned long)((now_ms - status.read_ms) / 1000UL));
+        printf("NO VALID DATE");
+        if (verbose)
+        {
+            printf(" (registers %02X %02X %02X %02X %02X %02X %02X)", status.registers[2],
+                   status.registers[3], status.registers[4], status.registers[5],
+                   status.registers[6], status.registers[7], status.registers[8]);
+        }
     }
     else
     {
-        print_utc(rtc_now);
-        printf("%s%s%s, ", status.time_valid ? "" : " NOT VALID",
-               status.voltage_low ? " (VL: power was lost)" : "",
-               status.stopped ? " (STOPPED)" : "");
+        utc_print(rtc_now);
         if (reference.known)
         {
-            printf("%+ld s against the clock", (long)((int32_t)(rtc_now - reference.utc_seconds)));
+            printf(", %+ld s", (long)((int32_t)(rtc_now - reference.utc_seconds)));
         }
-        else
+        if (status.voltage_low)
         {
-            printf("clock time unknown");
+            printf(", VL (power lost)");
         }
-        printf(" (read ");
-        print_utc(status.utc_seconds);
-        printf(" %lu s ago)", (unsigned long)((now_ms - status.read_ms) / 1000UL));
+        else if (!status.time_valid)
+        {
+            printf(", NOT VALID");
+        }
+        if (status.stopped)
+        {
+            printf(", STOPPED");
+        }
     }
-    printf(", %lu reads, %lu writes, %lu failures\n", (unsigned long)status.reads,
-           (unsigned long)status.writes, (unsigned long)status.failures);
+    if (status.request == PCF8563_FAILED)
+    {
+        printf(", FAILED: %s", i2c1_result_name(status.last_result));
+    }
+    if (verbose)
+    {
+        printf("; read %lu s ago, %lu reads, %lu writes, %lu failures", (unsigned long)age_s,
+               (unsigned long)status.reads, (unsigned long)status.writes,
+               (unsigned long)status.failures);
+    }
+    printf("\n");
 }

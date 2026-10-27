@@ -13,7 +13,8 @@ static const uint32_t sensitivity[] = {VEML6040_SENSITIVITY_40MS,  VEML6040_SENS
 static Veml6040Status status;
 static uint32_t last_attempt_ms;
 static uint32_t last_check_ms;
-static bool print_next; // report the next completed read on the console
+static bool report_next; // the next completed read is worth reporting
+static bool report_due;  // ... and has completed
 static bool auto_read = true;
 
 static uint8_t read_address = VEML6040_CMD_G_DATA;
@@ -77,7 +78,7 @@ static bool configure(void)
 void veml6040_init(void)
 {
     status.configuration = VEML6040_INTEGRATION;
-    print_next = configure();
+    report_next = configure();
 }
 
 
@@ -183,10 +184,10 @@ bool veml6040_service(uint32_t now_ms)
     {
         read_done = finish(&check_transfer, now_ms);
     }
-    if (read_done && print_next && status.configured)
+    if (read_done && report_next && status.configured)
     {
-        print_next = false;
-        veml6040_print(now_ms);
+        report_next = false;
+        report_due = true;
     }
     if (auto_read && !busy() &&
         now_ms - last_attempt_ms >=
@@ -195,6 +196,15 @@ bool veml6040_service(uint32_t now_ms)
         next_request(now_ms);
     }
     return read_done;
+}
+
+
+bool veml6040_report_due(void)
+{
+    bool due = report_due;
+
+    report_due = false;
+    return due;
 }
 
 
@@ -210,33 +220,33 @@ const Veml6040Status *veml6040_status(void)
 }
 
 
-void veml6040_print(uint32_t now_ms)
+void veml6040_print(uint32_t now_ms, bool verbose)
 {
-    printf("ALS: VEML6040 ");
+    printf("ALS: VEML6040, ");
     if (!status.present)
     {
-        printf("%s\r\n", status.request == VEML6040_NONE ? "not read yet" : "not found");
+        printf("%s\r\n", status.request == VEML6040_NONE ? "not read yet" : "NOT FOUND");
         return;
+    }
+    if (!status.configured || status.reads == 0U)
+    {
+        printf("%s", status.configured ? "not read yet" : "not configured yet");
+    }
+    else
+    {
+        printf("%u.%u lux%s%s, %lu s ago", status.lux_x10 / 10U, status.lux_x10 % 10U,
+               status.saturated ? " SATURATED" : "", status.too_dark ? " TOO DARK" : "",
+               (unsigned long)((now_ms - status.read_ms) / 1000UL));
     }
     if (status.request == VEML6040_FAILED)
     {
-        printf("%s, ", i2c1_result_name(status.last_result));
+        printf(", FAILED: %s", i2c1_result_name(status.last_result));
     }
-    if (!status.configured)
+    if (verbose)
     {
-        printf("not configured yet\r\n");
-        return;
+        printf("; green 0x%04X, %lu reads, %lu writes, %lu reconfigured, %lu failures",
+               status.green, (unsigned long)status.reads, (unsigned long)status.writes,
+               (unsigned long)status.mismatches, (unsigned long)status.failures);
     }
-    if (status.reads == 0U)
-    {
-        printf("not read yet\r\n");
-        return;
-    }
-    printf("%u.%u lux%s%s (green 0x%04X, %lu s ago), %lu reads, %lu writes, %lu reconfigured, "
-           "%lu failures\r\n",
-           status.lux_x10 / 10U, status.lux_x10 % 10U,
-           status.saturated ? " or more (saturated)" : "", status.too_dark ? " (too dark)" : "",
-           status.green, (unsigned long)((now_ms - status.read_ms) / 1000UL),
-           (unsigned long)status.reads, (unsigned long)status.writes,
-           (unsigned long)status.mismatches, (unsigned long)status.failures);
+    printf("\r\n");
 }

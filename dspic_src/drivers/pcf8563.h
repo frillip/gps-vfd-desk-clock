@@ -144,8 +144,11 @@ typedef struct
 // the request in progress, reads the chip every PCF8563_READ_INTERVAL_MS,
 // and retries an absent one every PCF8563_DETECT_INTERVAL_MS. True once
 // each time a read (or a write's read-back) completes, successfully or not.
-// The first read and each write's read-back are printed, against reference.
-bool pcf8563_service(uint32_t now_ms, Pcf8563Reference reference);
+bool pcf8563_service(uint32_t now_ms);
+
+// True once after the first read and after each write's read-back has
+// completed: worth a pcf8563_print, if the caller wants one.
+bool pcf8563_report_due(void);
 
 // The periodic reads, on by default: held off while the RTC source has the
 // chip to itself (a search, an aligned write).
@@ -160,11 +163,11 @@ const Pcf8563Status *pcf8563_status(void);
 bool pcf8563_now(uint32_t now_ms, uint32_t *utc_seconds);
 
 // One line, or why not:
-//   RTC: PCF8563 2026-10-21T17:33:41Z, +0 s against the clock (read
-//   2026-10-21T17:33:35Z 6 s ago), 9 reads, 1 writes, 0 failures
+//   RTC: PCF8563, 2026-10-21T17:33:41Z, +0 s
 // The offset is RTC minus the clock, to within a second (+ = RTC ahead).
-// now_ms: the clock read_ms is on.
-void pcf8563_print(uint32_t now_ms, Pcf8563Reference reference);
+// now_ms: the clock read_ms is on. verbose: when it was read, the counts,
+// and the raw registers of a date that is not valid.
+void pcf8563_print(uint32_t now_ms, Pcf8563Reference reference, bool verbose);
 
 // For the tests.
 uint8_t pcf8563_bcd_to_binary(uint8_t bcd);

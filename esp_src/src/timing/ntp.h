@@ -31,7 +31,7 @@ extern "C"
 
 void ntp_init(void);
 void ntp_service(bool network_up);
-// Poll now (esp-ntp-resync, SML_USER_ESP_NTP_RESYNC).
+// Poll now (ntp sync, SML_USER_ESP_NTP_SYNC).
 void ntp_resync(void);
 
 bool ntp_is_valid(void);  // the clock has been set
@@ -44,7 +44,7 @@ bool ntp_utc_at(int64_t local_us, int64_t *utc_us);
 // After each ESP PPS edge: the TIME-NTP labelling it. True once per edge.
 bool ntp_take_report(SML_TIME_NTP_PAYLOAD *payload);
 
-// One line, or everything (esp-ntp-info -v).
+// One line, or everything (ntp -v).
 void ntp_print(Stream *output, bool verbose);
 
 #endif // NTP_H

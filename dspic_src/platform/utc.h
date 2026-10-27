@@ -66,4 +66,15 @@ bool utc_civil_is_valid(const UtcCivil *civil);
 // tolerance_s from one, which means it does not describe a real event.
 bool utc_leap_snap(uint32_t estimated_utc, uint32_t tolerance_s, uint32_t *event_utc);
 
+// For the console, with printf, as the ESP prints them:
+// 2026-10-27T16:51:02Z (UTC_NEVER as "never"),
+void utc_print(uint32_t utc_seconds);
+// +01:00, or -00:25:21 when not whole minutes,
+void utc_print_offset(int32_t offset_s);
+// 00:02:05, or 3d 04:05:06 from a day.
+void utc_print_duration(uint32_t seconds);
+
+// A time that has not happened, or a horizon that has no end.
+#define UTC_NEVER 0xFFFFFFFFUL
+
 #endif // UTC_H

@@ -23,7 +23,7 @@ void pic_report_version(char *text, size_t size, uint32_t version);
 // sources, GNSS and link. Compact unless verbose:
 // a line or two each, the sources table, and nothing that is only counters.
 void pic_report_print(Stream *output, bool verbose);
-// STAT-SOURCES: the PIC's time sources, ranked (pic-show-sources). Verbose
+// STAT-SOURCES: the PIC's time sources, ranked (sources). Verbose
 // adds the rank, each source's own figure, its run and its edge.
 void pic_report_print_sources(Stream *output, bool verbose);
 // The link counters only.

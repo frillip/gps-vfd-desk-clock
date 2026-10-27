@@ -139,10 +139,11 @@ void display_print(void)
 {
     const TubesStats *tubes = tubes_stats();
 
-    printf("Display: %s, UTC%+ld s, frames %lu prepared %lu loaded %lu missed; tubes: brightness "
-           "%u, %lu loads (%lu too late), %lu shows, %lu SPI stalls\r\n",
-           display_mode_name(mode), (long)offset_s, (unsigned long)stats.prepared,
-           (unsigned long)stats.loaded, (unsigned long)stats.missed, tubes_brightness(),
+    printf("Display: %s, UTC", display_mode_name(mode));
+    utc_print_offset(offset_s);
+    printf("; frames: %lu prepared, %lu loaded, %lu missed; tubes: %lu loads (%lu too late), "
+           "%lu shows, %lu SPI stalls\r\n",
+           (unsigned long)stats.prepared, (unsigned long)stats.loaded, (unsigned long)stats.missed,
            (unsigned long)tubes->loads, (unsigned long)tubes->loads_too_late,
            (unsigned long)tubes->shows, (unsigned long)tubes->spi_stalls);
 }

@@ -3,6 +3,12 @@
  * Draft for manual review. Payloads other than TIME-AUTH are provisional.
  * Specification: common/SML_PROTOCOL.md. This header is the single shared
  * copy for the dsPIC and the ESP32; do not fork it.
+ * 2026-10-27 (2.0): CMD-USER codes rationalised (breaking): the SET_* setting
+ * commands are gone (settings are written with CMD-SETTINGS), INFO,
+ * SHOW_CONFIG, SHOW_SETTINGS and SHOW_SOURCES become SHOW with an
+ * SML_SHOW_* topic (| SML_SHOW_VERBOSE for everything) and REQUEST_MESSAGE;
+ * the remaining codes renumbered, the ESP's renamed after the console's
+ * words. DEFAULTS no longer saves. SML_DEBUG_RTC and SML_DEBUG_EVENTS.
  * 2026-10-21 (1.3): STAT-SOURCES added (the PIC's time sources, ranked);
  * SML_SOURCE_HOLDOVER; TIME-PIC second_source (was reserved); TIME-NTP
  * CORRECTING flag; SML_USER_SET_DEBUG with SML_DEBUG_* subsystem bits, and
@@ -190,8 +196,8 @@
 #define SML_VERDICT_INACCURATE   5U // its own uncertainty is above the PIC's limit
 #define SML_VERDICT_INCONSISTENT 6U // label does not follow on from the last one
 #define SML_VERDICT_GOOD         7U
-// SML_USER_SET_DEBUG: the PIC's console diagnostics, by subsystem. State
-// changes and warnings are always printed; these gate the periodic output.
+// SML_USER_SET_DEBUG: the PIC's console diagnostics, by subsystem. Unasked,
+// the PIC prints only its start-up line and faults; these gate the rest.
 #define SML_DEBUG_TIMING  0x0001U // per epoch: captures, loop, servo, receiver's view
 #define SML_DEBUG_GNSS    0x0002U // per epoch: the GNSS edge and its label
 #define SML_DEBUG_SYNC    0x0004U // per epoch: the synchroniser's state
@@ -199,7 +205,9 @@
 #define SML_DEBUG_NTP     0x0010U // per epoch: the latest TIME-NTP and its pairing
 #define SML_DEBUG_MINUTE  0x0020U // each minute: scheduler, GNSS and sync reports
 #define SML_DEBUG_TUNING  0x0040U // each minute: loop and source statistics
-#define SML_DEBUG_ALL     0x007FU
+#define SML_DEBUG_RTC     0x0080U // as they happen: RTC set, second search, release
+#define SML_DEBUG_EVENTS  0x0100U // as they happen: sync state changes, controls, sensor
+#define SML_DEBUG_ALL     0x01FFU
 
 #define SML_AUTH_UTC_VALID          0x0001U
 #define SML_AUTH_UNCERTAINTY_VALID  0x0002U
@@ -798,7 +806,7 @@ typedef struct
  * sees them: one entry per candidate, holdover included, and which is in
  * use and which would be next. Sent on change (selection, second choice,
  * sync state or any verdict; at most once an epoch), every 10 s, and in
- * answer to SML_USER_SHOW_SOURCES (before the ACK).
+ * answer to SML_USER_REQUEST_MESSAGE for it (before the ACK).
  * Each entry's source is SML_SOURCE_GNSS, NTP, RTC or HOLDOVER; SML_SOURCE_NONE
  * marks an unused entry. Entries are in no particular order: rank orders them
  * (1 = best, 0 = not a candidate). */
@@ -941,8 +949,9 @@ typedef struct
 
 // SML-CMD-USER, both ways. Codes below 0x8000 run on the PIC (sent by the ESP),
 // 0x8000 and up on the ESP (sent by the PIC, e.g. from its menu). The wrong
-// half is answered NACK UNSUPPORTED. Fixed wire codes, independent USER_CMD.
-// Argument interpreted by command. Signed values use two's complement bits.
+// half is answered NACK UNSUPPORTED. Argument interpreted by command; signed
+// values use two's complement bits. Settings are not commands: they are
+// written whole with SML-CMD-SETTINGS.
 typedef struct
 {
     uint16_t command;
@@ -952,41 +961,40 @@ typedef struct
     uint16_t token;
     uint32_t argument;
 } SML_CMD_USER_PAYLOAD;
-#define SML_OPERATION_SETTINGS_WRITE 0x0100U
-#define SML_USER_INFO                0x0001U
-#define SML_USER_REQUEST_MESSAGE     0x0002U // arg: class<<8 | ID; upper 16 zero
-#define SML_USER_RESYNC              0x0010U
-#define SML_USER_RESET               0x0011U
-#define SML_USER_SET_RTC             0x0020U // UTC seconds
-#define SML_USER_SET_TZ_OFFSET       0x0030U // signed seconds
-#define SML_USER_SET_TZ_AUTO         0x0031U // 0/1
-#define SML_USER_SET_DST_OFFSET      0x0032U // signed seconds
-#define SML_USER_SET_DST_AUTO        0x0033U // 0/1
-#define SML_USER_SET_DST_ACTIVE      0x0034U // 0/1
-#define SML_USER_SET_FOSC            0x0040U // Hz
-#define SML_USER_SET_ALARM_ENABLE    0x0050U // 0/1
-#define SML_USER_SET_ALARM           0x0051U // seconds of day
-#define SML_USER_SET_DELTA           0x0052U // UTC epoch
-#define SML_USER_SET_BEEP            0x0053U // 0/1
-#define SML_USER_SET_DISPLAY         0x0060U
-#define SML_USER_SET_BRI_AUTO        0x0061U // 0/1
-#define SML_USER_SET_BRIGHTNESS      0x0062U
-#define SML_USER_SHOW_SETTINGS       0x0070U
-#define SML_USER_SHOW_CONFIG         0x0071U
-#define SML_USER_DEFAULTS            0x0072U
-#define SML_USER_SAVE                0x0073U
-#define SML_USER_SHOW_SOURCES        0x0074U // STAT-SOURCES, then ACK
-#define SML_USER_ENTER_BOOTLOADER    0x0080U
-#define SML_USER_SET_DEBUG           0x0090U // clear << 16 | set: SML_DEBUG_* bits
-#define SML_USER_ESP_FIRST           0x8000U // codes from here run on the ESP
-#define SML_USER_ESP_RESET           0x8010U
-#define SML_USER_ESP_WIFI_CLEAR      0x8020U // forget credentials
-#define SML_USER_ESP_WIFI_SETUP      0x8021U // start the setup access point
-#define SML_USER_ESP_NTP_RESYNC      0x8030U
-#define SML_USER_ESP_TZINFO_ENABLE   0x8040U // 0/1
-#define SML_USER_ESP_TZINFO_UPDATE   0x8041U // look up now
-#define SML_USER_ESP_UPDATE_CHECK    0x8050U
-#define SML_USER_ESP_DEFAULTS        0x80F0U // clear the ESP configuration
+#define SML_OPERATION_SETTINGS_WRITE 0x0100U // CMD-RESPONSE command for CMD-SETTINGS
+// Run by the PIC. The two halves share the low byte where the intent is the same.
+#define SML_USER_SHOW              0x0001U // arg: SML_SHOW_*; printed as STAT-DEBUG
+#define SML_USER_REQUEST_MESSAGE   0x0002U // arg: class<<8 | ID; upper 16 zero
+#define SML_USER_SAVE              0x0010U // ACCEPTED, then ACK once stored
+#define SML_USER_DEFAULTS          0x0011U // factory settings, running only
+#define SML_USER_SET_RTC           0x0020U // arg: UTC seconds
+#define SML_USER_SET_DEBUG         0x0021U // arg: clear << 16 | set, SML_DEBUG_* bits
+#define SML_USER_RESYNC            0x0030U
+#define SML_USER_RESET             0x0031U
+#define SML_USER_ENTER_BOOTLOADER  0x0032U
+// Run by the ESP.
+#define SML_USER_ESP_FIRST         0x8000U // codes from here run on the ESP
+#define SML_USER_ESP_SAVE          0x8010U // save the ESP's settings
+#define SML_USER_ESP_DEFAULTS      0x8011U // the ESP's defaults, running only
+#define SML_USER_ESP_RESET         0x8031U // restart the ESP
+#define SML_USER_ESP_NTP_SYNC      0x8040U // poll NTP now
+#define SML_USER_ESP_TZ_REMOTE     0x8050U // arg: 0/1, remote time zone lookups
+#define SML_USER_ESP_TZ_LOOKUP     0x8051U // look the time zone up now, and use it
+#define SML_USER_ESP_WIFI_FORGET   0x8060U // forget the credentials, then restart
+#define SML_USER_ESP_WIFI_SETUP    0x8061U // start the setup access point
+#define SML_USER_ESP_UPDATE_CHECK  0x8070U // check for a firmware update
+
+// SML_USER_SHOW topics: what the PIC prints.
+#define SML_SHOW_ALL     0U // every module (the ESP sends this at start)
+#define SML_SHOW_STORED  1U // the settings, schedule and oscillator in flash, and the store
+#define SML_SHOW_TZ      2U // the time zone in force and the schedule held
+#define SML_SHOW_DISPLAY 3U // display, brightness, light sensor, button and switch
+#define SML_SHOW_RTC     4U // the RTC and the RTC source
+#define SML_SHOW_OSC     5U // the oscillator: running, measured and stored
+#define SML_SHOW_GNSS    6U // the receiver
+#define SML_SHOW_COUNT   7U
+// With a topic: everything, the counters and internals included.
+#define SML_SHOW_VERBOSE 0x0100U
 
 typedef struct
 {

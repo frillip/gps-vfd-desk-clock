@@ -369,30 +369,44 @@ static void print_source(uint8_t index, const SyncSourceTracker *tracker)
 }
 
 
-void sync_report_status(void)
+void sync_report_status(bool verbose)
 {
     const SyncStatus *status = sync_status();
     uint32_t first;
     uint32_t index;
     uint8_t source;
 
-    printf("\r\n=== SYNC ===\r\n");
-    printf("State: %s on %s%s for %lus, %s\r\n", sync_state_name(status->state),
-           sync_source_name(status->source), status->fallback ? " (fallback)" : "",
-           (unsigned long)status->state_epochs,
-           sync_is_synchronised() ? "synchronised" : "not synchronised");
-    printf("Time: ");
+    printf("Sync: %s", sync_state_name(status->state));
+    if (status->source != SYNC_SOURCE_NONE)
+    {
+        printf(" on %s%s", sync_source_name(status->source), status->fallback ? " (FALLBACK)" : "");
+    }
+    printf(", ");
+    utc_print_duration(status->state_epochs);
+    printf(", %s\r\n", sync_is_synchronised() ? "SYNCHRONISED" : "NOT SYNCHRONISED");
+    printf("  Time: ");
     print_time(&status->time);
-    printf(", from %s, %lu corrections", sync_source_name(status->time.source),
-           (unsigned long)status->time.corrections);
+    if (status->time.known)
+    {
+        printf(" (%s)", sync_source_name(status->time.source));
+    }
+    if (verbose)
+    {
+        printf(", %lu corrections", (unsigned long)status->time.corrections);
+    }
     if (status->time.leap.change != 0)
     {
         UtcCivil civil;
         utc_to_civil(status->time.leap.event_utc - 1, false, &civil);
-        printf(", leap second: %04u-%02u-%02uT%s", civil.year, civil.month, civil.day,
-               status->time.leap.change > 0 ? "23:59:60Z inserted" : "23:59:59Z deleted");
+        printf(", leap %s %04u-%02u-%02uT%s", status->time.leap.change > 0 ? "+1" : "-1",
+               civil.year, civil.month, civil.day,
+               status->time.leap.change > 0 ? "23:59:60Z" : "23:59:59Z");
     }
     printf("\r\n");
+    if (!verbose)
+    {
+        return;
+    }
     if (status->aligned)
     {
         printf("Epoch put on the %s second at start-up: moved %+ld us\r\n",

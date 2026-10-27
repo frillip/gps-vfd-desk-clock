@@ -627,33 +627,95 @@ void esp_report_stat_sys(uint32_t epoch_sequence, SML_STAT_SYS_PAYLOAD *payload)
 }
 
 
-void esp_report_print_system(void)
+void esp_report_print_system(bool verbose)
 {
     uint16_t cause = system_reset_cause();
 
-    printf("PIC %u.%u.%u, up %lu s, last reset: %s (RCON 0x%04X)\n", PIC_VERSION_MAJOR,
-           PIC_VERSION_MINOR, PIC_VERSION_PATCH, (unsigned long)scheduler_epoch(),
-           esp_report_reset_name((uint16_t)(cause & SML_RESET_ALL)), cause);
+    printf("PIC %u.%u.%u, up ", PIC_VERSION_MAJOR, PIC_VERSION_MINOR, PIC_VERSION_PATCH);
+    utc_print_duration(scheduler_epoch());
+    printf(", last reset: %s", esp_report_reset_name((uint16_t)(cause & SML_RESET_ALL)));
+    if (verbose)
+    {
+        printf(" (RCON 0x%04X)", cause);
+    }
+    printf("\n");
 }
 
 
-void esp_report_print_all(uint32_t now_ms)
+// The clock's time, for the RTC's report.
+static Pcf8563Reference rtc_reference(void)
 {
     const SyncStatus *status = sync_status();
     Pcf8563Reference clock;
 
     clock.utc_seconds = status->time.utc_seconds;
     clock.known = status->time.known;
-    esp_report_print_system();
-    sync_report_status();
-    gnss_print(now_ms);
-    display_print();
-    timezone_print(status->time.utc_seconds);
-    settings_print();
-    pcf8563_print(now_ms, clock);
-    veml6040_print(now_ms);
-    brightness_print();
-    controls_print();
-    source_rtc_print();
-    i2c1_print();
+    return clock;
+}
+
+
+// The display as set and as running: the mode, the clock, the delta epoch.
+static void print_display(bool verbose, uint32_t now_ms)
+{
+    SML_SETTINGS_BODY body;
+
+    settings_body(&body);
+    printf("Display: %s, %s h", display_mode_name(display_mode()),
+           (body.flags & SML_SETTING_FORMAT_12H) ? "12" : "24");
+    if (body.delta_epoch_utc != 0U)
+    {
+        printf(", delta from ");
+        utc_print(body.delta_epoch_utc);
+    }
+    printf("\n");
+    if (verbose)
+    {
+        printf("  ");
+        display_print();
+    }
+    printf("  ");
+    brightness_print(verbose);
+    printf("  ");
+    veml6040_print(now_ms, verbose);
+    printf("  ");
+    controls_print(verbose);
+}
+
+
+bool esp_report_show(uint32_t topic, bool verbose, uint32_t now_ms)
+{
+    switch (topic)
+    {
+        case SML_SHOW_STORED: settings_print_stored(verbose); return true;
+        case SML_SHOW_TZ: timezone_print(sync_status()->time.utc_seconds, verbose); return true;
+        case SML_SHOW_DISPLAY: print_display(verbose, now_ms); return true;
+        case SML_SHOW_RTC:
+            pcf8563_print(now_ms, rtc_reference(), verbose);
+            source_rtc_print(verbose);
+            return true;
+        case SML_SHOW_OSC: settings_print_oscillator(verbose); return true;
+        case SML_SHOW_GNSS: gnss_print(now_ms, verbose); return true;
+        default: return false;
+    }
+}
+
+
+void esp_report_print_all(uint32_t now_ms, bool verbose)
+{
+    esp_report_print_system(verbose);
+    sync_report_status(verbose);
+    timezone_print(sync_status()->time.utc_seconds, verbose);
+    settings_print(verbose);
+    (void)esp_report_show(SML_SHOW_DISPLAY, verbose, now_ms);
+    (void)esp_report_show(SML_SHOW_RTC, verbose, now_ms);
+    settings_print_oscillator(verbose);
+    gnss_print(now_ms, verbose);
+    if (verbose)
+    {
+        i2c1_print();
+    }
+    else if (i2c1_stats()->stuck != 0U)
+    {
+        printf("I2C: BUS STUCK\n");
+    }
 }

@@ -458,13 +458,13 @@ static const char *fix_type_name(uint8_t fix_type)
 {
     switch (fix_type)
     {
-        case UBX_FIX_NONE: return "no fix";
-        case UBX_FIX_DR_ONLY: return "dead reckoning";
+        case UBX_FIX_NONE: return "NO_FIX";
+        case UBX_FIX_DR_ONLY: return "DR";
         case UBX_FIX_2D: return "2D";
         case UBX_FIX_3D: return "3D";
-        case UBX_FIX_GNSS_DR: return "GNSS + DR";
-        case UBX_FIX_TIME_ONLY: return "time only";
-        default: return "unknown";
+        case UBX_FIX_GNSS_DR: return "GNSS+DR";
+        case UBX_FIX_TIME_ONLY: return "TIME_ONLY";
+        default: return "?";
     }
 }
 
@@ -527,14 +527,86 @@ static void print_unexpected(const UbxParserStats *stats)
 }
 
 
-void gnss_print(uint32_t now_ms)
+// Degrees from 1e-7 degrees, to 7 places.
+static void print_degrees(int32_t e7)
+{
+    uint32_t magnitude = e7 < 0 ? (uint32_t)(-(e7 + 1)) + 1U : (uint32_t)e7;
+
+    printf("%s%lu.%07lu", e7 < 0 ? "-" : "", (unsigned long)(magnitude / 10000000UL),
+           (unsigned long)(magnitude % 10000000UL));
+}
+
+
+// The receiver, its fix and time, where it is, and leap seconds.
+static void print_brief(uint32_t now_ms)
+{
+    const GnssEpoch *epoch = gnss_epoch_latest(&gnss.epochs);
+    UtcLeap leap;
+    int8_t gps_minus_utc;
+
+    printf("GNSS: ");
+    if (!gnss_is_present(now_ms))
+    {
+        printf("SILENT\r\n");
+        return;
+    }
+    if (gnss.detection.state == GNSS_DETECTION_CONFIRMED)
+    {
+        printf("%s (FW %s, PROTVER %s)", gnss.detection.identity.module_name,
+               gnss.detection.identity.firmware_version, gnss.detection.identity.protocol_version);
+    }
+    else
+    {
+        printf("unidentified, %lu baud", (unsigned long)gnss.baud);
+    }
+    if (epoch == NULL)
+    {
+        printf(", no solution\r\n");
+        return;
+    }
+    printf(", %s%s, time %s, tAcc %lu ns", fix_type_name(epoch->status.fix_type),
+           epoch->fix_ok ? " OK" : "", epoch->time_valid ? "VALID" : "INVALID",
+           (unsigned long)epoch->time_utc.time_accuracy_ns);
+    if (time_ms_elapsed(now_ms, epoch->completed_ms) > 3000UL)
+    {
+        printf(", %lu s old",
+               (unsigned long)(time_ms_elapsed(now_ms, epoch->completed_ms) / 1000UL));
+    }
+    printf("\r\n");
+    if (epoch->has_position)
+    {
+        printf("  Position: ");
+        print_degrees(epoch->position.latitude_e7);
+        printf(", ");
+        print_degrees(epoch->position.longitude_e7);
+        printf(", %ld m MSL, hAcc %lu m\r\n", (long)(epoch->position.height_msl_mm / 1000L),
+               (unsigned long)((epoch->position.horizontal_accuracy_mm + 500UL) / 1000UL));
+    }
+    if (gnss_leap_seconds(now_ms, &gps_minus_utc))
+    {
+        printf("  Leap: GPS-UTC %d s", gps_minus_utc);
+        if (gnss_leap_event(now_ms, &leap) && leap.change != 0)
+        {
+            printf(", %+d before ", leap.change);
+            utc_print(leap.event_utc);
+        }
+        printf("\r\n");
+    }
+}
+
+
+void gnss_print(uint32_t now_ms, bool verbose)
 {
     const GnssEpoch *epoch = gnss_epoch_latest(&gnss.epochs);
     UbxParserStats stats = parser.stats;
     int8_t change;
     int32_t seconds_to_event;
 
-    printf("\r\n=== GNSS ===\r\n");
+    print_brief(now_ms);
+    if (!verbose)
+    {
+        return;
+    }
     printf("Link: %s at %lu baud, %lu recoveries\r\n",
            gnss_is_present(now_ms) ? "present" : "silent", (unsigned long)gnss.baud,
            (unsigned long)gnss.link_recoveries);

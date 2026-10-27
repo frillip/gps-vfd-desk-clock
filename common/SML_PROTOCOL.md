@@ -96,7 +96,7 @@ The PIC has to cope with an ESP that does not speak SML, so its link has two mod
 | **TEXT** (start-up default) | Console text, raw | SML frames are parsed and acted on. Anything else is counted as noise |
 | **SML** | Console text inside STAT-DEBUG frames, plus the per-epoch state messages | SML frames |
 
-The PIC switches to SML mode, permanently until it resets, on the **first valid SML frame from the ESP**. An SML-speaking ESP announces itself by sending any frame soon after it starts. CMD-USER `INFO` is the recommended one, because it also returns the PIC's full diagnostics. Building the PIC with `-DESP_LINK_START_SML=1` makes it start in SML mode.
+The PIC switches to SML mode, permanently until it resets, on the **first valid SML frame from the ESP**. An SML-speaking ESP announces itself by sending any frame soon after it starts. CMD-USER `SHOW` with `SML_SHOW_ALL` is the recommended one, because it also returns the PIC's full diagnostics. Building the PIC with `-DESP_LINK_START_SML=1` makes it start in SML mode.
 
 Traffic from old 0x83 firmware is harmless noise to an SML receiver. The chance of one of those messages passing for an SML frame is about 2⁻¹⁶ per false sync, and it would also need the right class, ID and length to be acted on.
 
@@ -610,7 +610,7 @@ Each entry is 24 bytes, and entry *k* starts at offset 12 + 24k.
 | 16 | phase_ns | i32 | The PIC's epoch minus the source's UTC second, ns (`PHASE_VALID`) |
 | 20 | age_s | u32 | Seconds since its last GOOD epoch; for holdover, since the loop last steered. 0xFFFFFFFF: never |
 
-The PIC sends STAT-SOURCES when the selection, the second choice, the sync state or any verdict changes (at most once an epoch), every 10 seconds, and in answer to `SHOW_SOURCES`, just before the ACK. On the ESP, `pic-show-sources` prints it as a table.
+The PIC sends STAT-SOURCES when the selection, the second choice, the sync state or any verdict changes (at most once an epoch), every 10 seconds, and in answer to `REQUEST_MESSAGE` for it, just before the ACK. On the ESP, `sources` asks for it and prints it as a table.
 
 ## STAT-SYS (0x60)
 
@@ -642,54 +642,53 @@ _One command. Both ways, 10 bytes._
 | 4 | token | u16 | Chosen by the sender, echoed in the response |
 | 6 | argument | u32 | Per command; signed values in two's complement |
 
-The command codes are fixed wire values, independent of the ESP's own `USER_CMD` text-command enum. Codes below 0x8000 run on the **PIC** and are sent by the ESP. Codes from 0x8000 (`SML_USER_ESP_FIRST`) run on the **ESP** and are sent by the PIC, from its menu for example. A receiver given a code from the other half answers NACK `UNSUPPORTED`.
+Codes below 0x8000 run on the **PIC** and are sent by the ESP. Codes from 0x8000 (`SML_USER_ESP_FIRST`) run on the **ESP** and are sent by the PIC, from its menu for example. A receiver given a code from the other half answers NACK `UNSUPPORTED`. Where the two halves do the same thing, they share the low byte: `SAVE` is 0x0010 and `ESP_SAVE` 0x8010.
+
+Settings are not commands. Each end changes the PIC's settings by writing them whole with [CMD-SETTINGS](#cmd-settings-0x30), against the revision it last saw, so a change from the menu and one from the console cannot overwrite each other unseen.
 
 Commands run by the PIC:
 
 | Code | Command | Argument | V2+ PIC |
 | --- | --- | --- | --- |
-| 0x0001 | `INFO` | — | ✓ Prints every module's diagnostics as STAT-DEBUG, then ACK |
+| 0x0001 | `SHOW` | `SML_SHOW_*` topic, \| `SML_SHOW_VERBOSE` (0x0100) | ✓ Prints the topic as STAT-DEBUG, then ACK: what each module is doing, in words, or with `SML_SHOW_VERBOSE` its counters and internals too. An unknown topic, or another bit set, is NACK `ARGUMENT` |
 | 0x0002 | `REQUEST_MESSAGE` | class << 8 \| ID (upper 16 bits zero) | ✓ For TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI, STAT-ENV, STAT-SOURCES, STAT-SETTINGS and STAT-SYS: the message, then ACK. Others: NACK UNSUPPORTED |
-| 0x0010 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
-| 0x0011 | `RESET` | — | ✓ ACK, flush, then software reset |
+| 0x0010 | `SAVE` | — | ✓ ACCEPTED, then ACK once the settings (and the debug mask, and the oscillator) are stored, within a second or so, or NACK `STORAGE` / `VERIFY`. NACK `BUSY` while one is under way |
+| 0x0011 | `DEFAULTS` | — | ✓ Applies the factory settings, and the debug mask none, to the running settings, then ACK. Nothing is stored until `SAVE` |
 | 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 to the nearest second (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY while the RTC source is searching or setting it. The RTC is printed once read back and its second found again. The clock's own time is not changed, but while it is synchronised its next check (every 6 hours) sets the RTC back to the clock's time |
-| 0x0030 | `SET_TZ_OFFSET` | Manual base offset, signed s | ✓ Within ±86399 |
-| 0x0031 | `SET_TZ_AUTO` | 0/1 | ✓ |
-| 0x0032 | `SET_DST_OFFSET` | Manual DST amount, signed s | ✓ Within ±86399 |
-| 0x0033 | `SET_DST_AUTO` | 0/1 | ✓ See [What the PIC takes from it](#what-the-pic-takes-from-it) |
-| 0x0034 | `SET_DST_ACTIVE` | 0/1 | ✓ Manual mode |
-| 0x0040 | `SET_FOSC` | Hz | ✓ The stored oscillator frequency, within 1000ppm of 40MHz. Kept only, so far: the control loop does not start from it yet |
-| 0x0050 | `SET_ALARM_ENABLE` | 0/1 | NACK UNSUPPORTED (UI) |
-| 0x0051 | `SET_ALARM` | Seconds of day | NACK UNSUPPORTED (UI) |
-| 0x0052 | `SET_DELTA` | UTC epoch | NACK UNSUPPORTED (UI) |
-| 0x0053 | `SET_BEEP` | 0/1 | ✓ Quarter-hour chimes (the hour counted out on the hour) and button clicks, as V2 |
-| 0x0060 | `SET_DISPLAY` | `SML_DISPLAY_*` | ✓ HHMM. Other selectable modes UNSUPPORTED, runtime-only values ARGUMENT |
-| 0x0061 | `SET_BRI_AUTO` | Ignored (send 0) | ✓ Brightness from the light sensor, as V2's `pic-set-brightness-auto`. `SET_BRIGHTNESS` turns it off |
-| 0x0062 | `SET_BRIGHTNESS` | 0–4000 | ✓ Manual brightness, and auto off: below 200 the tubes are off, above 3800 lit continuously |
-| 0x0070 | `SHOW_SETTINGS` | — | ✓ Prints what is stored (the settings, the time zone schedule, the store and flash timings) as STAT-DEBUG, sends STAT-SETTINGS, then ACK |
-| 0x0071 | `SHOW_CONFIG` | — | ✓ Prints the running settings as STAT-DEBUG, then ACK |
-| 0x0072 | `DEFAULTS` | — | ✓ Applies the factory settings (debug mask none) and saves them: ACCEPTED, then as `SAVE` |
-| 0x0073 | `SAVE` | — | ✓ ACCEPTED, then ACK once stored (within a second or so), or NACK `STORAGE` / `VERIFY`. NACK `BUSY` while one is under way |
-| 0x0074 | `SHOW_SOURCES` | — | ✓ STAT-SOURCES, then ACK |
-| 0x0080 | `ENTER_BOOTLOADER` | — | Reserved for the bootloader. NACK UNSUPPORTED |
-| 0x0090 | `SET_DEBUG` | clear << 16 \| set, `SML_DEBUG_*` bits | ✓ See below. Setting a bit outside `SML_DEBUG_ALL` is NACK `ARGUMENT`; clearing any is fine (0xFFFF clears all) |
+| 0x0021 | `SET_DEBUG` | clear << 16 \| set, `SML_DEBUG_*` bits | ✓ See below. Setting a bit outside `SML_DEBUG_ALL` is NACK `ARGUMENT`; clearing any is fine (0xFFFF clears all) |
+| 0x0030 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
+| 0x0031 | `RESET` | — | ✓ ACK, flush, then software reset |
+| 0x0032 | `ENTER_BOOTLOADER` | — | Reserved for the bootloader. NACK UNSUPPORTED |
 
-On the V2+ PIC, settings changed by command are applied at once, and kept over a reset once saved (`SAVE`, `DEFAULTS`, or CMD-SETTINGS with `SML_WRITE_PERSIST`), as on V2. STAT-SETTINGS shows `DIRTY` until then. The debug mask (`SET_DEBUG`) is saved with them, though it is not in the settings body and does not change the revision.
+`SHOW` topics:
 
-`SET_DEBUG` changes which of the PIC's periodic diagnostics are printed: the new mask is (old & ~clear) | set, using the bits under [Debug subsystems](#debug-subsystems). An argument of 0 changes nothing. Either way the PIC answers ACK and prints the resulting mask, by name, as STAT-DEBUG text, whatever the mask is. State changes and warnings are always printed. On the ESP, `pic-debug-enable [names]` sets bits, `pic-debug-disable [names]` clears them (all of them, without names), and `pic-debug [names]` sets the mask exactly, or with no names only shows it.
+| Topic | Name | The V2+ PIC prints |
+| --- | --- | --- |
+| 0 | `SML_SHOW_ALL` | Every module: system, synchroniser, GNSS, display, time zone, settings, RTC, light sensor, brightness, controls, I2C and the ESP link. The ESP sends this at start |
+| 1 | `SML_SHOW_STORED` | What is in flash: the settings, the time zone schedule, the oscillator, the store and the flash timings |
+| 2 | `SML_SHOW_TZ` | The offset in force, where it comes from, and the schedule held |
+| 3 | `SML_SHOW_DISPLAY` | The display mode, brightness, light sensor, button and switch |
+| 4 | `SML_SHOW_RTC` | The RTC chip, and the RTC source: its second, rate and checks |
+| 5 | `SML_SHOW_OSC` | The oscillator: the stored baseline, the frequency the loop has measured, and what is in flash |
+| 6 | `SML_SHOW_GNSS` | The receiver |
+
+Running settings, written by CMD-SETTINGS or from the menu, take effect at once and are kept over a reset only once saved (`SAVE`, or CMD-SETTINGS with `SML_WRITE_PERSIST`). STAT-SETTINGS shows `DIRTY` until then. The debug mask (`SET_DEBUG`) is saved with them, though it is not in the settings body and does not change the revision.
+
+`SET_DEBUG` changes which of the PIC's periodic diagnostics are printed: the new mask is (old & ~clear) | set, using the bits under [Debug subsystems](#debug-subsystems). An argument of 0 changes nothing. Either way the PIC answers ACK and prints the resulting mask, by name, as STAT-DEBUG text, whatever the mask is. State changes and warnings are always printed.
 
 Commands run by the ESP:
 
 | Code | Command | Argument | Purpose |
 | --- | --- | --- | --- |
-| 0x8010 | `ESP_RESET` | — | Restart the ESP |
-| 0x8020 | `ESP_WIFI_CLEAR` | — | Forget the WiFi credentials (V2 menu: reset WiFi) |
-| 0x8021 | `ESP_WIFI_SETUP` | — | Start the setup access point |
-| 0x8030 | `ESP_NTP_RESYNC` | — | Query NTP now |
-| 0x8040 | `ESP_TZINFO_ENABLE` | 0/1 | Remote timezone lookup on or off |
-| 0x8041 | `ESP_TZINFO_UPDATE` | — | Look up the timezone now |
-| 0x8050 | `ESP_UPDATE_CHECK` | — | Check for firmware updates |
-| 0x80F0 | `ESP_DEFAULTS` | — | Clear the ESP configuration (V2 menu: reset all, ESP part) |
+| 0x8010 | `ESP_SAVE` | — | Save the ESP's settings |
+| 0x8011 | `ESP_DEFAULTS` | — | The ESP's default settings, running only, until `ESP_SAVE` |
+| 0x8031 | `ESP_RESET` | — | Restart the ESP, after the ACK |
+| 0x8040 | `ESP_NTP_SYNC` | — | Poll NTP now |
+| 0x8050 | `ESP_TZ_REMOTE` | 0/1 | Remote time zone lookups on or off (running, until `ESP_SAVE`) |
+| 0x8051 | `ESP_TZ_LOOKUP` | — | Look the time zone up now, and use it. NACK `STATE` if the lookup fails |
+| 0x8060 | `ESP_WIFI_FORGET` | — | Forget the WiFi credentials, and restart after the ACK (V2 menu: reset WiFi) |
+| 0x8061 | `ESP_WIFI_SETUP` | — | Start the setup access point |
+| 0x8070 | `ESP_UPDATE_CHECK` | — | Check for a firmware update |
 
 The V2+ PIC sends these with `esp_link_request()`, which numbers the tokens itself (never 0), and keeps the ESP's latest CMD-RESPONSE for `esp_link_response()`. Nothing is sent in TEXT mode, where the ESP would not understand it.
 
@@ -721,7 +720,9 @@ _Write every setting. ESP→PIC, 38 bytes._
 
 The PIC validates every field, then applies them all together and increments the revision. A failure on any field rejects the whole write. A write whose `expected_revision` is not the current revision is rejected with `STALE_REVISION`, so the ESP never overwrites a change it has not seen; on ACK the response carries the new revision.
 
-When the EEPROM is written is up to the PIC, and periodic snapshots never drive it. The V2+ PIC checks every field as for the single commands (a display mode not ported yet is NACK `UNSUPPORTED`, a reserved bit or field set is `ARGUMENT`, another schema `SCHEMA`), and on `SML_WRITE_PERSIST` writes its flash at the next quiet moment, within a second or so. The ACK does not wait for that write.
+When the flash is written is up to the PIC, and periodic snapshots never drive it. The V2+ PIC checks every field: offsets within ±86399s, the oscillator baseline within 1000ppm of 40MHz, the alarm below 86400s, brightness 0–4000, and a selectable display mode (one not ported yet, anything but HHMM so far, is NACK `UNSUPPORTED`). A reserved bit or field set is `ARGUMENT`, another schema `SCHEMA`. The alarm, delta and 12-hour settings are kept, though the V2+ UI does not use them yet. On `SML_WRITE_PERSIST` it writes its flash at the next quiet moment, within a second or so. The ACK does not wait for that write.
+
+The ESP keeps the latest STAT-SETTINGS, and changes one setting by writing that body back with the one field changed. A change made while its previous write is unanswered is folded into the same body and sent once that answer arrives, with the new revision it carries, so a burst of changes never meets `STALE_REVISION`. After a NACK, or no answer, the ESP asks for STAT-SETTINGS again (`REQUEST_MESSAGE`) and drops any change still waiting.
 
 # Implementation notes
 
@@ -754,7 +755,7 @@ Each message has an entry in a table with its class, ID, fixed length (0 for STA
 
 ## ESP
 
-The ESP side is described in the [ESP firmware README](../esp_src/README.md). In outline, it announces SML mode with CMD-USER `INFO` at start, treats STAT-DEBUG and any text outside frames as console output, pairs each TIME-AUTH with the epoch edge captured on GPIO27, sends TIME-NTP after every ESP PPS edge, STAT-NET on change and every 10 seconds, TZ-STATE and TIME-LEAP as described above, and answers the PIC's `SML_USER_ESP_*` commands.
+The ESP side is described in the [ESP firmware README](../esp_src/README.md). In outline, it announces SML mode with CMD-USER `SHOW` (`SML_SHOW_ALL`) at start, treats STAT-DEBUG and any text outside frames as console output, pairs each TIME-AUTH with the epoch edge captured on GPIO27, sends TIME-NTP after every ESP PPS edge, STAT-NET on change and every 10 seconds, TZ-STATE and TIME-LEAP as described above, and answers the PIC's `SML_USER_ESP_*` commands.
 
 The ESP's NTP clock slews each routine correction in at 5ppm or less over about two poll intervals, and polls more often while its corrections are large (from 128 seconds up to `ntp.interval`). A step or a faster slew sets TIME-NTP `CORRECTING`.
 
@@ -787,9 +788,9 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI | PIC | Every epoch, in this order, within a few ms of the edge (SML mode only) |
 | STAT-ENV | PIC | Every epoch numbered a multiple of 5, after STAT-SOURCES |
 | TIME-RTC, STAT-SUPPLY, TIME-VCTCXO | PIC | Once ported: RTC and VCTCXO every epoch, the supply every few seconds |
-| STAT-SETTINGS | PIC | First epoch in SML mode, whenever the revision or the flags change (at most once an epoch, before STAT-SYS), and before the ACK to `SHOW_SETTINGS` |
+| STAT-SETTINGS | PIC | First epoch in SML mode, whenever the revision or the flags change (at most once an epoch, before STAT-SYS), and before the ACK to a `REQUEST_MESSAGE` for it |
 | STAT-DEBUG | PIC | As text is produced |
-| STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to `SHOW_SOURCES` |
+| STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to a `REQUEST_MESSAGE` for it |
 | STAT-SYS | PIC | Every epoch in SML mode, after STAT-SOURCES |
 | CMD-RESPONSE | Both | One per CMD-USER or CMD-SETTINGS received, plus a final one for each ACCEPTED |
 | CMD-USER (ESP codes) | PIC | On demand, from the menu |
@@ -797,7 +798,7 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | TIME-NTP | ESP | After each ESP PPS edge while it has time |
 | TIME-LEAP | ESP | On change, and every ~10 minutes |
 | TZ-STATE | ESP | On change, whenever STAT-UI shows `TZ_HELD` clear, and every ~10 minutes |
-| CMD-USER | ESP | On demand; `INFO` once at start |
+| CMD-USER | ESP | On demand; `SHOW` (`SML_SHOW_ALL`) once at start |
 
 # Constants
 
@@ -951,7 +952,7 @@ The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. The
 
 ## Debug subsystems
 
-`SML_DEBUG_*`, the bits of `SET_DEBUG`. Each gates periodic console output on the PIC.
+`SML_DEBUG_*`, the bits of `SET_DEBUG`. Each gates console output on the PIC; unasked, it prints only its start-up line and faults.
 
 | Bit | Name | Output |
 | --- | --- | --- |
@@ -962,6 +963,8 @@ The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. The
 | 0x0010 | NTP | Per epoch: the latest TIME-NTP and its pairing |
 | 0x0020 | MINUTE | Each minute: scheduler, GNSS and sync reports |
 | 0x0040 | TUNING | Each minute: loop and source statistics |
+| 0x0080 | RTC | As they happen: the RTC set, its second searched for, a stopped RTC released |
+| 0x0100 | EVENTS | As they happen: sync state changes, button and switch, the light sensor found |
 
 ## Reset causes
 
@@ -1003,10 +1006,10 @@ These frames are produced by the reference codec. Any implementation should repr
 B5 73 10 01 00 10 00 07 05 02 6A D4 BC F0 FF FF FF 6A 00 00 00 4B 0F F3
 ```
 
-**CMD-USER**: `SET_TZ_OFFSET` −18000s (UTC−5), token 0x1234.
+**CMD-USER**: `SET_RTC` 2026-10-18T12:34:56Z (1792326896), token 0x1234.
 
 ```
-B5 73 80 10 00 0A 00 30 00 00 12 34 FF FF B9 B0 11 76
+B5 73 80 10 00 0A 00 20 00 00 12 34 6A D4 BC F0 F9 54
 ```
 
 **STAT-DEBUG**: the text `"Hi\r\n"`.
@@ -1035,7 +1038,7 @@ The `SML_MENU_*` values beyond NONE are frozen once the V2+ menu exists.
 
 `RESYNC` still needs defining. It could restart the control loop, re-qualify sources, or both, and is best settled alongside the NTP source.
 
-NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SHOW_SOURCES`, `SET_DEBUG` and TIME-PIC `second_source` are implemented at both ends. While TIME-NTP has `CORRECTING` set, the PIC holds its frequency estimate (the servo integral) and works the phase off with its proportional term alone; routine gentle corrections are simply followed.
+NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SET_DEBUG` and TIME-PIC `second_source` are implemented at both ends. While TIME-NTP has `CORRECTING` set, the PIC holds its frequency estimate (the servo integral) and works the phase off with its proportional term alone; routine gentle corrections are simply followed.
 
 The bootloader class (0xF0) is reserved but not defined, and will be specified separately after the V2+ work.
 
@@ -1049,6 +1052,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-27 (2.0) | CMD-USER rationalised, a breaking change at both ends. The `SET_*` setting commands are gone: settings are written whole with CMD-SETTINGS. `INFO`, `SHOW_CONFIG` and `SHOW_SETTINGS` become `SHOW` with an `SML_SHOW_*` topic; `SHOW_SOURCES` becomes `REQUEST_MESSAGE` for STAT-SOURCES. `SHOW` prints briefly, or everything with `SML_SHOW_VERBOSE`. The remaining codes are renumbered, the two halves sharing the low byte where they do the same thing. The ESP's codes are renamed after the console's words (`ESP_NTP_SYNC`, `ESP_TZ_REMOTE`, `ESP_TZ_LOOKUP`, `ESP_WIFI_FORGET`), with `ESP_SAVE` added. `DEFAULTS` and `ESP_DEFAULTS` no longer save, and `ESP_TZ_REMOTE` no longer saves: `SAVE` and `ESP_SAVE` do. `SML_DEBUG_RTC` (0x0080) and `SML_DEBUG_EVENTS` (0x0100): the PIC's RTC and state-change messages, printed until now whatever the mask. Golden CMD-USER frame replaced |
 | 2026-10-26 | STAT-UI flag bit 3 is `BRIGHTNESS_AUTO` (was `BRIGHTNESS_MANUAL`), and STAT-SETTINGS / CMD-SETTINGS settings flag bit 6 `BRI_AUTO` (was `BRI_MANUAL`): the same bits, the opposite sense, automatic brightness being the default. `SET_BRIGHTNESS` takes 0–4000 and turns auto off; `SET_BRI_AUTO` turns it on. The V2+ PIC sends STAT-ENV (light only) |
 | 2026-10-23 | Document only, no wire change. The V2+ PIC implements STAT-SETTINGS, CMD-SETTINGS, `SAVE`, `DEFAULTS`, `SHOW_SETTINGS`, `SHOW_CONFIG` and `SET_FOSC`, and CMD-RESPONSE `settings_revision`. The TZ-STATE schedule is kept over a reset |
 | 2026-10-21 (1.4) | STAT-SYS (0x60, PIC→ESP, 16 bytes): firmware version, uptime, reset cause (`SML_RESET_*`) and the longest main-loop pass. No existing layout changes |

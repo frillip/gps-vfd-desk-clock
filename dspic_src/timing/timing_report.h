@@ -5,8 +5,9 @@
 #include "epoch_control.h"
 #include "timing.h"
 
-// The start-up capture timebase check.
-void timing_report_sync(const PpsCaptureSync *sync);
+// The start-up capture timebase check: a failure always, the captures and
+// the outcome with detail.
+void timing_report_sync(const PpsCaptureSync *sync, bool detail);
 
 // One epoch: three lines after a measurement, one otherwise.
 void timing_report_epoch(const TimingSnapshot *snapshot, const EpochUpdate *update);

@@ -1,6 +1,6 @@
 /*
  * When the buzzer sounds (drivers/buzzer.h plays it): with the beeps
- * setting on (SML_SETTING_BEEP_ENABLED, pic-set-beeps), as V2:
+ * setting on (SML_SETTING_BEEP_ENABLED, the ESP's "beeps on"), as V2:
  *
  *   chimes  every quarter hour of local time, at the start of the second:
  *           one beep, or on the hour the hour on a 12-hour count (1 to 12,

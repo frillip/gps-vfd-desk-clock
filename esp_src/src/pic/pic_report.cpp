@@ -12,39 +12,25 @@ typedef struct
 } Name;
 
 static const Name commands[] = {
-    {SML_USER_INFO, "INFO"},
+    {SML_USER_SHOW, "SHOW"},
     {SML_USER_REQUEST_MESSAGE, "REQUEST_MESSAGE"},
+    {SML_USER_SAVE, "SAVE"},
+    {SML_USER_DEFAULTS, "DEFAULTS"},
+    {SML_USER_SET_RTC, "SET_RTC"},
+    {SML_USER_SET_DEBUG, "SET_DEBUG"},
     {SML_USER_RESYNC, "RESYNC"},
     {SML_USER_RESET, "RESET"},
-    {SML_USER_SET_RTC, "SET_RTC"},
-    {SML_USER_SET_TZ_OFFSET, "SET_TZ_OFFSET"},
-    {SML_USER_SET_TZ_AUTO, "SET_TZ_AUTO"},
-    {SML_USER_SET_DST_OFFSET, "SET_DST_OFFSET"},
-    {SML_USER_SET_DST_AUTO, "SET_DST_AUTO"},
-    {SML_USER_SET_DST_ACTIVE, "SET_DST_ACTIVE"},
-    {SML_USER_SET_FOSC, "SET_FOSC"},
-    {SML_USER_SET_ALARM_ENABLE, "SET_ALARM_ENABLE"},
-    {SML_USER_SET_ALARM, "SET_ALARM"},
-    {SML_USER_SET_DELTA, "SET_DELTA"},
-    {SML_USER_SET_BEEP, "SET_BEEP"},
-    {SML_USER_SET_DISPLAY, "SET_DISPLAY"},
-    {SML_USER_SET_BRI_AUTO, "SET_BRI_AUTO"},
-    {SML_USER_SET_BRIGHTNESS, "SET_BRIGHTNESS"},
-    {SML_USER_SHOW_SETTINGS, "SHOW_SETTINGS"},
-    {SML_USER_SHOW_CONFIG, "SHOW_CONFIG"},
-    {SML_USER_DEFAULTS, "DEFAULTS"},
-    {SML_USER_SAVE, "SAVE"},
-    {SML_USER_SHOW_SOURCES, "SHOW_SOURCES"},
     {SML_USER_ENTER_BOOTLOADER, "ENTER_BOOTLOADER"},
-    {SML_USER_SET_DEBUG, "SET_DEBUG"},
-    {SML_USER_ESP_RESET, "ESP_RESET"},
-    {SML_USER_ESP_WIFI_CLEAR, "ESP_WIFI_CLEAR"},
-    {SML_USER_ESP_WIFI_SETUP, "ESP_WIFI_SETUP"},
-    {SML_USER_ESP_NTP_RESYNC, "ESP_NTP_RESYNC"},
-    {SML_USER_ESP_TZINFO_ENABLE, "ESP_TZINFO_ENABLE"},
-    {SML_USER_ESP_TZINFO_UPDATE, "ESP_TZINFO_UPDATE"},
-    {SML_USER_ESP_UPDATE_CHECK, "ESP_UPDATE_CHECK"},
+    {SML_OPERATION_SETTINGS_WRITE, "settings"},
+    {SML_USER_ESP_SAVE, "ESP_SAVE"},
     {SML_USER_ESP_DEFAULTS, "ESP_DEFAULTS"},
+    {SML_USER_ESP_RESET, "ESP_RESET"},
+    {SML_USER_ESP_NTP_SYNC, "ESP_NTP_SYNC"},
+    {SML_USER_ESP_TZ_REMOTE, "ESP_TZ_REMOTE"},
+    {SML_USER_ESP_TZ_LOOKUP, "ESP_TZ_LOOKUP"},
+    {SML_USER_ESP_WIFI_FORGET, "ESP_WIFI_FORGET"},
+    {SML_USER_ESP_WIFI_SETUP, "ESP_WIFI_SETUP"},
+    {SML_USER_ESP_UPDATE_CHECK, "ESP_UPDATE_CHECK"},
 };
 
 static const char *lookup(const Name *names, size_t count, uint16_t code)
@@ -61,12 +47,10 @@ static const char *lookup(const Name *names, size_t count, uint16_t code)
     return "?";
 }
 
-
 const char *pic_report_command_name(uint16_t command)
 {
     return lookup(commands, sizeof(commands) / sizeof(commands[0]), command);
 }
-
 
 const char *pic_report_result_name(uint16_t result)
 {
@@ -74,7 +58,6 @@ const char *pic_report_result_name(uint16_t result)
 
     return result < 3 ? names[result] : "?";
 }
-
 
 const char *pic_report_error_name(uint16_t error)
 {
@@ -85,14 +68,12 @@ const char *pic_report_error_name(uint16_t error)
     return error < 10 ? names[error] : "?";
 }
 
-
 const char *pic_report_source_name(uint8_t source)
 {
     static const char *const names[] = {"INIT", "NONE", "RTC", "ESP", "NTP", "GNSS", "HOLDOVER"};
 
     return source < 7 ? names[source] : "?";
 }
-
 
 const char *pic_report_lock_name(uint8_t lock)
 {
@@ -102,7 +83,6 @@ const char *pic_report_lock_name(uint8_t lock)
     return lock < 5 ? names[lock] : "?";
 }
 
-
 const char *pic_report_tz_source_name(uint8_t source)
 {
     static const char *const names[] = {"NONE",   "CACHE",  "GEOIP",  "GNSS",
@@ -110,7 +90,6 @@ const char *pic_report_tz_source_name(uint8_t source)
 
     return source < 7 ? names[source] : "?";
 }
-
 
 const char *pic_report_reset_name(uint16_t cause)
 {
@@ -142,13 +121,11 @@ const char *pic_report_reset_name(uint16_t cause)
     return "unknown";
 }
 
-
 void pic_report_version(char *text, size_t size, uint32_t version)
 {
     snprintf(text, size, "%lu.%lu.%lu", (unsigned long)(version >> 16),
              (unsigned long)((version >> 8) & 0xFFU), (unsigned long)(version & 0xFFU));
 }
-
 
 static const char *sync_name(uint8_t state)
 {
@@ -156,7 +133,6 @@ static const char *sync_name(uint8_t state)
 
     return state < 5 ? names[state] : "?";
 }
-
 
 static const char *cause_name(uint8_t cause)
 {
@@ -167,14 +143,12 @@ static const char *cause_name(uint8_t cause)
     return cause < 9 ? names[cause] : "?";
 }
 
-
 static const char *control_name(uint8_t state)
 {
     static const char *const names[] = {"INIT", "ACQUIRE", "STEP", "TRACK"};
 
     return state < 4 ? names[state] : "?";
 }
-
 
 static const char *verdict_name(uint8_t verdict)
 {
@@ -184,15 +158,12 @@ static const char *verdict_name(uint8_t verdict)
     return verdict < 8 ? names[verdict] : "?";
 }
 
-
 static const char *fix_name(uint8_t fix)
 {
-    static const char *const names[] = {"no fix", "dead reckoning", "2D",
-                                        "3D",     "GNSS + DR",      "time only"};
+    static const char *const names[] = {"NO_FIX", "DR", "2D", "3D", "GNSS+DR", "TIME_ONLY"};
 
     return fix < 6 ? names[fix] : "?";
 }
-
 
 static void print_local(Stream *output, const SML_TIME_AUTH_PAYLOAD *auth, bool verbose)
 {
@@ -226,7 +197,6 @@ static void print_local(Stream *output, const SML_TIME_AUTH_PAYLOAD *auth, bool 
                    (ui.flags & SML_UI_TZ_AMBIGUOUS) ? ", AMBIGUOUS" : "");
 }
 
-
 // Compact: "PIC:      0.1.0, up 00:12:31, last reset: power-on"; verbose
 // adds the reset bits and the longest main-loop pass.
 static void print_system(Stream *output, bool verbose)
@@ -259,7 +229,6 @@ static void print_system(Stream *output, bool verbose)
                    sys.reset_cause);
     output->printf("Loop:     longest pass %u ms in the last second\n", sys.loop_max_ms);
 }
-
 
 // Compact: "UTC:      <UTC> +/-120 ns, GNSS LOCKED" and the local time.
 static void print_time(Stream *output, bool verbose)
@@ -327,7 +296,6 @@ static void print_time(Stream *output, bool verbose)
     }
 }
 
-
 static void print_sync(Stream *output)
 {
     SML_TIME_PIC_PAYLOAD pic;
@@ -368,7 +336,6 @@ static void print_sync(Stream *output)
     }
 }
 
-
 // Compact: the loop's oscillator estimate, as chronyc tracking's frequency.
 static void print_oscillator(Stream *output)
 {
@@ -383,7 +350,6 @@ static void print_oscillator(Stream *output)
                        control_name(ctrl.controller_state));
     }
 }
-
 
 static void print_gnss(Stream *output, bool verbose)
 {
@@ -433,7 +399,6 @@ static void print_gnss(Stream *output, bool verbose)
     }
 }
 
-
 // A bound in the units that suit it, or "-".
 static void print_bound(Stream *output, bool valid, uint32_t ns)
 {
@@ -455,7 +420,6 @@ static void print_bound(Stream *output, bool valid, uint32_t ns)
         output->printf("%8.1f ms", (float)ns / 1000000.0f);
     }
 }
-
 
 // A phase, signed, in the units that suit it, or "-".
 static void print_phase(Stream *output, bool valid, int32_t ns)
@@ -479,7 +443,6 @@ static void print_phase(Stream *output, bool valid, int32_t ns)
         output->printf(" %+8.1f ms", (float)ns / 1000000.0f);
     }
 }
-
 
 // An age as chronyc prints one: 12s, 5m, 3h, 2d; "never" for UINT32_MAX.
 static void print_age(Stream *output, uint32_t seconds)
@@ -509,12 +472,10 @@ static void print_age(Stream *output, uint32_t seconds)
     output->printf("%9s", text);
 }
 
-
 static bool real_source(uint8_t source)
 {
     return source != SML_SOURCE_NONE && source != SML_SOURCE_INIT;
 }
-
 
 // Never seen and not a candidate: nothing to say about it unless asked.
 static bool idle_entry(const SML_SOURCE_ENTRY *entry)
@@ -522,7 +483,6 @@ static bool idle_entry(const SML_SOURCE_ENTRY *entry)
     return entry->rank == 0 && entry->age_s == UINT32_MAX &&
            (entry->verdict == SML_VERDICT_NONE || entry->verdict == SML_VERDICT_ABSENT);
 }
-
 
 // "LOCKED on GNSS, synchronised": the state and what it is steered by.
 static void print_sources_state(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sources,
@@ -549,7 +509,6 @@ static void print_sources_state(Stream *output, const SML_STAT_SOURCES_PAYLOAD *
                    (sources->flags & SML_SOURCES_FALLBACK) ? ", fallback" : "");
 }
 
-
 /* chronyc's markers: * in use, + the second choice, x discounted: the PIC
  * has the source's time but judged it unfit, beyond its accuracy limit
  * (INACCURATE) or not following on from its own last label (INCONSISTENT);
@@ -572,7 +531,6 @@ static char source_marker(const SML_STAT_SOURCES_PAYLOAD *sources, const SML_SOU
     }
     return entry->source == sources->second ? '+' : ' ';
 }
-
 
 static void print_source_row(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sources,
                              const SML_SOURCE_ENTRY *entry, bool verbose)
@@ -612,7 +570,6 @@ static void print_source_row(Stream *output, const SML_STAT_SOURCES_PAYLOAD *sou
     }
     output->printf("\n");
 }
-
 
 /*
  * Like chronyc sources: * marks the source in use, + the second choice,
@@ -658,7 +615,6 @@ static void print_sources_table(Stream *output, const SML_STAT_SOURCES_PAYLOAD *
     }
 }
 
-
 void pic_report_print_sources(Stream *output, bool verbose)
 {
     SML_STAT_SOURCES_PAYLOAD sources;
@@ -681,7 +637,6 @@ void pic_report_print_sources(Stream *output, bool verbose)
     print_sources_table(output, &sources, verbose);
 }
 
-
 void pic_report_print_link(Stream *output)
 {
     const PicLinkStats *stats = pic_link_stats();
@@ -703,7 +658,6 @@ void pic_report_print_link(Stream *output)
                    (unsigned long)stats->pairings, (unsigned long)stats->unpaired,
                    (unsigned long)stats->backlogs);
 }
-
 
 void pic_report_print(Stream *output, bool verbose)
 {

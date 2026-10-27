@@ -89,19 +89,19 @@ The ESP does more than fetch the time. It also provides a network console, pulls
 
 ## Telnet console
 
-The same console commands can be issued through the ESP USB-UART connection or over Telnet. This saves having to find a USB cable just to see what the clock is doing. Telnet is disabled by default and uses port 23 unless changed with `esp-telnet-port`. Connect to the clock's WiFi IP address on the configured port. `quit` or `exit` closes the session.
+The same console commands can be issued through the ESP USB-UART connection or over Telnet. This saves having to find a USB cable just to see what the clock is doing. Telnet is disabled by default and uses port 23 unless changed with `telnet port`. Connect to the clock's WiFi IP address on the configured port. `quit` or `exit` closes the session.
 
-There are two separate controls: whether Telnet should start on boot, and whether the listener is running now. `esp-telnet-enable` enables startup and starts the listener when changing from disabled to enabled. `esp-telnet-disable` disables startup but leaves a running listener alone. `esp-telnet-start` and `esp-telnet-stop` control the listener without changing the startup preference. Stopping it leaves an existing session open, so exit that session as well if required. Save the startup preference and port with `esp-save`.
+There are two separate controls: whether Telnet should start on boot, and whether the listener is running now. `telnet on` enables startup and starts the listener when changing from disabled to enabled. `telnet off` disables startup but leaves a running listener alone. `telnet start` and `telnet stop` control the listener without changing the startup preference. Stopping it leaves an existing session open, so exit that session as well if required. Save the startup preference and port with `save`.
 
-The current console has no login and uses plain Telnet, so anyone with access to it can issue the commands. `esp-wifi-info` also prints the saved WiFi passphrase. This is a convenience console for a trusted local network, with USB-UART available when Telnet is disabled. Some form of authentication and general hardening is on the long list of things to be added eventually.
+The current console has no login and uses plain Telnet, so anyone with access to it can issue the commands. `wifi` never prints the saved WiFi passphrase, but the console can still change every setting. This is a convenience console for a trusted local network, with USB-UART available when Telnet is disabled. Some form of authentication and general hardening is on the long list of things to be added eventually.
 
 ## OTA firmware updates
 
 The [ESP updater](esp_src/updater_pull.cpp) can pull firmware over WiFi using an HTTPS update manifest. The hostname and path of the manifest are configurable. An optional configuration string selects an update profile, for example `development`, with `default` clearing that selection.
 
-`esp-update-check` checks what is available without installing anything. `esp-update-pull` installs an applicable update but leaves the ESP running until `esp-reset` completes the change. `esp-update-force` bypasses the normal version comparison, permits downgrades and requests an immediate reboot after installation. Useful when testing, though somewhat more committed than merely checking.
+`update check` checks what is available without installing anything. `update install` installs an applicable update but leaves the ESP running until `esp reset` completes the change. `update install force` bypasses the normal version comparison, permits downgrades and requests an immediate reboot after installation. Useful when testing, though somewhat more committed than merely checking.
 
-Automatic updates are disabled by default. When enabled, the ESP checks during a chosen local hour, defaulting to 04:00, and installs and reboots if an update is available. The scheduler checks the update window every 30 minutes, so this is an hour-long window rather than a promise to update at exactly 04:00:00. Save changes with `esp-save`.
+Automatic updates are disabled by default. When enabled, the ESP checks during a chosen local hour, defaulting to 04:00, and installs and reboots if an update is available. The scheduler checks the update window every 30 minutes, so this is an hour-long window rather than a promise to update at exactly 04:00:00. `update auto 4` turns it on for that hour; save changes with `save`.
 
 This updater only replaces the ESP firmware. A PIC bootloader and firmware update path are still on the pending features list.
 
@@ -111,15 +111,15 @@ _Currently this feature is in development, and requires additional ESP and PIC d
 
 The optional [tzinfo client](esp_src/remote_tzinfo.cpp) asks a separate Python service for the timezone, base UTC offset, DST state and offset, and the next DST transition as a UTC epoch. The ESP passes this information to the dsPIC over UART, where it is available to the clock's automatic timezone/DST handling. NTP still supplies UTC time, whilst tzinfo supplies the rules for displaying local time.
 
-The client is disabled by default. It uses a daily refresh interval. The hostname, path and interval are configurable, so the service can also be self-hosted. `esp-tzinfo-check` fetches and prints the response without making it available for application to the PIC. `esp-tzinfo-update` fetches it and marks a successful response available.
+The client is disabled by default. It uses a daily refresh interval. The hostname, path and interval are configurable, so the service can also be self-hosted. `tz lookup check` fetches and prints the response without making it available for application to the PIC. `tz lookup` fetches it and marks a successful response available.
 
 ## Location privacy
 
-A timezone lookup does not need to know which corner of the desk the clock is on. `esp-tzinfo-set-acc` controls how many decimal places of latitude and longitude are sent, rounding the coordinates before the request leaves the ESP. The default is one decimal place. Increasing this may help near a timezone boundary, but also sends a more precise location.
+A timezone lookup does not need to know which corner of the desk the clock is on. `tz precision` controls how many decimal places of latitude and longitude are sent, rounding the coordinates before the request leaves the ESP. The default is one decimal place. Increasing this may help near a timezone boundary, but also sends a more precise location.
 
 | Setting | Coordinate grid spacing in latitude | Effect |
 | --- | --- | --- |
-| `-1` | No GNSS location supplied | Sends zero coordinates and marks GNSS detection/fix invalid |
+| `none` | No GNSS location supplied | Sends zero coordinates and marks GNSS detection/fix invalid |
 | `0` | About 111km | Whole-degree coordinates |
 | `1` | About 11.1km | Default precision |
 | `2` | About 1.11km | Two decimal places |
@@ -128,130 +128,98 @@ A timezone lookup does not need to know which corner of the desk the clock is on
 | `5` | About 1.11m | Five decimal places |
 | `6` | About 0.111m | Maximum configured precision |
 
-These are grid spacings, not claims about GNSS accuracy. Longitude spacing also depends on latitude. Setting `-1` suppresses GNSS location sharing with this service and leaves IP-based GeoIP lookup as an option on the server. It does not disable local GNSS timekeeping. The server still sees the public IP address of requests, and rounding coordinates does not make them anonymous.
+These are grid spacings, not claims about GNSS accuracy. Longitude spacing also depends on latitude. Setting `none` suppresses GNSS location sharing with this service and leaves IP-based GeoIP lookup as an option on the server. It does not disable local GNSS timekeeping. The server still sees the public IP address of requests, and rounding coordinates does not make them anonymous.
 
-`esp-tzinfo-disable` turns off periodic timezone requests and forwarding of remote timezone information. An explicit `esp-tzinfo-check` or `esp-tzinfo-update` still makes a request even while the feature is disabled. Automatic OTA requests are controlled separately with `esp-update-auto-disable`, and NTP has its own server setting. Save preferences with `esp-save`.
+`tz remote off` turns off periodic timezone requests and forwarding of remote timezone information. An explicit `tz lookup` or `tz lookup check` still makes a request even while the feature is disabled. Automatic OTA requests are controlled separately with `update auto off`, and NTP has its own server setting. Save preferences with `save`.
 
 # Console commands
 
-Commands can be issued via the ESP USB-UART console at 115200 baud or through Telnet when running. One command per line. Pressing return on an empty line prints the available diagnostics, which may or may not be useful. `help` prints the built-in command list.
+Commands can be issued via the ESP USB-UART console or through Telnet when running. One command per line. Pressing return on an empty line prints a brief status. `help` lists the commands, and `help <command>` what each one takes.
 
-Arguments below use `[n]` for a number, `[s]` for text, `[b]` for a boolean and `[e]` for a display selection. Commands marked **Not implemented** are recognised by the parser but currently only print that message. Their presence in `help` does not make them work, unfortunately.
+Every command follows the same pattern:
 
-Changes to ESP preferences require `esp-save` to persist. PIC settings use `pic-save`. The commands that clear WiFi or all ESP settings also restart the ESP as described below.
+| Form | Does |
+| --- | --- |
+| `<command>` | Show it; `-v` at the end of any command that shows something shows everything, counters and internals included |
+| `<command> <setting>` | Show that setting |
+| `<command> <setting> <value>` | Change it |
+| `<command> <action> [option]` | Do something |
 
-## Diagnostics and resets
+A command that is itself a setting takes its value directly, as in `brightness auto` or `beeps on`. Changes take effect at once, on whichever chip holds them, and are kept over a reset once saved with `save`. `defaults` puts the default settings in force without saving them, so a restart brings back what was saved, should the defaults turn out to be less charming than expected.
+
+Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5:30` or `-1`, times of day as `07:30`, intervals as `1024`, `17m`, `1h` or `1d`, and moments as `2026-10-27T15:00Z`, `2026-10-27 16:00+01:00` or Unix seconds. A moment without an offset is UTC.
+
+## Both chips
 
 | Command | Description |
 | --- | --- |
-| Enter on an empty line | Print a brief status: time, sources, NTP, time zone and links (everything with `verbose on`) |
+| Enter on an empty line | A brief status: time, sources, NTP, time zone and links (everything with `verbose on`) |
 | `status [-v]` | The same; `-v` prints everything |
-| `verbose [b]` | Print everything by default, until restart |
-| `help` | Print the complete built-in help text, per-command help is not implemented |
-| `esp-reset` | Restart the ESP, also completes an update installed with `esp-update-pull` |
-| `pic-info [-v]` | Request diagnostics directly from the PIC |
-| `pic-reset` | Restart the PIC |
-| `rst-all` | Request a PIC reset and restart the ESP |
-| `rst-pic` | Same as `pic-reset` |
-| `rst-esp` | Same as `esp-reset` |
+| `help [command]` | The commands, or what one takes |
+| `save` | Save the settings of both chips |
+| `defaults` | The default settings on both chips, in force but not saved |
+| `reset` | Reset the PIC and restart the ESP |
+| `verbose on\|off` | Print everything by default, until restart |
 | `quit` / `exit` | Disconnect the current Telnet session, Telnet only |
 
-## NTP
+## The clock
 
 | Command | Description |
 | --- | --- |
-| `esp-ntp-info [-v]` | Print NTP sync status, server and last sync time; `-v` adds the interval, frequency, slew and counters |
-| `esp-ntp-set-interval [n]` | Set NTP resync interval in seconds, valid saved-preference range 300–86400, default 1800 |
-| `esp-ntp-set-server [s]` | Test and select an NTP server |
-| `esp-ntp-resync` | Force an NTP query and realign ESP timing |
+| `tz [-v]` | The time zone: the offset in force and where it comes from, DST, the schedule, leap seconds and lookups |
+| `tz offset auto\|±hh:mm` | Base offset from the time zone, or a manual one |
+| `tz dst auto\|on\|off` | DST from the time zone, or manually on or off |
+| `tz dst-offset ±hh:mm` | The manual DST amount |
+| `tz lookup [check]` | Look the time zone up now and use it; `check` only prints the answer |
+| `tz remote on\|off` | Periodic lookups from the tzinfo service |
+| `tz server <host>`, `tz path <path>` | The tzinfo service |
+| `tz interval <time>` | Time between lookups, 15m–7d, default 1d |
+| `tz precision none\|0..6` | Decimal places of position sent, see [Location privacy](#location-privacy) |
+| `display [-v]` | The display mode, 12/24 hours, brightness, light sensor, button and switch |
+| `display hhmm\|mmss\|ssmm\|yyyy\|mmdd\|delta` | The display mode. Only HHMM so far: the PIC refuses the others until they are ported |
+| `display hours 12\|24` | 12- or 24-hour clock, kept until the display uses it |
+| `display epoch <moment>` | The reference for the delta mode |
+| `brightness auto\|0..4000` | Brightness from the light sensor, or a manual level: below 200 the tubes are off, above 3800 fully on |
+| `beeps on\|off` | Quarter-hour chimes and button clicks |
+| `alarm off\|on\|hh:mm[:ss]` | The alarm; a time sets it and turns it on. Kept, not yet sounded |
+| `rtc` | The RTC: its time, its second, rate and checks |
+| `rtc set now\|<moment>` | Set the RTC (UTC), `now` being the ESP's NTP time |
+| `osc` | The oscillator: the baseline setting, the loop's measured frequency, and what is stored |
+| `osc baseline <Hz>` | The oscillator baseline setting, within 1000ppm of 40MHz |
+| `gnss` | The GNSS receiver |
+| `sources [-v]` | The PIC's time sources, ranked |
+| `debug [names\|+name -name]` | The PIC's periodic debug output: show it, set exactly these, or add and remove. Names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute`, `tuning`, `rtc`, `events`, `all` and `none`, or a mask such as `0x1f` |
+| `pic [-v]` | Everything the PIC reports |
+| `pic stored` | What the PIC has in flash |
+| `pic save`, `pic defaults`, `pic reset` | Save, defaults or reset for the PIC alone |
+| `pic resync`, `pic bootloader` | Reserved: the PIC answers that it cannot, yet |
 
-## WiFi
-
-| Command | Description |
-| --- | --- |
-| `esp-wifi-info [-v]` | Print connection status, SSID, IP address and signal; `-v` adds gateway, DNS, channel and MAC |
-| `esp-wifi-scan` | Scan nearby networks and print signal strength and security type |
-| `esp-wifi-connect` | Request reconnection to WiFi |
-| `esp-wifi-disconnect` | Disconnect WiFi, the normal reconnect task can reconnect later |
-| `esp-wifi-ssid [s]` | **Not implemented:** set the saved SSID |
-| `esp-wifi-pass [s]` | **Not implemented:** set the saved passphrase |
-| `esp-wifi-dhcp [b]` | **Not implemented:** enable/disable DHCP |
-| `esp-wifi-ip [s]` | **Not implemented:** set a static IP or select `dhcp` / `auto` |
-| `esp-wifi-mask [s]` | **Not implemented:** set the static-IP subnet mask |
-| `esp-wifi-gateway [s]` | **Not implemented:** set the static-IP gateway |
-| `esp-wifi-clear` | Clear saved WiFi credentials and restart the ESP |
-| `esp-wifi-setup` | Currently the same as `esp-wifi-clear`: clear credentials and restart into the WiFiManager setup flow |
-
-## Telnet
-
-| Command | Description |
-| --- | --- |
-| `esp-telnet-enable` | Enable startup on boot, also start the listener when changing from disabled to enabled |
-| `esp-telnet-disable` | Disable startup on boot, does not stop a running listener |
-| `esp-telnet-start` | Start the listener now without changing the startup preference |
-| `esp-telnet-stop` | Stop the listener without changing the startup preference, an existing session remains open |
-| `esp-telnet-port [n]` | Set the port, 1–65535, changing it stops and restarts the listener |
-
-## OTA updates
+## The ESP
 
 | Command | Description |
 | --- | --- |
-| `esp-update-check` | Check the manifest and report the available firmware version without installing |
-| `esp-update-pull` | Install an applicable update without rebooting, use `esp-reset` to finish |
-| `esp-update-force` | Force installation regardless of the running version, allowing downgrades, and request reboot |
-| `esp-update-set-server [s]` | Set the update-manifest hostname |
-| `esp-update-set-path [s]` | Set the update-manifest path |
-| `esp-update-set-config [s]` | Select an update profile, e.g. `development`, `default` clears it |
-| `esp-update-auto-enable` | Enable automatic checking, installation and reboot in the configured local hour |
-| `esp-update-auto-disable` | Disable automatic updates, manual commands remain available |
-| `esp-update-auto-hour [n]` | Set the automatic-update local hour, 0–23 |
-
-## Timezone service and location privacy
-
-| Command | Description |
-| --- | --- |
-| `esp-tzinfo-enable` | Enable periodic tzinfo requests and forwarding of remote timezone information to the PIC |
-| `esp-tzinfo-disable` | Disable periodic requests and forwarding, manual requests remain available |
-| `esp-tzinfo-check` | Fetch and print timezone information, then leave it unavailable for application to the PIC |
-| `esp-tzinfo-update` | Fetch timezone information and mark a successful response available |
-| `esp-tzinfo-set-server [s]` | Set the tzinfo service hostname |
-| `esp-tzinfo-set-path [s]` | Set the tzinfo request path |
-| `esp-tzinfo-set-interval [n]` | Set the refresh interval in seconds, 900–604800, default 86400 |
-| `esp-tzinfo-set-acc [n]` | Set transmitted GNSS coordinate precision, 0–6 decimal places, `-1` suppresses GNSS location data |
-
-## ESP preferences
-
-| Command | Description |
-| --- | --- |
-| `esp-config-show` | Print running ESP preferences, including NTP, Telnet, tzinfo and updater settings |
-| `esp-config-clear` | Reset running ESP preferences to defaults, use `esp-save` to persist |
-| `esp-clear-all` | Reset and save ESP preferences, clear WiFi credentials and restart the ESP |
-| `esp-save` | Save ESP preferences |
-
-## PIC timekeeping, display and preferences
-
-| Command | Description |
-| --- | --- |
-| `pic-resync` | Request PIC resynchronisation with GNSS PPS or NTP when available |
-| `pic-set-rtc [n]` | Write the RTC time from a Unix epoch timestamp |
-| `pic-set-tz-offset [n]` | Set the timezone offset in seconds, rounded to the nearest 15 minutes |
-| `pic-set-dst-offset [n]` | Set the DST offset in seconds, rounded to the nearest 15 minutes |
-| `pic-set-dst-auto [b]` | **Not implemented:** enable/disable automatic DST |
-| `pic-set-dst-active [b]` | **Not implemented:** manually enable/disable DST |
-| `pic-set-fosc-freq [n]` | Set the PIC oscillator-frequency value in Hz, subject to the PIC's permitted range |
-| `pic-set-alarm-enabled [b]` | **Not implemented:** enable/disable the alarm |
-| `pic-set-alarm [n]` | **Not implemented:** set the alarm in seconds past midnight |
-| `pic-set-delta [n]` | Set the delta-display reference epoch to a Unix epoch timestamp |
-| `pic-set-beeps [b]` | **Not implemented:** enable/disable beeping |
-| `pic-set-display [e]` | **Not implemented:** select display mode, advertised values are 1=HHMM, 2=MMSS, 3=SSMM, 4=YYYY, 5=MMDD |
-| `pic-set-brightness-auto` | Restore automatic brightness, no argument required |
-| `pic-set-brightness [n]` | Set manual brightness on the 0–4000 scale |
-| `pic-eeprom-show` | Print saved PIC settings |
-| `pic-config-show` | Print running PIC settings |
-| `pic-config-clear` | Reset running PIC settings to defaults, use `pic-save` to persist |
-| `pic-save` | Save PIC settings |
-| `pic-bootloader-enter` | Request PIC bootloader entry and report the handshake result, PIC bootloader still in development |
-| `pic-bootloader-exit` | Request exit from the PIC bootloader and report the result |
+| `ntp [-v]` | NTP status, server and last update; `-v` adds the interval, frequency, slew and counters |
+| `ntp server <host>` | Select an NTP server and poll it |
+| `ntp interval <time>` | The longest poll interval, 128s–1d, default 1024s |
+| `ntp sync` | Poll now |
+| `wifi [-v]` | Connection status, SSID, IP address and signal; `-v` adds gateway, DNS, channel and MAC |
+| `wifi scan` | Scan nearby networks |
+| `wifi connect`, `wifi disconnect` | Reconnect, or disconnect (the reconnect task may reconnect later) |
+| `wifi setup` | Open the WiFiManager setup access point |
+| `wifi forget` | Forget the network and restart |
+| `telnet` | Telnet status |
+| `telnet on\|off` | Start Telnet at start-up (on also starts it now; off leaves a running listener alone) |
+| `telnet start`, `telnet stop` | Start or stop the listener now, without changing the start-up setting |
+| `telnet port <n>` | The port, 1–65535 |
+| `update` | The running version, the update server and the automatic update setting |
+| `update check` | Is there an update? |
+| `update install [force]` | Install an update, finished by `esp reset`; `force` installs whatever is offered, any version, and restarts |
+| `update server <host>`, `update path <path>` | The update manifest |
+| `update config <name>` | An update profile such as `development`; `default` clears it |
+| `update auto off\|<hour>` | Daily automatic updates in that local hour, 0–23 |
+| `esp` | Version, uptime, reset cause and settings |
+| `esp save`, `esp defaults`, `esp reset` | Save, defaults or restart for the ESP alone |
+| `esp factory` | Default ESP settings saved, Wi-Fi forgotten, and restart |
 
 # Software V2+ and new timing architecture
 

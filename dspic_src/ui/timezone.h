@@ -121,7 +121,10 @@ bool timezone_take_changed(void);
 const TimezoneStats *timezone_stats(void);
 
 const char *timezone_result_name(TimezoneResult result);
-// The offsets at this UTC second and the schedule held, for diagnostics.
-void timezone_print(uint32_t utc_seconds);
+// Where a schedule came from (SML_TZ_SOURCE_*): "GNSS".
+const char *timezone_source_name(uint8_t source);
+// The offset in force at this UTC second, where each part comes from, and
+// the schedule held. verbose: every change held, and the schedules received.
+void timezone_print(uint32_t utc_seconds, bool verbose);
 
 #endif // TIMEZONE_H

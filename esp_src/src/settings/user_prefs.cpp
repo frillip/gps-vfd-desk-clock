@@ -3,12 +3,15 @@
 #include <Preferences.h>
 #include <string.h>
 
+#include "../util/time_text.h"
+
 #define NAMESPACE "CLOCK_PREFS"
 #define KEY       "PREF_STRUCT"
 
 UserPrefs user_prefs;
 
 static Preferences store;
+static UserPrefs saved; // as last loaded or saved, to tell what is unsaved
 
 void user_prefs_set_string(char *field, const char *value)
 {
@@ -121,6 +124,13 @@ void user_prefs_init(Stream *output)
     {
         user_prefs_save();
     }
+    saved = user_prefs;
+}
+
+
+bool user_prefs_unsaved(void)
+{
+    return memcmp(saved.raw, user_prefs.raw, sizeof(saved.raw)) != 0;
 }
 
 
@@ -129,6 +139,7 @@ void user_prefs_save(void)
     store.begin(NAMESPACE, false);
     store.putBytes(KEY, user_prefs.raw, sizeof(user_prefs.raw));
     store.end();
+    saved = user_prefs;
 }
 
 
@@ -136,18 +147,32 @@ void user_prefs_print(Stream *output)
 {
     const UserPrefs *p = &user_prefs;
 
-    output->printf("telnet.enabled: %u\n", p->fields.telnet.flags.enabled);
-    output->printf("telnet.port: %u\n", p->fields.telnet.port);
-    output->printf("ntp.server: %s\n", p->fields.ntp.server);
-    output->printf("ntp.interval: %lu s\n", (unsigned long)p->fields.ntp.interval);
-    output->printf("tzinfo.enabled: %u\n", p->fields.rtzinfo.flags.enabled);
-    output->printf("tzinfo.server: %s\n", p->fields.rtzinfo.server);
-    output->printf("tzinfo.path: %s\n", p->fields.rtzinfo.path);
-    output->printf("tzinfo.interval: %lu s\n", (unsigned long)p->fields.rtzinfo.interval);
-    output->printf("tzinfo.gnss_accuracy: %ld\n", (long)p->fields.rtzinfo.gnss_accuracy);
-    output->printf("updater.auto_enabled: %u\n", p->fields.updater.flags.auto_enabled);
-    output->printf("updater.auto_hour: %u\n", p->fields.updater.flags.auto_time);
-    output->printf("updater.server: %s\n", p->fields.updater.server);
-    output->printf("updater.path: %s\n", p->fields.updater.path);
-    output->printf("updater.config: %s\n", p->fields.updater.config);
+    output->printf("Settings: %s\n", user_prefs_unsaved() ? "NOT SAVED" : "saved");
+    output->printf("  NTP: %s, interval %lu s\n", p->fields.ntp.server,
+                   (unsigned long)p->fields.ntp.interval);
+    output->printf("  TZ lookups: %s, https://%s%s, every ",
+                   p->fields.rtzinfo.flags.enabled ? "ON" : "OFF", p->fields.rtzinfo.server,
+                   p->fields.rtzinfo.path);
+    time_print_duration(output, p->fields.rtzinfo.interval);
+    if (p->fields.rtzinfo.gnss_accuracy < 0)
+    {
+        output->printf(", position NONE\n");
+    }
+    else
+    {
+        output->printf(", position %ld dp\n", (long)p->fields.rtzinfo.gnss_accuracy);
+    }
+    output->printf("  Updates: https://%s%s, profile %s, auto ", p->fields.updater.server,
+                   p->fields.updater.path,
+                   p->fields.updater.config[0] != '\0' ? p->fields.updater.config : "DEFAULT");
+    if (p->fields.updater.flags.auto_enabled)
+    {
+        output->printf("%02u:00\n", p->fields.updater.flags.auto_time);
+    }
+    else
+    {
+        output->printf("OFF\n");
+    }
+    output->printf("  Telnet: start-up %s, port %u\n",
+                   p->fields.telnet.flags.enabled ? "ON" : "OFF", p->fields.telnet.port);
 }

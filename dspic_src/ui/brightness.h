@@ -9,7 +9,7 @@
  *           measure: the dimmest; the sensor saturated: the brightest.
  *           Without a reading (no sensor, or it stopped answering) the
  *           manual level stands in.
- *   manual  the level set (SET_BRIGHTNESS, 0 to TUBES_BRIGHTNESS_FULL:
+ *   manual  the level set (brightness setting, 0 to TUBES_BRIGHTNESS_FULL:
  *           below MIN the tubes are off, above MAX lit continuously).
  *
  * In auto the tubes move to the target by BRIGHTNESS_STEP each
@@ -50,7 +50,8 @@ uint16_t brightness_target(void);
 // The level for a light reading, 0.1 lux (auto, before the fade).
 uint16_t brightness_from_lux(uint16_t lux_x10);
 
-// One line: mode, level, target and the light.
-void brightness_print(void);
+// One line: AUTO or MANUAL, the level now and any fade, and the light.
+// verbose: the manual level too, while auto.
+void brightness_print(bool verbose);
 
 #endif // BRIGHTNESS_H

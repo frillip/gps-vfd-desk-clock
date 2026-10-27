@@ -17,7 +17,7 @@
  *
  * The link starts in TEXT (or SML with ESP_LINK_START_SML) and moves to SML
  * for good on the first valid SML frame from the ESP: an SML ESP announces
- * itself by sending anything, e.g. CMD-USER INFO at boot.
+ * itself by sending anything, e.g. CMD-USER SHOW at boot.
  *
  * Received:
  *   TZ-STATE     -> timezone_apply() (always held; TZ/DST auto choose what is used)
@@ -30,20 +30,16 @@
  *                   expected_revision is current (else STALE_REVISION);
  *                   PERSIST asks for them to be stored
  *
- * Commands handled: INFO, REQUEST_MESSAGE (TIME-AUTH/PIC/CTRL/MEAS/GNSS,
- * STAT-UI, STAT-ENV, STAT-SOURCES, STAT-SETTINGS, STAT-SYS), RESET,
- * SET_TZ_OFFSET, SET_DST_OFFSET, SET_DST_ACTIVE, SET_TZ_AUTO, SET_DST_AUTO,
- * SET_FOSC, SET_DISPLAY (HHMM only), SET_BRIGHTNESS (0 to 4000, and auto
- * off), SET_BRI_AUTO (auto on, argument ignored), SET_BEEP (chimes and
- * button clicks), SHOW_SOURCES (STAT-SOURCES, then
- * the ACK), SET_DEBUG (clear << 16 | set, console/debug.h; the resulting mask is
- * printed; setting an undefined bit is NACK ARGUMENT, clearing one is not),
- * SAVE and DEFAULTS (ACCEPTED, then ACK or NACK STORAGE/VERIFY once
- * stored; BUSY while one is under way), SHOW_SETTINGS (what is stored,
- * printed, then STAT-SETTINGS) and SHOW_CONFIG (the running settings,
- * printed). The others, and every ESP command code (0x8000 up), are
- * answered NACK UNSUPPORTED. Settings changes run at once, through
- * settings/settings.h, and are kept over a reset once saved.
+ * Commands handled: SHOW (an SML_SHOW_* topic, printed), REQUEST_MESSAGE
+ * (TIME-AUTH/PIC/CTRL/MEAS/GNSS, STAT-UI, STAT-ENV, STAT-SOURCES,
+ * STAT-SETTINGS, STAT-SYS), SAVE (ACCEPTED, then ACK or NACK
+ * STORAGE/VERIFY once stored; BUSY while one is under way), DEFAULTS (the
+ * factory settings, running, not saved), SET_RTC, SET_DEBUG (clear << 16 |
+ * set, console/debug.h; the resulting mask is printed; setting an undefined
+ * bit is NACK ARGUMENT, clearing one is not) and RESET. RESYNC,
+ * ENTER_BOOTLOADER and every ESP command code (0x8000 up) are answered
+ * NACK UNSUPPORTED. Settings are changed only by CMD-SETTINGS (or the
+ * menu), through settings/settings.h, and kept over a reset once saved.
  *
  * The PIC sends commands of its own (SML_USER_ESP_*, e.g. from the menu) with
  * esp_link_request(); the ESP's answer is kept for esp_link_response().

@@ -15,8 +15,8 @@ void sync_report_epoch(const SyncUpdate *update);
 // and phase; * marks the one in use, + the second choice.
 void sync_report_sources(void);
 
-// Full status: the candidates ranked, each source's record, the time of day
-// and the recent state changes.
-void sync_report_status(void);
+// The state and what it steers by, and the time of day. verbose: the
+// candidates ranked, each source's record and the recent state changes.
+void sync_report_status(bool verbose);
 
 #endif // SYNC_REPORT_H

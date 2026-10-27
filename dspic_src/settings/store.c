@@ -387,37 +387,48 @@ const char *store_result_name(StoreResult result)
 }
 
 
-void store_print(void)
+void store_print(const char *const names[STORE_TYPES], bool verbose)
 {
     uint8_t type;
+    bool first = true;
 
     if (!status.active)
     {
-        printf("Store: empty (nothing saved yet)");
+        printf("  Store: EMPTY");
     }
     else
     {
-        printf("Store: page %u, generation %u, %u of %u words%s; records", status.page,
-               status.generation, status.used_words, FLASH_PAGE_WORDS,
-               status.full ? " (full)" : "");
+        printf("  Store: %u/%u words%s;", status.used_words, FLASH_PAGE_WORDS,
+               status.full ? " (FULL)" : "");
         for (type = 1; type < STORE_TYPES; type++)
         {
             if (record_word[type] != 0U)
             {
-                printf(" %u:%u B", type, record_length[type]);
+                printf("%s %s %u B", first ? "" : ",",
+                       names != NULL && names[type] != NULL ? names[type] : "?",
+                       record_length[type]);
+                first = false;
             }
         }
+        if (first)
+        {
+            printf(" no records");
+        }
     }
-    printf("; %lu appends, %lu page changes, %lu failures", (unsigned long)status.appends,
-           (unsigned long)status.page_changes, (unsigned long)status.failures);
-    if (status.last_result != STORE_OK)
+    if (status.failures != 0U || status.last_result != STORE_OK)
     {
-        printf(", last: %s (flash %s)", store_result_name(status.last_result),
-               flash_result_name(status.last_flash));
+        printf("; %lu FAILURES, last %s (flash %s)", (unsigned long)status.failures,
+               store_result_name(status.last_result), flash_result_name(status.last_flash));
     }
     if (status.torn != 0U || status.unreadable)
     {
-        printf(", %u torn%s", status.torn, status.unreadable ? ", unreadable data" : "");
+        printf("; %u TORN%s", status.torn, status.unreadable ? ", UNREADABLE data" : "");
+    }
+    if (verbose)
+    {
+        printf("; page %u, generation %u, %lu appends, %lu page changes", status.page,
+               status.generation, (unsigned long)status.appends,
+               (unsigned long)status.page_changes);
     }
     printf("\r\n");
 }

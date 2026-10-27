@@ -45,6 +45,8 @@ The portable parts of the firmware have host tests: the clock model, NTP packet 
 cd tests/host && make
 ```
 
+The console commands and the PIC link have their own, in `tests/commands`: every command against a PIC played by the test, the settings written whole and their answers, and the value parsers (`cd tests/commands && make`).
+
 [tools/format.sh](tools/format.sh) applies the same house style as the dsPIC sources.
 
 # Layout
@@ -80,7 +82,7 @@ ezTime has been replaced by a small NTP client. Each poll sends four requests tw
 
 The server is polled at startup, then after 64, 128 and 256 seconds while the crystal frequency is being learnt. After that the interval adapts between 128 seconds and `ntp.interval` (default 1024): it doubles after four corrections in a row under 500µs, and halves after one over 2ms. A crystal that is warming up, or sitting next to a radiator, gets polled more often; a settled one leaves the server in peace. Failed polls are retried after 60 seconds, doubling up to the interval.
 
-`ntp.interval` is the longest interval rather than a fixed one. A clock that saved the old 1800-second default keeps it as its ceiling; `esp-ntp-set-interval 1024` and `esp-save` bring it in line.
+`ntp.interval` is the longest interval rather than a fixed one. A clock that saved the old 1800-second default keeps it as its ceiling; `ntp interval 1024` and `save` bring it in line.
 
 The server's hostname is resolved in `loop()`, not in the NTP task. In arduino-esp32 3.3.x, `Network.hostByName()` clears lwIP's DNS cache without taking the TCPIP core lock, which cancels any lookup in progress elsewhere and trips an lwIP assertion. With the PIC already running, the timezone lookup at startup overlapped the NTP lookup, and the ESP restarted every few seconds until power cycled. Keeping every DNS lookup in `loop()` means none is ever in progress when the cache is cleared. Any future network code should follow the same rule.
 
@@ -120,9 +122,9 @@ GET https://<tzinfo.server><tzinfo.path>[?lat=...&lon=...]
 
 The default is `rubidium.darksky.io/smol_clock/api/v1/tzinfo`. A path saved by the V2 firmware is migrated to the new one automatically.
 
-tzinfo is enabled by default. Clocks with saved settings keep whatever they had; `esp-tzinfo-enable` and `esp-save` turn it on.
+tzinfo is enabled by default. Clocks with saved settings keep whatever they had; `tz remote on` and `save` turn it on.
 
-The position comes from the PIC's GNSS fix, rounded to `tzinfo.gnss_accuracy` decimal places using integer arithmetic before it leaves the ESP. With the setting at `-1`, or with no fix after 60 seconds, no position is sent and the server falls back to GeoIP.
+The position comes from the PIC's GNSS fix, rounded to `tzinfo.gnss_accuracy` decimal places using integer arithmetic before it leaves the ESP. With the setting at `-1` (`tz precision none`), or with no fix after 60 seconds, no position is sent and the server falls back to GeoIP.
 
 The ESP looks up the timezone at startup, as soon as tzinfo is enabled, at the configured interval (or sooner if the server says so), after moving more than a whole rounding step, and on request. The 60-second wait for a fix at startup is skipped when the PIC reports no GNSS receiver at all, and when nothing is cached: a clock with no schedule would otherwise show UTC for a minute for no good reason. In that case GeoIP goes first, and the GNSS position refines it once there is a fix. Failed lookups are retried after 5 minutes, doubling up to an hour, or after 30 seconds, doubling up to 5 minutes, while there is no schedule at all. The latest result is cached in NVS and used at startup until a fresh lookup replaces it.
 
@@ -144,27 +146,19 @@ SML-TIME-LEAP is built from the PIC's own GNSS leap-second data and sent back to
 
 # PIC link
 
-At startup the ESP sends a CMD-USER INFO request, which moves the PIC into SML mode and prompts it to print its status. STAT-NET every 10 seconds and TIME-NTP every second bring the PIC back into SML mode after it resets. The PIC then sends STAT-SYS (SML 1.4) every epoch: its firmware version, uptime and why it last reset. The ESP announces the PIC when it first hears from it, and again whenever the uptime drops.
+At startup the ESP sends CMD-USER `SHOW` (everything), which moves the PIC into SML mode and prompts it to print its status, and asks for STAT-SETTINGS. STAT-NET every 10 seconds and TIME-NTP every second bring the PIC back into SML mode after it resets. The PIC then sends STAT-SYS (SML 1.4) every epoch: its firmware version, uptime and why it last reset. The ESP announces the PIC when it first hears from it, and again whenever the uptime drops.
 
 Anything on the link outside a valid frame is treated as the PIC's console output and printed, as is STAT-DEBUG text. Both go to the USB-UART console and to Telnet.
 
-PIC console commands are sent as CMD-USER requests, and the PIC's answer is printed on whichever console the command came from. Commands from the PIC to the ESP (codes from 0x8000, for example from the PIC's menu) are carried out and acknowledged.
+The console's PIC actions (`pic save`, `rtc set`, `debug`, the PIC's part of `tz` or `display`, and so on) are sent as CMD-USER requests, and the PIC's answer is printed on whichever console the command came from. Where the command asked to see something, what the PIC prints is the answer, so its ACK only shows with `-v`. Commands from the PIC to the ESP (codes from 0x8000, for example from the PIC's menu) are carried out and acknowledged.
 
-The PIC's diagnostics are controlled from here too (SML 1.3):
+The PIC's settings (time zone, DST, display, brightness, beeps, alarm, oscillator baseline) are not commands. The ESP keeps the latest STAT-SETTINGS, and a console command changes one setting by writing the whole body back with CMD-SETTINGS, against the revision it last saw. A change typed while the previous write is unanswered waits, and goes with it as soon as the answer brings the new revision, so pasting several settings at once works. If the PIC refuses a write (`PIC settings: NACK (unsupported)`, say, for a display mode not ported yet), or does not answer, the ESP asks for STAT-SETTINGS again and drops any change still waiting. The PIC's menu writes the same settings, and a write from either end that has not seen the other's is refused rather than overwriting it.
 
-| Command | Effect |
-| --- | --- |
-| `pic-show-sources [-v]` | The PIC's time sources as a table: verdict, bound, phase and when each was last good; `*` marks the one in use, `+` the one that would come next, `x` one discounted (its time beyond the accuracy limit, or inconsistent) and `?` one unusable (absent, or without time, pulse or label), as `chronyc sources` does |
-| `pic-debug` | Shows which debug output is on |
-| `pic-debug gnss sync` | Turns exactly that output on |
-| `pic-debug-enable [names]` | Turns output on, all of it without names |
-| `pic-debug-disable [names]` | Turns output off, all of it without names |
-
-The names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute` and `tuning`, or `all`, or a mask such as `0x1f`. The sources table also appears in the status (an empty line on the console) once the PIC sends STAT-SOURCES.
+`sources [-v]` prints the PIC's time sources as a table: verdict, bound, phase and when each was last good; `*` marks the one in use, `+` the one that would come next, `x` one discounted (its time beyond the accuracy limit, or inconsistent) and `?` one unusable (absent, or without time, pulse or label), as `chronyc sources` does. The table also appears in the status (an empty line on the console) once the PIC sends STAT-SOURCES. `debug` shows or changes which of the PIC's periodic diagnostics are printed: `debug gnss sync` exactly those, `debug +ntp -sync` adding and removing, `debug -all` or `debug none` nothing. The names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute`, `tuning`, `rtc` and `events`, or `all`, or a mask such as `0x1f`. With none set the PIC prints nothing unasked but its start-up line and faults.
 
 # Console output
 
-Information is printed briefly by default, in the manner of chronyc: the ESP's NTP time and its server, a line each for the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` after `status`, `pic-info`, `pic-show-sources`, `esp-ntp-info` or `esp-wifi-info` prints everything, as before: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
+Information is printed briefly by default, in the manner of chronyc: the ESP's NTP time and its server, a line each for the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` at the end of any command that shows something prints everything: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
 
 ```
 ESP:      2.0.0 smolclock, up 00:41:07
@@ -173,7 +167,7 @@ Server:   pool.ntp.org (192.0.2.10), stratum 2, updated 00:12:40 ago
 Zone:     Europe/London (GNSS), UTC+01:00, changes 2026-10-25T01:00:00Z
 Leap:     TAI-UTC 37 s (GNSS)
 Wi-Fi:    home, 192.168.1.20, -61 dBm
-Telnet:   running, 192.168.1.5 connected
+Telnet:   RUNNING 192.168.1.20:23, start-up ON, client 192.168.1.5
 
 PIC:      0.1.0, up 00:40:58, last reset: power-on
 UTC:      2026-10-21T10:53:20Z +/-61 ns, GNSS LOCKED
@@ -195,6 +189,6 @@ The status shows the ESP's uptime and why it last started. A restart through the
 
 # Settings
 
-Settings are stored in NVS in the same layout as the V2 firmware, so existing preferences carry over. Each field is checked on load. An invalid field reverts to its default and the rest are kept, rather than one bad value resetting everything. Changes made from the console take effect immediately and persist after `esp-save`.
+Settings are stored in NVS in the same layout as the V2 firmware, so existing preferences carry over. Each field is checked on load. An invalid field reverts to its default and the rest are kept, rather than one bad value resetting everything. Changes made from the console take effect immediately and persist after `save` (or `esp save`). `defaults` (or `esp defaults`) puts the defaults in force without saving them.
 
-The full command list is in the repository [README](../README.md#console-commands), and `help` prints it on the console. `esp-wifi-info` no longer prints the saved WiFi passphrase.
+The full command list is in the repository [README](../README.md#console-commands), and `help` prints it on the console, `help <command>` the settings and actions of one. The table of commands is in [src/console/commands.cpp](src/console/commands.cpp): each command lists its settings and actions with the kind of value each takes, and the parsing, the showing of a setting given no value, the error messages and the help all come from that table. `wifi` never prints the saved WiFi passphrase.

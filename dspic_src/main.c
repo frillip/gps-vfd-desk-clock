@@ -110,7 +110,7 @@ static bool flash_quiet(void)
 
 // The button and the switch, debounced. Nothing acts on them yet (the
 // display modes, menu and alarm will) beyond a click for each press: each
-// press and switch change is printed, as a state change.
+// press and switch change is printed with DEBUG_EVENTS.
 static void service_controls(void)
 {
     static uint32_t presses;
@@ -124,12 +124,18 @@ static void service_controls(void)
     {
         presses = count;
         beeps_button();
-        printf("Button: %s press\r\n", controls_press_name(press));
+        if (debug_enabled(DEBUG_EVENTS))
+        {
+            printf("Button: %s\r\n", controls_press_name(press));
+        }
     }
     if (controls_switch_changes() != switch_changes)
     {
         switch_changes = controls_switch_changes();
-        printf("Switch: %s\r\n", controls_switch_on() ? "on" : "off");
+        if (debug_enabled(DEBUG_EVENTS))
+        {
+            printf("Switch: %s\r\n", controls_switch_on() ? "ON" : "OFF");
+        }
     }
 }
 
@@ -186,7 +192,10 @@ static void run_epoch(const TimingSnapshot *snapshot)
     {
         source_ntp_print_epoch(snapshot, epoch_timer_ms());
     }
-    sync_report_transition(&update);
+    if (debug_enabled(DEBUG_SYNC | DEBUG_EVENTS))
+    {
+        sync_report_transition(&update);
+    }
     if (debug_enabled(DEBUG_SYNC))
     {
         sync_report_epoch(&update);
@@ -217,18 +226,19 @@ static void report_minute(void)
     }
     if (minute_epoch == GNSS_REPORT_EPOCH)
     {
-        gnss_print(epoch_timer_ms());
+        gnss_print(epoch_timer_ms(), true);
     }
     if (minute_epoch == SYNC_REPORT_EPOCH)
     {
-        sync_report_status();
+        // In full: these are diagnostics.
+        sync_report_status(true);
         display_print();
-        timezone_print(sync_status()->time.utc_seconds);
-        pcf8563_print(epoch_timer_ms(), rtc_reference());
-        veml6040_print(epoch_timer_ms());
-        brightness_print();
-        controls_print();
-        source_rtc_print();
+        timezone_print(sync_status()->time.utc_seconds, true);
+        pcf8563_print(epoch_timer_ms(), rtc_reference(), true);
+        source_rtc_print(true);
+        veml6040_print(epoch_timer_ms(), true);
+        brightness_print(true);
+        controls_print(true);
         i2c1_print();
         esp_link_print();
     }
@@ -243,13 +253,12 @@ int main(void)
     console_init(FCY);
     esp_link_init();
     printf("\033[2J\033[1;1H");
-    esp_report_print_system(); // the version and why the PIC (re)started
+    esp_report_print_system(false); // the version and why the PIC (re)started
 
     debug_init();
     sync_init();
     sync_tuning_init();
     timing_init(&capture_sync);
-    timing_report_sync(&capture_sync);
     gnss_init(FCY, epoch_timer_ms());
     // The RTC: its reads stamped on the capture timebase, so the RTC source
     // can place its second against the epoch. The light sensor on the same
@@ -276,7 +285,9 @@ int main(void)
     flash_set_clock(pps_capture_timebase);
     flash_set_resume_hook(epoch_timer_resume);
     settings_init();
-    settings_print_start();
+    // Now the saved debug mask is in force.
+    timing_report_sync(&capture_sync, debug_enabled(DEBUG_TIMING));
+    settings_print_start(debug_enabled(DEBUG_EVENTS));
     scheduler_init();
 
     while (1)
@@ -293,12 +304,20 @@ int main(void)
         // Every pass: the RTC's reads are taken as they finish, so a search
         // for its second (and the timed release of an aligned write) is not
         // held to the 10 ms tasks.
-        (void)pcf8563_service(scheduler_now_ms(), rtc_reference());
+        (void)pcf8563_service(scheduler_now_ms());
+        if (pcf8563_report_due() && (source_rtc_take_set() || debug_enabled(DEBUG_RTC)))
+        {
+            pcf8563_print(scheduler_now_ms(), rtc_reference(), false);
+        }
         source_rtc_poll();
         // The light sensor leaves the bus to the RTC source while it is
         // searching or timing a release.
         veml6040_set_auto_read(source_rtc_state()->activity == SOURCE_RTC_IDLE);
         (void)veml6040_service(scheduler_now_ms());
+        if (veml6040_report_due() && debug_enabled(DEBUG_EVENTS))
+        {
+            veml6040_print(scheduler_now_ms(), false);
+        }
 
         // Every epoch, at the measurement slot (set by the T4 scheduler
         // interrupt, so the captures of the epoch are read together).

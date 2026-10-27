@@ -72,7 +72,6 @@ static int32_t power10(int8_t exponent)
     return value;
 }
 
-
 // Rounds 1e-7 degrees to precision decimal places, still in 1e-7 degrees.
 static int32_t round_e7(int32_t value, int8_t precision)
 {
@@ -82,7 +81,6 @@ static int32_t round_e7(int32_t value, int8_t precision)
 
     return (int32_t)(value < 0 ? -rounded : rounded);
 }
-
 
 // A rounded value as "51.5", "-0.1": no floating point, so the digits are
 // exactly the rounding.
@@ -102,7 +100,6 @@ static void format_e7(char *text, size_t size, int32_t value, int8_t precision)
              precision > 0 ? "." : "", fraction);
 }
 
-
 // The PIC reports no GNSS receiver at all: no point waiting for a fix.
 static bool receiver_absent(void)
 {
@@ -111,7 +108,6 @@ static bool receiver_absent(void)
     return pic_link_get(SML_CLASS_TIME, SML_TIME_GNSS, &gnss, PIC_LINK_STATE_TIMEOUT_MS) &&
            (gnss.flags & SML_GNSS_DETECTED) == 0;
 }
-
 
 static Position current_position(void)
 {
@@ -135,7 +131,6 @@ static Position current_position(void)
     return position;
 }
 
-
 // Moved since the position used: a whole rounding step away from it (half a
 // step of hysteresis, so a clock on a rounding boundary does not flap), or a
 // fix now where the last lookup had none.
@@ -155,7 +150,6 @@ static bool has_moved(const Position *now, const Position *used)
            llabs((int64_t)now->raw_lon_e7 - used->lon_e7) > step;
 }
 
-
 static String lookup_url(const Position *position)
 {
     String url =
@@ -172,7 +166,6 @@ static String lookup_url(const Position *position)
     }
     return url;
 }
-
 
 // One request. True with *result filled; else tz.last_error says why.
 static bool lookup(const Position *position, TzSchedule *result)
@@ -217,7 +210,6 @@ static bool lookup(const Position *position, TzSchedule *result)
     return true;
 }
 
-
 static void save(void)
 {
     Preferences store;
@@ -226,7 +218,6 @@ static void save(void)
     store.putBytes(NVS_KEY, &tz.schedule, sizeof(tz.schedule));
     store.end();
 }
-
 
 static void load(Stream *output)
 {
@@ -244,7 +235,6 @@ static void load(Stream *output)
         output->printf("Time zone: %s (cached)\n", tz.schedule.zone);
     }
 }
-
 
 static void schedule_next(bool ok)
 {
@@ -271,7 +261,6 @@ static void schedule_next(bool ok)
     tz.next_lookup_ms = millis() + delay_s * 1000;
 }
 
-
 // Applies a lookup's result: keeps it, and saves and sends it if it differs.
 static void apply(const TzSchedule *result, Stream *output)
 {
@@ -297,7 +286,6 @@ static void apply(const TzSchedule *result, Stream *output)
     }
 }
 
-
 static bool update(Stream *output, const Position *position)
 {
     TzSchedule result;
@@ -321,7 +309,6 @@ static bool update(Stream *output, const Position *position)
     return ok;
 }
 
-
 bool tzinfo_update(Stream *output)
 {
     Position position = current_position();
@@ -329,14 +316,13 @@ bool tzinfo_update(Stream *output)
     return update(output, &position);
 }
 
-
 static void print_schedule(Stream *output, const TzSchedule *schedule)
 {
     uint8_t index;
 
     output->printf("Zone:     %s (%s%s)\n", schedule->zone,
                    pic_report_tz_source_name(schedule->source),
-                   schedule->ambiguous ? ", ambiguous" : "");
+                   schedule->ambiguous ? ", AMBIGUOUS" : "");
     output->printf("Issued:   ");
     time_print_utc(output, schedule->generated_utc);
     output->printf(", refresh by ");
@@ -375,7 +361,6 @@ static void print_schedule(Stream *output, const TzSchedule *schedule)
     }
 }
 
-
 bool tzinfo_check(Stream *output)
 {
     Position position = current_position();
@@ -388,10 +373,9 @@ bool tzinfo_check(Stream *output)
         return false;
     }
     print_schedule(output, &result);
-    output->printf("(not applied: use esp-tzinfo-update)\n");
+    output->printf("(not applied: use \"tz lookup\")\n");
     return true;
 }
-
 
 void tzinfo_set_enabled(bool enabled)
 {
@@ -404,12 +388,10 @@ void tzinfo_set_enabled(bool enabled)
     }
 }
 
-
 void tzinfo_set_server(const char *server)
 {
     user_prefs_set_string(user_prefs.fields.rtzinfo.server, server);
 }
-
 
 void tzinfo_set_path(const char *path)
 {
@@ -421,7 +403,6 @@ void tzinfo_set_path(const char *path)
     }
     user_prefs_set_string(user_prefs.fields.rtzinfo.path, value.c_str());
 }
-
 
 void tzinfo_init(Stream *output)
 {
@@ -435,7 +416,6 @@ void tzinfo_init(Stream *output)
     // once, and GNSS refines it when a fix arrives (has_moved()).
     tz.force = !tz.schedule.valid;
 }
-
 
 static bool lookup_due(void)
 {
@@ -469,7 +449,6 @@ static bool lookup_due(void)
     return false;
 }
 
-
 static void send_state(void)
 {
     SML_STAT_UI_PAYLOAD ui;
@@ -498,7 +477,6 @@ static void send_state(void)
     tz.sent++;
 }
 
-
 void tzinfo_service(bool network_up)
 {
     if (!user_prefs.fields.rtzinfo.flags.enabled)
@@ -518,24 +496,20 @@ void tzinfo_service(bool network_up)
     send_state();
 }
 
-
 const TzSchedule *tzinfo_schedule(void)
 {
     return &tz.schedule;
 }
-
 
 bool tzinfo_last_ok(void)
 {
     return tz.last_ok;
 }
 
-
 uint32_t tzinfo_updated_utc(void)
 {
     return tz.last_ok ? tz.updated_utc : 0;
 }
-
 
 uint32_t tzinfo_refresh_utc(void)
 {
@@ -547,7 +521,6 @@ uint32_t tzinfo_refresh_utc(void)
     }
     return utc + (uint32_t)((int32_t)(tz.next_lookup_ms - millis()) / 1000);
 }
-
 
 bool tzinfo_local_now(uint32_t *local_seconds)
 {
@@ -572,7 +545,6 @@ bool tzinfo_local_now(uint32_t *local_seconds)
     return true;
 }
 
-
 // One line: the zone, its offset now and its next change.
 static void print_brief(Stream *output)
 {
@@ -582,13 +554,12 @@ static void print_brief(Stream *output)
     output->printf("Zone:     ");
     if (!tz.schedule.valid)
     {
-        output->printf("no schedule held (tzinfo %s)",
-                       user_prefs.fields.rtzinfo.flags.enabled ? "enabled" : "disabled");
+        output->printf("NONE (lookups %s)", user_prefs.fields.rtzinfo.flags.enabled ? "ON" : "OFF");
     }
     else
     {
         output->printf("%s (%s%s)", tz.schedule.zone, pic_report_tz_source_name(tz.schedule.source),
-                       tz.schedule.ambiguous ? ", ambiguous" : "");
+                       tz.schedule.ambiguous ? ", AMBIGUOUS" : "");
         if (esp_time_utc_now(&utc))
         {
             output->printf(", UTC");
@@ -611,7 +582,6 @@ static void print_brief(Stream *output)
     output->printf("\n");
 }
 
-
 void tzinfo_print(Stream *output, bool verbose)
 {
     uint32_t now = millis();
@@ -623,7 +593,7 @@ void tzinfo_print(Stream *output, bool verbose)
     }
 
     output->printf("Enabled:  %s, server %s%s\n",
-                   user_prefs.fields.rtzinfo.flags.enabled ? "yes" : "no",
+                   user_prefs.fields.rtzinfo.flags.enabled ? "ON" : "OFF",
                    user_prefs.fields.rtzinfo.server, user_prefs.fields.rtzinfo.path);
     output->printf("Location: ");
     if (user_prefs.fields.rtzinfo.gnss_accuracy < 0)

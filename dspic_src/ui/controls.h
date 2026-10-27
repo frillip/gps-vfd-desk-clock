@@ -70,7 +70,7 @@ uint32_t controls_switch_changes(void);
 
 const ControlsStats *controls_stats(void);
 const char *controls_press_name(ControlsPress press);
-// One line: the levels and the counts.
-void controls_print(void);
+// One line: the button and the switch. verbose: the counts too.
+void controls_print(bool verbose);
 
 #endif // CONTROLS_H

@@ -9,6 +9,7 @@
 #ifndef ESP_REPORT_H
 #define ESP_REPORT_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "../sync/sync.h"
@@ -42,14 +43,19 @@ void esp_report_stat_env(SML_STAT_ENV_PAYLOAD *payload);
 // The synchroniser's candidates. epoch_sequence: the latest epoch's.
 void esp_report_stat_sources(uint32_t epoch_sequence, SML_STAT_SOURCES_PAYLOAD *payload);
 
-// Every module's full diagnostics, for SML_USER_INFO.
-void esp_report_print_all(uint32_t now_ms);
+// Every module, for SML_USER_SHOW SML_SHOW_ALL: what each is doing, or with
+// verbose (SML_SHOW_VERBOSE) its counters and internals too.
+void esp_report_print_all(uint32_t now_ms, bool verbose);
+// One SML_SHOW_* topic other than SML_SHOW_ALL, printed. False for a topic
+// it does not know.
+bool esp_report_show(uint32_t topic, bool verbose, uint32_t now_ms);
 
 // STAT-SYS: firmware version, uptime in epochs, reset cause, and the
 // longest main-loop pass since the previous one (which this restarts).
 void esp_report_stat_sys(uint32_t epoch_sequence, SML_STAT_SYS_PAYLOAD *payload);
-// "PIC 0.1.0, up 1234 s, last reset: power-on (RCON 0x0003)": up in epochs.
-void esp_report_print_system(void);
+// "PIC 0.1.0, up 00:20:34, last reset: power-on": up in epochs. verbose:
+// RCON too.
+void esp_report_print_system(bool verbose);
 // The most telling cause in SML_RESET_* bits, as text.
 const char *esp_report_reset_name(uint16_t cause);
 

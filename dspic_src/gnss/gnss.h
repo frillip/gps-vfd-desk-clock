@@ -159,8 +159,9 @@ bool gnss_time_pulse(uint32_t pps_sequence, const UbxTimTp **time_pulse);
  * new epoch edge within GNSS_TIME_MARK_WINDOW_NS of the second is held. */
 bool gnss_mark_offset(uint32_t now_ms, int32_t *offset_ns, uint32_t *accuracy_ns);
 
-// Full multi-line diagnostics.
-void gnss_print(uint32_t now_ms);
+// The receiver, its fix and time accuracy, its position and leap seconds.
+// verbose: the link, the time pulse and mark, and the message counts too.
+void gnss_print(uint32_t now_ms, bool verbose);
 // One line for the per-epoch report: the UTC label of this edge, fix, time
 // accuracy, leap seconds and qErr.
 void gnss_print_edge(uint32_t pps_sequence, uint32_t now_ms);

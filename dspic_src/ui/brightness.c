@@ -113,15 +113,56 @@ void brightness_service(void)
 }
 
 
-void brightness_print(void)
+// A level as it looks: OFF below the PWM range, FULL above it.
+static void print_level(uint16_t value)
+{
+    if (value < TUBES_BRIGHTNESS_MIN)
+    {
+        printf("OFF");
+    }
+    else if (value > TUBES_BRIGHTNESS_MAX)
+    {
+        printf("FULL");
+    }
+    else
+    {
+        printf("%u", value);
+    }
+}
+
+
+void brightness_print(bool verbose)
 {
     const Veml6040Status *sensor = veml6040_status();
+    bool reading = sensor->present && sensor->reads != 0U;
 
-    printf("Brightness: %s, %u (target %u, manual level %u)", automatic ? "auto" : "manual",
-           tubes_brightness(), target, manual_level);
-    if (sensor->present && sensor->lux_valid)
+    printf("Brightness: %s ", automatic ? "AUTO" : "MANUAL");
+    print_level(tubes_brightness());
+    if (tubes_brightness() != target)
+    {
+        printf(" -> ");
+        print_level(target);
+    }
+    if (automatic && !reading)
+    {
+        printf(", NO READING: manual level");
+    }
+    else if (automatic && sensor->saturated)
+    {
+        printf(", SATURATED");
+    }
+    else if (automatic && sensor->too_dark)
+    {
+        printf(", TOO DARK");
+    }
+    else if (automatic && sensor->lux_valid)
     {
         printf(", %u.%u lux", sensor->lux_x10 / 10U, sensor->lux_x10 % 10U);
+    }
+    if (verbose && automatic)
+    {
+        printf("; manual ");
+        print_level(manual_level);
     }
     printf("\r\n");
 }

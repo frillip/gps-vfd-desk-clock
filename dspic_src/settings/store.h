@@ -90,7 +90,9 @@ bool store_write_erases(uint16_t length);
 
 const StoreStatus *store_status(void);
 const char *store_result_name(StoreResult result);
-// One line: the page in use, its generation, space, records and counts.
-void store_print(void);
+// One line: the space used, the records held (named by names[type], an
+// array of STORE_TYPES), and any failure. verbose: the page, its
+// generation and the counts too.
+void store_print(const char *const names[STORE_TYPES], bool verbose);
 
 #endif // STORE_H

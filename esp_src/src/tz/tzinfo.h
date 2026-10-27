@@ -33,9 +33,9 @@
 void tzinfo_init(Stream *output);
 void tzinfo_service(bool network_up);
 
-// Look up now and apply the result (esp-tzinfo-update, ESP_TZINFO_UPDATE).
+// Look up now and apply the result (tz lookup, ESP_TZ_LOOKUP).
 bool tzinfo_update(Stream *output);
-// Look up now and print the result without using it (esp-tzinfo-check).
+// Look up now and print the result without using it (tz lookup check).
 bool tzinfo_check(Stream *output);
 void tzinfo_set_enabled(bool enabled);
 void tzinfo_set_server(const char *server);

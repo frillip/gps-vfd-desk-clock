@@ -48,10 +48,18 @@ static void text_q16_ticks(TextLine *line, int32_t value_q16)
 }
 
 
-void timing_report_sync(const PpsCaptureSync *sync)
+void timing_report_sync(const PpsCaptureSync *sync, bool detail)
 {
     uint8_t attempt;
 
+    if (!sync->valid)
+    {
+        printf("*** IC TIMEBASE SYNC FAILED ***\r\n");
+    }
+    if (!detail)
+    {
+        return;
+    }
     printf("GPIO IC12=%10lu IC34=%10lu, %u attempt%s, offsets", (unsigned long)sync->ic12_stamp,
            (unsigned long)sync->ic34_stamp, (unsigned)sync->attempts,
            sync->attempts == 1U ? "" : "s");
@@ -69,9 +77,9 @@ void timing_report_sync(const PpsCaptureSync *sync)
     printf("\r\n");
     if (!sync->valid)
     {
-        printf("*** IC TIMEBASE SYNC FAILED ***\r\n");
+        return;
     }
-    else if (sync->correction != 0)
+    if (sync->correction != 0)
     {
         printf("--- IC TIMEBASE SYNC CORRECTED BY %+ld ---\r\n", (long)sync->correction);
     }

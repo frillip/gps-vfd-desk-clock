@@ -7,7 +7,6 @@
 #include "../console/console.h"
 #include "../console/debug.h"
 #include "../drivers/pcf8563.h"
-#include "../drivers/tubes.h"
 #include "../drivers/uart1.h"
 #include "../platform/system.h"
 #include "../platform/time_ms.h"
@@ -62,7 +61,8 @@ static uint32_t sources_sent_epoch;
 #if DEBUG_TIMING != SML_DEBUG_TIMING || DEBUG_GNSS != SML_DEBUG_GNSS ||   \
     DEBUG_SYNC != SML_DEBUG_SYNC || DEBUG_SOURCES != SML_DEBUG_SOURCES || \
     DEBUG_NTP != SML_DEBUG_NTP || DEBUG_MINUTE != SML_DEBUG_MINUTE ||     \
-    DEBUG_TUNING != SML_DEBUG_TUNING || DEBUG_ALL != SML_DEBUG_ALL
+    DEBUG_TUNING != SML_DEBUG_TUNING || DEBUG_RTC != SML_DEBUG_RTC ||     \
+    DEBUG_EVENTS != SML_DEBUG_EVENTS || DEBUG_ALL != SML_DEBUG_ALL
 #error "console/debug.h and SML_DEBUG_* disagree"
 #endif
 
@@ -298,90 +298,12 @@ void esp_link_epoch(const TimingSnapshot *snapshot, const SyncUpdate *update, ui
 
 // ---- Commands -------------------------------------------------------------
 
-static bool flag_argument(uint32_t argument)
-{
-    return argument <= 1U;
-}
-
-
-static bool offset_argument(uint32_t argument)
-{
-    int32_t offset = (int32_t)argument;
-    return offset >= -TIMEZONE_OFFSET_LIMIT_S && offset <= TIMEZONE_OFFSET_LIMIT_S;
-}
-
-
-// A change to one setting: the running settings with it changed, applied
-// through settings_write() (which checks it).
-static uint8_t change_flag(uint16_t flag, uint32_t argument)
-{
-    SML_SETTINGS_BODY body;
-
-    if (!flag_argument(argument))
-    {
-        return SML_ERROR_ARGUMENT;
-    }
-    settings_body(&body);
-    body.flags = argument != 0U ? (uint16_t)(body.flags | flag) : (uint16_t)(body.flags & ~flag);
-    return settings_write(&body);
-}
-
-
-static uint8_t change_setting(uint16_t command, uint32_t argument)
-{
-    SML_SETTINGS_BODY body;
-
-    settings_body(&body);
-    switch (command)
-    {
-        case SML_USER_SET_TZ_OFFSET:
-            if (!offset_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            body.base_offset_s = (int32_t)argument;
-            break;
-        case SML_USER_SET_DST_OFFSET:
-            if (!offset_argument(argument))
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            body.dst_offset_s = (int32_t)argument;
-            break;
-        case SML_USER_SET_FOSC: body.calibration_fosc_hz = argument; break;
-        case SML_USER_SET_DISPLAY:
-            if (argument > 0xFFU)
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            body.selected_display = (uint8_t)argument;
-            break;
-        case SML_USER_SET_BRIGHTNESS:
-            // A level means manual brightness: auto goes off.
-            if (argument > TUBES_BRIGHTNESS_FULL)
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            body.brightness = (uint16_t)argument;
-            body.flags &= (uint16_t)~SML_SETTING_BRI_AUTO;
-            break;
-        default: return SML_ERROR_UNSUPPORTED;
-    }
-    return settings_write(&body);
-}
-
-
-// SAVE and DEFAULTS: ACCEPTED now, the final answer once stored. One at a
-// time.
+// SAVE: ACCEPTED now, the final answer once stored. One at a time.
 static uint8_t start_save(const SML_CMD_USER_PAYLOAD *command, bool *accepted)
 {
     if (save_answer_due)
     {
         return SML_ERROR_BUSY;
-    }
-    if (command->command == SML_USER_DEFAULTS)
-    {
-        settings_restore_defaults();
     }
     settings_save();
     save_answer_due = true;
@@ -389,6 +311,41 @@ static uint8_t start_save(const SML_CMD_USER_PAYLOAD *command, bool *accepted)
     save_command = command->command;
     *accepted = true;
     return SML_ERROR_NONE;
+}
+
+
+// SET_DEBUG: clear << 16 | set; 0 changes nothing. Shown either way. Any bit
+// may be cleared (the ESP clears 0xFFFF for "all"); only the defined ones
+// may be set.
+static uint8_t change_debug(uint32_t argument)
+{
+    uint16_t set = (uint16_t)argument;
+    uint16_t clear = (uint16_t)(argument >> 16);
+
+    if ((set & (uint16_t)~DEBUG_ALL) != 0U)
+    {
+        return SML_ERROR_ARGUMENT;
+    }
+    settings_set_debug((uint16_t)((settings_debug_mask() & (uint16_t)~clear) | set));
+    debug_print();
+    return SML_ERROR_NONE;
+}
+
+
+// SET_RTC: a manual write, as V2's menu, to the nearest second; the result
+// is printed once read back. The RTC source finds its second again, and its
+// next check may set it to the clock's time.
+static uint8_t set_rtc(uint32_t utc_seconds)
+{
+    if (utc_seconds < PCF8563_FIRST_UTC)
+    {
+        return SML_ERROR_ARGUMENT;
+    }
+    if (!pcf8563_status()->present)
+    {
+        return SML_ERROR_STATE;
+    }
+    return source_rtc_set(utc_seconds) ? SML_ERROR_NONE : SML_ERROR_BUSY;
 }
 
 
@@ -401,10 +358,22 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
 
     switch (command->command)
     {
-        case SML_USER_INFO:
-            esp_report_print_all(now_ms);
-            esp_link_print();
-            return SML_ERROR_NONE;
+        case SML_USER_SHOW:
+        {
+            bool verbose = (argument & SML_SHOW_VERBOSE) != 0U;
+
+            argument &= ~(uint32_t)SML_SHOW_VERBOSE;
+            if (argument == SML_SHOW_ALL)
+            {
+                esp_report_print_all(now_ms, verbose);
+                if (verbose)
+                {
+                    esp_link_print();
+                }
+                return SML_ERROR_NONE;
+            }
+            return esp_report_show(argument, verbose, now_ms) ? SML_ERROR_NONE : SML_ERROR_ARGUMENT;
+        }
         case SML_USER_REQUEST_MESSAGE:
             if ((argument >> 16) != 0U)
             {
@@ -413,61 +382,15 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
             return send_message((uint8_t)(argument >> 8), (uint8_t)argument, now_ms)
                        ? SML_ERROR_NONE
                        : SML_ERROR_UNSUPPORTED;
-        case SML_USER_RESET: *reset = true; return SML_ERROR_NONE;
-        case SML_USER_SHOW_SOURCES:
-            // The message, then the ACK.
-            return send_message(SML_CLASS_STAT, SML_STAT_SOURCES, now_ms) ? SML_ERROR_NONE
-                                                                          : SML_ERROR_UNSUPPORTED;
-        case SML_USER_SET_DEBUG:
-        {
-            // clear << 16 | set; 0 changes nothing. Shown either way. Any
-            // bit may be cleared (the ESP clears 0xFFFF for "all"); only
-            // the defined ones may be set.
-            uint16_t set = (uint16_t)argument;
-            uint16_t clear = (uint16_t)(argument >> 16);
-
-            if ((set & (uint16_t)~DEBUG_ALL) != 0U)
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            settings_set_debug((uint16_t)((settings_debug_mask() & (uint16_t)~clear) | set));
-            debug_print();
+        case SML_USER_SAVE: return start_save(command, accepted);
+        case SML_USER_DEFAULTS:
+            // Running only, as any other change: kept once saved.
+            settings_restore_defaults();
             return SML_ERROR_NONE;
-        }
-        case SML_USER_SET_RTC:
-            // A manual write, as V2's menu, to the nearest second; the result
-            // is printed once read back. The RTC source finds its second
-            // again, and its next check may set it to the clock's time.
-            if (argument < PCF8563_FIRST_UTC)
-            {
-                return SML_ERROR_ARGUMENT;
-            }
-            if (!pcf8563_status()->present)
-            {
-                return SML_ERROR_STATE;
-            }
-            return source_rtc_set(argument) ? SML_ERROR_NONE : SML_ERROR_BUSY;
-        case SML_USER_SET_TZ_AUTO: return change_flag(SML_SETTING_TZ_AUTO, argument);
-        case SML_USER_SET_DST_AUTO: return change_flag(SML_SETTING_DST_AUTO, argument);
-        case SML_USER_SET_DST_ACTIVE: return change_flag(SML_SETTING_DST_ACTIVE, argument);
-        case SML_USER_SET_BEEP: return change_flag(SML_SETTING_BEEP_ENABLED, argument);
-        // As V2's pic-set-brightness-auto: no argument, auto on. A level
-        // (SET_BRIGHTNESS) turns it off.
-        case SML_USER_SET_BRI_AUTO: return change_flag(SML_SETTING_BRI_AUTO, 1U);
-        case SML_USER_SET_TZ_OFFSET:
-        case SML_USER_SET_DST_OFFSET:
-        case SML_USER_SET_FOSC:
-        case SML_USER_SET_DISPLAY:
-        case SML_USER_SET_BRIGHTNESS: return change_setting(command->command, argument);
-        case SML_USER_SAVE:
-        case SML_USER_DEFAULTS: return start_save(command, accepted);
-        case SML_USER_SHOW_SETTINGS:
-            // What is stored, then the running settings as STAT-SETTINGS.
-            settings_print_stored();
-            return send_message(SML_CLASS_STAT, SML_STAT_SETTINGS, now_ms) ? SML_ERROR_NONE
-                                                                           : SML_ERROR_UNSUPPORTED;
-        case SML_USER_SHOW_CONFIG: settings_print(); return SML_ERROR_NONE;
-        default: return SML_ERROR_UNSUPPORTED;
+        case SML_USER_SET_RTC: return set_rtc(argument);
+        case SML_USER_SET_DEBUG: return change_debug(argument);
+        case SML_USER_RESET: *reset = true; return SML_ERROR_NONE;
+        default: return SML_ERROR_UNSUPPORTED; // RESYNC, ENTER_BOOTLOADER: not yet
     }
 }
 

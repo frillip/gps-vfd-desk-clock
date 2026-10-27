@@ -113,12 +113,17 @@ void veml6040_init(void);
 // Returns true when a read has just finished.
 bool veml6040_service(uint32_t now_ms);
 
+// True once, after the first read once configured: worth a veml6040_print,
+// if the caller wants one.
+bool veml6040_report_due(void);
+
 // Periodic reads on or off (on by default): off while another user of the
 // bus needs it to itself (the RTC source).
 void veml6040_set_auto_read(bool enabled);
 
 const Veml6040Status *veml6040_status(void);
-// One line: the light, the raw count, and the counts of requests.
-void veml6040_print(uint32_t now_ms);
+// One line: the light and how fresh it is, and any failure. verbose: the raw
+// green count and the counts of transfers too.
+void veml6040_print(uint32_t now_ms, bool verbose);
 
 #endif // VEML6040_H

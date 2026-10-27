@@ -9,10 +9,12 @@
  *   STAT-DEBUG     the PIC's console text, to the console
  *   CMD-USER       ESP commands from the PIC (codes 0x8000 up): run by the
  *                  handler from pic_link_set_command_handler(), answered
- *   CMD-RESPONSE   answers to pic_link_request(), printed where it was asked
+ *   STAT-SETTINGS  held, as the base for changing the PIC's settings
+ *   CMD-RESPONSE   answers to pic_link_request() and to settings writes,
+ *                  printed where they were asked
  *
  * The PIC moves to SML mode on the first valid frame it receives, so the
- * ESP sends CMD-USER INFO at start, and its periodic frames (STAT-NET every
+ * ESP sends CMD-USER SHOW (everything) at start, and its periodic frames (STAT-NET every
  * 10 s) bring a PIC back to SML mode after the PIC resets.
  *
  * TIME-AUTH pairing: the label arrives a few ms after the edge it labels, so
@@ -77,11 +79,22 @@ void pic_link_set_command_handler(PicCommandHandler handler);
 bool pic_link_is_sml(void);
 // One frame from a native payload struct.
 void pic_link_send(uint8_t class_id, uint8_t message_id, const void *native);
-// A command for the PIC (SML_USER_*); its answer is printed to reply_to,
-// with anything printed after it (the sources table) in full if verbose.
-// Returns the token.
+// A command for the PIC (SML_USER_*); its answer is printed to reply_to
+// (none if NULL). For SHOW and REQUEST_MESSAGE what was asked for is the
+// answer, so an ACK is printed only if verbose; a request for STAT-SOURCES
+// prints the sources table, in full if verbose. Returns the token.
 uint16_t pic_link_request(uint16_t command, uint32_t argument, Stream *reply_to,
                           bool verbose = false);
+
+// The PIC's settings, as last known (STAT-SETTINGS, with the writes made
+// since): false until the PIC has sent them (they are then asked for).
+bool pic_link_settings(SML_SETTINGS_BODY *body);
+// Writes them whole (CMD-SETTINGS) against the revision last seen, the
+// answer printed to reply_to. A write made while the previous one is
+// unanswered is sent once that answer brings the new revision, so changes
+// in quick succession all land. False, with nothing sent, if the settings
+// are not known yet (they are asked for).
+bool pic_link_write_settings(const SML_SETTINGS_BODY *body, Stream *reply_to);
 
 // The latest of each PIC message, and its age; false if never received or
 // older than max_age_ms. native may be NULL, to ask only whether it is held.
