@@ -4,15 +4,16 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../console/console.h"
+#include "../console/debug.h"
 #include "../drivers/pcf8563.h"
-#include "../sync/source_rtc.h"
 #include "../drivers/tubes.h"
 #include "../drivers/uart1.h"
 #include "../platform/system.h"
 #include "../platform/time_ms.h"
 #include "../settings/settings.h"
-#include "../ui/console.h"
-#include "../ui/debug.h"
+#include "../sync/source_ntp.h"
+#include "../sync/source_rtc.h"
 #include "../ui/timezone.h"
 #include "esp_report.h"
 
@@ -62,7 +63,7 @@ static uint32_t sources_sent_epoch;
     DEBUG_SYNC != SML_DEBUG_SYNC || DEBUG_SOURCES != SML_DEBUG_SOURCES || \
     DEBUG_NTP != SML_DEBUG_NTP || DEBUG_MINUTE != SML_DEBUG_MINUTE ||     \
     DEBUG_TUNING != SML_DEBUG_TUNING || DEBUG_ALL != SML_DEBUG_ALL
-#error "ui/debug.h and SML_DEBUG_* disagree"
+#error "console/debug.h and SML_DEBUG_* disagree"
 #endif
 
 // ---- Sending --------------------------------------------------------------
@@ -591,6 +592,7 @@ static void handle_frame(const SmlFrame *frame, uint32_t now_ms)
         (void)sml_decode(message->layout, frame->payload, &ntp);
         have_ntp = true;
         stats.ntp_times++;
+        source_ntp_received(&ntp);
     }
     else if (frame->class_id == SML_CLASS_STAT && frame->message_id == SML_STAT_NET)
     {

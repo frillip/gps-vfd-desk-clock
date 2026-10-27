@@ -3,7 +3,7 @@
  * epoch output, to the best available time source, shows local time on the
  * tubes and reports every second to the ESP32 and the console.
  *
- * Where things are: the task list below and scheduler.h; source selection
+ * Where things are: the task list below and timing/scheduler.h; source selection
  * and time of day in sync/ (sync/sync.h); the timing hardware and control
  * loop in timing/ (timing/timing_config.h); the GNSS receiver link in gnss/
  * (gnss/gnss.h); the ESP32 link in esp/ (esp/esp_link.h, SML protocol); the
@@ -16,6 +16,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "console/console.h"
+#include "console/debug.h"
 #include "drivers/buzzer.h"
 #include "drivers/flash.h"
 #include "drivers/i2c1.h"
@@ -25,28 +27,26 @@
 #include "esp/esp_report.h"
 #include "gnss/gnss.h"
 #include "platform/system.h"
-#include "scheduler.h"
 #include "settings/settings.h"
 #include "sync/source_ntp.h"
 #include "sync/source_rtc.h"
 #include "sync/sync.h"
 #include "sync/sync_report.h"
 #include "sync/sync_tuning.h"
+#include "timing/scheduler.h"
 #include "timing/timing.h"
 #include "timing/timing_report.h"
 #include "ui/beeps.h"
 #include "ui/brightness.h"
-#include "ui/console.h"
 #include "ui/controls.h"
-#include "ui/debug.h"
 #include "ui/display.h"
 #include "ui/timezone.h"
 
 // Full diagnostics, once a minute each, in different epochs, late in the
 // second: they use printf, which costs ~1.5 ms a call here (70-80 ms a
 // report), so they stay clear of the epoch work and the GNSS burst that
-// follows each navigation solution. The per-epoch lines use ui/text.h.
-// Which are printed is up to ui/debug.h.
+// follows each navigation solution. The per-epoch lines use console/text.h.
+// Which are printed is up to console/debug.h.
 #define REPORT_SLOT            600U
 #define FULL_REPORT_EPOCHS     60U
 #define SCHEDULER_REPORT_EPOCH 15U // ... at this epoch of each minute
@@ -56,7 +56,7 @@
 
 // ---- The task list --------------------------------------------------------
 // Periodic tasks keep their phase on the epoch timeline; slot tasks run at a
-// fixed point in every epoch. See scheduler.h.
+// fixed point in every epoch. See timing/scheduler.h.
 
 // The UART2 ring holds ~44 ms of GNSS data at 115200, the UART1 ring ~22 ms
 // of ESP data.
@@ -170,7 +170,7 @@ static void run_epoch(const TimingSnapshot *snapshot)
     update = sync_update(snapshot, epoch_timer_ms());
     sound_epoch();
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
-    source_rtc_epoch(snapshot);
+    source_rtc_epoch(snapshot, &sync_status()->time, sync_is_synchronised());
     prepare_display();
     sync_tuning_epoch(snapshot, &update);
 

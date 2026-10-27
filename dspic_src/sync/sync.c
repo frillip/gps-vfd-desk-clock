@@ -56,7 +56,7 @@ static const SyncSourceDefinition sources[SYNC_SOURCE_COUNT] = {
     {"NTP", source_ntp_report, source_ntp_select, SYNC_NTP_QUALIFY_NS, SYNC_NTP_HOLD_NS, 1U,
      SYNC_NTP_EDGE_JITTER_NS, &ntp_profile, SYNC_HOLDOVER_FREQUENCY_NTP, true},
     // The RTC: the time of day, and its second placed by polling. Never
-    // captured, so never steers; its bound is SYNC_RTC_UNCERTAINTY_NS.
+    // captured, so never steers; its bound is SOURCE_RTC_UNCERTAINTY_NS.
     {"RTC", source_rtc_report, NULL, SYNC_RTC_LIMIT_NS, SYNC_RTC_LIMIT_NS, 1U, 0U, NULL, 0U, false},
 };
 

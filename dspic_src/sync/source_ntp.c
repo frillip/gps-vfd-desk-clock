@@ -2,16 +2,16 @@
 
 #include <string.h>
 
-#include "../esp/esp_link.h"
+#include "../console/text.h"
 #include "../platform/time_ms.h"
-#include "../ui/text.h"
 #include "source_edge.h"
 
 static SourceNtpState state;
 static SML_TIME_NTP_PAYLOAD latest;
 static bool has_latest;
-static uint32_t messages_seen; // esp_link's count when last looked
-static bool correcting;        // the latest TIME-NTP flags CORRECTING
+static bool pending; // a TIME-NTP received, not yet paired
+static SML_TIME_NTP_PAYLOAD received;
+static bool correcting; // the latest TIME-NTP flags CORRECTING
 
 static void average_phase(int32_t phase_ns)
 {
@@ -33,16 +33,23 @@ static void average_phase(int32_t phase_ns)
 }
 
 
+void source_ntp_received(const SML_TIME_NTP_PAYLOAD *ntp)
+{
+    received = *ntp;
+    pending = true;
+}
+
+
 void source_ntp_service(uint32_t now_ms)
 {
     PpsEdge edge;
-    uint32_t received = esp_link_stats()->ntp_times;
 
-    if (received == messages_seen || !esp_link_ntp(&latest))
+    if (!pending)
     {
         return;
     }
-    messages_seen = received;
+    pending = false;
+    latest = received;
     has_latest = true;
     state.messages++;
     state.received_ms = now_ms;

@@ -33,7 +33,7 @@
  *   RC9   DISPLAY_SPI2_SDO     tube drivers' data (RP57)             SPI2
  *
  * There is no direct console: UART1 is the link to the ESP32, which for now
- * acts as a serial bridge, so printf output (ui/console.c) reaches a terminal
+ * acts as a serial bridge, so printf output (console/console.c) reaches a terminal
  * through the ESP.
  */
 #ifndef BOARD_H

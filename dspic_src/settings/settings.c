@@ -4,12 +4,12 @@
 #include <string.h>
 
 #include "../../common/sml.h"
+#include "../console/debug.h"
 #include "../drivers/tubes.h"
 #include "../platform/clock.h"
 #include "../timing/epoch_control.h"
 #include "../ui/beeps.h"
 #include "../ui/brightness.h"
-#include "../ui/debug.h"
 #include "../ui/display.h"
 #include "../ui/timezone.h"
 #include "store.h"

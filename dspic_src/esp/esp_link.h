@@ -22,7 +22,7 @@
  * Received:
  *   TZ-STATE     -> timezone_apply() (always held; TZ/DST auto choose what is used)
  *   TIME-LEAP    -> sync_set_leap(): used when the selected source has none
- *   TIME-NTP     -> held for the NTP source (sync/source_ntp.c)
+ *   TIME-NTP     -> source_ntp_received(), for the NTP source
  *   STAT-NET     -> held for the menu and status (esp_link_net)
  *   CMD-RESPONSE -> the answer to a command sent with esp_link_request()
  *   CMD-USER     -> the commands below, answered with CMD-RESPONSE
@@ -36,7 +36,7 @@
  * SET_FOSC, SET_DISPLAY (HHMM only), SET_BRIGHTNESS (0 to 4000, and auto
  * off), SET_BRI_AUTO (auto on, argument ignored), SET_BEEP (chimes and
  * button clicks), SHOW_SOURCES (STAT-SOURCES, then
- * the ACK), SET_DEBUG (clear << 16 | set, ui/debug.h; the resulting mask is
+ * the ACK), SET_DEBUG (clear << 16 | set, console/debug.h; the resulting mask is
  * printed; setting an undefined bit is NACK ARGUMENT, clearing one is not),
  * SAVE and DEFAULTS (ACCEPTED, then ACK or NACK STORAGE/VERIFY once
  * stored; BUSY while one is under way), SHOW_SETTINGS (what is stored,

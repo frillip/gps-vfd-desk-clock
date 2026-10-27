@@ -20,7 +20,7 @@
  *
  * As a source (source_rtc_report) it reports that second as a watched edge
  * labelled with the RTC's time, never captured, with a bound of
- * SYNC_RTC_UNCERTAINTY_NS: the time of day at start-up, and the epoch's
+ * SOURCE_RTC_UNCERTAINTY_NS: the time of day at start-up, and the epoch's
  * first placing (sync.h).
  *
  * Keeping it set. Once the clock is synchronised, after SOURCE_RTC_SETTLE_
@@ -59,6 +59,13 @@
 #include "sync_source.h"
 
 #define SOURCE_RTC_TICKS_PER_US TIMING_TICKS_PER_US
+
+// Its bound as a source: the RTC holds UTC to the second, and how far its
+// second is from UTC's is not known for sure until the time of its last
+// aligned write can be kept over a power cycle. Within SYNC_RTC_LIMIT_NS.
+#ifndef SOURCE_RTC_UNCERTAINTY_NS
+#define SOURCE_RTC_UNCERTAINTY_NS 999000000UL // 999 ms
+#endif
 
 // A search places the increment between two reads at most this far apart;
 // wider (the main loop was busy), it waits for the next increment.
@@ -174,9 +181,10 @@ void source_rtc_init(void);
 // The adapter for sync.c: fills report for the epoch in snapshot.
 void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSourceReport *report);
 
-// Once per epoch, after sync_update(): checks and aligned writes, with our
-// epoch's time from the synchroniser.
-void source_rtc_epoch(const TimingSnapshot *snapshot);
+// Once per epoch, after sync_update(): checks and aligned writes. time: our
+// epoch's time, from the synchroniser (its SyncStatus time);
+// synchronised: sync_is_synchronised().
+void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool synchronised);
 
 // Every pass of the main loop, after pcf8563_service(): searches, and the
 // release. Returns at once when there is nothing to do.

@@ -14,7 +14,6 @@
 
 #include "../drivers/pcf8563.h"
 #include "../timing/timing_config.h"
-#include "sync.h"
 
 #define SECOND_TICKS ((uint32_t)TIMING_NOMINAL_TICKS)
 // ns to ticks: 25 ns a tick.
@@ -338,12 +337,12 @@ static void abort_write(void)
 // Loads the time that the RTC should show until its first increment, which
 // is to land on our epoch n seconds on: released n seconds less the start
 // delay after this epoch, at least SOURCE_RTC_RELEASE_EARLIEST_TICKS in.
-static void begin_write(const SyncStatus *sync)
+static void begin_write(const SyncTime *time)
 {
     int32_t delay =
         START_DELAY_TICKS + state.release_correction_ticks + SOURCE_RTC_RELEASE_LATENCY_TICKS;
     uint32_t n = 1;
-    uint32_t label = sync->time.utc_seconds;
+    uint32_t label = time->utc_seconds;
 
     write_wanted = false;
     while ((int32_t)(n * SECOND_TICKS) - delay < (int32_t)SOURCE_RTC_RELEASE_EARLIEST_TICKS)
@@ -351,8 +350,8 @@ static void begin_write(const SyncStatus *sync)
         n++;
     }
     // The RTC cannot hold a leap second: not across one.
-    if (sync->time.leap.change != 0 && sync->time.leap.event_utc > label &&
-        sync->time.leap.event_utc - label <= n + 1U)
+    if (time->leap.change != 0 && time->leap.event_utc > label &&
+        time->leap.event_utc - label <= n + 1U)
     {
         write_wanted = true; // after it
         return;
@@ -411,17 +410,17 @@ static void wait_release(void)
 // Saturated well before the arithmetic would overflow (24 days).
 #define OFFSET_LIMIT_S 2000000L
 
-static void measure_offset(const SyncStatus *sync)
+static void measure_offset(const SyncTime *time)
 {
     int32_t seconds;
     int32_t delta_ms;
 
     state.offset_valid = false;
-    if (!sync->time.known || !epoch_valid || !state.second_valid)
+    if (!time->known || !epoch_valid || !state.second_valid)
     {
         return;
     }
-    seconds = (int32_t)(state.second_label - sync->time.utc_seconds);
+    seconds = (int32_t)(state.second_label - time->utc_seconds);
     delta_ms = (int32_t)(state.second_stamp - epoch_stamp) / TICKS_PER_MS;
     if (seconds > OFFSET_LIMIT_S)
     {
@@ -504,7 +503,7 @@ static void confirmed(void)
 }
 
 
-static void search_result(const SyncStatus *sync, bool synchronised)
+static void search_result(const SyncTime *time, bool synchronised)
 {
     const Pcf8563Status *rtc = pcf8563_status();
 
@@ -526,7 +525,7 @@ static void search_result(const SyncStatus *sync, bool synchronised)
         }
         return;
     }
-    measure_offset(sync);
+    measure_offset(time);
     if (purpose == PURPOSE_CONFIRM)
     {
         confirmed();
@@ -596,7 +595,7 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
     memset(report, 0, sizeof(*report));
     report->present = rtc->present;
     report->time_valid = rtc->time_valid && !writing();
-    report->uncertainty_ns = SYNC_RTC_UNCERTAINTY_NS;
+    report->uncertainty_ns = SOURCE_RTC_UNCERTAINTY_NS;
     if (!state.second_valid || !capture->epoch_capture_valid)
     {
         return;
@@ -633,11 +632,11 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
 }
 
 
-void source_rtc_epoch(const TimingSnapshot *snapshot)
+void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool synchronised)
 {
-    const SyncStatus *sync = sync_status();
     const Pcf8563Status *rtc = pcf8563_status();
-    bool synchronised = sync_is_synchronised() && sync->time.known && !sync->time.leap_second;
+
+    synchronised = synchronised && time->known && !time->leap_second;
 
     epoch_sequence = snapshot->timer.sequence;
     epoch_valid = snapshot->capture.epoch_capture_valid;
@@ -663,16 +662,16 @@ void source_rtc_epoch(const TimingSnapshot *snapshot)
     }
     if (search_done)
     {
-        search_result(sync, synchronised);
+        search_result(time, synchronised);
     }
 
     // Check soon after the clock is synchronised, or its time corrected.
-    if (synchronised && (!was_synchronised || sync->time.corrections != corrections_seen))
+    if (synchronised && (!was_synchronised || time->corrections != corrections_seen))
     {
         check_by(epoch_sequence + SOURCE_RTC_SETTLE_EPOCHS);
     }
     was_synchronised = synchronised;
-    corrections_seen = sync->time.corrections;
+    corrections_seen = time->corrections;
 
     if (state.activity != SOURCE_RTC_IDLE || !rtc->present || pcf8563_busy())
     {
@@ -683,7 +682,7 @@ void source_rtc_epoch(const TimingSnapshot *snapshot)
         plain_wanted = false;
         state.attempts = 0;
         state.next_check_epoch = epoch_sequence + SOURCE_RTC_CHECK_EPOCHS;
-        if (synchronised && pcf8563_write(sync->time.utc_seconds))
+        if (synchronised && pcf8563_write(time->utc_seconds))
         {
             state.plain_writes++;
             state.second_valid = false;
@@ -696,7 +695,7 @@ void source_rtc_epoch(const TimingSnapshot *snapshot)
     {
         if (synchronised && epoch_valid)
         {
-            begin_write(sync);
+            begin_write(time);
         }
         else if (!synchronised)
         {

@@ -1,8 +1,8 @@
 #include "gnss.h"
 #include <xc.h>
+#include "../console/text.h"
 #include "../drivers/uart2.h"
 #include "../platform/time_ms.h"
-#include "../ui/text.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>

@@ -14,7 +14,7 @@ The project is an MPLAB X project in [nbproject](nbproject), built with XC16 2.1
 
 The SML codec and protocol definitions are shared with the ESP. They are not copied into this folder: the project includes `common/sml_proto.h`, `common/sml.c` and `common/sml.h`, along with `common/enums.h`, directly from [common](../common). The includes (`../../common/sml.h` and friends) rely on the repository layout, so keep the two folders side by side.
 
-The ESP link runs at 921600 baud, set by `CONSOLE_BAUD_RATE` in [ui/console.h](ui/console.h), which must match the PIC link rate in the ESP's `src/board.h`. At 40MHz the dsPIC actually manages 909091 baud, 1.4% slow, which both ends tolerate. 1000000 baud would be exact on both sides, if it ever matters.
+The ESP link runs at 921600 baud, set by `CONSOLE_BAUD_RATE` in [console/console.h](console/console.h), which must match the PIC link rate in the ESP's `src/board.h`. At 40MHz the dsPIC actually manages 909091 baud, 1.4% slow, which both ends tolerate. 1000000 baud would be exact on both sides, if it ever matters.
 
 ## GNSS receiver
 
@@ -54,16 +54,19 @@ cd tests/host && make
 
 | Folder | Contents |
 | --- | --- |
-| `main.c`, `scheduler.c/.h` | The task list and the cooperative scheduler that runs it |
+| `main.c` | The task list, and the order modules are started and run in |
 | `platform/` | Clock and configuration bits, the pin map, millisecond helpers, UTC and calendar arithmetic |
 | `drivers/` | UART1 (the ESP link), UART2 (GNSS), the tube drivers, I2C1, the PCF8563 RTC, the VEML6040 light sensor, and program flash for the settings |
-| `timing/` | PPS capture, the epoch timer and output, the control loop, and its console report |
+| `console/` | Console output over the ESP link, the fast text formatter, and the debug mask |
+| `timing/` | PPS capture, the epoch timer and output, the control loop and its console report, and the cooperative scheduler that runs the task list |
 | `sync/` | Time source evaluation and selection, holdover, and the UTC second of each epoch |
 | `gnss/` | UBX parsing, decoding and encoding, receiver detection, epoch assembly, the GNSS state |
 | `esp/` | The ESP link and the SML payloads built from the clock's state |
-| `ui/` | Console, display modes and frames, brightness, time zones, the fast text formatter |
+| `ui/` | Display modes and frames, brightness, the button and switch, beeps, time zones |
 | `settings/` | The settings, and the store that keeps them and the time zone schedule in flash |
 | `tests/host/` | Host tests and the stand-ins they run against |
+
+The folders are layered, from the bottom: `common/`, `platform/`, `drivers/`, `console/`, `timing/`, `gnss/`, `ui/`, `sync/`, `settings/`, `esp/`, then `main.c`. Each includes only from itself and the folders below it, so a module can be built and tested with what is beneath it; anything that has to go the other way is passed in, as the synchroniser's time is to the RTC source, or handed down, as the ESP link hands each TIME-NTP to the NTP source. [tools/layers.py](tools/layers.py) checks this, and that no two files include each other.
 
 | Pin | Function |
 | --- | --- |
@@ -217,7 +220,7 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 # Console
 
-The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [ui/debug.h](ui/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is kept over a reset once saved (`pic-save`), with the other settings; a build with `DEBUG_DEFAULT` adds its own bits to the saved ones. State changes are always printed.
+The console output goes to the ESP, which shows it on its USB-UART console and over Telnet. What is printed is set by a mask of subsystems in [console/debug.h](console/debug.h). `DEBUG_DEFAULT` sets it at build time, nothing by default (`-DDEBUG_DEFAULT=DEBUG_ALL` for a bench session); the ESP changes it with SML `SET_DEBUG` (`pic-debug`, `pic-debug-enable`, `pic-debug-disable`), and the PIC prints the result. It is kept over a reset once saved (`pic-save`), with the other settings; a build with `DEBUG_DEFAULT` adds its own bits to the saved ones. State changes are always printed.
 
 | Bit | Name | What |
 | --- | --- | --- |
@@ -243,7 +246,7 @@ The tuning report gives, for the minute just ended:
 
 It also gives virtual holdover trials, which build up over hours. While the loop is locked, a trial starts every 10 minutes, up to 12 at once. Each takes the period the loop would hold if its source failed at that moment, then adds up how far that period drifts from the reference over the next two hours. Nothing is actually held over. The error at 10s, 1, 5, 10, 30, 60 and 120 minutes gives f and D for the holdover model.
 
-XC16's printf turned out to cost about 1.5ms a call, and the epoch lines took 67ms of every second. They are now built with the small formatter in [ui/text.c](ui/text.c), which produces identical output in about 2ms. The minute reports still use printf, so they run late in the second, clear of the epoch work and the GNSS traffic that follows each navigation solution.
+XC16's printf turned out to cost about 1.5ms a call, and the epoch lines took 67ms of every second. They are now built with the small formatter in [console/text.c](console/text.c), which produces identical output in about 2ms. The minute reports still use printf, so they run late in the second, clear of the epoch work and the GNSS traffic that follows each navigation solution.
 
 # I2C and the RTC
 

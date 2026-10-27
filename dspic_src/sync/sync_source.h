@@ -93,6 +93,19 @@ typedef struct
     int32_t cross_check_max_ns;
 } SyncSourceTracker;
 
+// The UTC second our epoch edge marks: the synchroniser's result (sync.h),
+// here so that a source that is also kept set from it (source_rtc.h) can be
+// given it without depending on the synchroniser.
+typedef struct
+{
+    bool known;           // labelled by a source at least once since start
+    uint32_t utc_seconds; // Unix seconds; an inserted leap second repeats :59
+    bool leap_second;     // ... this one is 23:59:60
+    UtcLeap leap;         // announced leap second in use (see sync_set_leap)
+    uint32_t corrections; // times a source's label replaced the count
+    uint8_t source;       // SyncSourceId that last labelled or seeded it
+} SyncTime;
+
 void sync_source_reset(SyncSourceTracker *tracker);
 
 // Judges one epoch's report and updates the record. max_uncertainty_ns 0

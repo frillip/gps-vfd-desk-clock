@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "../../common/sml_proto.h"
 #include "../timing/timing.h"
 #include "sync_source.h"
 
@@ -73,6 +74,10 @@ typedef struct
     uint32_t corrections;     // ... steps or fast slews flagged CORRECTING
     uint32_t last_update_utc;
 } SourceNtpState;
+
+// A TIME-NTP, as the ESP link receives it (esp/esp_link.c): kept for
+// source_ntp_service(). A later one before then replaces it.
+void source_ntp_received(const SML_TIME_NTP_PAYLOAD *ntp);
 
 // Every 10 ms, after esp_link_service(): pairs a new TIME-NTP with its edge.
 void source_ntp_service(uint32_t now_ms);

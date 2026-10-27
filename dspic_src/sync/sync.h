@@ -71,7 +71,7 @@
  * The RTC (source_rtc.c) is a source of the time of day only: on V2 it has
  * no edge the capture can take, so it never steers and is never a
  * candidate (sync_source_steers). It is judged like any other, with a
- * bound of SYNC_RTC_UNCERTAINTY_NS, and at start-up it is usually the first
+ * bound of SOURCE_RTC_UNCERTAINTY_NS, and at start-up it is usually the first
  * source with a time: the time of day is seeded from it (as above), and
  * while still free running, before anything has steered, the epoch is
  * stepped once onto the RTC's second (epoch_control_free_run_step), so
@@ -145,13 +145,8 @@ typedef enum
 #define SYNC_NTP_EDGE_JITTER_NS 20000UL // 20 us
 #endif
 
-// The RTC's bound: the RTC holds UTC to the second, and how far its second
-// is from UTC's is not known for sure until the time of its last aligned
-// write can be kept over a power cycle. Its limits only require it to be
-// within that.
-#ifndef SYNC_RTC_UNCERTAINTY_NS
-#define SYNC_RTC_UNCERTAINTY_NS 999000000UL // 999 ms
-#endif
+// The RTC's limits: its bound (SOURCE_RTC_UNCERTAINTY_NS, source_rtc.h) is
+// only required to be within a second.
 #define SYNC_RTC_LIMIT_NS 1000000000UL
 // At start-up, free run waits this long at most for a time-of-day source
 // that has a time but not yet its second (the RTC being searched).
@@ -244,17 +239,6 @@ typedef struct
     uint8_t reason;  // SyncReason
     uint8_t verdict; // SyncCheck of the source selected before it
 } SyncTransition;
-
-// The UTC second our epoch edge marks.
-typedef struct
-{
-    bool known;           // labelled by a source at least once since start
-    uint32_t utc_seconds; // Unix seconds; an inserted leap second repeats :59
-    bool leap_second;     // ... this one is 23:59:60
-    UtcLeap leap;         // announced leap second in use (see sync_set_leap)
-    uint32_t corrections; // times a source's label replaced the count
-    uint8_t source;       // SyncSourceId that last labelled or seeded it
-} SyncTime;
 
 // Holdover as a candidate: how far our oscillator can be trusted since the
 // loop last steered.

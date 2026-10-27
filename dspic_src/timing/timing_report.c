@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "../console/text.h"
 #include "timing_config.h"
-#include "../ui/text.h"
 
 #define NS_PER_TICK (1000000000UL / TIMING_NOMINAL_TICKS) // 25
 

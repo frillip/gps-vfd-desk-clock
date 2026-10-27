@@ -4,6 +4,11 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <logicalFolder name="console" displayName="console" projectFiles="true">
+        <itemPath>console/console.h</itemPath>
+        <itemPath>console/text.h</itemPath>
+        <itemPath>console/debug.h</itemPath>
+      </logicalFolder>
       <logicalFolder name="drivers" displayName="drivers" projectFiles="true">
         <itemPath>drivers/uart1.h</itemPath>
         <itemPath>drivers/uart2.h</itemPath>
@@ -63,19 +68,16 @@
         <itemPath>timing/epoch_control.h</itemPath>
         <itemPath>timing/timing.h</itemPath>
         <itemPath>timing/timing_report.h</itemPath>
+        <itemPath>timing/scheduler.h</itemPath>
       </logicalFolder>
       <logicalFolder name="ui" displayName="ui" projectFiles="true">
-        <itemPath>ui/console.h</itemPath>
         <itemPath>ui/frame.h</itemPath>
         <itemPath>ui/display.h</itemPath>
         <itemPath>ui/timezone.h</itemPath>
-        <itemPath>ui/text.h</itemPath>
-        <itemPath>ui/debug.h</itemPath>
         <itemPath>ui/brightness.h</itemPath>
         <itemPath>ui/controls.h</itemPath>
         <itemPath>ui/beeps.h</itemPath>
       </logicalFolder>
-      <itemPath>scheduler.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -89,6 +91,11 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <logicalFolder name="console" displayName="console" projectFiles="true">
+        <itemPath>console/console.c</itemPath>
+        <itemPath>console/text.c</itemPath>
+        <itemPath>console/debug.c</itemPath>
+      </logicalFolder>
       <logicalFolder name="drivers" displayName="drivers" projectFiles="true">
         <itemPath>drivers/uart1.c</itemPath>
         <itemPath>drivers/uart2.c</itemPath>
@@ -141,25 +148,23 @@
         <itemPath>timing/epoch_control.c</itemPath>
         <itemPath>timing/timing.c</itemPath>
         <itemPath>timing/timing_report.c</itemPath>
+        <itemPath>timing/scheduler.c</itemPath>
       </logicalFolder>
       <logicalFolder name="ui" displayName="ui" projectFiles="true">
-        <itemPath>ui/console.c</itemPath>
         <itemPath>ui/frame.c</itemPath>
         <itemPath>ui/display.c</itemPath>
         <itemPath>ui/timezone.c</itemPath>
-        <itemPath>ui/text.c</itemPath>
-        <itemPath>ui/debug.c</itemPath>
         <itemPath>ui/brightness.c</itemPath>
         <itemPath>ui/controls.c</itemPath>
         <itemPath>ui/beeps.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
-      <itemPath>scheduler.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
     <Elem>platform</Elem>
     <Elem>drivers</Elem>
+    <Elem>console</Elem>
     <Elem>gnss</Elem>
     <Elem>sync</Elem>
     <Elem>timing</Elem>

@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "../ui/text.h"
+#include "../console/text.h"
 
 static void print_time(const SyncTime *time)
 {

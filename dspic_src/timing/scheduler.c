@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include "platform/time_ms.h"
-#include "timing/epoch_timer.h"
+#include "../platform/time_ms.h"
+#include "epoch_timer.h"
 
 static uint32_t now_ms;
 static uint32_t epoch;

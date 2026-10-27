@@ -748,7 +748,7 @@ Each message has an entry in a table with its class, ID, fixed length (0 for STA
 | `settings/settings.c`, `.h` | The settings body, its checks and revision, STAT-SETTINGS, CMD-SETTINGS; saving them and the TZ-STATE schedule |
 | `settings/store.c`, `.h`, `drivers/flash.c` | The flash journal the settings and the schedule are kept in, in two pages reserved apart from the application |
 | `sync/sync.c` | `sync_set_leap()` (TIME-LEAP) and `sync_uncertainty()` (the TIME-AUTH bound) |
-| `ui/console.c` | `console_set_sink()`: routes printf into STAT-DEBUG in SML mode |
+| `console/console.c` | `console_set_sink()`: routes printf into STAT-DEBUG in SML mode |
 
 `esp_link_service()` runs every 10ms. `esp_link_epoch()` runs right after `sync_update()`, before the display is prepared and before the console reports, so TIME-AUTH leaves first. The six per-epoch messages come to 284 bytes a second, a few percent of the link even at 115200 baud. The console report adds roughly 0.6–1KB a second.
 
