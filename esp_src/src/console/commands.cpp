@@ -1333,7 +1333,7 @@ static const Noun nouns[] = {
     {"osc", "The PIC's oscillator", bare_osc, ENTRIES(osc_entries)},
     {"gnss", "The GNSS receiver", bare_gnss, NO_ENTRIES},
     {"sources", "The PIC's time sources, ranked", bare_sources, NO_ENTRIES},
-    {"debug", "The PIC's periodic debug output", bare_debug, ENTRIES(debug_entries)},
+    {"debug", "The PIC's debug output", bare_debug, ENTRIES(debug_entries)},
     {"pic", "The PIC: everything it reports", bare_pic, ENTRIES(pic_entries)},
 
     {"ntp", "The ESP's NTP clock and server", bare_ntp, ENTRIES(ntp_entries)},

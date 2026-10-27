@@ -188,7 +188,7 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 | `osc baseline <Hz>` | The oscillator baseline setting, within 1000ppm of 40MHz |
 | `gnss` | The GNSS receiver |
 | `sources [-v]` | The PIC's time sources, ranked |
-| `debug [names\|+name -name]` | The PIC's periodic debug output: show it, set exactly these, or add and remove. Names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute`, `tuning`, `rtc`, `events`, `all` and `none`, or a mask such as `0x1f` |
+| `debug [names\|+name -name]` | The PIC's debug output: show it, set exactly these, or add and remove. Names are `timing`, `gnss`, `sync`, `sources`, `ntp`, `minute`, `tuning`, `rtc`, `events`, `all` and `none`, or a mask such as `0x1f` |
 | `pic [-v]` | Everything the PIC reports |
 | `pic stored` | What the PIC has in flash |
 | `pic save`, `pic defaults`, `pic reset` | Save, defaults or reset for the PIC alone |

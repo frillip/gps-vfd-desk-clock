@@ -26,7 +26,7 @@
 #define DEBUG_EVENTS  0x0100U // as they happen: sync state changes, controls, sensor
 #define DEBUG_ALL     0x01FFU
 
-// Nothing periodic by default: the ESP turns it on ("debug +gnss", say), or
+// Nothing by default: the ESP turns it on ("debug +gnss", say), or
 // build with e.g. -DDEBUG_DEFAULT=DEBUG_ALL for a bench session.
 #ifndef DEBUG_DEFAULT
 #define DEBUG_DEFAULT DEBUG_NONE

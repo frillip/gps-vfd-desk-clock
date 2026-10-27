@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 1.4 (`SML_PROTOCOL_MAJOR` 1, `SML_PROTOCOL_MINOR` 4) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 2.0 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 0) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -674,7 +674,7 @@ Commands run by the PIC:
 
 Running settings, written by CMD-SETTINGS or from the menu, take effect at once and are kept over a reset only once saved (`SAVE`, or CMD-SETTINGS with `SML_WRITE_PERSIST`). STAT-SETTINGS shows `DIRTY` until then. The debug mask (`SET_DEBUG`) is saved with them, though it is not in the settings body and does not change the revision.
 
-`SET_DEBUG` changes which of the PIC's periodic diagnostics are printed: the new mask is (old & ~clear) | set, using the bits under [Debug subsystems](#debug-subsystems). An argument of 0 changes nothing. Either way the PIC answers ACK and prints the resulting mask, by name, as STAT-DEBUG text, whatever the mask is. State changes and warnings are always printed.
+`SET_DEBUG` changes which of the PIC's diagnostics are printed: the new mask is (old & ~clear) | set, using the bits under [Debug subsystems](#debug-subsystems). An argument of 0 changes nothing. Either way the PIC answers ACK and prints the resulting mask, by name, as STAT-DEBUG text, whatever the mask is. Unasked, the PIC prints only its start-up line and faults.
 
 Commands run by the ESP:
 
