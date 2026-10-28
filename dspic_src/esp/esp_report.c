@@ -95,7 +95,9 @@ uint8_t esp_report_control(EpochSyncState state)
 
 uint8_t esp_report_display(DisplayMode mode, bool time_known)
 {
-    static const uint8_t codes[DISPLAY_MODE_COUNT] = {SML_DISPLAY_HHMM};
+    static const uint8_t codes[DISPLAY_MODE_COUNT] = {
+        SML_DISPLAY_HHMM, SML_DISPLAY_MMSS,  SML_DISPLAY_SSMM,       SML_DISPLAY_YYYY,
+        SML_DISPLAY_MMDD, SML_DISPLAY_DELTA, SML_DISPLAY_UNCERTAINTY};
     if (!time_known)
     {
         return SML_DISPLAY_DASHES;
@@ -418,7 +420,7 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
 
     memset(payload, 0, sizeof(*payload));
     payload->current_display = esp_report_display(display_mode(), time->known);
-    payload->selected_display = esp_report_display(display_mode(), true);
+    payload->selected_display = esp_report_display(display_selected(), true);
     payload->menu_state = SML_MENU_NONE;
     payload->button_state = new_press();
     payload->brightness = tubes_brightness();
@@ -431,6 +433,11 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     {
         payload->flags |= SML_UI_BRIGHTNESS_AUTO;
     }
+    if (display_is_12h())
+    {
+        payload->flags |= SML_UI_FORMAT_12H;
+    }
+    payload->delta_epoch_utc = display_delta_epoch();
     if (controls_switch_on())
     {
         payload->flags |= SML_UI_SWITCH;
@@ -657,15 +664,16 @@ static Pcf8563Reference rtc_reference(void)
 // The display as set and as running: the mode, the clock, the delta epoch.
 static void print_display(bool verbose, uint32_t now_ms)
 {
-    SML_SETTINGS_BODY body;
-
-    settings_body(&body);
-    printf("Display: %s, %s h", display_mode_name(display_mode()),
-           (body.flags & SML_SETTING_FORMAT_12H) ? "12" : "24");
-    if (body.delta_epoch_utc != 0U)
+    printf("Display: %s", display_mode_name(display_mode()));
+    if (display_mode() != display_selected())
+    {
+        printf(" (selected %s)", display_mode_name(display_selected()));
+    }
+    printf(", %s h", display_is_12h() ? "12" : "24");
+    if (display_delta_epoch() != 0U)
     {
         printf(", delta from ");
-        utc_print(body.delta_epoch_utc);
+        utc_print(display_delta_epoch());
     }
     printf("\n");
     if (verbose)

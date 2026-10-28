@@ -22,7 +22,7 @@
 // The PIC's limits, checked again there: offsets and the manual brightness.
 #define OFFSET_LIMIT_S    86399
 #define BRIGHTNESS_FULL   4000
-#define DISPLAY_MODES     "hhmm mmss ssmm yyyy mmdd delta" // SML_DISPLAY_HHMM onwards
+#define DISPLAY_MODES     "hhmm mmss ssmm yyyy mmdd delta uncertainty" // display_codes[]
 #define STAT_SETTINGS_KEY ((uint32_t)SML_CLASS_STAT << 8 | SML_STAT_SETTINGS)
 
 // ---- The table ----------------------------------------------------------------
@@ -628,15 +628,25 @@ static const Entry tz_entries[] = {
 
 // ---- The display ----------------------------------------------------------------
 
+// The SML_DISPLAY_* value of each word of DISPLAY_MODES.
+static const uint8_t display_codes[] = {
+    SML_DISPLAY_HHMM, SML_DISPLAY_MMSS,  SML_DISPLAY_SSMM,        SML_DISPLAY_YYYY,
+    SML_DISPLAY_MMDD, SML_DISPLAY_DELTA, SML_DISPLAY_UNCERTAINTY,
+};
+
 // A display mode as the display shows it: HHMM.
 static void print_mode(Stream *output, uint8_t selected)
 {
-    char mode[8] = "?";
+    char mode[16] = "?";
     char *letter;
+    size_t index;
 
-    if (selected >= SML_DISPLAY_HHMM && selected <= SML_DISPLAY_DELTA)
+    for (index = 0; index < sizeof(display_codes); index++)
     {
-        nth_word(DISPLAY_MODES, selected - SML_DISPLAY_HHMM, mode, sizeof(mode));
+        if (display_codes[index] == selected)
+        {
+            nth_word(DISPLAY_MODES, (int)index, mode, sizeof(mode));
+        }
     }
     for (letter = mode; *letter != '\0'; letter++)
     {
@@ -679,7 +689,7 @@ static void display_mode(Stream *output, const Entry *entry, const Value *value)
         output->printf("\n");
         return;
     }
-    body.selected_display = (uint8_t)(SML_DISPLAY_HHMM + value->choice);
+    body.selected_display = display_codes[value->choice];
     write_pic_settings(output, &body);
 }
 
@@ -723,8 +733,8 @@ static void display_epoch(Stream *output, const Entry *entry, const Value *value
 }
 
 static const Entry display_entries[] = {
-    {NULL, VALUE_CHOICE, DISPLAY_MODES, 0, 0, "hhmm|mmss|ssmm|yyyy|mmdd|delta", "Display mode",
-     display_mode},
+    {NULL, VALUE_CHOICE, DISPLAY_MODES, 0, 0, "hhmm|mmss|ssmm|yyyy|mmdd|delta|uncertainty",
+     "Display mode", display_mode},
     {"hours", VALUE_CHOICE, "12 24", 0, 0, "12|24", "12- or 24-hour clock", display_hours},
     {"epoch", VALUE_MOMENT, NULL, 0, 0, "<moment>", "The delta mode's reference", display_epoch},
 };

@@ -176,8 +176,8 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 | `tz interval <time>` | Time between lookups, 15m–7d, default 1d |
 | `tz precision none\|0..6` | Decimal places of position sent, see [Location privacy](#location-privacy) |
 | `display [-v]` | The display mode, 12/24 hours, brightness, light sensor, button and switch |
-| `display hhmm\|mmss\|ssmm\|yyyy\|mmdd\|delta` | The display mode. Only HHMM so far: the PIC refuses the others until they are ported |
-| `display hours 12\|24` | 12- or 24-hour clock, kept until the display uses it |
+| `display hhmm\|mmss\|ssmm\|yyyy\|mmdd\|delta\|uncertainty` | The display mode; the button steps through them for 20 seconds. `uncertainty` shows the time's ± bound (` 89n`, ` 1.5u`, `12.6m`) |
+| `display hours 12\|24` | 12- or 24-hour clock |
 | `display epoch <moment>` | The reference for the delta mode |
 | `brightness auto\|0..4000` | Brightness from the light sensor, or a manual level: below 200 the tubes are off, above 3800 fully on |
 | `beeps on\|off` | Quarter-hour chimes and button clicks |

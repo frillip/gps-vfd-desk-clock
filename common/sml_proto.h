@@ -3,6 +3,7 @@
  * Draft for manual review. Payloads other than TIME-AUTH are provisional.
  * Specification: common/SML_PROTOCOL.md. This header is the single shared
  * copy for the dsPIC and the ESP32; do not fork it.
+ * 2026-10-27 (2.1): SML_DISPLAY_UNCERTAINTY (10), selectable: the time's bound.
  * 2026-10-27 (2.0): CMD-USER codes rationalised (breaking): the SET_* setting
  * commands are gone (settings are written with CMD-SETTINGS), INFO,
  * SHOW_CONFIG, SHOW_SETTINGS and SHOW_SOURCES become SHOW with an
@@ -60,7 +61,7 @@
 #define SML_TZ_TRANSITION_MAX 8U
 #define SML_SETTINGS_SCHEMA   1U
 #define SML_PROTOCOL_MAJOR    2U
-#define SML_PROTOCOL_MINOR    0U
+#define SML_PROTOCOL_MINOR    1U
 
 #define SML_CLASS_TIME 0x10U
 #define SML_CLASS_TZ   0x20U
@@ -155,7 +156,9 @@
 #define SML_CONTROL_TRACK   3U // PI servo on the Kalman frequency estimate
 // STAT-UI current_display / selected_display, settings selected_display.
 // Values match the V2 UI_DISPLAY_STATE order, so V2 EEPROM values carry over.
-// Values from SML_DISPLAY_DASHES up are runtime-only and never selectable.
+// DASHES, TEMP and MENU are runtime-only and never selectable; UNCERTAINTY
+// (2.1, new in V2+) is selectable, numbered after them.
+// SML_DISPLAY_SELECTABLE(): a value the settings may select.
 #define SML_DISPLAY_INIT   0U
 #define SML_DISPLAY_HHMM   1U
 #define SML_DISPLAY_MMSS   2U
@@ -166,6 +169,10 @@
 #define SML_DISPLAY_DASHES 7U
 #define SML_DISPLAY_TEMP   8U
 #define SML_DISPLAY_MENU   9U
+#define SML_DISPLAY_UNCERTAINTY 10U // the time's +/- bound
+#define SML_DISPLAY_SELECTABLE(value)                                   \
+    (((value) >= SML_DISPLAY_HHMM && (value) <= SML_DISPLAY_DELTA) || \
+     (value) == SML_DISPLAY_UNCERTAINTY)
 // STAT-UI button_state.
 #define SML_BUTTON_NONE  0U
 #define SML_BUTTON_SHORT 1U

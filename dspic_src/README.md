@@ -174,7 +174,19 @@ The tube driver takes a logical frame (segments, separators and dots) and turns 
 
 Brightness is automatic by default, as on V2. The VEML6040 is read every half second over I2C1 ([drivers/veml6040.c](drivers/veml6040.c), V2's driver ported as the PCF8563 was), its green channel giving lux, and [ui/brightness.c](ui/brightness.c) turns that into a level: 3 per 0.1 lux, between 200 and 3800 of 4000, so the brightest from about 127 lux. Too dark to measure gives the dimmest, a saturated sensor the brightest, and with no reading at all the manual level stands in. `brightness n` (0–4000) on the ESP sets the manual level and turns auto off; below 200 the tubes are off, above 3800 lit continuously. `brightness auto` turns it back on. In auto the tubes fade to a new level by 10 every 10ms rather than jumping; a manual level takes effect at once. The light goes to the ESP in STAT-ENV every five seconds, and `display`, `pic` and the minute report show it with the brightness.
 
-Only the HH:MM mode has been ported so far. The colon blinks with the seconds while the clock is synchronised and stays lit while it is free running. Dashes are shown until the time of day is known.
+The display modes are V2's, less the temperature, plus one new one. The mode selected (`display <mode>` on the ESP, kept with `save`) is the one shown; a short press of the button shows the next instead, in the order of the table, and the selected mode comes back after 20 seconds without another press, as on V2. A change of mode is drawn at once, rather than at the next second. Dashes are shown in every mode until the time of day is known.
+
+| Mode | Shows |
+| --- | --- |
+| HHMM | Local hours and minutes, 24-hour (`09:05`) or 12-hour without a leading zero (` 9:05`, `display hours 12`) |
+| MMSS | Minutes and seconds |
+| SSMM | Seconds and hundredths: the epoch's frame is `SS:00`, then the hundredths are latched at once as each changes, from the main loop |
+| YYYY | The year |
+| MMDD | Month and day |
+| DELTA | The time to or since the delta epoch (`display epoch <moment>`), in its two largest units: years (alone from 100), years and months, months and days, days and hours, hours and minutes, or minutes and seconds. The start line is lit while the epoch is still to come. Months are whole calendar months from the earlier moment, a day that does not exist (31 February) taken as the month's last |
+| UNCERTAINTY | The time's ± bound, rounded up to three figures with the unit on the last tube: ` 89n`, ` 1.5u`, `130u`, `12.6m`, `999m`, the middle separator's lower dot as the decimal point. ` --m` without a bound (free running on a counted time) or above 999ms |
+
+The colon blinks with the seconds while the clock is synchronised. Running free, HH:MM keeps it lit and the other modes leave it off, as V2 did. The uncertainty mode uses only the lower dot, as its decimal point. The alarm dot waits for the alarm.
 
 Local time is UTC plus offsets. The clock itself never moves. The PIC keeps the latest SML-TZ-STATE schedule from the ESP: the entry in force and up to eight future transitions. It moves to each new entry at its UTC second. Two settings decide what is taken from the schedule:
 
@@ -204,7 +216,7 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 # Button and switch
 
-[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. Nothing acts on them yet beyond a click for each press: STAT-UI carries them to the ESP, and each press and switch change is printed with `debug +events`.
+[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. A short press clicks and shows the next display mode; the menu and alarm will do the rest. STAT-UI carries each press to the ESP, and each press and switch change is printed with `debug +events`.
 
 # Buzzer
 
@@ -272,7 +284,7 @@ The RTC's bound stays ±999ms. The aligned write makes it much better than that,
 
 # Settings and flash
 
-The settings are those of SML's STAT-SETTINGS: the manual time zone, TZ and DST auto, the brightness, the display mode, the stored oscillator frequency, and the alarm, delta, beep and 12-hour settings the UI does not use yet. The debug mask is kept with them. [settings/settings.c](settings/settings.c) holds them and applies each to its module. The ESP changes them by writing the whole body back with CMD-SETTINGS, one field changed, against the revision it last saw; there are no per-setting commands. A change runs at once and is kept once saved, as on V2: `save` on the ESP (SAVE), or CMD-SETTINGS with PERSIST. SAVE is answered ACCEPTED, then ACK once the flash has been written, or NACK STORAGE or VERIFY. `defaults` (DEFAULTS) puts the factory settings in force without saving them, like any other change. STAT-SETTINGS shows DIRTY until saved. `pic` prints the running settings with everything else, and `pic stored` what is stored, the store and the flash timings.
+The settings are those of SML's STAT-SETTINGS: the manual time zone, TZ and DST auto, the brightness, the display mode, 12 or 24 hours and the delta epoch, the beeps, the stored oscillator frequency, and the alarm, which the UI does not use yet. The debug mask is kept with them. [settings/settings.c](settings/settings.c) holds them and applies each to its module. The ESP changes them by writing the whole body back with CMD-SETTINGS, one field changed, against the revision it last saw; there are no per-setting commands. A change runs at once and is kept once saved, as on V2: `save` on the ESP (SAVE), or CMD-SETTINGS with PERSIST. SAVE is answered ACCEPTED, then ACK once the flash has been written, or NACK STORAGE or VERIFY. `defaults` (DEFAULTS) puts the factory settings in force without saving them, like any other change. STAT-SETTINGS shows DIRTY until saved. `pic` prints the running settings with everything else, and `pic stored` what is stored, the store and the flash timings.
 
 The oscillator's frequency, as the control loop learnt it from GNSS, is kept too: once the loop has tracked GNSS for 10 minutes, and again whenever it has moved by 50ppb, at most hourly; `save` also writes it, if it differs at all. `osc` shows the loop's estimate and the stored one, as a frequency and in ppm. At start-up the loop is seeded with it, so a clock free running before any source is found keeps time at the learnt frequency rather than nominal (a couple of ppm out on the bench boards), and an NTP-only start steps with it. GNSS refines it from there. This is not `calibration_fosc_hz`, the setting `osc baseline` changes, which nothing uses yet.
 
@@ -299,7 +311,6 @@ Erasing a page stops the CPU for roughly 20–30ms, with interrupts held off thr
 The V2 firmware did rather more than this. Still to come:
 
 - the menu and alarm, which will act on the button and switch;
-- the other display modes and the 12-hour format;
 - the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
 - GNSS provisioning;
 - the watchdog;

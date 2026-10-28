@@ -108,8 +108,8 @@ static bool flash_quiet(void)
 }
 
 
-// The button and the switch, debounced. Nothing acts on them yet (the
-// display modes, menu and alarm will) beyond a click for each press: each
+// The button and the switch, debounced. A click for each press, and a short
+// press shows the next display mode (the menu and alarm will do more). Each
 // press and switch change is printed with DEBUG_EVENTS.
 static void service_controls(void)
 {
@@ -124,6 +124,10 @@ static void service_controls(void)
     {
         presses = count;
         beeps_button();
+        if (press == CONTROLS_SHORT)
+        {
+            display_cycle();
+        }
         if (debug_enabled(DEBUG_EVENTS))
         {
             printf("Button: %s\r\n", controls_press_name(press));
@@ -163,6 +167,8 @@ static void prepare_display(void)
     clock.utc_seconds = status->time.utc_seconds;
     clock.leap_second = status->time.leap_second;
     clock.leap = status->time.leap;
+    clock.uncertainty_ns = 0;
+    clock.uncertainty_valid = sync_uncertainty(&clock.uncertainty_ns);
     display_prepare(&clock);
 }
 
@@ -326,6 +332,8 @@ int main(void)
             scheduler_section(&epoch_work);
             run_epoch(&snapshot);
         }
+        // Every pass, after the epoch's frame is prepared: SSMM's hundredths.
+        display_tick(epoch_timer_slot());
 
         if (scheduler_due(&every_10ms))
         {

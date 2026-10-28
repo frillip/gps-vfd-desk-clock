@@ -31,6 +31,9 @@ void frame_text(TubesFrame *frame, const char *text);
 // do not fit are dropped from the left.
 void frame_number(TubesFrame *frame, uint8_t first, uint8_t width, uint16_t value);
 
+// As frame_number(), with leading zeros blanked (at least one digit shown).
+void frame_number_blanked(TubesFrame *frame, uint8_t first, uint8_t width, uint16_t value);
+
 // Blanks count tubes from tube first (leading zeros, flashing fields).
 void frame_blank(TubesFrame *frame, uint8_t first, uint8_t count);
 

@@ -64,21 +64,27 @@ static bool offset_ok(int32_t offset_s)
 }
 
 
+// HHMM to DELTA run in the same order in both.
+typedef char display_order_check
+    [DISPLAY_MODE_DELTA - DISPLAY_MODE_HHMM == SML_DISPLAY_DELTA - SML_DISPLAY_HHMM ? 1 : -1];
+
+// A selectable SML_DISPLAY_* value (settings_check) as the display's mode.
+static DisplayMode display_mode_of(uint8_t selected)
+{
+    return selected == SML_DISPLAY_UNCERTAINTY
+               ? DISPLAY_MODE_UNCERTAINTY
+               : (DisplayMode)(DISPLAY_MODE_HHMM + (selected - SML_DISPLAY_HHMM));
+}
+
+
 uint8_t settings_check(const SML_SETTINGS_BODY *body)
 {
     if (body->schema_version != SML_SETTINGS_SCHEMA)
     {
         return SML_ERROR_SCHEMA;
     }
-    if (body->selected_display != SML_DISPLAY_HHMM)
-    {
-        // Selectable but not ported yet, or not selectable at all.
-        return body->selected_display > SML_DISPLAY_HHMM &&
-                       body->selected_display < SML_DISPLAY_DASHES
-                   ? SML_ERROR_UNSUPPORTED
-                   : SML_ERROR_ARGUMENT;
-    }
-    if ((body->flags & (uint16_t)~FLAGS_DEFINED) != 0U || body->reserved != 0U ||
+    if (!SML_DISPLAY_SELECTABLE(body->selected_display) ||
+        (body->flags & (uint16_t)~FLAGS_DEFINED) != 0U || body->reserved != 0U ||
         !offset_ok(body->base_offset_s) || !offset_ok(body->dst_offset_s) ||
         body->calibration_fosc_hz < FCY - FOSC_LIMIT_HZ ||
         body->calibration_fosc_hz > FCY + FOSC_LIMIT_HZ ||
@@ -90,8 +96,8 @@ uint8_t settings_check(const SML_SETTINGS_BODY *body)
 }
 
 
-// Each value to the module it belongs to. The alarm, delta and 12-hour
-// settings are only kept until the UI uses them.
+// Each value to the module it belongs to. The alarm is only kept until the
+// UI uses it.
 static void apply(void)
 {
     const SML_SETTINGS_BODY *body = &running.body;
@@ -103,7 +109,9 @@ static void apply(void)
     brightness_set_level(body->brightness);
     brightness_set_auto((body->flags & SML_SETTING_BRI_AUTO) != 0U);
     beeps_set_enabled((body->flags & SML_SETTING_BEEP_ENABLED) != 0U);
-    display_set_mode(DISPLAY_MODE_HHMM); // the only one so far (settings_check)
+    display_set_mode(display_mode_of(body->selected_display));
+    display_set_12h((body->flags & SML_SETTING_FORMAT_12H) != 0U);
+    display_set_delta_epoch(body->delta_epoch_utc);
 }
 
 
@@ -499,9 +507,7 @@ const SettingsStats *settings_stats(void)
 // The display modes a setting can select, by SML_DISPLAY_* value.
 static const char *display_name(uint8_t selected)
 {
-    static const char *const names[] = {"?", "HHMM", "MMSS", "SSMM", "YYYY", "MMDD", "DELTA"};
-
-    return selected < sizeof(names) / sizeof(names[0]) ? names[selected] : "?";
+    return SML_DISPLAY_SELECTABLE(selected) ? display_mode_name(display_mode_of(selected)) : "?";
 }
 
 

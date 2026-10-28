@@ -104,8 +104,7 @@ void settings_stat(SML_STAT_SETTINGS_PAYLOAD *payload);
 void settings_defaults(SML_SETTINGS_BODY *body);
 
 // SML_ERROR_NONE if every field is acceptable, else the error for the first
-// that is not (ARGUMENT, SCHEMA, or UNSUPPORTED for a display mode not
-// ported yet).
+// that is not (ARGUMENT or SCHEMA).
 uint8_t settings_check(const SML_SETTINGS_BODY *body);
 // Checks, then applies every field together; the revision goes up if
 // anything changed. Nothing changes on an error.

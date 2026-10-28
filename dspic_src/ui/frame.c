@@ -115,6 +115,24 @@ void frame_number(TubesFrame *frame, uint8_t first, uint8_t width, uint16_t valu
 }
 
 
+void frame_number_blanked(TubesFrame *frame, uint8_t first, uint8_t width, uint16_t value)
+{
+    uint8_t shown = 1;
+    uint16_t rest = value;
+
+    while (rest >= 10U)
+    {
+        rest /= 10U;
+        shown++;
+    }
+    frame_number(frame, first, width, value);
+    if (shown < width)
+    {
+        frame_blank(frame, first, (uint8_t)(width - shown));
+    }
+}
+
+
 void frame_blank(TubesFrame *frame, uint8_t first, uint8_t count)
 {
     uint8_t tube;

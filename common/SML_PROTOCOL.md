@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 2.0 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 0) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 2.1 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 1) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -474,7 +474,7 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 5 | `SWITCH` | 12 | `TZ_HELD`: a TZ-STATE schedule is held |
 | 6 | `BUTTON` | | |
 
-On the V2+ PIC the alarm, delta, menu and 12-hour format fields stay zero until the UI is ported. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
+On the V2+ PIC `current_display` is the mode shown (another for 20 seconds after a press of the button, `DASHES` while the time is unknown) and `selected_display` the setting. The alarm and menu fields stay zero until they are ported. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
 
 ## STAT-ENV (0x10)
 
@@ -531,7 +531,7 @@ The settings body is shared with CMD-SETTINGS, and its offsets are relative to t
 | 16 | alarm_offset_s | u32 | 0–86399 |
 | 20 | delta_epoch_utc | u32 | |
 | 24 | brightness | u16 | Manual level; range checked by the PIC |
-| 26 | selected_display | u8 | `SML_DISPLAY_*`, values below `SML_DISPLAY_DASHES` only |
+| 26 | selected_display | u8 | `SML_DISPLAY_*`, a selectable value only (`SML_DISPLAY_SELECTABLE()`: HHMM to DELTA, and UNCERTAINTY) |
 | 27 | reserved | u8 | 0 |
 
 The automatic timezone schedule is not part of the settings. It is persisted separately, so routine schedule updates from the ESP never change the revision or collide with edits made from the menu.
@@ -720,7 +720,7 @@ _Write every setting. ESP→PIC, 38 bytes._
 
 The PIC validates every field, then applies them all together and increments the revision. A failure on any field rejects the whole write. A write whose `expected_revision` is not the current revision is rejected with `STALE_REVISION`, so the ESP never overwrites a change it has not seen; on ACK the response carries the new revision.
 
-When the flash is written is up to the PIC, and periodic snapshots never drive it. The V2+ PIC checks every field: offsets within ±86399s, the oscillator baseline within 1000ppm of 40MHz, the alarm below 86400s, brightness 0–4000, and a selectable display mode (one not ported yet, anything but HHMM so far, is NACK `UNSUPPORTED`). A reserved bit or field set is `ARGUMENT`, another schema `SCHEMA`. The alarm, delta and 12-hour settings are kept, though the V2+ UI does not use them yet. On `SML_WRITE_PERSIST` it writes its flash at the next quiet moment, within a second or so. The ACK does not wait for that write.
+When the flash is written is up to the PIC, and periodic snapshots never drive it. The V2+ PIC checks every field: offsets within ±86399s, the oscillator baseline within 1000ppm of 40MHz, the alarm below 86400s, brightness 0–4000, and a selectable display mode (anything else is `ARGUMENT`). A reserved bit or field set is `ARGUMENT`, another schema `SCHEMA`. The alarm is kept, though the V2+ UI does not use it yet. On `SML_WRITE_PERSIST` it writes its flash at the next quiet moment, within a second or so. The ACK does not wait for that write.
 
 The ESP keeps the latest STAT-SETTINGS, and changes one setting by writing that body back with the one field changed. A change made while its previous write is unanswered is folded into the same body and sent once that answer arrives, with the new revision it carries, so a burst of changes never meets `STALE_REVISION`. After a NACK, or no answer, the ESP asks for STAT-SETTINGS again (`REQUEST_MESSAGE`) and drops any change still waiting.
 
@@ -904,12 +904,12 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 
 ## Display, button and menu
 
-Used in STAT-UI and the settings. Frozen 2026-10-19. The display values match the V2 `UI_DISPLAY_STATE` order, so V2 EEPROM values carry over.
+Used in STAT-UI and the settings. Frozen 2026-10-19. The display values match the V2 `UI_DISPLAY_STATE` order, so V2 EEPROM values carry over; UNCERTAINTY (2.1) is new in V2+, numbered after them.
 
 | Value | `SML_DISPLAY_*` | Selectable |
 | --- | --- | --- |
 | 0 | INIT | No |
-| 1 | HHMM | Yes (✓ on V2+) |
+| 1 | HHMM | Yes |
 | 2 | MMSS | Yes |
 | 3 | SSMM | Yes |
 | 4 | YYYY | Yes |
@@ -918,6 +918,9 @@ Used in STAT-UI and the settings. Frozen 2026-10-19. The display values match th
 | 7 | DASHES | No: shown while the time is unknown |
 | 8 | TEMP | No: runtime only |
 | 9 | MENU | No: runtime only |
+| 10 | UNCERTAINTY | Yes: the time's ± bound, ` 89n` to `999m` (2.1) |
+
+The V2+ PIC shows every selectable mode; TEMP is not ported.
 
 The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. The only menu value so far is `SML_MENU_NONE` 0; the rest are frozen when the menu is ported.
 
@@ -1052,6 +1055,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-27 (2.1) | `SML_DISPLAY_UNCERTAINTY` (10), selectable: the time's bound on the tubes. `SML_DISPLAY_SELECTABLE()`. The V2+ PIC now shows every selectable mode (TEMP is not ported), and fills STAT-UI `selected_display`, `FORMAT_12H` and `delta_epoch_utc`. A display mode the PIC cannot show is `ARGUMENT`, no longer `UNSUPPORTED`. No layout change |
 | 2026-10-27 (2.0) | CMD-USER rationalised, a breaking change at both ends. The `SET_*` setting commands are gone: settings are written whole with CMD-SETTINGS. `INFO`, `SHOW_CONFIG` and `SHOW_SETTINGS` become `SHOW` with an `SML_SHOW_*` topic; `SHOW_SOURCES` becomes `REQUEST_MESSAGE` for STAT-SOURCES. `SHOW` prints briefly, or everything with `SML_SHOW_VERBOSE`. The remaining codes are renumbered, the two halves sharing the low byte where they do the same thing. The ESP's codes are renamed after the console's words (`ESP_NTP_SYNC`, `ESP_TZ_REMOTE`, `ESP_TZ_LOOKUP`, `ESP_WIFI_FORGET`), with `ESP_SAVE` added. `DEFAULTS` and `ESP_DEFAULTS` no longer save, and `ESP_TZ_REMOTE` no longer saves: `SAVE` and `ESP_SAVE` do. `SML_DEBUG_RTC` (0x0080) and `SML_DEBUG_EVENTS` (0x0100): the PIC's RTC and state-change messages, printed until now whatever the mask. Golden CMD-USER frame replaced |
 | 2026-10-26 | STAT-UI flag bit 3 is `BRIGHTNESS_AUTO` (was `BRIGHTNESS_MANUAL`), and STAT-SETTINGS / CMD-SETTINGS settings flag bit 6 `BRI_AUTO` (was `BRI_MANUAL`): the same bits, the opposite sense, automatic brightness being the default. `SET_BRIGHTNESS` takes 0–4000 and turns auto off; `SET_BRI_AUTO` turns it on. The V2+ PIC sends STAT-ENV (light only) |
 | 2026-10-23 | Document only, no wire change. The V2+ PIC implements STAT-SETTINGS, CMD-SETTINGS, `SAVE`, `DEFAULTS`, `SHOW_SETTINGS`, `SHOW_CONFIG` and `SET_FOSC`, and CMD-RESPONSE `settings_revision`. The TZ-STATE schedule is kept over a reset |
