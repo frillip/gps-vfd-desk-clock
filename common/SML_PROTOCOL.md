@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 2.2 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 2) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 2.3 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 3) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -453,7 +453,7 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 0 | flags | u16 | See below |
 | 2 | current_display | u8 | `SML_DISPLAY_*` shown now, see [Display, button and menu](#display-button-and-menu) |
 | 3 | selected_display | u8 | `SML_DISPLAY_*` selected by the user |
-| 4 | menu_state | u8 | `SML_MENU_NONE` outside the menu |
+| 4 | menu_state | u8 | `SML_MENU_NONE` outside the menu, else section, item and editing (2.3), see [Display, button and menu](#display-button-and-menu) |
 | 5 | button_state | u8 | `SML_BUTTON_*` |
 | 6 | brightness | u16 | Tube PWM level now (V2: 200–3800 of 4000) |
 | 8 | brightness_target | u16 | Level being faded to |
@@ -474,7 +474,7 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 5 | `SWITCH` | 12 | `TZ_HELD`: a TZ-STATE schedule is held |
 | 6 | `BUTTON` | 13 | `DELTA_LOCAL`: `delta_epoch_utc` is local wall-clock time (2.2) |
 
-On the V2+ PIC `current_display` is the mode shown (another for 20 seconds after a press of the button, `DASHES` while the time is unknown) and `selected_display` the setting. `ALARM_ENABLED` is the alarm setting, `ALARM_ACTIVE` set while it sounds, and `alarm_offset_s` its time; the switch (`SWITCH`) arms it. The menu fields stay zero until the menu is ported. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
+On the V2+ PIC `current_display` is the mode shown (another for 20 seconds after a press of the button, `DASHES` while the time is unknown) and `selected_display` the setting. `ALARM_ENABLED` is the alarm setting, `ALARM_ACTIVE` set while it sounds, and `alarm_offset_s` its time; the switch (`SWITCH`) arms it. While the menu is open, `current_display` is `MENU` and `menu_state` says where in it the PIC is. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
 
 ## STAT-ENV (0x10)
 
@@ -751,6 +751,7 @@ Each message has an entry in a table with its class, ID, fixed length (0 for STA
 | `settings/settings.c`, `.h` | The settings body, its checks and revision, STAT-SETTINGS, CMD-SETTINGS; saving them and the TZ-STATE schedule |
 | `settings/store.c`, `.h`, `drivers/flash.c` | The flash journal the settings and the schedule are kept in, in two pages reserved apart from the application |
 | `sync/sync.c` | `sync_set_leap()` (TIME-LEAP) and `sync_uncertainty()` (the TIME-AUTH bound) |
+| `menu/menu.c`, `.h` | STAT-UI `menu_state`; ESP commands from the menu (`ESP_TZ_REMOTE`, `ESP_SAVE`, `ESP_DEFAULTS`, `ESP_WIFI_FORGET`) and its remote time zone setting from STAT-NET |
 | `console/console.c` | `console_set_sink()`: routes printf into STAT-DEBUG in SML mode |
 
 `esp_link_service()` runs every 10ms. `esp_link_epoch()` runs right after `sync_update()`, before the display is prepared and before the console reports, so TIME-AUTH leaves first. The six per-epoch messages come to 284 bytes a second, a few percent of the link even at 115200 baud. The console report adds roughly 0.6–1KB a second.
@@ -924,7 +925,19 @@ Used in STAT-UI and the settings. Frozen 2026-10-19. The display values match th
 
 The V2+ PIC shows every selectable mode; TEMP is not ported.
 
-The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. The only menu value so far is `SML_MENU_NONE` 0; the rest are frozen when the menu is ported.
+The button states are `SML_BUTTON_NONE` 0, `SHORT` 1, `LONG` 2 and `HOLD` 3. `menu_state` (2.3) is `SML_MENU_NONE` 0 outside the menu. Inside it, the high bit (`SML_MENU_EDITING` 0x80) is set while a value is being edited, bits 4–6 (`SML_MENU_SECTION_MASK` 0x70) give the section, and bits 0–3 (`SML_MENU_ITEM_MASK` 0x0F) the item's place in that section's list on the PIC, counting from 0 and including items hidden at the time:
+
+| Value | `SML_MENU_*` | Items |
+| --- | --- | --- |
+| 0x10 | TOP | MENU, tZ, dSt, ALrM, bEEP, dISP, tIME, rSt, EXIt |
+| 0x20 | TZ | AUtO/MAN, offset, remote, bACK |
+| 0x30 | DST | AUtO/MAN, ON/OFF, offset, bACK |
+| 0x40 | ALARM | ON/OFF, time, bACK |
+| 0x50 | BEEP | ON/OFF, bACK |
+| 0x60 | DISPLAY | 12/24, mode, brightness, bACK |
+| 0x70 | RESET | WIFI, SEt, ALL, bACK |
+
+So 0x16 is tIME on the top level, and 0xA1 the time zone's offset being edited.
 
 ## WiFi state
 
@@ -1039,8 +1052,6 @@ B5 73 20 01 00 7C 00 01 03 08 6A CE 65 F5 72 66
 
 # Open points
 
-The `SML_MENU_*` values beyond NONE are frozen once the V2+ menu exists.
-
 `RESYNC` still needs defining. It could restart the control loop, re-qualify sources, or both, and is best settled alongside the NTP source.
 
 NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SET_DEBUG` and TIME-PIC `second_source` are implemented at both ends. While TIME-NTP has `CORRECTING` set, the PIC holds its frequency estimate (the servo integral) and works the phase off with its proportional term alone; routine gentle corrections are simply followed.
@@ -1057,6 +1068,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-28 (2.3) | `SML_MENU_*` values for STAT-UI `menu_state`: the V2+ menu's section, item and `EDITING`. The V2+ PIC reports `current_display` `MENU` while the menu is open. No layout change |
 | 2026-10-28 (2.2) | Settings flag bit 7 `DELTA_LOCAL` and STAT-UI flag bit 13 `DELTA_LOCAL`: the delta epoch as a local wall-clock time, counted against local time. No layout change |
 | 2026-10-27 (2.1) | `SML_DISPLAY_UNCERTAINTY` (10), selectable: the time's bound on the tubes. `SML_DISPLAY_SELECTABLE()`. The V2+ PIC now shows every selectable mode (TEMP is not ported), and fills STAT-UI `selected_display`, `FORMAT_12H` and `delta_epoch_utc`. A display mode the PIC cannot show is `ARGUMENT`, no longer `UNSUPPORTED`. No layout change |
 | 2026-10-27 (2.0) | CMD-USER rationalised, a breaking change at both ends. The `SET_*` setting commands are gone: settings are written whole with CMD-SETTINGS. `INFO`, `SHOW_CONFIG` and `SHOW_SETTINGS` become `SHOW` with an `SML_SHOW_*` topic; `SHOW_SOURCES` becomes `REQUEST_MESSAGE` for STAT-SOURCES. `SHOW` prints briefly, or everything with `SML_SHOW_VERBOSE`. The remaining codes are renumbered, the two halves sharing the low byte where they do the same thing. The ESP's codes are renamed after the console's words (`ESP_NTP_SYNC`, `ESP_TZ_REMOTE`, `ESP_TZ_LOOKUP`, `ESP_WIFI_FORGET`), with `ESP_SAVE` added. `DEFAULTS` and `ESP_DEFAULTS` no longer save, and `ESP_TZ_REMOTE` no longer saves: `SAVE` and `ESP_SAVE` do. `SML_DEBUG_RTC` (0x0080) and `SML_DEBUG_EVENTS` (0x0100): the PIC's RTC and state-change messages, printed until now whatever the mask. Golden CMD-USER frame replaced |

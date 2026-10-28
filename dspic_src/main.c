@@ -26,6 +26,7 @@
 #include "esp/esp_link.h"
 #include "esp/esp_report.h"
 #include "gnss/gnss.h"
+#include "menu/menu.h"
 #include "platform/system.h"
 #include "settings/settings.h"
 #include "sync/source_ntp.h"
@@ -128,35 +129,71 @@ static void report_alarm(void)
 }
 
 
-// The button and the switch, debounced. The switch arms the alarm, and a
-// press stops it sounding. Otherwise a click for each press, and a short
-// press shows the next display mode (the menu will do more). Each press and
-// switch change is printed with DEBUG_EVENTS.
+// The ESP, for the menu: its commands, and its remote time zone setting.
+static bool menu_remote_tz(uint32_t now_ms, bool *enabled)
+{
+    SML_STAT_NET_PAYLOAD net;
+
+    if (!esp_link_net(now_ms, &net))
+    {
+        return false;
+    }
+    *enabled = (net.flags & SML_NET_TZINFO_ENABLED) != 0U;
+    return true;
+}
+
+
+static const MenuEsp menu_esp = {esp_link_request, menu_remote_tz, esp_link_is_sml};
+
+/* The button and the switch, debounced. The switch arms the alarm, and a
+ * press while it sounds stops it and does nothing else. In the menu, the
+ * menu times the presses itself. On the clock, a click for each press; a
+ * short one shows the next display mode, a long one opens the menu. Each
+ * press and switch change is printed with DEBUG_EVENTS. */
 static void service_controls(void)
 {
     static uint32_t presses;
     static uint32_t switch_changes;
+    static bool was_down;
+    static bool spent;      // this press stopped the alarm
+    static bool menu_press; // ... or began in the menu: the clock ignores it
+    uint32_t now_ms = scheduler_now_ms();
     uint32_t count;
+    uint32_t epoch;
+    uint16_t slot;
     ControlsPress press;
+    bool down;
+    bool new_press;
 
-    controls_service(scheduler_now_ms(), UI_BUTTON_IS_PRESSED(), UI_SWITCH_IS_ON());
-    press = controls_press(&count);
+    controls_service(now_ms, UI_BUTTON_IS_PRESSED(), UI_SWITCH_IS_ON());
     alarm_set_switch(controls_switch_on());
-    if (count != presses)
+    down = controls_button_down();
+    if (down && !was_down)
     {
-        presses = count;
-        if (!alarm_press()) // a press that stops the alarm does nothing else
+        spent = alarm_press();
+        menu_press = menu_is_open();
+    }
+    was_down = down;
+    press = controls_press(&count);
+    new_press = count != presses;
+    presses = count;
+    epoch_timer_position(&epoch, &slot);
+    menu_service(now_ms, down && !spent, epoch, slot);
+    if (new_press && !spent && !menu_press && !menu_is_open())
+    {
+        beeps_button();
+        if (press == CONTROLS_SHORT)
         {
-            beeps_button();
-            if (press == CONTROLS_SHORT)
-            {
-                display_cycle();
-            }
+            display_cycle();
         }
-        if (debug_enabled(DEBUG_EVENTS))
+        else if (press == CONTROLS_LONG)
         {
-            printf("Button: %s\r\n", controls_press_name(press));
+            menu_open(now_ms); // ignores this press until it is released
         }
+    }
+    if (new_press && debug_enabled(DEBUG_EVENTS))
+    {
+        printf("Button: %s\r\n", controls_press_name(press));
     }
     if (controls_switch_changes() != switch_changes)
     {
@@ -213,6 +250,7 @@ static void run_epoch(const TimingSnapshot *snapshot)
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
     source_rtc_epoch(snapshot, &sync_status()->time, sync_is_synchronised());
     prepare_display();
+    menu_epoch();
     sync_tuning_epoch(snapshot, &update);
 
     if (debug_enabled(DEBUG_TIMING))
@@ -311,6 +349,7 @@ int main(void)
     buzzer_init();
     beeps_init();
     alarm_init();
+    menu_init(&menu_esp);
     // The settings and the time zone schedule kept in flash, applied to the
     // modules above. Erases and writes are timed on the capture timebase,
     // and the epoch timer's slots put right after each.

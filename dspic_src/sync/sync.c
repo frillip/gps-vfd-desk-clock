@@ -62,6 +62,15 @@ static const SyncSourceDefinition sources[SYNC_SOURCE_COUNT] = {
 
 static SyncStatus status;
 
+// A time set by hand, applied at the next epoch (sync_set_time).
+static struct
+{
+    bool pending;
+    uint32_t utc_seconds;
+    uint32_t epoch;
+    uint16_t slot_ms;
+} manual_time;
+
 // --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------
@@ -698,6 +707,7 @@ void sync_init(void)
     uint8_t index;
 
     memset(&status, 0, sizeof(status));
+    manual_time.pending = false;
     status.state = SYNC_FREE_RUN;
     status.source = SYNC_SOURCE_NONE;
     status.second = SYNC_SOURCE_NONE;
@@ -714,6 +724,41 @@ void sync_init(void)
 }
 
 
+/* The time set by hand, n epochs after the call (normally 1): this epoch,
+ * n s less slot_ms after the moment set, is labelled the nearest second,
+ * and the interval after the next is stretched (by slot_ms, at most half a
+ * second) or shortened (by the rest of the second) so that the epochs fall
+ * on the seconds from it. keep_time then counts on to the label. */
+static void apply_manual_time(uint32_t epoch)
+{
+    uint32_t elapsed = epoch - manual_time.epoch;
+    bool later_half = manual_time.slot_ms > 500U;
+    SyncTime *time = &status.time;
+
+    if (!manual_time.pending)
+    {
+        return;
+    }
+    manual_time.pending = false;
+    if (status.state != SYNC_FREE_RUN || status.steered)
+    {
+        return;
+    }
+    epoch_control_free_run_step(
+        later_half ? -(int32_t)((1000U - manual_time.slot_ms) * TIMING_TICKS_PER_MS)
+                   : (int32_t)(manual_time.slot_ms * TIMING_TICKS_PER_MS));
+    if (time->known)
+    {
+        time->corrections++;
+    }
+    time->known = true;
+    time->leap_second = false;
+    time->utc_seconds = manual_time.utc_seconds + elapsed - (later_half ? 1U : 0U) - 1U;
+    time->source = SYNC_SOURCE_NONE;
+    status.aligned = true; // the RTC is not aligned to any more
+}
+
+
 SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
 {
     SyncUpdate update;
@@ -722,6 +767,7 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     int32_t offset_ticks = 0;
 
     judge_sources(snapshot, now_ms);
+    apply_manual_time(snapshot->timer.sequence);
     // A fallback that has met its accuracy limit is a source like any other.
     if (status.fallback && source_good(status.source))
     {
@@ -762,6 +808,20 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     }
     update.transitioned = status.transitions != transitions;
     return update;
+}
+
+
+bool sync_set_time(uint32_t utc_seconds, uint32_t epoch_sequence, uint16_t slot_ms)
+{
+    if (status.state != SYNC_FREE_RUN || status.steered || slot_ms >= 1000U)
+    {
+        return false;
+    }
+    manual_time.pending = true;
+    manual_time.utc_seconds = utc_seconds;
+    manual_time.epoch = epoch_sequence;
+    manual_time.slot_ms = slot_ms;
+    return true;
 }
 
 

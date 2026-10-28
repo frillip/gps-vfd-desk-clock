@@ -64,9 +64,10 @@ cd tests/host && make
 | `esp/` | The ESP link and the SML payloads built from the clock's state |
 | `ui/` | Display modes and frames, brightness, the button and switch, beeps, time zones |
 | `settings/` | The settings, and the store that keeps them and the time zone schedule in flash |
+| `menu/` | The menu on the tubes |
 | `tests/host/` | Host tests and the stand-ins they run against |
 
-The folders are layered, from the bottom: `common/`, `platform/`, `drivers/`, `console/`, `timing/`, `gnss/`, `ui/`, `sync/`, `settings/`, `esp/`, then `main.c`. Each includes only from itself and the folders below it, so a module can be built and tested with what is beneath it; anything that has to go the other way is passed in, as the synchroniser's time is to the RTC source, or handed down, as the ESP link hands each TIME-NTP to the NTP source. [tools/layers.py](tools/layers.py) checks this, and that no two files include each other.
+The folders are layered, from the bottom: `common/`, `platform/`, `drivers/`, `console/`, `timing/`, `gnss/`, `ui/`, `sync/`, `settings/`, `menu/`, `esp/`, then `main.c`. Each includes only from itself and the folders below it, so a module can be built and tested with what is beneath it; anything that has to go the other way is passed in, as the synchroniser's time is to the RTC source and the ESP link to the menu, or handed down, as the ESP link hands each TIME-NTP to the NTP source. [tools/layers.py](tools/layers.py) checks this, and that no two files include each other.
 
 | Pin | Function |
 | --- | --- |
@@ -91,7 +92,7 @@ Almost everything runs from the main loop. The scheduler there reads its time fr
 | Task | When |
 | --- | --- |
 | Epoch work | 1ms after each epoch: measure, steer, label the second, send the ESP its messages, render the next second's frame, print the epoch report |
-| GNSS and ESP link service, brightness, button and switch | Every 10ms |
+| GNSS and ESP link service, brightness, button, switch and menu | Every 10ms |
 | Display load | 500ms into each second, after the latch has closed |
 | Minute reports | 600ms into the second, one report per epoch at 15, 30 and 45 seconds into each minute |
 | Settings store | 700ms into the second, when there is something to write and the moment is quiet |
@@ -216,7 +217,35 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 # Button and switch
 
-[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. The switch arms the alarm. A press while the alarm sounds stops it and does nothing else; otherwise a short press clicks and shows the next display mode, and the menu will do the rest. STAT-UI carries each press to the ESP, and each press and switch change is printed with `debug +events`.
+[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. The switch arms the alarm. A press while the alarm sounds stops it and does nothing else; otherwise a short press clicks and shows the next display mode, and a long press opens the menu (below). STAT-UI carries each press to the ESP, and each press and switch change is printed with `debug +events`.
+
+# Menu
+
+[menu/menu.c](menu/menu.c) is V2's menu on the tubes, reworked: a long press on the clock opens it, and everything in it can also be set from the ESP.
+
+| Item | Contents |
+| --- | --- |
+| `MENU` | The title: a long press closes the menu |
+| `tZ` | `AUtO`/`MAN`; the manual offset, `hh:mm` from −12:00 to +14:45 in 15-minute steps, the start line lit for minus (hidden while automatic); the ESP's remote time zone `r ON`/`rOFF` (hidden until the ESP has reported it) |
+| `dSt` | `AUtO`/`MAN`; manual `ON`/`OFF` and the DST offset, −1 to +2 hours in 15-minute steps (both hidden while automatic) |
+| `ALrM` | `ON`/`OFF`; the time, `hh:mm` (hidden while off) |
+| `bEEP` | `ON`/`OFF` |
+| `dISP` | `24`/`12` hours; the display mode, its name shown for two seconds and then the mode itself; brightness, `AUtO` or `b 10` to `b100` in tens of percent (400 to 4000 on the PWM), shown on the tubes as it is chosen |
+| `tIME` | The time, while no source but the RTC has given it since start-up: `YYYY`, `MM-DD`, `hh:mm`, `OK` |
+| `rSt` | `WIFI` (the ESP forgets its network), `SEt` (the PIC's factory settings) and `ALL` (both, and the ESP's settings), each `NO` until changed to `YES` |
+| `EXIt` | Closes the menu |
+
+Each section ends with `bACK`. Moving through the menu, a short press goes to the next item and a long press, acted on at 500ms while still held, opens a section, starts editing a value, or goes back or out. That press is then done with: however long it is held on, nothing more happens until it is let go. The value being edited flashes, lit 600ms of each second, and each press is judged as it is released:
+
+| Press | Editing |
+| --- | --- |
+| Under 500ms | Next value (wrapping) |
+| 500ms to 1.2s | Confirms: the next field, or the value stored. At 500ms the value blinks off for 150ms and then shows steadily, the cue that letting go will confirm |
+| Over 1.2s | The value steps on five times a second while held. Letting go does not confirm, and a step less than 120ms before letting go is taken back, so a late release does not overshoot |
+
+A value confirmed takes effect at once; one dropped (20 seconds without a press closes the menu, editing or not) leaves the setting as it was, and a brightness or display mode being previewed goes back. The settings are saved once, when the menu closes, if any changed, as are the ESP's if its remote time zone was changed. While the menu is open the display shows only the menu, and STAT-UI reports `MENU` as the current display with where in the menu it is (`menu_state`).
+
+The clock tells the time; it is not told it. An offline clock has to be told once, though, so `tIME` appears only while the RTC is the only source to have given the time since start-up, and goes as soon as GNSS or NTP does, even from under the menu. It starts from the time shown, or 2026-01-01 00:00 if there is none. `OK` is confirmed by a long press while held: the time becomes `hh:mm:00` local at the moment the button went down. The epoch is moved to the second boundary from that moment (later by up to half a second, or earlier by up to half), so the seconds count from the press, and the RTC is written once the new time is in force.
 
 # Buzzer
 
@@ -316,7 +345,6 @@ Erasing a page stops the CPU for roughly 20–30ms, with interrupts held off thr
 
 The V2 firmware did rather more than this. Still to come:
 
-- the menu, which will act on the button and switch;
 - the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
 - GNSS provisioning;
 - the watchdog;

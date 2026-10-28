@@ -9,6 +9,7 @@
 #include "../drivers/tubes.h"
 #include "../drivers/veml6040.h"
 #include "../gnss/gnss.h"
+#include "../menu/menu.h"
 #include "../platform/system.h"
 #include "../platform/time_ms.h"
 #include "../platform/version.h"
@@ -420,9 +421,10 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     TimezoneOffset zone;
 
     memset(payload, 0, sizeof(*payload));
-    payload->current_display = esp_report_display(display_mode(), time->known);
+    payload->current_display =
+        menu_is_open() ? SML_DISPLAY_MENU : esp_report_display(display_mode(), time->known);
     payload->selected_display = esp_report_display(display_selected(), true);
-    payload->menu_state = SML_MENU_NONE;
+    payload->menu_state = menu_state();
     payload->button_state = new_press();
     payload->brightness = tubes_brightness();
     payload->brightness_target = brightness_target();

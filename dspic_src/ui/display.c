@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../drivers/tubes.h"
 #include "frame.h"
@@ -47,6 +48,10 @@ static const uint8_t unit_glyphs[3] = {
 
 static DisplayMode selected;
 static DisplayMode shown_mode;
+static bool previewing; // the menu shows preview_mode instead, for the moment
+static DisplayMode preview_mode;
+static bool overlay_on; // the menu's own frame, in place of the clock
+static TubesFrame overlay;
 static uint16_t cycle_epochs; // since the last press, while shown_mode != selected
 static bool twelve_hours;
 static bool alarm_dot; // the start dot, in every mode: the alarm is set
@@ -289,8 +294,22 @@ static void render_uncertainty(const DisplayView *view, TubesFrame *frame)
 // Drawing
 // --------------------------------------------------------------------------
 
-static void render(const DisplaySecond *second, DisplayMode mode, TubesFrame *frame)
+// The mode drawn: shown_mode, unless the menu is previewing another.
+static DisplayMode drawn_mode(void)
 {
+    return previewing ? preview_mode : shown_mode;
+}
+
+
+static void render(const DisplaySecond *second, TubesFrame *frame)
+{
+    DisplayMode mode = drawn_mode();
+
+    if (overlay_on)
+    {
+        *frame = overlay;
+        return;
+    }
     frame_clear(frame);
     if (second->known)
     {
@@ -314,12 +333,12 @@ static void redraw(void)
 {
     TubesFrame frame;
 
-    if (!shown.known && !next.known)
+    if (!overlay_on && !shown.known && !next.known)
     {
         return;
     }
-    render(&next, shown_mode, &prepared);
-    render(&shown, shown_mode, &frame);
+    render(&next, &prepared);
+    render(&shown, &frame);
     tubes_show(&frame);
     stats.redraws++;
     if (!prepared_pending && !tubes_latch_open())
@@ -339,6 +358,9 @@ void display_init(void)
 
     selected = DISPLAY_MODE_HHMM;
     shown_mode = DISPLAY_MODE_HHMM;
+    previewing = false;
+    preview_mode = DISPLAY_MODE_HHMM;
+    overlay_on = false;
     cycle_epochs = 0;
     twelve_hours = false;
     alarm_dot = false;
@@ -459,6 +481,50 @@ void display_cycle(void)
 }
 
 
+void display_set_overlay(const TubesFrame *frame)
+{
+    if (frame == NULL)
+    {
+        if (overlay_on)
+        {
+            overlay_on = false;
+            redraw();
+        }
+        return;
+    }
+    if (overlay_on && memcmp(frame, &overlay, sizeof(overlay)) == 0)
+    {
+        return;
+    }
+    overlay = *frame;
+    overlay_on = true;
+    redraw();
+}
+
+
+bool display_overlay_active(void)
+{
+    return overlay_on;
+}
+
+
+void display_preview(DisplayMode mode)
+{
+    bool on = mode < DISPLAY_MODE_COUNT;
+
+    if (on == previewing && (!on || mode == preview_mode))
+    {
+        return;
+    }
+    previewing = on;
+    if (on)
+    {
+        preview_mode = mode;
+    }
+    redraw();
+}
+
+
 void display_prepare(const DisplayClock *clock)
 {
     // The epoch that has just passed latched the last frame loaded.
@@ -491,7 +557,7 @@ void display_prepare(const DisplayClock *clock)
         view->uncertainty_ns = clock->uncertainty_ns;
         view->hundredths = 0;
     }
-    render(&next, shown_mode, &prepared);
+    render(&next, &prepared);
     prepared_pending = true;
     stats.prepared++;
 }
@@ -516,13 +582,13 @@ void display_tick(uint16_t slot)
 
     // Until 10 ms the epoch's own frame (SS:00) is right, and the second
     // may not have been prepared yet.
-    if (shown_mode != DISPLAY_MODE_SSMM || !shown.known || hundredths == 0U ||
+    if (overlay_on || drawn_mode() != DISPLAY_MODE_SSMM || !shown.known || hundredths == 0U ||
         hundredths == shown.view.hundredths)
     {
         return;
     }
     shown.view.hundredths = hundredths;
-    render(&shown, shown_mode, &frame);
+    render(&shown, &frame);
     tubes_show(&frame);
     stats.redraws++;
 }

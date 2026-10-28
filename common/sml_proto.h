@@ -3,6 +3,7 @@
  * Draft for manual review. Payloads other than TIME-AUTH are provisional.
  * Specification: common/SML_PROTOCOL.md. This header is the single shared
  * copy for the dsPIC and the ESP32; do not fork it.
+ * 2026-10-28 (2.3): SML_MENU_* menu_state values: the V2+ menu.
  * 2026-10-28 (2.2): SML_SETTING_DELTA_LOCAL and SML_UI_DELTA_LOCAL: the delta
  * epoch as a local wall-clock time.
  * 2026-10-27 (2.1): SML_DISPLAY_UNCERTAINTY (10), selectable: the time's bound.
@@ -63,7 +64,7 @@
 #define SML_TZ_TRANSITION_MAX 8U
 #define SML_SETTINGS_SCHEMA   1U
 #define SML_PROTOCOL_MAJOR    2U
-#define SML_PROTOCOL_MINOR    2U
+#define SML_PROTOCOL_MINOR    3U
 
 #define SML_CLASS_TIME 0x10U
 #define SML_CLASS_TZ   0x20U
@@ -180,9 +181,21 @@
 #define SML_BUTTON_SHORT 1U
 #define SML_BUTTON_LONG  2U
 #define SML_BUTTON_HOLD  3U
-// STAT-UI menu_state: 0 outside the menu. Menu values are frozen when the
-// V2+ menu is ported; until then only SML_MENU_NONE is sent.
-#define SML_MENU_NONE 0U
+// STAT-UI menu_state (2.3): 0 outside the menu; else the section (bits 4-6),
+// the item within it (bits 0-3, from 0, as the PIC's menu lists them, hidden
+// ones included) and SML_MENU_EDITING while a value is edited. While the
+// menu is open, current_display is SML_DISPLAY_MENU.
+#define SML_MENU_NONE         0U
+#define SML_MENU_TOP          0x10U // MENU tZ dSt ALrM bEEP dISP tIME rSt EXIt
+#define SML_MENU_TZ           0x20U // AUtO/MAN, offset, remote, bACK
+#define SML_MENU_DST          0x30U // AUtO/MAN, ON/OFF, offset, bACK
+#define SML_MENU_ALARM        0x40U // ON/OFF, time, bACK
+#define SML_MENU_BEEP         0x50U // ON/OFF, bACK
+#define SML_MENU_DISPLAY      0x60U // 12/24, mode, brightness, bACK
+#define SML_MENU_RESET        0x70U // WIFI, SEt, ALL, bACK
+#define SML_MENU_SECTION_MASK 0x70U
+#define SML_MENU_ITEM_MASK    0x0FU
+#define SML_MENU_EDITING      0x80U
 // STAT-SOURCES verdict: the PIC's judgement of a source's latest report, GOOD
 // or the first reason it is not.
 /* STAT-SYS reset causes. The positions are the dsPIC33's RCON bits, so the
@@ -697,7 +710,7 @@ typedef struct
  * a civil-time scalar, NOT another UTC timestamp. Alarm offset is seconds
  * from local midnight (0..86399). Delta epoch is the configured UTC epoch.
  * current/selected_display: SML_DISPLAY_*; button_state: SML_BUTTON_*;
- * menu_state: SML_MENU_* (only SML_MENU_NONE frozen so far). */
+ * menu_state: SML_MENU_*. */
 typedef struct
 {
     /* flags:

@@ -308,6 +308,17 @@ const SyncStatus *sync_status(void);
 // in holdover and free run. change 0 withdraws it.
 void sync_set_leap(const UtcLeap *leap);
 
+/*
+ * The time of day set by hand (the menu's tIME), for a clock with nothing
+ * to steer by: the moment of the call is exactly utc_seconds, slot_ms into
+ * epoch epoch_sequence. Free running and never steered only, else false.
+ * At the next epoch the time is relabelled, to the nearest second, and the
+ * epoch moved once by up to half a second, so that from two epochs on they
+ * fall on the seconds counted from the call. The RTC is no longer aligned
+ * to; any source that steers takes over as usual.
+ */
+bool sync_set_time(uint32_t utc_seconds, uint32_t epoch_sequence, uint16_t slot_ms);
+
 // A +/- bound on the UTC error of our epoch, in ns: the selected source's
 // bound and the measured phase, or the holdover bound. False when there is
 // none to give: time unknown, or free running on nothing better than a count

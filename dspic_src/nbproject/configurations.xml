@@ -34,6 +34,9 @@
         <itemPath>gnss/ubx_parser.h</itemPath>
         <itemPath>gnss/ubx_proto.h</itemPath>
       </logicalFolder>
+      <logicalFolder name="menu" displayName="menu" projectFiles="true">
+        <itemPath>menu/menu.h</itemPath>
+      </logicalFolder>
       <logicalFolder name="platform" displayName="platform" projectFiles="true">
         <itemPath>platform/board.h</itemPath>
         <itemPath>platform/clock.h</itemPath>
@@ -120,6 +123,9 @@
         <itemPath>gnss/ubx_encode.c</itemPath>
         <itemPath>gnss/ubx_parser.c</itemPath>
       </logicalFolder>
+      <logicalFolder name="menu" displayName="menu" projectFiles="true">
+        <itemPath>menu/menu.c</itemPath>
+      </logicalFolder>
       <logicalFolder name="platform" displayName="platform" projectFiles="true">
         <itemPath>platform/board.c</itemPath>
         <itemPath>platform/system.c</itemPath>
@@ -173,6 +179,7 @@
     <Elem>ui</Elem>
     <Elem>esp</Elem>
     <Elem>../common</Elem>
+    <Elem>menu</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>

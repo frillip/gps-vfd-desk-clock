@@ -34,6 +34,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "../drivers/tubes.h"
 #include "../platform/utc.h"
 #include "timezone.h"
 
@@ -120,6 +121,14 @@ void display_print_epoch(uint32_t seconds, bool local);
 // A short press: show the next mode, for DISPLAY_CYCLE_EPOCHS. Nothing while
 // the time is unknown (dashes).
 void display_cycle(void);
+
+// The menu's: a frame of its own shown in place of the clock, at once and
+// at every epoch until cleared (NULL); and a mode shown for the moment in
+// place of the one shown (the menu's preview), until DISPLAY_MODE_COUNT.
+// Neither changes the mode selected or shown.
+void display_set_overlay(const TubesFrame *frame);
+bool display_overlay_active(void);
+void display_preview(DisplayMode mode);
 
 // Once per epoch, soon after it: renders the frame for the next epoch.
 void display_prepare(const DisplayClock *clock);

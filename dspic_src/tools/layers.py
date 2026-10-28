@@ -13,7 +13,7 @@ import re
 import sys
 
 # Bottom first.
-LAYERS = ["platform", "drivers", "console", "timing", "gnss", "ui", "sync", "settings", "esp"]
+LAYERS = ["platform", "drivers", "console", "timing", "gnss", "ui", "sync", "settings", "menu", "esp"]
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.MULTILINE)

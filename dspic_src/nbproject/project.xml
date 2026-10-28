@@ -18,6 +18,7 @@
                 <sourceRootElem>ui</sourceRootElem>
                 <sourceRootElem>esp</sourceRootElem>
                 <sourceRootElem>../common</sourceRootElem>
+                <sourceRootElem>menu</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>
