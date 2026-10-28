@@ -183,10 +183,10 @@ The display modes are V2's, less the temperature, plus one new one. The mode sel
 | SSMM | Seconds and hundredths: the epoch's frame is `SS:00`, then the hundredths are latched at once as each changes, from the main loop |
 | YYYY | The year |
 | MMDD | Month and day |
-| DELTA | The time to or since the delta epoch (`display epoch <moment>`), in its two largest units: years (alone from 100), years and months, months and days, days and hours, hours and minutes, or minutes and seconds. The start line is lit while the epoch is still to come. Months are whole calendar months from the earlier moment, a day that does not exist (31 February) taken as the month's last |
+| DELTA | The time to or since the delta epoch (`display epoch <moment>`), in its two largest units: years (alone from 100), years and months, months and days, days and hours, hours and minutes, or minutes and seconds. The start line is lit while the epoch is still to come. Months are whole calendar months from the earlier moment, a day that does not exist (31 February) taken as the month's last. An epoch typed without a zone (`display epoch 2027-01-01 00:00`) is local wall-clock time and is counted against local time, so a New Year countdown reaches zero as the clock reads midnight; a DST change in between moves the delta by an hour, as it moves the clock. One with `Z`, an offset, or Unix seconds is an exact instant, counted in UTC |
 | UNCERTAINTY | The time's ± bound, rounded up to three figures with the unit on the last tube: ` 89n`, ` 1.5u`, `130u`, `12.6m`, `999m`, the middle separator's lower dot as the decimal point. ` --m` without a bound (free running on a counted time) or above 999ms |
 
-The colon blinks with the seconds while the clock is synchronised. Running free, HH:MM keeps it lit and the other modes leave it off, as V2 did. The uncertainty mode uses only the lower dot, as its decimal point. The alarm dot waits for the alarm.
+The colon blinks with the seconds while the clock is synchronised. Running free, HH:MM keeps it lit and the other modes leave it off, as V2 did. The uncertainty mode uses only the lower dot, as its decimal point. The start dot is lit in every mode while the alarm is armed or sounding, as on V2.
 
 Local time is UTC plus offsets. The clock itself never moves. The PIC keeps the latest SML-TZ-STATE schedule from the ESP: the entry in force and up to eight future transitions. It moves to each new entry at its UTC second. Two settings decide what is taken from the schedule:
 
@@ -216,7 +216,7 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 
 # Button and switch
 
-[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. A short press clicks and shows the next display mode; the menu and alarm will do the rest. STAT-UI carries each press to the ESP, and each press and switch change is printed with `debug +events`.
+[ui/controls.c](ui/controls.c) samples the push button (RA7) and the switch (RA0) every 10ms. A change counts once a pin has read the same for 30ms, timed from its first edge, so contact bounce is never seen. As on V2, a press released within 500ms is short, and one held for 500ms is long, reported at that moment while it is still held; its release adds nothing. A hold (held on past a long press) is reserved in the enum and in SML for later. The switch is a debounced level. The first sample sets the starting levels: a switch already on is not a change, and a button held through a reset is not a press. Each press is counted rather than consumed, so the UI and STAT-UI each see every press. The switch arms the alarm. A press while the alarm sounds stops it and does nothing else; otherwise a short press clicks and shows the next display mode, and the menu will do the rest. STAT-UI carries each press to the ESP, and each press and switch change is printed with `debug +events`.
 
 # Buzzer
 
@@ -228,7 +228,13 @@ Commands it does not support yet are answered with a NACK, never ignored. The PI
 | Chime | 100ms beeps, 100ms apart, in fours with 300ms between | Middle |
 | Alarm | As the chime, 500ms between groups, repeating until stopped | Highest |
 
-[ui/beeps.c](ui/beeps.c) decides when, with the beeps setting on (`beeps on`, kept with `save`): a chime every quarter hour of local time, starting within a millisecond of the epoch, one beep, or on the hour the hour on a 12-hour count (midnight and noon 12, in fours); and a click for each button press. Chimes need the time of day and skip a leap second. V2 counted no beeps at midnight; that is fixed. The alarm will use the alarm pattern whatever the setting.
+[ui/beeps.c](ui/beeps.c) decides when, with the beeps setting on (`beeps on`, kept with `save`): a chime every quarter hour of local time, starting within a millisecond of the epoch, one beep, or on the hour the hour on a 12-hour count (midnight and noon 12, in fours); and a click for each button press. Chimes need the time of day and skip a leap second. V2 counted no beeps at midnight; that is fixed. The alarm uses the alarm pattern whatever the setting (below).
+
+# Alarm
+
+[ui/alarm.c](ui/alarm.c) is V2's alarm: a local time of day, on or off (`alarm 07:30`, `alarm 27000` in seconds past midnight, `alarm off`, kept with `save`), armed by the switch. Armed, it sounds the buzzer's alarm pattern, four beeps and a pause, for two minutes, whatever the beeps setting. A press of the button or the switch turned off stops it; a stopped or finished alarm stays armed for the next day while the switch is on. The start dot shows it armed, and `display` (`Alarm: 07:30:00, ARMED`), `pic` and STAT-UI (`ALARM_ENABLED`, `ALARM_ACTIVE` while sounding) report it; `debug +events` prints each change.
+
+It goes off once a local day, at the first second at or past its time. V2 compared the time of day each second, which missed a time skipped by the clocks going forward; here a time skipped (01:30 as 01:00 becomes 02:00) sounds at the change, and a time repeated as they go back sounds once. A step of the clock larger than any DST change (2 hours) is a time being set, not passing, and sounds nothing; neither does anything while the time of day is unknown.
 
 # Console
 
@@ -284,7 +290,7 @@ The RTC's bound stays ±999ms. The aligned write makes it much better than that,
 
 # Settings and flash
 
-The settings are those of SML's STAT-SETTINGS: the manual time zone, TZ and DST auto, the brightness, the display mode, 12 or 24 hours and the delta epoch, the beeps, the stored oscillator frequency, and the alarm, which the UI does not use yet. The debug mask is kept with them. [settings/settings.c](settings/settings.c) holds them and applies each to its module. The ESP changes them by writing the whole body back with CMD-SETTINGS, one field changed, against the revision it last saw; there are no per-setting commands. A change runs at once and is kept once saved, as on V2: `save` on the ESP (SAVE), or CMD-SETTINGS with PERSIST. SAVE is answered ACCEPTED, then ACK once the flash has been written, or NACK STORAGE or VERIFY. `defaults` (DEFAULTS) puts the factory settings in force without saving them, like any other change. STAT-SETTINGS shows DIRTY until saved. `pic` prints the running settings with everything else, and `pic stored` what is stored, the store and the flash timings.
+The settings are those of SML's STAT-SETTINGS: the manual time zone, TZ and DST auto, the brightness, the display mode, 12 or 24 hours and the delta epoch, the beeps, the stored oscillator frequency, and the alarm. The debug mask is kept with them. [settings/settings.c](settings/settings.c) holds them and applies each to its module. The ESP changes them by writing the whole body back with CMD-SETTINGS, one field changed, against the revision it last saw; there are no per-setting commands. A change runs at once and is kept once saved, as on V2: `save` on the ESP (SAVE), or CMD-SETTINGS with PERSIST. SAVE is answered ACCEPTED, then ACK once the flash has been written, or NACK STORAGE or VERIFY. `defaults` (DEFAULTS) puts the factory settings in force without saving them, like any other change. STAT-SETTINGS shows DIRTY until saved. `pic` prints the running settings with everything else, and `pic stored` what is stored, the store and the flash timings.
 
 The oscillator's frequency, as the control loop learnt it from GNSS, is kept too: once the loop has tracked GNSS for 10 minutes, and again whenever it has moved by 50ppb, at most hourly; `save` also writes it, if it differs at all. `osc` shows the loop's estimate and the stored one, as a frequency and in ppm. At start-up the loop is seeded with it, so a clock free running before any source is found keeps time at the learnt frequency rather than nominal (a couple of ppm out on the bench boards), and an NTP-only start steps with it. GNSS refines it from there. This is not `calibration_fosc_hz`, the setting `osc baseline` changes, which nothing uses yet.
 
@@ -310,7 +316,7 @@ Erasing a page stops the CPU for roughly 20–30ms, with interrupts held off thr
 
 The V2 firmware did rather more than this. Still to come:
 
-- the menu and alarm, which will act on the button and switch;
+- the menu, which will act on the button and switch;
 - the RTC's bound from the time of its last setting (it stays ±999ms until that time is kept in the store), and SML-TIME-RTC;
 - GNSS provisioning;
 - the watchdog;

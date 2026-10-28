@@ -174,9 +174,31 @@ bool parse_offset(const char *text, int32_t limit_s, int32_t *offset_s)
 bool parse_time_of_day(const char *text, uint32_t *seconds)
 {
     uint32_t value;
+    size_t length;
 
-    if (!has_text(text) || strchr(text, ':') == NULL || !clock_fields(&text, &value) ||
-        *text != '\0' || value >= 86400U)
+    if (!has_text(text))
+    {
+        return false;
+    }
+    if (strchr(text, ':') == NULL)
+    {
+        // Seconds past midnight, alone or with an s.
+        char number[8];
+
+        length = strlen(text);
+        if (text[length - 1] == 's' || text[length - 1] == 'S')
+        {
+            length--;
+        }
+        if (length == 0 || length >= sizeof(number))
+        {
+            return false;
+        }
+        memcpy(number, text, length);
+        number[length] = '\0';
+        return parse_u32(number, 0, 86399U, seconds);
+    }
+    if (!clock_fields(&text, &value) || *text != '\0' || value >= 86400U)
     {
         return false;
     }
@@ -208,58 +230,183 @@ static uint32_t days_in_month(uint32_t year, uint32_t month)
     return month == 2U && leap ? 29U : days[month - 1U];
 }
 
-bool parse_moment(const char *text, uint32_t *utc_seconds)
+// Exactly count digits from *text, *text moved past them.
+static bool fixed_digits(const char **text, unsigned count, uint32_t *value)
 {
+    uint32_t parsed = 0;
+
+    while (count-- > 0U)
+    {
+        if (!isdigit((unsigned char)**text))
+        {
+            return false;
+        }
+        parsed = parsed * 10U + (uint32_t)(**text - '0');
+        (*text)++;
+    }
+    *value = parsed;
+    return true;
+}
+
+static void skip_spaces(const char **text)
+{
+    while (**text == ' ')
+    {
+        (*text)++;
+    }
+}
+
+static bool all_digits(const char *text)
+{
+    while (isdigit((unsigned char)*text))
+    {
+        text++;
+    }
+    return *text == '\0';
+}
+
+// A time of day: extended h[:mm[:ss]] or basic hhmm[ss], then any fraction
+// of a second (dropped).
+static bool moment_clock(const char **text, uint32_t *seconds)
+{
+    size_t run = strspn(*text, "0123456789");
+    uint32_t hours;
+    uint32_t minutes;
+    uint32_t secs = 0;
+
+    if ((run == 4U || run == 6U) && (*text)[run] != ':')
+    {
+        if (!fixed_digits(text, 2, &hours) || !fixed_digits(text, 2, &minutes) ||
+            (run == 6U && !fixed_digits(text, 2, &secs)) || hours > 23U || minutes > 59U ||
+            secs > 59U)
+        {
+            return false;
+        }
+        *seconds = hours * 3600U + minutes * 60U + secs;
+    }
+    else if (!clock_fields(text, seconds) || *seconds >= 86400U)
+    {
+        return false;
+    }
+    if ((**text == '.' || **text == ',') && isdigit((unsigned char)(*text)[1]))
+    {
+        (*text)++;
+        while (isdigit((unsigned char)**text))
+        {
+            (*text)++;
+        }
+    }
+    return true;
+}
+
+// A zone: Z, or +|- h[h][:mm] or hhmm.
+static bool moment_zone(const char **text, int32_t *offset_s)
+{
+    bool negative;
+    size_t run;
+    uint32_t hours;
+    uint32_t minutes = 0;
+
+    if (**text == 'Z' || **text == 'z')
+    {
+        (*text)++;
+        *offset_s = 0;
+        return true;
+    }
+    negative = **text == '-';
+    (*text)++;
+    run = strspn(*text, "0123456789");
+    if (run == 4U)
+    {
+        (void)fixed_digits(text, 2, &hours);
+        (void)fixed_digits(text, 2, &minutes);
+    }
+    else if (run == 1U || run == 2U)
+    {
+        (void)fixed_digits(text, (unsigned)run, &hours);
+        if (**text == ':')
+        {
+            (*text)++;
+            if (!fixed_digits(text, 2, &minutes))
+            {
+                return false;
+            }
+        }
+    }
+    else
+    {
+        return false;
+    }
+    if (hours > 23U || minutes > 59U)
+    {
+        return false;
+    }
+    *offset_s = (int32_t)(hours * 3600U + minutes * 60U) * (negative ? -1 : 1);
+    return true;
+}
+
+bool parse_moment(const char *text, uint32_t *utc_seconds, bool *local)
+{
+    bool zone = false;
+
     uint32_t year;
     uint32_t month;
     uint32_t day;
     uint32_t clock = 0;
     int32_t offset = 0;
-    const char *start = text;
     int64_t seconds;
 
     if (!has_text(text))
     {
         return false;
     }
-    if (strchr(text, '-') == NULL || *text == '-')
+    if (local != NULL)
+    {
+        *local = false;
+    }
+    if (all_digits(text))
     {
         return parse_u32(text, 0, UINT32_MAX, utc_seconds); // Unix seconds
     }
-    if (!digits(&text, 4, &year) || text - start != 4 || *text++ != '-')
+    // The date, extended (2026-10-18) or basic (20261018).
+    if (!fixed_digits(&text, 4, &year))
     {
         return false;
     }
-    start = text;
-    if (!digits(&text, 2, &month) || text - start != 2 || *text++ != '-')
+    if (*text == '-')
+    {
+        text++;
+        if (!fixed_digits(&text, 2, &month) || *text++ != '-' || !fixed_digits(&text, 2, &day))
+        {
+            return false;
+        }
+    }
+    else if (!fixed_digits(&text, 2, &month) || !fixed_digits(&text, 2, &day))
     {
         return false;
     }
-    start = text;
-    if (!digits(&text, 2, &day) || text - start != 2 || month < 1 || month > 12 || day < 1 ||
-        day > days_in_month(year, month))
+    if (month < 1 || month > 12 || day < 1 || day > days_in_month(year, month))
     {
         return false;
     }
+    // The time, after T or spaces.
     if (*text == 'T' || *text == 't' || *text == ' ')
     {
         text++;
-        if (!clock_fields(&text, &clock) || clock >= 86400U)
+        skip_spaces(&text);
+        if (!moment_clock(&text, &clock))
         {
             return false;
         }
     }
-    if (*text == 'Z' || *text == 'z')
+    skip_spaces(&text);
+    if (*text == 'Z' || *text == 'z' || *text == '+' || *text == '-')
     {
-        text++;
-    }
-    else if (*text == '+' || *text == '-')
-    {
-        if (!parse_offset(text, 86399, &offset))
+        if (!moment_zone(&text, &offset))
         {
             return false;
         }
-        text += strlen(text);
+        zone = true;
     }
     if (*text != '\0')
     {
@@ -271,6 +418,10 @@ bool parse_moment(const char *text, uint32_t *utc_seconds)
         return false;
     }
     *utc_seconds = (uint32_t)seconds;
+    if (local != NULL)
+    {
+        *local = !zone;
+    }
     return true;
 }
 

@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 2.1 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 1) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 2.2 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 2) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -462,7 +462,7 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 16 | base_offset_s | i32 | Base offset in use, s |
 | 20 | dst_offset_s | i32 | DST amount of the entry in use, s, even when inactive (as in TZ-STATE) |
 | 24 | alarm_offset_s | u32 | Alarm, seconds after local midnight, 0–86399 |
-| 28 | delta_epoch_utc | u32 | The configured delta-mode epoch, UTC |
+| 28 | delta_epoch_utc | u32 | The configured delta-mode epoch: UTC, or a local wall-clock time with `DELTA_LOCAL` |
 
 | Bit | Flag | Bit | Flag |
 | --- | --- | --- | --- |
@@ -472,9 +472,9 @@ _What the clock shows. PIC→ESP, 32 bytes._
 | 3 | `BRIGHTNESS_AUTO` | 10 | `TZ_STALE` |
 | 4 | `POWER_ON` | 11 | `TZ_AMBIGUOUS` |
 | 5 | `SWITCH` | 12 | `TZ_HELD`: a TZ-STATE schedule is held |
-| 6 | `BUTTON` | | |
+| 6 | `BUTTON` | 13 | `DELTA_LOCAL`: `delta_epoch_utc` is local wall-clock time (2.2) |
 
-On the V2+ PIC `current_display` is the mode shown (another for 20 seconds after a press of the button, `DASHES` while the time is unknown) and `selected_display` the setting. The alarm and menu fields stay zero until they are ported. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
+On the V2+ PIC `current_display` is the mode shown (another for 20 seconds after a press of the button, `DASHES` while the time is unknown) and `selected_display` the setting. `ALARM_ENABLED` is the alarm setting, `ALARM_ACTIVE` set while it sounds, and `alarm_offset_s` its time; the switch (`SWITCH`) arms it. The menu fields stay zero until the menu is ported. `SWITCH` and `BUTTON` are the debounced levels. `button_state` is the latest press (`SML_BUTTON_SHORT` or `LONG`) if there has been one since the previous STAT-UI, otherwise `NONE`, so each press is reported once. `HOLD` is reserved.
 
 ## STAT-ENV (0x10)
 
@@ -524,15 +524,17 @@ The settings body is shared with CMD-SETTINGS, and its offsets are relative to t
 | Body offset | Field | Type | Unit / values |
 | --- | --- | --- | --- |
 | 0 | schema_version | u16 | `SML_SETTINGS_SCHEMA` (1) |
-| 2 | flags | u16 | Bit 0 `TZ_AUTO` (base from TZ-STATE), 1 `DST_AUTO` (DST from TZ-STATE), 2 `DST_ACTIVE` (manual DST state), 3 `ALARM_ENABLED`, 4 `BEEP_ENABLED`, 5 `FORMAT_12H`, 6 `BRI_AUTO` (brightness from the light sensor) |
+| 2 | flags | u16 | Bit 0 `TZ_AUTO` (base from TZ-STATE), 1 `DST_AUTO` (DST from TZ-STATE), 2 `DST_ACTIVE` (manual DST state), 3 `ALARM_ENABLED`, 4 `BEEP_ENABLED`, 5 `FORMAT_12H`, 6 `BRI_AUTO` (brightness from the light sensor), 7 `DELTA_LOCAL` (2.2: `delta_epoch_utc` is a local wall-clock time, below) |
 | 4 | base_offset_s | i32 | **Manual** base offset, s |
 | 8 | dst_offset_s | i32 | **Manual** DST amount, s |
 | 12 | calibration_fosc_hz | u32 | Stored oscillator baseline (FCY), Hz; not live telemetry |
 | 16 | alarm_offset_s | u32 | 0–86399 |
-| 20 | delta_epoch_utc | u32 | |
+| 20 | delta_epoch_utc | u32 | The delta mode's epoch: a UTC instant, or with `DELTA_LOCAL` a local wall-clock time |
 | 24 | brightness | u16 | Manual level; range checked by the PIC |
 | 26 | selected_display | u8 | `SML_DISPLAY_*`, a selectable value only (`SML_DISPLAY_SELECTABLE()`: HHMM to DELTA, and UNCERTAINTY) |
 | 27 | reserved | u8 | 0 |
+
+`delta_epoch_utc` is normally a UTC instant. With `DELTA_LOCAL` it is a local wall-clock time, as a scalar like UTC's (2027-01-01T00:00:00 local is 1798761600), and the PIC counts the delta against its own local time rather than UTC. No time zone data is needed for it, which matters for a past date, or a future one beyond the schedule held: the PIC has no way to know the offset in force then. The cost is that a DST change between now and the epoch moves the delta by the change, as it moves the clock. The ESP sets it for a date and time typed without a zone; one with `Z`, an offset, or Unix seconds is an instant. A later tzinfo could resolve a local time to an exact instant and write it back as UTC.
 
 The automatic timezone schedule is not part of the settings. It is persisted separately, so routine schedule updates from the ESP never change the revision or collide with edits made from the menu.
 
@@ -720,7 +722,7 @@ _Write every setting. ESP→PIC, 38 bytes._
 
 The PIC validates every field, then applies them all together and increments the revision. A failure on any field rejects the whole write. A write whose `expected_revision` is not the current revision is rejected with `STALE_REVISION`, so the ESP never overwrites a change it has not seen; on ACK the response carries the new revision.
 
-When the flash is written is up to the PIC, and periodic snapshots never drive it. The V2+ PIC checks every field: offsets within ±86399s, the oscillator baseline within 1000ppm of 40MHz, the alarm below 86400s, brightness 0–4000, and a selectable display mode (anything else is `ARGUMENT`). A reserved bit or field set is `ARGUMENT`, another schema `SCHEMA`. The alarm is kept, though the V2+ UI does not use it yet. On `SML_WRITE_PERSIST` it writes its flash at the next quiet moment, within a second or so. The ACK does not wait for that write.
+When the flash is written is up to the PIC, and periodic snapshots never drive it. The V2+ PIC checks every field: offsets within ±86399s, the oscillator baseline within 1000ppm of 40MHz, the alarm below 86400s, brightness 0–4000, and a selectable display mode (anything else is `ARGUMENT`). A reserved bit or field set is `ARGUMENT`, another schema `SCHEMA`. The alarm sounds at its local time while the switch arms it. On `SML_WRITE_PERSIST` it writes its flash at the next quiet moment, within a second or so. The ACK does not wait for that write.
 
 The ESP keeps the latest STAT-SETTINGS, and changes one setting by writing that body back with the one field changed. A change made while its previous write is unanswered is folded into the same body and sent once that answer arrives, with the new revision it carries, so a burst of changes never meets `STALE_REVISION`. After a NACK, or no answer, the ESP asks for STAT-SETTINGS again (`REQUEST_MESSAGE`) and drops any change still waiting.
 
@@ -1055,6 +1057,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-28 (2.2) | Settings flag bit 7 `DELTA_LOCAL` and STAT-UI flag bit 13 `DELTA_LOCAL`: the delta epoch as a local wall-clock time, counted against local time. No layout change |
 | 2026-10-27 (2.1) | `SML_DISPLAY_UNCERTAINTY` (10), selectable: the time's bound on the tubes. `SML_DISPLAY_SELECTABLE()`. The V2+ PIC now shows every selectable mode (TEMP is not ported), and fills STAT-UI `selected_display`, `FORMAT_12H` and `delta_epoch_utc`. A display mode the PIC cannot show is `ARGUMENT`, no longer `UNSUPPORTED`. No layout change |
 | 2026-10-27 (2.0) | CMD-USER rationalised, a breaking change at both ends. The `SET_*` setting commands are gone: settings are written whole with CMD-SETTINGS. `INFO`, `SHOW_CONFIG` and `SHOW_SETTINGS` become `SHOW` with an `SML_SHOW_*` topic; `SHOW_SOURCES` becomes `REQUEST_MESSAGE` for STAT-SOURCES. `SHOW` prints briefly, or everything with `SML_SHOW_VERBOSE`. The remaining codes are renumbered, the two halves sharing the low byte where they do the same thing. The ESP's codes are renamed after the console's words (`ESP_NTP_SYNC`, `ESP_TZ_REMOTE`, `ESP_TZ_LOOKUP`, `ESP_WIFI_FORGET`), with `ESP_SAVE` added. `DEFAULTS` and `ESP_DEFAULTS` no longer save, and `ESP_TZ_REMOTE` no longer saves: `SAVE` and `ESP_SAVE` do. `SML_DEBUG_RTC` (0x0080) and `SML_DEBUG_EVENTS` (0x0100): the PIC's RTC and state-change messages, printed until now whatever the mask. Golden CMD-USER frame replaced |
 | 2026-10-26 | STAT-UI flag bit 3 is `BRIGHTNESS_AUTO` (was `BRIGHTNESS_MANUAL`), and STAT-SETTINGS / CMD-SETTINGS settings flag bit 6 `BRI_AUTO` (was `BRI_MANUAL`): the same bits, the opposite sense, automatic brightness being the default. `SET_BRIGHTNESS` takes 0–4000 and turns auto off; `SET_BRI_AUTO` turns it on. The V2+ PIC sends STAT-ENV (light only) |

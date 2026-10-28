@@ -49,7 +49,9 @@ static DisplayMode selected;
 static DisplayMode shown_mode;
 static uint16_t cycle_epochs; // since the last press, while shown_mode != selected
 static bool twelve_hours;
+static bool alarm_dot; // the start dot, in every mode: the alarm is set
 static uint32_t delta_epoch;
+static bool delta_local; // delta_epoch is local wall-clock time
 
 static DisplaySecond shown; // the second on the tubes (latched at the last epoch)
 static DisplaySecond next;  // the second prepared for the next epoch
@@ -146,17 +148,21 @@ static bool before_in_month(const UtcCivil *x, const UtcCivil *y)
 }
 
 
-// Calendar time between the delta epoch and now (UTC), the two largest
+// Calendar time between the delta epoch and now, the two largest
 // units: years (alone from 100), years and months, months and days, days and
 // hours, hours and minutes, or minutes and seconds. The start line is lit
 // while the epoch is still to come. Whole months are counted from the
 // earlier moment, a day of the month that does not exist (31 February)
-// taken as the month's last.
+// taken as the month's last. A UTC epoch is counted against UTC; a local one
+// against local time, as the display shows it, so a DST change between the
+// two moves the delta by the change, as it moves the clock.
 static void render_delta(const DisplayView *view, TubesFrame *frame)
 {
-    bool future = view->utc_seconds < delta_epoch;
-    uint32_t from = future ? view->utc_seconds : delta_epoch;
-    uint32_t to = future ? delta_epoch : view->utc_seconds;
+    uint32_t now =
+        delta_local ? view->utc_seconds + (uint32_t)view->zone.offset_s : view->utc_seconds;
+    bool future = now < delta_epoch;
+    uint32_t from = future ? now : delta_epoch;
+    uint32_t to = future ? delta_epoch : now;
     UtcCivil a, b, anchor;
     uint32_t months;
     uint32_t rest;
@@ -289,6 +295,10 @@ static void render(const DisplaySecond *second, DisplayMode mode, TubesFrame *fr
     if (second->known)
     {
         modes[mode].render(&second->view, frame);
+        if (alarm_dot)
+        {
+            frame->separators |= TUBES_START_DOT;
+        }
     }
     else
     {
@@ -331,7 +341,9 @@ void display_init(void)
     shown_mode = DISPLAY_MODE_HHMM;
     cycle_epochs = 0;
     twelve_hours = false;
+    alarm_dot = false;
     delta_epoch = 0;
+    delta_local = false;
     shown.known = false;
     next.known = false;
     offset_s = 0;
@@ -360,6 +372,16 @@ void display_set_mode(DisplayMode mode)
 }
 
 
+void display_set_alarm_dot(bool on)
+{
+    if (on != alarm_dot)
+    {
+        alarm_dot = on;
+        redraw();
+    }
+}
+
+
 void display_set_12h(bool twelve)
 {
     if (twelve != twelve_hours)
@@ -370,11 +392,12 @@ void display_set_12h(bool twelve)
 }
 
 
-void display_set_delta_epoch(uint32_t utc_seconds)
+void display_set_delta_epoch(uint32_t seconds, bool local)
 {
-    if (utc_seconds != delta_epoch)
+    if (seconds != delta_epoch || local != delta_local)
     {
-        delta_epoch = utc_seconds;
+        delta_epoch = seconds;
+        delta_local = local;
         redraw();
     }
 }
@@ -401,6 +424,26 @@ bool display_is_12h(void)
 uint32_t display_delta_epoch(void)
 {
     return delta_epoch;
+}
+
+
+bool display_delta_is_local(void)
+{
+    return delta_local;
+}
+
+
+void display_print_epoch(uint32_t seconds, bool local)
+{
+    if (local)
+    {
+        utc_print_local(seconds);
+        printf(" local");
+    }
+    else
+    {
+        utc_print(seconds);
+    }
 }
 
 

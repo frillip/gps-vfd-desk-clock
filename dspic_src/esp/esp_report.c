@@ -18,6 +18,7 @@
 #include "../timing/q16.h"
 #include "../timing/scheduler.h"
 #include "../timing/timing_config.h"
+#include "../ui/alarm.h"
 #include "../ui/brightness.h"
 #include "../ui/controls.h"
 #include "../ui/timezone.h"
@@ -437,7 +438,20 @@ void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload)
     {
         payload->flags |= SML_UI_FORMAT_12H;
     }
+    if (alarm_enabled())
+    {
+        payload->flags |= SML_UI_ALARM_ENABLED;
+    }
+    if (alarm_state() == ALARM_SOUNDING)
+    {
+        payload->flags |= SML_UI_ALARM_ACTIVE;
+    }
+    payload->alarm_offset_s = alarm_time();
     payload->delta_epoch_utc = display_delta_epoch();
+    if (display_delta_is_local())
+    {
+        payload->flags |= SML_UI_DELTA_LOCAL;
+    }
     if (controls_switch_on())
     {
         payload->flags |= SML_UI_SWITCH;
@@ -673,7 +687,7 @@ static void print_display(bool verbose, uint32_t now_ms)
     if (display_delta_epoch() != 0U)
     {
         printf(", delta from ");
-        utc_print(display_delta_epoch());
+        display_print_epoch(display_delta_epoch(), display_delta_is_local());
     }
     printf("\n");
     if (verbose)
@@ -687,6 +701,8 @@ static void print_display(bool verbose, uint32_t now_ms)
     veml6040_print(now_ms, verbose);
     printf("  ");
     controls_print(verbose);
+    printf("  ");
+    alarm_print(verbose);
 }
 
 

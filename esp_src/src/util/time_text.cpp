@@ -21,6 +21,12 @@ void time_print_utc(Stream *output, uint32_t utc_seconds)
 }
 
 
+void time_print_wall(Stream *output, uint32_t local_seconds)
+{
+    print_civil(output, local_seconds);
+}
+
+
 void time_print_local(Stream *output, uint32_t utc_seconds, int32_t offset_s)
 {
     print_civil(output, (uint32_t)((int64_t)utc_seconds + offset_s));

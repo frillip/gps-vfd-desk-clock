@@ -3,6 +3,8 @@
  * Draft for manual review. Payloads other than TIME-AUTH are provisional.
  * Specification: common/SML_PROTOCOL.md. This header is the single shared
  * copy for the dsPIC and the ESP32; do not fork it.
+ * 2026-10-28 (2.2): SML_SETTING_DELTA_LOCAL and SML_UI_DELTA_LOCAL: the delta
+ * epoch as a local wall-clock time.
  * 2026-10-27 (2.1): SML_DISPLAY_UNCERTAINTY (10), selectable: the time's bound.
  * 2026-10-27 (2.0): CMD-USER codes rationalised (breaking): the SET_* setting
  * commands are gone (settings are written with CMD-SETTINGS), INFO,
@@ -61,7 +63,7 @@
 #define SML_TZ_TRANSITION_MAX 8U
 #define SML_SETTINGS_SCHEMA   1U
 #define SML_PROTOCOL_MAJOR    2U
-#define SML_PROTOCOL_MINOR    1U
+#define SML_PROTOCOL_MINOR    2U
 
 #define SML_CLASS_TIME 0x10U
 #define SML_CLASS_TZ   0x20U
@@ -273,6 +275,7 @@
 #define SML_UI_TZ_STALE              0x0400U // now >= horizon_end_utc of applied TZ state
 #define SML_UI_TZ_AMBIGUOUS          0x0800U
 #define SML_UI_TZ_HELD               0x1000U // a TZ-STATE schedule is held
+#define SML_UI_DELTA_LOCAL           0x2000U // delta_epoch_utc is a local wall-clock time
 #define SML_RTC_PRESENT              0x0001U
 #define SML_RTC_UTC_VALID            0x0002U
 #define SML_RTC_SYNCED               0x0004U
@@ -329,6 +332,9 @@
 #define SML_SETTING_BEEP_ENABLED     0x0010U
 #define SML_SETTING_FORMAT_12H       0x0020U
 #define SML_SETTING_BRI_AUTO         0x0040U
+// delta_epoch_utc is local wall-clock time (UTC plus the offsets then in
+// force, as a scalar), not a UTC instant: the delta is counted in local time.
+#define SML_SETTING_DELTA_LOCAL      0x0080U
 
 // Payload lengths. Fixed-length messages must arrive with exactly this
 // length; anything else is answered as SML_ERROR_LENGTH (commands) or
@@ -708,6 +714,7 @@ typedef struct
      * bit 10: SML_UI_TZ_STALE
      * bit 11: SML_UI_TZ_AMBIGUOUS
      * bit 12: SML_UI_TZ_HELD
+     * bit 13: SML_UI_DELTA_LOCAL
      * All other bits reserved; transmit zero. */
     uint16_t flags;
     uint8_t current_display;
@@ -908,6 +915,7 @@ typedef struct
      * bit 4: SML_SETTING_BEEP_ENABLED
      * bit 5: SML_SETTING_FORMAT_12H
      * bit 6: SML_SETTING_BRI_AUTO
+     * bit 7: SML_SETTING_DELTA_LOCAL
      * All other bits reserved; transmit zero. */
     uint16_t flags;
     int32_t base_offset_s;

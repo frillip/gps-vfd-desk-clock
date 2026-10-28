@@ -10,6 +10,8 @@
 
 // 2026-10-19T12:34:56Z
 void time_print_utc(Stream *output, uint32_t utc_seconds);
+// 2026-10-19T13:34:56: a wall-clock time, given as a scalar like UTC's
+void time_print_wall(Stream *output, uint32_t local_seconds);
 // 2026-10-19T13:34:56+01:00
 void time_print_local(Stream *output, uint32_t utc_seconds, int32_t offset_s);
 // +01:00, -00:25:21 (seconds shown only when not whole minutes)

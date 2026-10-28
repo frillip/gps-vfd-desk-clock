@@ -8,7 +8,7 @@
  *   button  a click for each press (beeps_button()).
  *
  * Only while the time of day is known, and never on a leap second. The
- * alarm (to come) sounds whatever the setting.
+ * alarm (alarm.h) sounds whatever the setting.
  */
 #ifndef BEEPS_H
 #define BEEPS_H

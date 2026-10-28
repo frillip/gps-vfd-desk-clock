@@ -166,6 +166,16 @@ void utc_print(uint32_t utc_seconds)
 }
 
 
+void utc_print_local(uint32_t local_seconds)
+{
+    UtcCivil civil;
+
+    utc_to_civil(local_seconds, false, &civil);
+    printf("%04u-%02u-%02uT%02u:%02u:%02u", civil.year, civil.month, civil.day, civil.hour,
+           civil.minute, civil.second);
+}
+
+
 void utc_print_offset(int32_t offset_s)
 {
     uint32_t magnitude = offset_s < 0 ? (uint32_t)(-(offset_s + 1)) + 1U : (uint32_t)offset_s;

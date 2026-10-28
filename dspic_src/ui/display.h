@@ -57,7 +57,7 @@ typedef enum
     DISPLAY_MODE_SSMM,        // SS:hh, seconds and hundredths
     DISPLAY_MODE_YYYY,        // the year
     DISPLAY_MODE_MMDD,        // month and day
-    DISPLAY_MODE_DELTA,       // time to or since the delta epoch, two units at a time
+    DISPLAY_MODE_DELTA,       // time to or since the delta epoch (UTC or local), two units
     DISPLAY_MODE_UNCERTAINTY, // the time's +/- bound: " 89n", " 1.5u", "130u", "12.6m"
     DISPLAY_MODE_COUNT
 } DisplayMode;
@@ -98,17 +98,24 @@ typedef struct
 void display_init(void);
 
 // The settings: the mode selected (a new one is shown at once, ending any
-// shown by the button), 12 or 24 hours, and the delta mode's epoch (UTC).
+// shown by the button), 12 or 24 hours, and the delta mode's epoch: a UTC
+// instant, or with local a local wall-clock time (UTC plus the offsets then
+// in force, as a scalar) counted against local time.
 // Each change is drawn at once.
 void display_set_mode(DisplayMode mode);
 void display_set_12h(bool twelve_hours);
-void display_set_delta_epoch(uint32_t utc_seconds);
+// The start dot, in every mode but dashes: the alarm is set (as V2).
+void display_set_alarm_dot(bool on);
+void display_set_delta_epoch(uint32_t seconds, bool local);
 
 // The mode shown now, and the one selected.
 DisplayMode display_mode(void);
 DisplayMode display_selected(void);
 bool display_is_12h(void);
 uint32_t display_delta_epoch(void);
+bool display_delta_is_local(void);
+// The delta epoch as set: 2027-01-01T00:00:00Z, or 2027-01-01T00:00:00 local.
+void display_print_epoch(uint32_t seconds, bool local);
 
 // A short press: show the next mode, for DISPLAY_CYCLE_EPOCHS. Nothing while
 // the time is unknown (dashes).

@@ -36,7 +36,7 @@ typedef enum
     VALUE_NUMBER,   // minimum..maximum
     VALUE_DURATION, // seconds, with s, m, h or d, minimum..maximum
     VALUE_OFFSET,   // +/-h[:mm[:ss]]
-    VALUE_TIME,     // h:mm[:ss]
+    VALUE_TIME,     // h:mm[:ss], or seconds past midnight
     VALUE_MOMENT,   // ISO 8601 or Unix seconds
     VALUE_TEXT,     // up to USER_PREFS_MAX_STRING_SIZE
     VALUE_WORDS,    // the rest of the line, as it is
@@ -49,6 +49,7 @@ typedef struct
     int64_t number;   // BOOL (0/1), NUMBER, DURATION, OFFSET, TIME, MOMENT
     const char *text; // the value as typed
     bool verbose;     // -v at the end of the line
+    bool local;       // MOMENT: a wall-clock time, no zone given
 } Value;
 
 struct Entry;
@@ -655,15 +656,22 @@ static void print_mode(Stream *output, uint8_t selected)
     output->printf("%s", mode);
 }
 
-static void print_epoch(Stream *output, uint32_t epoch_utc)
+// A UTC instant (2027-01-01T00:00:00Z) or a local wall-clock time
+// (2027-01-01T00:00:00 local).
+static void print_epoch(Stream *output, uint32_t epoch, bool local)
 {
-    if (epoch_utc == 0)
+    if (epoch == 0 && !local)
     {
         output->printf("NONE");
     }
+    else if (local)
+    {
+        time_print_wall(output, epoch);
+        output->printf(" local");
+    }
     else
     {
-        time_print_utc(output, epoch_utc);
+        time_print_utc(output, epoch);
     }
 }
 
@@ -724,11 +732,14 @@ static void display_epoch(Stream *output, const Entry *entry, const Value *value
     if (!value->given)
     {
         output->printf("display epoch: ");
-        print_epoch(output, body.delta_epoch_utc);
+        print_epoch(output, body.delta_epoch_utc, has_flag(&body, SML_SETTING_DELTA_LOCAL));
         output->printf("\n");
         return;
     }
+    // A date and time without a zone is local, counted against the clock's
+    // local time: no time zone data needed for the past or the far future.
     body.delta_epoch_utc = (uint32_t)value->number;
+    set_flag(&body, SML_SETTING_DELTA_LOCAL, value->local);
     write_pic_settings(output, &body);
 }
 
@@ -736,7 +747,8 @@ static const Entry display_entries[] = {
     {NULL, VALUE_CHOICE, DISPLAY_MODES, 0, 0, "hhmm|mmss|ssmm|yyyy|mmdd|delta|uncertainty",
      "Display mode", display_mode},
     {"hours", VALUE_CHOICE, "12 24", 0, 0, "12|24", "12- or 24-hour clock", display_hours},
-    {"epoch", VALUE_MOMENT, NULL, 0, 0, "<moment>", "The delta mode's reference", display_epoch},
+    {"epoch", VALUE_MOMENT, NULL, 0, 0, "<moment>", "The delta mode's reference (no zone: local)",
+     display_epoch},
 };
 
 // A level as it looks: off below the PWM range, full above it (the PIC's
@@ -812,7 +824,7 @@ static void brightness_value(Stream *output, const Entry *entry, const Value *va
 
 static void bare_brightness(Stream *output, bool verbose)
 {
-    Value none = {false, -1, 0, "", false};
+    Value none = {false, -1, 0, "", false, false};
 
     (void)verbose;
     brightness_value(output, NULL, &none);
@@ -843,7 +855,7 @@ static void beeps_value(Stream *output, const Entry *entry, const Value *value)
 
 static void bare_beeps(Stream *output, bool verbose)
 {
-    Value none = {false, -1, 0, "", false};
+    Value none = {false, -1, 0, "", false, false};
 
     (void)verbose;
     beeps_value(output, NULL, &none);
@@ -852,6 +864,21 @@ static void bare_beeps(Stream *output, bool verbose)
 static const Entry beeps_entries[] = {
     {NULL, VALUE_BOOL, NULL, 0, 1, "on|off", "Quarter-hour chimes and button clicks", beeps_value},
 };
+
+// As the PIC has it (STAT-UI): the switch arms it.
+static void print_alarm_state(Stream *output, const SML_SETTINGS_BODY *body)
+{
+    SML_STAT_UI_PAYLOAD ui;
+
+    if (!has_flag(body, SML_SETTING_ALARM_ENABLED) ||
+        !pic_link_get(SML_CLASS_STAT, SML_STAT_UI, &ui, PIC_LINK_STATE_TIMEOUT_MS))
+    {
+        return;
+    }
+    output->printf(", %s", (ui.flags & SML_UI_ALARM_ACTIVE) != 0U ? "SOUNDING"
+                           : (ui.flags & SML_UI_SWITCH) != 0U     ? "ARMED"
+                                                                  : "DISARMED (switch OFF)");
+}
 
 static void alarm_value(Stream *output, const Entry *entry, const Value *value)
 {
@@ -864,11 +891,13 @@ static void alarm_value(Stream *output, const Entry *entry, const Value *value)
     }
     if (!value->given)
     {
-        output->printf("alarm: %s, %02lu:%02lu:%02lu\n",
+        output->printf("alarm: %s, %02lu:%02lu:%02lu",
                        on_off(has_flag(&body, SML_SETTING_ALARM_ENABLED)),
                        (unsigned long)(body.alarm_offset_s / 3600U),
                        (unsigned long)(body.alarm_offset_s / 60U % 60U),
                        (unsigned long)(body.alarm_offset_s % 60U));
+        print_alarm_state(output, &body);
+        output->printf("\n");
         return;
     }
     if (value->choice < 0) // a time: set, and on
@@ -881,15 +910,15 @@ static void alarm_value(Stream *output, const Entry *entry, const Value *value)
 
 static void bare_alarm(Stream *output, bool verbose)
 {
-    Value none = {false, -1, 0, "", false};
+    Value none = {false, -1, 0, "", false, false};
 
     (void)verbose;
     alarm_value(output, NULL, &none);
 }
 
 static const Entry alarm_entries[] = {
-    {NULL, VALUE_TIME, "off on", 0, 0, "off|on|hh:mm[:ss]",
-     "Off, on, or a local time (and on); not sounded yet", alarm_value},
+    {NULL, VALUE_TIME, "off on", 0, 0, "off|on|hh:mm[:ss]|<seconds>",
+     "Off, on, or a local time (and on); the switch arms it", alarm_value},
 };
 
 // ---- The RTC, the oscillator, GNSS, sources, debug ---------------------------------
@@ -917,8 +946,10 @@ static void rtc_set(Stream *output, const Entry *entry, const Value *value)
 }
 
 static const Entry rtc_entries[] = {
-    {"set", VALUE_MOMENT, "now", 0, 0, "now|<moment>", "Set the RTC (UTC; now: the ESP's time)",
-     rtc_set},
+    // Unix seconds only, not a date: setting it wrongly takes a conversion first.
+    // From 2000 (the PCF8563's century) to the end of uint32_t.
+    {"set", VALUE_NUMBER, "now", 946684800LL, 4294967295LL, "now|<Unix seconds>",
+     "Set the RTC (now: the ESP's NTP time)", rtc_set},
 };
 
 static void osc_baseline(Stream *output, const Entry *entry, const Value *value)
@@ -1438,6 +1469,7 @@ static bool parse_value(const Entry *entry, const char *text, Value *value)
     value->choice = value->given ? find_choice(entry->choices, text) : -1;
     value->number = 0;
     value->text = text;
+    value->local = false;
     if (!value->given)
     {
         return true; // an action, or a setting to show
@@ -1499,7 +1531,7 @@ static bool parse_value(const Entry *entry, const char *text, Value *value)
             value->number = unsigned_value;
             return true;
         case VALUE_MOMENT:
-            if (!parse_moment(text, &unsigned_value))
+            if (!parse_moment(text, &unsigned_value, &value->local))
             {
                 return false;
             }

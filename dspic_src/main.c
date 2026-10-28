@@ -36,6 +36,7 @@
 #include "timing/scheduler.h"
 #include "timing/timing.h"
 #include "timing/timing_report.h"
+#include "ui/alarm.h"
 #include "ui/beeps.h"
 #include "ui/brightness.h"
 #include "ui/controls.h"
@@ -108,9 +109,29 @@ static bool flash_quiet(void)
 }
 
 
-// The button and the switch, debounced. A click for each press, and a short
-// press shows the next display mode (the menu and alarm will do more). Each
-// press and switch change is printed with DEBUG_EVENTS.
+// The alarm dot follows the alarm, and its changes are printed with
+// DEBUG_EVENTS.
+static void report_alarm(void)
+{
+    static AlarmState reported = ALARM_OFF;
+    AlarmState state = alarm_state();
+
+    display_set_alarm_dot(alarm_is_set());
+    if (state != reported)
+    {
+        reported = state;
+        if (debug_enabled(DEBUG_EVENTS))
+        {
+            printf("Alarm: %s\r\n", alarm_state_name(state));
+        }
+    }
+}
+
+
+// The button and the switch, debounced. The switch arms the alarm, and a
+// press stops it sounding. Otherwise a click for each press, and a short
+// press shows the next display mode (the menu will do more). Each press and
+// switch change is printed with DEBUG_EVENTS.
 static void service_controls(void)
 {
     static uint32_t presses;
@@ -120,13 +141,17 @@ static void service_controls(void)
 
     controls_service(scheduler_now_ms(), UI_BUTTON_IS_PRESSED(), UI_SWITCH_IS_ON());
     press = controls_press(&count);
+    alarm_set_switch(controls_switch_on());
     if (count != presses)
     {
         presses = count;
-        beeps_button();
-        if (press == CONTROLS_SHORT)
+        if (!alarm_press()) // a press that stops the alarm does nothing else
         {
-            display_cycle();
+            beeps_button();
+            if (press == CONTROLS_SHORT)
+            {
+                display_cycle();
+            }
         }
         if (debug_enabled(DEBUG_EVENTS))
         {
@@ -141,18 +166,22 @@ static void service_controls(void)
             printf("Switch: %s\r\n", controls_switch_on() ? "ON" : "OFF");
         }
     }
+    report_alarm();
 }
 
 
-// The chimes, at the start of the second that has just begun: local time,
-// as the display shows it.
+// The chimes and the alarm, at the start of the second that has just
+// begun: local time, as the display shows it.
 static void sound_epoch(void)
 {
     const SyncTime *time = &sync_status()->time;
     TimezoneOffset zone;
+    uint32_t local;
 
     timezone_offset_at(time->utc_seconds, &zone);
-    beeps_epoch(time->known, time->leap_second, time->utc_seconds + (uint32_t)zone.offset_s);
+    local = time->utc_seconds + (uint32_t)zone.offset_s;
+    alarm_epoch(time->known, local);
+    beeps_epoch(time->known, time->leap_second, local);
 }
 
 
@@ -245,6 +274,7 @@ static void report_minute(void)
         veml6040_print(epoch_timer_ms(), true);
         brightness_print(true);
         controls_print(true);
+        alarm_print(true);
         i2c1_print();
         esp_link_print();
     }
@@ -280,6 +310,7 @@ int main(void)
     controls_init();
     buzzer_init();
     beeps_init();
+    alarm_init();
     // The settings and the time zone schedule kept in flash, applied to the
     // modules above. Erases and writes are timed on the capture timebase,
     // and the epoch timer's slots put right after each.

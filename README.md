@@ -147,7 +147,7 @@ Every command follows the same pattern:
 
 A command that is itself a setting takes its value directly, as in `brightness auto` or `beeps on`. Changes take effect at once, on whichever chip holds them, and are kept over a reset once saved with `save`. `defaults` puts the default settings in force without saving them, so a restart brings back what was saved, should the defaults turn out to be less charming than expected.
 
-Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5:30` or `-1`, times of day as `07:30`, intervals as `1024`, `17m`, `1h` or `1d`, and moments as `2026-10-27T15:00Z`, `2026-10-27 16:00+01:00` or Unix seconds. A moment without an offset is UTC.
+Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5:30` or `-1`, times of day as `07:30` or seconds past midnight (`27000`), intervals as `1024`, `17m`, `1h` or `1d`, and moments as Unix seconds or ISO 8601, loosely: `2026-10-27T15:00Z`, `2026-10-27 16:00+01:00`, `2026-10-27 16:00:00 +0100`, `20261027T150000Z` or just `2026-10-27`, with T or spaces between the date and the time and any fraction of a second dropped. A moment without a zone is local time.
 
 ## Both chips
 
@@ -178,12 +178,12 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 | `display [-v]` | The display mode, 12/24 hours, brightness, light sensor, button and switch |
 | `display hhmm\|mmss\|ssmm\|yyyy\|mmdd\|delta\|uncertainty` | The display mode; the button steps through them for 20 seconds. `uncertainty` shows the time's ± bound (` 89n`, ` 1.5u`, `12.6m`) |
 | `display hours 12\|24` | 12- or 24-hour clock |
-| `display epoch <moment>` | The reference for the delta mode |
+| `display epoch <moment>` | The reference for the delta mode: a date and time without a zone is local time (`2027-01-01 00:00`); with `Z`, an offset or as Unix seconds, an exact instant |
 | `brightness auto\|0..4000` | Brightness from the light sensor, or a manual level: below 200 the tubes are off, above 3800 fully on |
 | `beeps on\|off` | Quarter-hour chimes and button clicks |
-| `alarm off\|on\|hh:mm[:ss]` | The alarm; a time sets it and turns it on. Kept, not yet sounded |
+| `alarm off\|on\|hh:mm[:ss]\|<seconds>` | The alarm, in local time; a time, or seconds past midnight, sets it and turns it on. The switch arms it, and `alarm` shows whether it is ARMED, DISARMED or SOUNDING |
 | `rtc` | The RTC: its time, its second, rate and checks |
-| `rtc set now\|<moment>` | Set the RTC (UTC), `now` being the ESP's NTP time |
+| `rtc set now\|<Unix seconds>` | Set the RTC: the ESP's NTP time, or Unix seconds (from 2000). Not a date, deliberately: a wrong time takes a conversion first |
 | `osc` | The oscillator: the baseline setting, the loop's measured frequency, and what is stored |
 | `osc baseline <Hz>` | The oscillator baseline setting, within 1000ppm of 40MHz |
 | `gnss` | The GNSS receiver |

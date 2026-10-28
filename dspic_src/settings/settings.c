@@ -9,6 +9,7 @@
 #include "../platform/clock.h"
 #include "../platform/utc.h"
 #include "../timing/epoch_control.h"
+#include "../ui/alarm.h"
 #include "../ui/beeps.h"
 #include "../ui/brightness.h"
 #include "../ui/display.h"
@@ -18,7 +19,7 @@
 #define FLAGS_DEFINED                                                                \
     (SML_SETTING_TZ_AUTO | SML_SETTING_DST_AUTO | SML_SETTING_DST_ACTIVE |           \
      SML_SETTING_ALARM_ENABLED | SML_SETTING_BEEP_ENABLED | SML_SETTING_FORMAT_12H | \
-     SML_SETTING_BRI_AUTO)
+     SML_SETTING_BRI_AUTO | SML_SETTING_DELTA_LOCAL)
 #define SECONDS_PER_DAY 86400UL
 #define FOSC_LIMIT_HZ   (FCY / 1000000UL * SETTINGS_FOSC_LIMIT_PPM)
 #define TICKS_PER_US    (FCY / 1000000UL) // flash_set_clock(): the capture timebase
@@ -96,8 +97,7 @@ uint8_t settings_check(const SML_SETTINGS_BODY *body)
 }
 
 
-// Each value to the module it belongs to. The alarm is only kept until the
-// UI uses it.
+// Each value to the module it belongs to.
 static void apply(void)
 {
     const SML_SETTINGS_BODY *body = &running.body;
@@ -109,9 +109,10 @@ static void apply(void)
     brightness_set_level(body->brightness);
     brightness_set_auto((body->flags & SML_SETTING_BRI_AUTO) != 0U);
     beeps_set_enabled((body->flags & SML_SETTING_BEEP_ENABLED) != 0U);
+    alarm_set((body->flags & SML_SETTING_ALARM_ENABLED) != 0U, body->alarm_offset_s);
     display_set_mode(display_mode_of(body->selected_display));
     display_set_12h((body->flags & SML_SETTING_FORMAT_12H) != 0U);
-    display_set_delta_epoch(body->delta_epoch_utc);
+    display_set_delta_epoch(body->delta_epoch_utc, (body->flags & SML_SETTING_DELTA_LOCAL) != 0U);
 }
 
 
@@ -533,7 +534,7 @@ static void print_values(const Values *values)
     if (body->delta_epoch_utc != 0U)
     {
         printf(", delta from ");
-        utc_print(body->delta_epoch_utc);
+        display_print_epoch(body->delta_epoch_utc, (flags & SML_SETTING_DELTA_LOCAL) != 0U);
     }
     printf("; brightness %s (%u); beeps %s; alarm %s (%02lu:%02lu:%02lu)\r\n",
            (flags & SML_SETTING_BRI_AUTO) ? "AUTO" : "MANUAL", body->brightness,
