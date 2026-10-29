@@ -750,12 +750,13 @@ static void print_flash(void)
 {
     const FlashStats *flash = flash_stats();
 
-    printf("  Flash: %lu erases (last %lu us, longest %lu us), %lu double words written (longest "
-           "%lu us), %lu failures\r\n",
-           (unsigned long)flash->erases, (unsigned long)(flash->last_erase_ticks / TICKS_PER_US),
-           (unsigned long)(flash->longest_erase_ticks / TICKS_PER_US), (unsigned long)flash->writes,
-           (unsigned long)(flash->longest_write_ticks / TICKS_PER_US),
-           (unsigned long)flash->failures);
+    printf("  Flash: %lu erases (last ", (unsigned long)flash->erases);
+    utc_print_ns((int64_t)(flash->last_erase_ticks / TICKS_PER_US) * 1000, false);
+    printf(", longest ");
+    utc_print_ns((int64_t)(flash->longest_erase_ticks / TICKS_PER_US) * 1000, false);
+    printf("), %lu double words written (longest ", (unsigned long)flash->writes);
+    utc_print_ns((int64_t)(flash->longest_write_ticks / TICKS_PER_US) * 1000, false);
+    printf("), %lu failures\r\n", (unsigned long)flash->failures);
 }
 
 
@@ -821,9 +822,8 @@ static void print_stored_rtc(void)
     {
         printf("from ");
         utc_print(kept.anchor.utc_seconds);
-        printf("%s, +/-%lu.%03lu ms", kept.anchor.aligned ? "" : " (PLAIN)",
-               (unsigned long)(kept.anchor.bound_ns / 1000000UL),
-               (unsigned long)(kept.anchor.bound_ns / 1000UL % 1000UL));
+        printf("%s, +/-", kept.anchor.aligned ? "" : " (PLAIN)");
+        utc_print_ns(kept.anchor.bound_ns, false);
     }
     else
     {

@@ -158,11 +158,11 @@ The PIC's settings (time zone, DST, display, brightness, beeps, alarm, oscillato
 
 # Console output
 
-Information is printed briefly by default, in the manner of chronyc: the ESP's NTP time and its server, a line each for the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` at the end of any command that shows something prints everything: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. A GNSS clock, for example:
+Information is printed briefly by default, in the manner of chronyc: the ESP's NTP time and its server, a line each for the time zone, leap seconds, Wi-Fi and Telnet, then the PIC's firmware, uptime and last reset cause (STAT-SYS), its time, oscillator, sources and GNSS fix. Sources the PIC has never seen are left out of the table. `-v` at the end of any command that shows something prints everything: the counters, the sources' ranks, their own uncertainty figures, runs and edges, the epoch against NTP and the ESP's GNSS PPS, the PIC's reset bits and longest main-loop pass, and the link statistics. When the PIC's uptime drops, the console prints `PIC restarted: firmware 0.1.0, up 0 s, last reset: brown-out` (or whatever the cause was). `verbose on` makes that the default, an empty line included, until `verbose off` or a restart. Times are given to four significant figures, in the largest unit that leaves a whole part: `61 ns`, `571.0 us`, `13.70 ms`, `1.250 s`. A GNSS clock, for example:
 
 ```
 ESP:      0.2.0 SMOL_CLOCK_A1B2C3, up 00:41:07
-NTP:      2026-10-21T10:53:20Z +/-13.7 ms, synced
+NTP:      2026-10-21T10:53:20Z +/-13.70 ms, synced
 Server:   pool.ntp.org (192.0.2.10), stratum 2, updated 00:12:40 ago
 Zone:     Europe/London (GNSS), UTC+01:00, changes 2026-10-25T01:00:00Z
 Leap:     TAI-UTC 37 s (GNSS)
@@ -177,7 +177,7 @@ Sync:     LOCKED on GNSS, synchronised
   Source    Verdict            Bound       Phase  Last good
 * GNSS      good              61 ns      +25 ns       0s
 + HOLDOVER  good              86 ns           -      42s
-  NTP       good            13.7 ms   -571.0 us       0s
+  NTP       good           13.70 ms   -571.0 us       0s
 GNSS:     3D OK, tAcc 12 ns
 ```
 

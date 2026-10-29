@@ -291,7 +291,9 @@ static void print_time(Stream *output, bool verbose)
             int64_t difference = time.edge_local_us - gnss.local_us;
 
             difference = ((difference + 500000) % 1000000 + 1000000) % 1000000 - 500000;
-            output->printf("Epoch vs GNSS PPS on the ESP: %lld us\n", (long long)difference);
+            output->printf("Epoch vs GNSS PPS on the ESP: ");
+            time_print_ns(output, difference * 1000);
+            output->printf("\n");
         }
     }
 }
@@ -364,9 +366,10 @@ static void print_gnss(Stream *output, bool verbose)
         // Compact: only a receiver that is there.
         if (gnss.flags & SML_GNSS_DETECTED)
         {
-            output->printf("GNSS:     %s%s, tAcc %lu ns\n", fix_name(gnss.fix_type),
-                           (gnss.flags & SML_GNSS_FIX_OK) ? " OK" : "",
-                           (unsigned long)gnss.utc_accuracy_ns);
+            output->printf("GNSS:     %s%s, tAcc ", fix_name(gnss.fix_type),
+                           (gnss.flags & SML_GNSS_FIX_OK) ? " OK" : "");
+            time_print_ns(output, gnss.utc_accuracy_ns);
+            output->printf("\n");
         }
         return;
     }
@@ -376,10 +379,11 @@ static void print_gnss(Stream *output, bool verbose)
         output->printf("No receiver detected\n");
         return;
     }
-    output->printf("Fix:    %s%s, UTC %s, tAcc %lu ns\n", fix_name(gnss.fix_type),
+    output->printf("Fix:    %s%s, UTC %s, tAcc ", fix_name(gnss.fix_type),
                    (gnss.flags & SML_GNSS_FIX_OK) ? " OK" : "",
-                   (gnss.flags & SML_GNSS_UTC_VALID) ? "valid" : "invalid",
-                   (unsigned long)gnss.utc_accuracy_ns);
+                   (gnss.flags & SML_GNSS_UTC_VALID) ? "valid" : "invalid");
+    time_print_ns(output, gnss.utc_accuracy_ns);
+    output->printf("\n");
     if (gnss.flags & SML_GNSS_POSITION_VALID)
     {
         output->printf("Position: %.7f %.7f, %.1f m MSL, hAcc %.1f m\n",
@@ -407,41 +411,24 @@ static void print_bound(Stream *output, bool valid, uint32_t ns)
         output->printf("%11s", "-");
         return;
     }
-    if (ns < 10000U)
-    {
-        output->printf("%8lu ns", (unsigned long)ns);
-    }
-    else if (ns < 10000000U)
-    {
-        output->printf("%8.1f us", (float)ns / 1000.0f);
-    }
-    else
-    {
-        output->printf("%8.1f ms", (float)ns / 1000000.0f);
-    }
+    char text[TIME_NS_TEXT];
+
+    time_format_ns(text, ns, false);
+    output->printf("%11s", text);
 }
 
 // A phase, signed, in the units that suit it, or "-".
 static void print_phase(Stream *output, bool valid, int32_t ns)
 {
-    int32_t size = ns < 0 ? -ns : ns;
+    char text[TIME_NS_TEXT];
 
     if (!valid)
     {
         output->printf(" %11s", "-");
+        return;
     }
-    else if (size < 10000)
-    {
-        output->printf(" %+8ld ns", (long)ns);
-    }
-    else if (size < 10000000)
-    {
-        output->printf(" %+8.1f us", (float)ns / 1000.0f);
-    }
-    else
-    {
-        output->printf(" %+8.1f ms", (float)ns / 1000000.0f);
-    }
+    time_format_ns(text, ns, true);
+    output->printf(" %11s", text);
 }
 
 // An age as chronyc prints one: 12s, 5m, 3h, 2d; "never" for UINT32_MAX.

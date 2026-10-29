@@ -34,6 +34,7 @@
 #include "sync/sync.h"
 #include "sync/sync_report.h"
 #include "sync/sync_tuning.h"
+#include "timing/epoch_control.h"
 #include "timing/scheduler.h"
 #include "timing/timing.h"
 #include "timing/timing_report.h"
@@ -246,6 +247,7 @@ static void run_epoch(const TimingSnapshot *snapshot)
     SyncUpdate update;
     uint32_t bound_ns;
 
+    source_rtc_set_oscillator(kalman_phase_q16(&epoch_control_state()->pps_kf));
     update = sync_update(snapshot, epoch_timer_ms());
     sound_epoch();
     esp_link_epoch(snapshot, &update, epoch_timer_ms());

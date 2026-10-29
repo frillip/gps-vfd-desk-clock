@@ -58,24 +58,71 @@ void time_print_duration(Stream *output, uint32_t seconds)
 }
 
 
-void time_print_ns(Stream *output, int64_t ns)
+void time_format_ns(char *text, int64_t ns, bool plus)
 {
-    int64_t magnitude = ns < 0 ? -ns : ns;
+    static const char *const units[] = {"ns", "us", "ms", "s"};
+    uint64_t size = (uint64_t)(ns < 0 ? -ns : ns);
+    const char *sign = ns < 0 ? "-" : (plus ? "+" : "");
+    unsigned unit = 0;
+    uint64_t scale = 1;
+    unsigned decimals;
+    uint64_t power;
+    uint64_t rounded;
+    uint64_t whole;
 
-    if (magnitude >= 1000000000LL)
+    while (unit < 3 && size >= scale * 1000U)
     {
-        output->printf("%.6f s", (float)ns / 1e9f);
+        scale *= 1000U;
+        unit++;
     }
-    else if (magnitude >= 1000000)
+    if (unit == 0)
     {
-        output->printf("%.3f ms", (float)ns / 1e6f);
+        snprintf(text, TIME_NS_TEXT, "%s%lu ns", sign, (unsigned long)size);
+        return;
     }
-    else if (magnitude >= 1000)
+    // Four figures: as many decimals as the whole part leaves; rounding may
+    // carry into another digit (9.9996 ms is 10.00 ms) or the next unit
+    // (999.96 us is 1.000 ms).
+    whole = size / scale;
+    decimals = whole >= 1000U ? 0 : whole >= 100U ? 1 : whole >= 10U ? 2 : 3;
+    for (;;)
     {
-        output->printf("%.1f us", (float)ns / 1e3f);
+        unsigned digits;
+
+        power = decimals == 3 ? 1000U : decimals == 2 ? 100U : decimals == 1 ? 10U : 1U;
+        rounded = (size * power + scale / 2U) / scale;
+        whole = rounded / power;
+        if (whole >= 1000U && unit < 3)
+        {
+            scale *= 1000U;
+            unit++;
+            decimals = 3;
+            continue;
+        }
+        digits = whole >= 100U ? 3 : whole >= 10U ? 2 : 1;
+        if (decimals > 0 && digits + decimals > 4)
+        {
+            decimals--;
+            continue;
+        }
+        break;
+    }
+    if (decimals == 0)
+    {
+        snprintf(text, TIME_NS_TEXT, "%s%llu %s", sign, (unsigned long long)whole, units[unit]);
     }
     else
     {
-        output->printf("%ld ns", (long)ns);
+        snprintf(text, TIME_NS_TEXT, "%s%llu.%0*llu %s", sign, (unsigned long long)whole,
+                 (int)decimals, (unsigned long long)(rounded % power), units[unit]);
     }
+}
+
+
+void time_print_ns(Stream *output, int64_t ns)
+{
+    char text[TIME_NS_TEXT];
+
+    time_format_ns(text, ns, false);
+    output->printf("%s", text);
 }

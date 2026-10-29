@@ -189,6 +189,76 @@ void utc_print_offset(int32_t offset_s)
 }
 
 
+void utc_format_ns(char *text, int64_t ns, bool plus)
+{
+    static const char *const units[] = {"ns", "us", "ms", "s"};
+    uint64_t size = (uint64_t)(ns < 0 ? -ns : ns);
+    const char *sign = ns < 0 ? "-" : (plus ? "+" : "");
+    uint8_t unit = 0;
+    uint64_t scale = 1;
+    uint8_t decimals;
+    uint64_t power;
+    uint64_t rounded;
+    uint64_t whole;
+
+    while (unit < 3U && size >= scale * 1000U)
+    {
+        scale *= 1000U;
+        unit++;
+    }
+    if (unit == 0U)
+    {
+        sprintf(text, "%s%lu ns", sign, (unsigned long)size);
+        return;
+    }
+    // Four figures: as many decimals as the whole part leaves; rounding may
+    // carry into another digit (9.9996 ms is 10.00 ms) or the next unit
+    // (999.96 us is 1.000 ms).
+    whole = size / scale;
+    decimals = whole >= 1000U ? 0U : whole >= 100U ? 1U : whole >= 10U ? 2U : 3U;
+    for (;;)
+    {
+        uint8_t digits;
+
+        power = decimals == 3U ? 1000U : decimals == 2U ? 100U : decimals == 1U ? 10U : 1U;
+        rounded = (size * power + scale / 2U) / scale;
+        whole = rounded / power;
+        if (whole >= 1000U && unit < 3U)
+        {
+            scale *= 1000U;
+            unit++;
+            decimals = 3U;
+            continue;
+        }
+        digits = whole >= 100U ? 3U : whole >= 10U ? 2U : 1U;
+        if (decimals > 0U && digits + decimals > 4U)
+        {
+            decimals--;
+            continue;
+        }
+        break;
+    }
+    if (decimals == 0U)
+    {
+        sprintf(text, "%s%lu %s", sign, (unsigned long)whole, units[unit]);
+    }
+    else
+    {
+        sprintf(text, "%s%lu.%0*lu %s", sign, (unsigned long)whole, (int)decimals,
+                (unsigned long)(rounded % power), units[unit]);
+    }
+}
+
+
+void utc_print_ns(int64_t ns, bool plus)
+{
+    char text[UTC_NS_TEXT];
+
+    utc_format_ns(text, ns, plus);
+    printf("%s", text);
+}
+
+
 void utc_print_duration(uint32_t seconds)
 {
     if (seconds >= UTC_SECONDS_PER_DAY)

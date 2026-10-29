@@ -226,14 +226,19 @@ static void handle_poll(const NtpPollResult *poll)
     set_system_time();
     if (action == ESP_CLOCK_STEPPED)
     {
-        console_printf("NTP: clock set from %s, step %lld us (%u steps)\n", poll->address,
-                       (long long)status->last_error_us, (unsigned)status->steps);
+        char step[TIME_NS_TEXT];
+
+        time_format_ns(step, status->last_error_us * 1000, true);
+        console_printf("NTP: clock set from %s, step %s (%u steps)\n", poll->address, step,
+                       (unsigned)status->steps);
         start_pps();
     }
     else if (action == ESP_CLOCK_SLEWED_FAST)
     {
-        console_printf("NTP: correcting %lld us at %d ppm\n", (long long)status->slew_us,
-                       ESP_CLOCK_FAST_SLEW_PPM);
+        char slew[TIME_NS_TEXT];
+
+        time_format_ns(slew, status->slew_us * 1000, true);
+        console_printf("NTP: correcting %s at %d ppm\n", slew, ESP_CLOCK_FAST_SLEW_PPM);
     }
     if (status->frequency_samples >= 2 && action != ESP_CLOCK_STEPPED)
     {

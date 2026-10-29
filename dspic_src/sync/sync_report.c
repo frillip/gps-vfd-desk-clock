@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "../console/text.h"
+#include "../platform/utc.h"
 
 static void print_time(const SyncTime *time)
 {
@@ -409,9 +410,10 @@ void sync_report_status(bool verbose)
     }
     if (status->aligned)
     {
-        printf("Epoch put on the %s second at start-up: moved %+ld us\r\n",
-               sync_source_name(status->aligned_to),
-               (long)(status->aligned_ticks / (int32_t)TIMING_TICKS_PER_US));
+        printf("Epoch put on the %s second at start-up: moved ",
+               sync_source_name(status->aligned_to));
+        utc_print_ns((int64_t)status->aligned_ticks * (1000 / (int64_t)TIMING_TICKS_PER_US), true);
+        printf("\r\n");
     }
     print_candidates(status);
     for (source = 0; source < SYNC_SOURCE_COUNT; source++)

@@ -75,6 +75,13 @@ void utc_print_local(uint32_t local_seconds);
 void utc_print_offset(int32_t offset_s);
 // 00:02:05, or 3d 04:05:06 from a day.
 void utc_print_duration(uint32_t seconds);
+// A time interval to four significant figures, in the largest unit that
+// leaves a whole part: 106 ns, 474.0 us, 5.185 ms, 75.93 ms, 1.250 s
+// (whole seconds past 999 s). plus: a + for positive values. Formats into
+// text (UTC_NS_TEXT bytes); utc_print_ns prints it.
+#define UTC_NS_TEXT 24U
+void utc_format_ns(char *text, int64_t ns, bool plus);
+void utc_print_ns(int64_t ns, bool plus);
 
 // A time that has not happened, or a horizon that has no end.
 #define UTC_NEVER 0xFFFFFFFFUL

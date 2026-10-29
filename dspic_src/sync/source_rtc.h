@@ -30,7 +30,9 @@
  * UNCERTAINTY_NS with nothing measured; any write begun voids it until
  * then.) From the anchor and the rate, its second now is predicted: where
  * it starts against UTC's, the rate times the seconds since added to the
- * anchor's, which is reported as the edge's offset (edge_offset_ns), whole
+ * anchor's (the rate as against true seconds: the rate learnt is on the
+ * capture timebase, the PIC's own crystal, so the control loop's estimate
+ * of that is taken off it, source_rtc_set_oscillator), which is reported as the edge's offset (edge_offset_ns), whole
  * seconds of it moving the label; so at start-up the epoch is placed on
  * UTC's second as predicted, not on the RTC's. The bound grows from the
  * anchor's by SOURCE_RTC_ALLOWANCE_PPM of the seconds since with a rate,
@@ -82,8 +84,8 @@
 #define SOURCE_RTC_UNCERTAINTY_NS 999000000UL // 999 ms
 #endif
 // Drift beyond the rate learnt, for the bound: its crystal at another
-// temperature while the clock is off (a tuning fork, -0.035 ppm/C^2),
-// ageing, and the PIC's oscillator, which the rate is measured against.
+// temperature while the clock is off (a tuning fork, -0.035 ppm/C^2), and
+// ageing.
 #define SOURCE_RTC_ALLOWANCE_PPM 10L
 // The largest bound reported: one more is SYNC_BOUND_NONE.
 #define SOURCE_RTC_BOUND_MAX_NS 0xFFFFFFFEUL
@@ -253,6 +255,11 @@ bool source_rtc_set(uint32_t utc_seconds);
 // True once after a source_rtc_set(): its read-back (the next
 // pcf8563_report_due()) answers a command, so is printed whatever the debug.
 bool source_rtc_take_set(void);
+
+// The PIC's oscillator, as the control loop has it (kalman_phase_q16: a
+// true second on the capture timebase less the nominal, Q16 ticks), each
+// epoch before sync_update(): taken off the RTC's rate in predicting it.
+void source_rtc_set_oscillator(int32_t offset_q16);
 
 // What is kept over a reset, and putting it back at start-up (after
 // source_rtc_init, before the first epoch).

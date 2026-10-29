@@ -33,6 +33,7 @@ typedef enum
 } SearchPurpose;
 
 static SourceRtcState state;
+static int32_t oscillator_q16;     // source_rtc_set_oscillator
 static int32_t second_fraction_q8; // counting its second on at its rate
 
 // Our latest epoch (source_rtc_epoch).
@@ -205,13 +206,10 @@ static int32_t clamp_correction(int32_t ticks)
 }
 
 
-static void print_us(int32_t ticks)
+// Ticks of the capture timebase, signed: +144.0 us.
+static void print_ticks(int32_t ticks)
 {
-    int32_t us = ticks / (int32_t)SOURCE_RTC_TICKS_PER_US;
-    uint32_t size = (uint32_t)(us < 0 ? -us : us);
-
-    printf("%c%lu.%03lu ms", us < 0 ? '-' : '+', (unsigned long)(size / 1000U),
-           (unsigned long)(size % 1000U));
+    utc_print_ns((int64_t)ticks * NS_PER_TICK, true);
 }
 
 
@@ -224,20 +222,6 @@ static uint32_t saturate_bound(uint64_t ns)
 static int64_t floor_div64(int64_t a, int64_t b)
 {
     return a >= 0 ? a / b : -((-a + b - 1) / b);
-}
-
-
-// ns as ms to the microsecond: -12.345 ms, or with signed false 12.345 ms.
-static void print_ns(int64_t ns, bool signed_)
-{
-    int64_t us = ns / 1000;
-    uint64_t size = (uint64_t)(us < 0 ? -us : us);
-
-    if (signed_ || us < 0)
-    {
-        printf("%c", us < 0 ? '-' : '+');
-    }
-    printf("%lu.%03lu ms", (unsigned long)(size / 1000U), (unsigned long)(size % 1000U));
 }
 
 
@@ -304,8 +288,10 @@ static bool predict(uint32_t label, int64_t *offset_ns, uint32_t *bound_ns)
     *offset_ns = state.anchor.offset_ns;
     if (state.rate_valid)
     {
-        // rate_q8 / 256 ticks a second longer: + = slow, its seconds later.
-        *offset_ns += (int64_t)elapsed * state.rate_q8 * NS_PER_TICK / 256;
+        // Its second is rate_q8 / 256 ticks longer than nominal, ours (a true
+        // second) oscillator_q16 / 65536: + = slow, its seconds later.
+        int64_t rate_q8 = (int64_t)state.rate_q8 - (int64_t)oscillator_q16 / 256;
+        *offset_ns += (int64_t)elapsed * rate_q8 * NS_PER_TICK / 256;
     }
     *bound_ns = saturate_bound((uint64_t)state.anchor.bound_ns +
                                (uint64_t)(uint32_t)elapsed * allowance * 1000U);
@@ -613,9 +599,9 @@ static void confirmed(void)
         if (debug_enabled(DEBUG_RTC))
         {
             printf("RTC: set, its second ");
-            print_us(error);
+            print_ticks(error);
             printf(" from the epoch (start delay correction ");
-            print_us(state.release_correction_ticks);
+            print_ticks(state.release_correction_ticks);
             printf(")\n");
         }
         return;
@@ -625,7 +611,7 @@ static void confirmed(void)
         printf("RTC: aligned write landed ");
         if (label_ok)
         {
-            print_us(error);
+            print_ticks(error);
             printf(" from the epoch");
         }
         else
@@ -690,11 +676,13 @@ static void search_result(const SyncTime *time, bool synchronised, uint32_t cloc
     }
     if (debug_enabled(DEBUG_RTC))
     {
-        printf("RTC: second found to %lu us",
-               (unsigned long)(state.resolution_ticks / SOURCE_RTC_TICKS_PER_US));
+        printf("RTC: second found to ");
+        utc_print_ns((int64_t)state.resolution_ticks * NS_PER_TICK, false);
         if (state.offset_valid)
         {
-            printf(", %+ld ms against the clock", (long)state.offset_ms);
+            printf(", ");
+            utc_print_ns((int64_t)state.offset_ms * 1000000LL, true);
+            printf(" against the clock");
         }
         if (state.rate_valid)
         {
@@ -731,6 +719,7 @@ void source_rtc_init(void)
 {
     memset(&state, 0, sizeof(state));
     second_fraction_q8 = 0;
+    oscillator_q16 = 0;
     state.next_check_epoch = SOURCE_RTC_CHECK_EPOCHS;
     epoch_sequence = 0;
     epoch_valid = false;
@@ -744,6 +733,12 @@ void source_rtc_init(void)
     set_by_command = false;
     reads_dated = 0;
     set_activity(SOURCE_RTC_IDLE);
+}
+
+
+void source_rtc_set_oscillator(int32_t offset_q16)
+{
+    oscillator_q16 = offset_q16;
 }
 
 
@@ -1103,14 +1098,14 @@ static void print_bound(void)
         return;
     }
     printf("+/-");
-    print_ns(bound_at(label), false);
+    utc_print_ns(bound_at(label), false);
     if (!predict(label, &offset_ns, &bound_ns))
     {
         printf(", NOT MEASURED\n");
         return;
     }
     printf("; second ");
-    print_ns(offset_ns, true);
+    utc_print_ns(offset_ns, true);
     printf(" from UTC's, from ");
     utc_print(state.anchor.utc_seconds);
     printf(state.anchor.aligned ? "\n" : " (PLAIN)\n");
@@ -1125,11 +1120,12 @@ void source_rtc_print(bool verbose)
     if (state.second_valid)
     {
         utc_print_duration(epoch_sequence - state.measured_epoch);
-        printf(" ago, +/-%lu us",
-               (unsigned long)(state.resolution_ticks / SOURCE_RTC_TICKS_PER_US));
+        printf(" ago, +/-");
+        utc_print_ns((int64_t)state.resolution_ticks * NS_PER_TICK, false);
         if (state.offset_valid)
         {
-            printf(", %+ld ms", (long)state.offset_ms);
+            printf(", ");
+            utc_print_ns((int64_t)state.offset_ms * 1000000LL, true);
         }
     }
     else
@@ -1156,7 +1152,7 @@ void source_rtc_print(bool verbose)
         if (state.last_write_aligned)
         {
             printf(", ");
-            print_us(state.last_write_error_ticks);
+            print_ticks(state.last_write_error_ticks);
         }
         else
         {
@@ -1181,7 +1177,7 @@ void source_rtc_print(bool verbose)
     if (verbose)
     {
         printf("  Start delay correction ");
-        print_us(state.release_correction_ticks);
+        print_ticks(state.release_correction_ticks);
         printf("; %lu rate updates, %lu searches (%lu failed), %lu checks, %lu set (%lu failed, "
                "%lu late), %lu plain\n",
                (unsigned long)state.rate_updates, (unsigned long)state.searches,

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "../platform/time_ms.h"
+#include "../platform/utc.h"
 #include "epoch_timer.h"
 
 static uint32_t now_ms;
@@ -209,8 +210,9 @@ void scheduler_print(void)
     stop_running();
     window_ms = time_ms_elapsed(epoch_timer_ms(), report_start_ms);
     epoch_timer_resume_stats(&resumed_slots, &resume_spans);
-    printf("Scheduler: %lu passes in %lu ms, longest %u ms", (unsigned long)passes,
-           (unsigned long)window_ms, pass_max_ms);
+    printf("Scheduler: %lu passes in ", (unsigned long)passes);
+    utc_print_ns((int64_t)window_ms * 1000000LL, false);
+    printf(", longest %u ms", pass_max_ms);
     if (resumed_slots != 0U || resume_spans != 0U)
     {
         // Held up by flash erases (drivers/flash.h), since start-up.

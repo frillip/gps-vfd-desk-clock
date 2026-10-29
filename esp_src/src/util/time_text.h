@@ -18,7 +18,12 @@ void time_print_local(Stream *output, uint32_t utc_seconds, int32_t offset_s);
 void time_print_offset(Stream *output, int32_t offset_s);
 // 3d 04:05:06
 void time_print_duration(Stream *output, uint32_t seconds);
-// 1.234 ms, 56.7 us, 89 ns
+// A time interval to four significant figures, in the largest unit that
+// leaves a whole part: 89 ns, 56.70 us, 5.185 ms, 11.43 ms, 1.250 s (whole
+// seconds past 999 s). plus: a + for positive values. time_format_ns
+// writes it to text (TIME_NS_TEXT bytes).
+#define TIME_NS_TEXT 24
+void time_format_ns(char *text, int64_t ns, bool plus);
 void time_print_ns(Stream *output, int64_t ns);
 
 #endif // TIME_TEXT_H
