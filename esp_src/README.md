@@ -12,7 +12,7 @@ This firmware requires the V2+ dsPIC firmware in [dspic_src](../dspic_src). It n
 
 The firmware builds with the Arduino IDE 2 or arduino-cli, using the **esp32** core 3.3.x. It has been built and run with 3.3.9 to 3.3.12. Select *ESP32 Dev Module*, 16MB flash and the *Custom* partition scheme, which uses [partitions.csv](partitions.csv).
 
-The libraries are git submodules in [libraries](libraries): WiFiManager, ESPTelnet, ArduinoJson and ESP32-OTA-Pull. Run `git submodule update --init`, then point the IDE's sketchbook (or `--libraries` for arduino-cli) at that folder. ezTime is no longer used.
+The libraries are git submodules in [libraries](libraries): WiFiManager, ESPTelnet and ArduinoJson. Run `git submodule update --init`, then point the IDE's sketchbook (or `--libraries` for arduino-cli) at that folder. ezTime is no longer used, and neither is ESP32-OTA-Pull: the updater reads the same manifest itself, so that its requests connect with IPv6/IPv4 fallback (below).
 
 The console and PIC link baud rates are set in [src/board.h](src/board.h). The PIC link rate must match the dsPIC's UART1 setting.
 
@@ -45,7 +45,7 @@ The portable parts of the firmware have host tests: the clock model, NTP packet 
 cd tests/host && make
 ```
 
-The console commands and the PIC link have their own, in `tests/commands`: every command against a PIC played by the test, the settings written whole and their answers, and the value parsers (`cd tests/commands && make`).
+The console commands and the PIC link have their own, in `tests/commands`: every command against a PIC played by the test, the settings written whole and their answers, and the value parsers (`cd tests/commands && make`). The dual-stack fallback has its own too, in `tests/net`: the order addresses are tried in, a failed family held back and given back, and URLs (`cd tests/net && make`).
 
 [tools/format.sh](tools/format.sh) applies the same house style as the dsPIC sources.
 
@@ -59,7 +59,7 @@ The console commands and the PIC link have their own, in `tests/commands`: every
 | `src/pic/` | The PIC link: SML framing, the PIC's console text, its held state, commands in both directions, pairing TIME-AUTH with the epoch edge. Also the PIC state report. `sml/` links to the shared SML codec |
 | `src/timing/` | NTP client and packet handling, the clock model, ESP PPS output, PIC epoch and GNSS PPS capture |
 | `src/tz/` | tzinfo lookups and cache, TZ-STATE assembly, TIME-LEAP |
-| `src/net/` | WiFi, Telnet, OTA updates, STAT-NET |
+| `src/net/` | WiFi, dual-stack connections with fallback, Telnet, OTA updates, STAT-NET |
 | `src/console/` | Console line input and output, the command table |
 | `src/settings/` | Preferences stored in NVS |
 | `src/util/` | Argument parsing, time formatting |
@@ -73,6 +73,20 @@ The console commands and the PIC link have their own, in `tests/commands`: every
 | GPIO23 | Status LED, lit for 100ms on each ESP PPS edge while NTP is synced |
 
 Almost everything runs from `loop()`. The exceptions are the NTP exchanges, which run in a task of their own, and the timing edges, which are handled in interrupts. Blocking work such as an HTTPS request holds up `loop()` but nothing else: the ESP PPS carries on in its interrupt, and the 4KB receive buffer on the PIC link holds several seconds of traffic.
+
+# Network
+
+The ESP is dual stack: IPv4 by DHCP, IPv6 by SLAAC. IPv6 is turned on before Wi-Fi connects (`WiFi.enableIPv6()`), so it has a link-local address at once and global addresses from the router's advertisements a few seconds later. DHCPv6 is not used. DNS servers come from DHCP or from the advertisements' RDNSS option: arduino-esp32 3.3.12's lwIP keeps three, and RDNSS fills the first two, so whichever arrived last is in use. lwIP does the rest:
+
+- NTP, the tzinfo lookups and the update checks connect as any dual-stack host does (`src/net/net_connect.cpp`): the name's IPv6 and IPv4 addresses are both looked up (IPv6 only while the clock has a global IPv6 address), the preferred family's is tried first, and if it does not answer, the other's. IPv6 is preferred, unless an IPv6 connection or NTP poll failed within the last hour and IPv4 has not failed since; then IPv4 goes first. A success clears its family's failure, and NTP and HTTPS share what is learnt, so a family that does not route costs one timeout an hour rather than one per request. For NTP, a poll that gets no reply at all is followed at once by one to the other address (`NTP: no reply from 2001:db8::123, trying 192.0.2.10`); a refusal (a kiss) or a bad reply is the server's, not the family's. The first poll after Wi-Fi connects waits up to 15 seconds for SLAAC's global IPv6 address, which follows IPv4 by a few seconds, so that the frequency is learnt over the path NTP goes on using; it starts as soon as the address arrives, and an IPv4-only network costs the 15 seconds once per connection. For HTTPS the connection is made first, to the address that answers, verified against the host name, and HTTPClient then reuses it. `ntp server`, `tz server` and `update server` also take IP literals, an IPv6 one bracketed or not (it is bracketed in a URL). A failed update request says why: `Update server: 1 (HTTP request failed: connection refused)`.
+- The Telnet server listens on `::`, which takes IPv4 clients too (as IPv4-mapped addresses, shown as plain IPv4).
+- Pings are answered on both.
+
+`wifi -v` shows which family is preferred and any recent failures: `Prefer: IPv4 first; IPv6 failed 00:12:05 ago`.
+
+Where the clock can be reached is printed with both addresses: `Wi-Fi: 192.168.1.20, 2001:db8:1::20` whenever they change (the IPv6 one usually a few seconds after connecting), in the status line, and Telnet's `192.168.1.20:23, [2001:db8:1::20]:23`. `wifi -v` lists every IPv6 address with its kind (GLOBAL, UNIQUE_LOCAL, LINK_LOCAL) and the DNS servers. What is connected or resolved is printed as used: the NTP server's address (`pool.example (2001:db8::123)`), the tzinfo server's (`tz -v`), the update server's (after `Update server: …`), a Telnet client's.
+
+STAT-NET still carries the IPv4 address only; the PIC does not use it (to be brought in line later).
 
 # Time
 
@@ -166,8 +180,8 @@ NTP:      2026-10-21T10:53:20Z +/-13.70 ms, synced
 Server:   pool.ntp.org (192.0.2.10), stratum 2, updated 00:12:40 ago
 Zone:     Europe/London (GNSS), UTC+01:00, changes 2026-10-25T01:00:00Z
 Leap:     TAI-UTC 37 s (GNSS)
-Wi-Fi:    home, 192.168.1.20, -61 dBm
-Telnet:   RUNNING 192.168.1.20:23, start-up ON, client 192.168.1.5
+Wi-Fi:    home, 192.168.1.20, 2001:db8:1::20, -61 dBm
+Telnet:   RUNNING 192.168.1.20:23, [2001:db8:1::20]:23, start-up ON, client 2001:db8:1::5
 
 PIC:      0.1.0, up 00:40:58, last reset: power-on
 UTC:      2026-10-21T10:53:20Z +/-61 ns, GNSS LOCKED

@@ -5,6 +5,7 @@
 #include <sys/time.h>
 
 #include "../console/console.h"
+#include "../net/net_connect.h"
 #include "../settings/user_prefs.h"
 #include "../util/time_text.h"
 #include "esp_clock.h"
@@ -21,6 +22,10 @@
 #define SYNC_SLACK_S      300U
 #define FREE_RUN_AFTER_S  86400U
 #define PPS_SYNC_LIMIT_NS 1000000 // phase within which the edge marks its second
+// The first poll on a link waits this long at most for SLAAC's global IPv6
+// address, which follows IPv4 by a few seconds: started on IPv4, the
+// frequency would be learnt on one path and continued on another.
+#define IPV6_WAIT_MS 15000U
 
 typedef struct
 {
@@ -38,6 +43,16 @@ typedef struct
     uint32_t edges;
     int64_t last_edge_utc_us;
     uint32_t dns_failures;
+    // This poll's addresses, preferred family first, and the one in use: a
+    // poll with no reply at all goes on to the next at once.
+    IPAddress targets[NET_ADDRESSES];
+    int target_count;
+    int target;
+    uint32_t fallbacks;
+    char polled_host[sizeof(user_prefs.fields.ntp.server)]; // the server the latest poll was of
+    bool network_was_up;
+    uint32_t network_up_ms; // when it came up
+    bool resync;            // a poll asked for (ntp_resync), not yet started
 } Ntp;
 
 static Ntp ntp;
@@ -58,9 +73,12 @@ void ntp_init(void)
 }
 
 
+// A poll now: or, if one is running, as soon as it ends, which would
+// otherwise schedule the next for an interval on.
 void ntp_resync(void)
 {
     ntp.next_poll_us = now_us();
+    ntp.resync = true;
 }
 
 
@@ -179,7 +197,9 @@ static uint32_t next_delay_s(bool good)
 
 static void schedule_next(bool good)
 {
-    ntp.next_poll_us = now_us() + (int64_t)next_delay_s(good) * 1000000;
+    uint32_t delay_s = next_delay_s(good); // keeps its own count either way
+
+    ntp.next_poll_us = ntp.resync ? now_us() : now_us() + (int64_t)delay_s * 1000000;
 }
 
 
@@ -313,6 +333,23 @@ static void service_pps(void)
 }
 
 
+// A poll of the server at address, by the client task.
+static void start_poll(const IPAddress *address)
+{
+    NtpServerAddress server;
+    IPAddress copy = *address;
+
+    memset(&server, 0, sizeof(server));
+    server.ipv6 = copy.type() == IPv6;
+    memcpy(server.bytes, &copy[0], server.ipv6 ? 16 : 4);
+    server.zone = copy.zone();
+    if (ntp_client_poll(&server))
+    {
+        ntp.next_poll_us = now_us() + (int64_t)ntp.max_interval_s * 1000000; // until the result
+    }
+}
+
+
 void ntp_service(bool network_up)
 {
     NtpPollResult poll;
@@ -327,23 +364,55 @@ void ntp_service(bool network_up)
     }
     if (ntp_client_take(&poll))
     {
-        handle_poll(&poll);
+        // No reply at all, rather than a refusal (a kiss) or a bad reply:
+        // the address family may not route. The other, if there is one.
+        bool silent = !poll.ok && poll.kiss[0] == '\0' && poll.last_result == NTP_REPLY_OK;
+
+        net_note_result(ntp.targets[ntp.target], !silent);
+        if (silent && ntp.target + 1 < ntp.target_count && network_up)
+        {
+            ntp.target++;
+            ntp.fallbacks++;
+            console_printf("NTP: no reply from %s, trying %s\n", poll.address,
+                           ntp.targets[ntp.target].toString().c_str());
+            ntp.last = poll;
+            ntp.have_last = true;
+            start_poll(&ntp.targets[ntp.target]);
+        }
+        else
+        {
+            handle_poll(&poll);
+        }
     }
     service_pps();
 
     if (!network_up)
     {
         ntp.polled = false; // poll as soon as it is back
+        ntp.network_was_up = false;
+        return;
+    }
+    if (!ntp.network_was_up)
+    {
+        ntp.network_was_up = true;
+        ntp.network_up_ms = millis();
+    }
+    // The first poll on this link: once there is a global IPv6 address, or
+    // it is clear there will not be one soon (an IPv4-only network).
+    if (!ntp.polled && !net_ipv6_ready() && millis() - ntp.network_up_ms < IPV6_WAIT_MS)
+    {
         return;
     }
     if ((!ntp.polled || now_us() >= ntp.next_poll_us) && !ntp_client_busy())
     {
-        IPAddress address;
-
         ntp.polled = true;
-        // Resolved here, in the loop task: see ntp_client.h.
-        if (!Network.hostByName(user_prefs.fields.ntp.server, address) || address.type() != IPv4 ||
-            (uint32_t)address == 0)
+        ntp.resync = false;
+        snprintf(ntp.polled_host, sizeof(ntp.polled_host), "%s", user_prefs.fields.ntp.server);
+        // Resolved here, in the loop task (ntp_client.h): both families,
+        // the preferred first (net_connect.h).
+        ntp.target_count = net_resolve(user_prefs.fields.ntp.server, ntp.targets);
+        ntp.target = 0;
+        if (ntp.target_count == 0)
         {
             NtpPollResult failed;
 
@@ -353,11 +422,7 @@ void ntp_service(bool network_up)
             handle_poll(&failed);
             return;
         }
-        if (ntp_client_poll((uint32_t)address[0] << 24 | (uint32_t)address[1] << 16 |
-                            (uint32_t)address[2] << 8 | address[3]))
-        {
-            ntp.next_poll_us = now_us() + (int64_t)ntp.max_interval_s * 1000000; // until the result
-        }
+        start_poll(&ntp.targets[0]);
     }
 }
 
@@ -394,7 +459,8 @@ static void print_brief(Stream *output)
         output->printf(", %s\n", ntp_is_synced() ? "synced" : "NOT SYNCED");
     }
     output->printf("Server:   %s", user_prefs.fields.ntp.server);
-    if (ntp.have_last && ntp.last.address[0] != '\0')
+    if (ntp.have_last && ntp.last.address[0] != '\0' &&
+        strcmp(ntp.polled_host, user_prefs.fields.ntp.server) == 0)
     {
         output->printf(" (%s)", ntp.last.address);
     }
@@ -426,7 +492,8 @@ void ntp_print(Stream *output, bool verbose)
     }
 
     output->printf("Server:    %s", user_prefs.fields.ntp.server);
-    if (ntp.have_last && ntp.last.address[0] != '\0')
+    if (ntp.have_last && ntp.last.address[0] != '\0' &&
+        strcmp(ntp.polled_host, user_prefs.fields.ntp.server) == 0)
     {
         output->printf(" (%s)", ntp.last.address);
     }
@@ -466,11 +533,11 @@ void ntp_print(Stream *output, bool verbose)
         output->printf(" (%lu fast)\n", (unsigned long)status->fast_slews);
     }
     output->printf("Polls:     %lu (%lu good), %lu exchanges, %lu timeouts, %lu DNS failures, "
-                   "%lu updates, %lu steps\n",
+                   "%lu to the other address family, %lu updates, %lu steps\n",
                    (unsigned long)stats->polls, (unsigned long)stats->good_polls,
                    (unsigned long)stats->exchanges, (unsigned long)stats->timeouts,
-                   (unsigned long)ntp.dns_failures, (unsigned long)status->updates,
-                   (unsigned long)status->steps);
+                   (unsigned long)ntp.dns_failures, (unsigned long)ntp.fallbacks,
+                   (unsigned long)status->updates, (unsigned long)status->steps);
     if (ntp.have_last && !ntp.last.ok)
     {
         output->printf("Last poll: failed (%s %s)\n", poll_failure(&ntp.last), ntp.last.kiss);

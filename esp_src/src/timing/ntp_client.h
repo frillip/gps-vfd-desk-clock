@@ -13,6 +13,10 @@
  * first HTTPS request crashed the ESP. With every DNS lookup in the loop
  * task, none is ever pending when that happens.
  *
+ * The server may be IPv4 or IPv6: ntp.cpp resolves both (net_connect.h),
+ * polls the preferred family's address, and the other's if that one never
+ * answers.
+ *
  * T1 and T4 are esp_timer microseconds taken immediately around sendto and
  * recvfrom in a task that outranks the loop, so they carry no loop latency.
  */
@@ -36,9 +40,18 @@ typedef struct
     uint8_t replies;       // good exchanges in the burst
     bool dns_failed;       // set by the caller (ntp.cpp)
     NtpReplyResult last_result;
-    char kiss[5]; // kiss code, if the server sent one
-    char address[16];
+    char kiss[5];     // kiss code, if the server sent one
+    char address[48]; // the server's address as used: 192.0.2.10, 2001:db8::123
 } NtpPollResult;
+
+// A server's address: IPv4 (the first 4 bytes, network order) or IPv6 (16
+// bytes, and the zone of a link-local one).
+typedef struct
+{
+    bool ipv6;
+    uint8_t bytes[16];
+    uint8_t zone;
+} NtpServerAddress;
 
 typedef struct
 {
@@ -50,9 +63,9 @@ typedef struct
 } NtpClientStats;
 
 void ntp_client_init(void);
-// Starts a poll of the server at ipv4 (a.b.c.d = a << 24 | ... | d) unless
-// one is running. False if one is running.
-bool ntp_client_poll(uint32_t ipv4);
+// Starts a poll of the server at address unless one is running. False if
+// one is running.
+bool ntp_client_poll(const NtpServerAddress *address);
 bool ntp_client_busy(void);
 // The result of a finished poll, once.
 bool ntp_client_take(NtpPollResult *result);

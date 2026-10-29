@@ -22,7 +22,7 @@ void time_print_duration(Stream *output, uint32_t seconds);
 // leaves a whole part: 89 ns, 56.70 us, 5.185 ms, 11.43 ms, 1.250 s (whole
 // seconds past 999 s). plus: a + for positive values. time_format_ns
 // writes it to text (TIME_NS_TEXT bytes).
-#define TIME_NS_TEXT 24
+#define TIME_NS_TEXT 32
 void time_format_ns(char *text, int64_t ns, bool plus);
 void time_print_ns(Stream *output, int64_t ns);
 

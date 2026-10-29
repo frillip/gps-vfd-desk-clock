@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "../console/console.h"
+#include "../net/net_connect.h"
 #include "../net/root_ca.h"
 #include "../pic/pic_link.h"
 #include "../pic/pic_report.h"
@@ -43,6 +44,7 @@ typedef struct
     bool looked_up;      // since start
     bool last_ok;
     char last_error[96];
+    char last_address[48]; // the server's address the latest lookup connected to
     uint32_t updated_utc;
     uint32_t lookups;
     uint32_t failures;
@@ -152,8 +154,8 @@ static bool has_moved(const Position *now, const Position *used)
 
 static String lookup_url(const Position *position)
 {
-    String url =
-        String("https://") + user_prefs.fields.rtzinfo.server + user_prefs.fields.rtzinfo.path;
+    String url = String("https://") + net_url_host(user_prefs.fields.rtzinfo.server) +
+                 user_prefs.fields.rtzinfo.path;
 
     if (position->have)
     {
@@ -171,7 +173,9 @@ static String lookup_url(const Position *position)
 static bool lookup(const Position *position, TzSchedule *result)
 {
     WiFiClientSecure client;
+    NetworkClient plain;
     HTTPClient http;
+    IPAddress address;
     String url = lookup_url(position);
     String body;
     int status;
@@ -182,6 +186,15 @@ static bool lookup(const Position *position, TzSchedule *result)
     client.setCACert(root_ca_pem);
     http.setTimeout(HTTP_TIMEOUT_MS);
     http.setConnectTimeout(HTTP_TIMEOUT_MS);
+    // Connected first, IPv6 or IPv4 with fallback (net_connect.h); the
+    // request then reuses the connection.
+    if (!net_http_connect(client, plain, url.c_str(), root_ca_pem, HTTP_TIMEOUT_MS, &address))
+    {
+        snprintf(tz.last_error, sizeof(tz.last_error), "no connection to %.70s",
+                 user_prefs.fields.rtzinfo.server);
+        return false;
+    }
+    snprintf(tz.last_address, sizeof(tz.last_address), "%s", address.toString().c_str());
     if (!http.begin(client, url))
     {
         snprintf(tz.last_error, sizeof(tz.last_error), "bad URL");
@@ -592,9 +605,14 @@ void tzinfo_print(Stream *output, bool verbose)
         return;
     }
 
-    output->printf("Enabled:  %s, server %s%s\n",
+    output->printf("Enabled:  %s, server %s%s",
                    user_prefs.fields.rtzinfo.flags.enabled ? "ON" : "OFF",
                    user_prefs.fields.rtzinfo.server, user_prefs.fields.rtzinfo.path);
+    if (tz.last_address[0] != '\0')
+    {
+        output->printf(" (%s)", tz.last_address);
+    }
+    output->printf("\n");
     output->printf("Location: ");
     if (user_prefs.fields.rtzinfo.gnss_accuracy < 0)
     {

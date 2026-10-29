@@ -1,6 +1,9 @@
 /*
- * OTA updates pulled from https://<updater.server><updater.path>, a JSON list
- * for ESP32-OTA-Pull, matched against ESP_VERSION and updater.config.
+ * OTA updates pulled from https://<updater.server><updater.path>: a JSON
+ * manifest in ESP32-OTA-Pull's format, matched against ESP_VERSION and
+ * updater.config, then the image it names. Done here rather than by the
+ * library so that both requests connect with IPv6/IPv4 fallback
+ * (net_connect.h); the library makes its own connections.
  *
  * Automatic updates: once a day, in the local hour updater.auto_hour, the
  * ESP checks and, if there is an update, installs it and restarts. Not in

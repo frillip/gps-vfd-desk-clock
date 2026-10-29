@@ -7,6 +7,7 @@
 #include "../console/commands.h"
 #include "../console/console.h"
 #include "../settings/user_prefs.h"
+#include "wifi_link.h"
 
 static ESPTelnetStream telnet;
 static bool running;
@@ -96,18 +97,35 @@ void telnet_service(void)
     }
 }
 
+// Its addresses and port: 192.0.2.5:23, [2001:db8::5]:23; or just the port
+// without a network yet.
+static void print_listening(Stream *output)
+{
+    if (wifi_link_is_up())
+    {
+        wifi_link_print_addresses(output, user_prefs.fields.telnet.port);
+        output->printf("\n");
+    }
+    else
+    {
+        output->printf("port %u once the network is up\n", user_prefs.fields.telnet.port);
+    }
+}
+
+
 void telnet_start(Stream *output)
 {
     if (running)
     {
-        output->printf("Telnet already running on %s:%u\n", WiFi.localIP().toString().c_str(),
-                       user_prefs.fields.telnet.port);
+        output->printf("Telnet already running on ");
+        print_listening(output);
         return;
     }
+    // On :: : IPv6 and IPv4 (as IPv4-mapped) clients alike.
     telnet.begin(user_prefs.fields.telnet.port, false);
     running = true;
-    output->printf("Telnet running, connect on %s:%u\n", WiFi.localIP().toString().c_str(),
-                   user_prefs.fields.telnet.port);
+    output->printf("Telnet running, connect on ");
+    print_listening(output);
 }
 
 void telnet_stop(Stream *output)
@@ -250,9 +268,10 @@ void telnet_print(Stream *output, bool verbose)
 {
     uint16_t port = user_prefs.fields.telnet.port;
 
-    if (running && WiFi.isConnected())
+    if (running && wifi_link_is_up())
     {
-        output->printf("Telnet:   RUNNING %s:%u", WiFi.localIP().toString().c_str(), port);
+        output->printf("Telnet:   RUNNING ");
+        wifi_link_print_addresses(output, port);
     }
     else
     {

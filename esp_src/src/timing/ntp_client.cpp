@@ -11,7 +11,7 @@
 
 static TaskHandle_t task;
 static portMUX_TYPE lock = portMUX_INITIALIZER_UNLOCKED;
-static uint32_t server_ipv4;
+static NtpServerAddress server_address;
 static volatile bool busy;
 static bool result_ready;
 static NtpPollResult result;
@@ -25,8 +25,8 @@ static uint64_t random_cookie(void)
 
 // One request and its reply. True with a sample; poll->last_result and
 // poll->kiss say why not.
-static bool exchange(int sock, const struct sockaddr_in *server, EspClockSample *sample,
-                     NtpPollResult *poll)
+static bool exchange(int sock, const struct sockaddr_storage *server, socklen_t length,
+                     EspClockSample *sample, NtpPollResult *poll)
 {
     uint8_t packet[NTP_PACKET_BYTES];
     uint64_t cookie = random_cookie();
@@ -37,7 +37,7 @@ static bool exchange(int sock, const struct sockaddr_in *server, EspClockSample 
 
     ntp_packet_request(packet, cookie);
     t1 = esp_timer_get_time();
-    if (sendto(sock, packet, sizeof(packet), 0, (const struct sockaddr *)server, sizeof(*server)) !=
+    if (sendto(sock, packet, sizeof(packet), 0, (const struct sockaddr *)server, length) !=
         (int)sizeof(packet))
     {
         return false;
@@ -87,21 +87,46 @@ static bool exchange(int sock, const struct sockaddr_in *server, EspClockSample 
 }
 
 
-static void poll_server(uint32_t ipv4, NtpPollResult *poll)
+// The server's socket address, and its address as text: as IPAddress
+// writes it, as everywhere else (lwIP's inet_ntop writes IPv6 in capitals).
+static socklen_t server_socket_address(const NtpServerAddress *address,
+                                       struct sockaddr_storage *server, char *text, size_t size)
 {
-    struct sockaddr_in server;
+    IPAddress shown(address->ipv6 ? IPv6 : IPv4, address->bytes, address->zone);
+
+    snprintf(text, size, "%s", shown.toString().c_str());
+    memset(server, 0, sizeof(*server));
+    if (address->ipv6)
+    {
+        struct sockaddr_in6 *six = (struct sockaddr_in6 *)server;
+
+        six->sin6_family = AF_INET6;
+        six->sin6_port = htons(NTP_PORT);
+        memcpy(six->sin6_addr.s6_addr, address->bytes, 16);
+        six->sin6_scope_id = address->zone;
+        return sizeof(*six);
+    }
+    struct sockaddr_in *four = (struct sockaddr_in *)server;
+
+    four->sin_family = AF_INET;
+    four->sin_port = htons(NTP_PORT);
+    memcpy(&four->sin_addr.s_addr, address->bytes, 4);
+    return sizeof(*four);
+}
+
+
+static void poll_server(const NtpServerAddress *address, NtpPollResult *poll)
+{
+    struct sockaddr_storage server;
     struct timeval timeout = {NTP_CLIENT_TIMEOUT_MS / 1000, (NTP_CLIENT_TIMEOUT_MS % 1000) * 1000};
+    socklen_t length;
     int sock;
     int index;
 
     memset(poll, 0, sizeof(*poll));
-    memset(&server, 0, sizeof(server));
-    server.sin_family = AF_INET;
-    server.sin_port = htons(NTP_PORT);
-    server.sin_addr.s_addr = htonl(ipv4);
-    inet_ntoa_r(server.sin_addr, poll->address, sizeof(poll->address));
+    length = server_socket_address(address, &server, poll->address, sizeof(poll->address));
 
-    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    sock = socket(server.ss_family, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0)
     {
         return;
@@ -115,7 +140,7 @@ static void poll_server(uint32_t ipv4, NtpPollResult *poll)
         {
             vTaskDelay(pdMS_TO_TICKS(NTP_CLIENT_SPACING_MS));
         }
-        if (exchange(sock, &server, &sample, poll))
+        if (exchange(sock, &server, length, &sample, poll))
         {
             if (!poll->ok || sample.delay_us < poll->sample.delay_us)
             {
@@ -141,7 +166,7 @@ static void client_task(void *argument)
         NtpPollResult poll;
 
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        poll_server(server_ipv4, &poll);
+        poll_server(&server_address, &poll);
         stats.polls++;
         if (poll.ok)
         {
@@ -163,13 +188,13 @@ void ntp_client_init(void)
 }
 
 
-bool ntp_client_poll(uint32_t ipv4)
+bool ntp_client_poll(const NtpServerAddress *address)
 {
     if (busy || task == NULL)
     {
         return false;
     }
-    server_ipv4 = ipv4; // read by the task only after the notification
+    server_address = *address; // read by the task only after the notification
     busy = true;
     xTaskNotifyGive(task);
     return true;
