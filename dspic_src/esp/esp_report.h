@@ -37,6 +37,9 @@ void esp_report_time_ctrl(const TimingSnapshot *snapshot, const SyncUpdate *upda
 void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *update, uint32_t now_ms,
                           SML_TIME_MEAS_PAYLOAD *payload);
 void esp_report_time_gnss(uint32_t now_ms, SML_TIME_GNSS_PAYLOAD *payload);
+// The RTC: its time as it counts it, when it was last read and set by our
+// clock, and its bound (sync/source_rtc.h). No PPS or temperature on V2.
+void esp_report_time_rtc(SML_TIME_RTC_PAYLOAD *payload);
 void esp_report_stat_ui(SML_STAT_UI_PAYLOAD *payload);
 // The sensors: the ambient light so far (no BME280 on V2+ yet).
 void esp_report_stat_env(SML_STAT_ENV_PAYLOAD *payload);

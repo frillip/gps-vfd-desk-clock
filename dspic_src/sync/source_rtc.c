@@ -21,6 +21,9 @@
 // ns to ticks: 25 ns a tick.
 #define START_DELAY_TICKS ((int32_t)(PCF8563_START_DELAY_NS / (1000UL / SOURCE_RTC_TICKS_PER_US)))
 #define TICKS_PER_MS      ((int32_t)TIMING_TICKS_PER_MS)
+#define NS_PER_TICK       (1000L / (int32_t)SOURCE_RTC_TICKS_PER_US)
+#define NS_PER_SECOND     1000000000LL
+#define BOUND_NONE        UINT32_MAX // the clock has no bound (sync_uncertainty)
 
 typedef enum
 {
@@ -61,6 +64,9 @@ static uint32_t activity_epoch; // the epoch the current step began
 // An RTC found stopped: released, then to be read back.
 static bool stopped_released;
 static bool set_by_command; // source_rtc_set's write: report its read-back
+
+// When it was last read, by our clock.
+static uint32_t reads_dated;
 
 // Checks.
 static bool was_synchronised;
@@ -146,6 +152,7 @@ static void learn_rate(uint32_t stamp, uint32_t label)
     state.rate_q8 = (int32_t)rate;
     state.rate_valid = true;
     state.rate_updates++;
+    state.kept_changes++;
 }
 
 
@@ -205,6 +212,137 @@ static void print_us(int32_t ticks)
 
     printf("%c%lu.%03lu ms", us < 0 ? '-' : '+', (unsigned long)(size / 1000U),
            (unsigned long)(size % 1000U));
+}
+
+
+static uint32_t saturate_bound(uint64_t ns)
+{
+    return ns > SOURCE_RTC_BOUND_MAX_NS ? SOURCE_RTC_BOUND_MAX_NS : (uint32_t)ns;
+}
+
+
+static int64_t floor_div64(int64_t a, int64_t b)
+{
+    return a >= 0 ? a / b : -((-a + b - 1) / b);
+}
+
+
+// ns as ms to the microsecond: -12.345 ms, or with signed false 12.345 ms.
+static void print_ns(int64_t ns, bool signed_)
+{
+    int64_t us = ns / 1000;
+    uint64_t size = (uint64_t)(us < 0 ? -us : us);
+
+    if (signed_ || us < 0)
+    {
+        printf("%c", us < 0 ? '-' : '+');
+    }
+    printf("%lu.%03lu ms", (unsigned long)(size / 1000U), (unsigned long)(size % 1000U));
+}
+
+
+// The RTC's time no longer what the anchor describes: it has been, or is
+// being, written.
+static void rtc_changed(void)
+{
+    state.anchor.valid = false;
+    state.rtc_changes++;
+    state.kept_changes++;
+}
+
+
+// Written plainly, to the second: where its second starts is not known.
+static void wrote_plainly(uint32_t utc_seconds)
+{
+    rtc_changed();
+    state.anchor.valid = true;
+    state.anchor.aligned = false;
+    state.anchor.utc_seconds = utc_seconds;
+    state.anchor.offset_ns = 0;
+    state.anchor.bound_ns = SOURCE_RTC_UNCERTAINTY_NS;
+    state.last_write_valid = true;
+    state.last_write_aligned = false;
+    state.last_write_utc = utc_seconds;
+    state.last_write_epoch = epoch_sequence;
+}
+
+
+// Its second found while the clock is synchronised: where it started
+// against UTC's, from our epoch (time) and the stamps, to within the
+// clock's bound and half the search's resolution.
+static void anchor_found(const SyncTime *time, uint32_t clock_bound_ns)
+{
+    if (!epoch_valid || clock_bound_ns == BOUND_NONE)
+    {
+        return;
+    }
+    state.anchor.valid = true;
+    state.anchor.aligned = true;
+    state.anchor.utc_seconds = state.second_label;
+    state.anchor.offset_ns =
+        (int64_t)(int32_t)(time->utc_seconds - state.second_label) * NS_PER_SECOND +
+        (int64_t)(int32_t)(state.second_stamp - epoch_stamp) * NS_PER_TICK;
+    state.anchor.bound_ns = saturate_bound(
+        (uint64_t)clock_bound_ns + (uint64_t)state.resolution_ticks * (uint64_t)NS_PER_TICK / 2U);
+    state.kept_changes++;
+}
+
+
+// Its second labelled label, against UTC, from the anchor: where it starts
+// minus UTC's (+ = the RTC late), and the bound. False without an anchor
+// that came before it.
+static bool predict(uint32_t label, int64_t *offset_ns, uint32_t *bound_ns)
+{
+    int32_t elapsed = (int32_t)(label - state.anchor.utc_seconds);
+    uint64_t allowance =
+        (uint64_t)(state.rate_valid ? SOURCE_RTC_ALLOWANCE_PPM : SOURCE_RTC_RATE_LIMIT_PPM);
+
+    if (!state.anchor.valid || elapsed < 0)
+    {
+        return false;
+    }
+    *offset_ns = state.anchor.offset_ns;
+    if (state.rate_valid)
+    {
+        // rate_q8 / 256 ticks a second longer: + = slow, its seconds later.
+        *offset_ns += (int64_t)elapsed * state.rate_q8 * NS_PER_TICK / 256;
+    }
+    *bound_ns = saturate_bound((uint64_t)state.anchor.bound_ns +
+                               (uint64_t)(uint32_t)elapsed * allowance * 1000U);
+    return true;
+}
+
+
+// Its label, as counted, else as read.
+static bool current_label(uint32_t *label)
+{
+    const Pcf8563Status *rtc = pcf8563_status();
+
+    if (!rtc->time_valid)
+    {
+        return false;
+    }
+    *label = state.second_valid ? state.second_label : rtc->utc_seconds;
+    return true;
+}
+
+
+// The bound on its second labelled label.
+static uint32_t bound_at(uint32_t label)
+{
+    int64_t offset_ns;
+    uint32_t bound_ns;
+
+    if (!predict(label, &offset_ns, &bound_ns))
+    {
+        return SOURCE_RTC_UNCERTAINTY_NS;
+    }
+    if (state.second_valid)
+    {
+        bound_ns = saturate_bound((uint64_t)bound_ns +
+                                  (uint64_t)state.resolution_ticks * (uint64_t)NS_PER_TICK / 2U);
+    }
+    return bound_ns;
 }
 
 
@@ -360,6 +498,7 @@ static void begin_write(const SyncTime *time)
         return;
     }
     state.baseline_valid = false; // its second will be wherever we put it
+    rtc_changed();
     release_target = epoch_stamp + n * SECOND_TICKS - (uint32_t)delay;
     expect_stamp = epoch_stamp + n * SECOND_TICKS;
     expect_label = label + n;
@@ -464,8 +603,10 @@ static void confirmed(void)
         state.writes++;
         state.attempts = 0;
         state.last_write_valid = true;
+        state.last_write_aligned = true;
         state.last_write_utc = expect_label;
         state.last_write_epoch = epoch_sequence;
+        state.kept_changes++;
         state.next_check_epoch = epoch_sequence + source_rtc_check_interval();
         state.rate_due = true; // how far it has gone by then shows its rate
         state.rate_due_epoch = epoch_sequence + SOURCE_RTC_RATE_EPOCHS;
@@ -512,7 +653,7 @@ static void confirmed(void)
 }
 
 
-static void search_result(const SyncTime *time, bool synchronised)
+static void search_result(const SyncTime *time, bool synchronised, uint32_t clock_bound_ns)
 {
     const Pcf8563Status *rtc = pcf8563_status();
 
@@ -538,6 +679,10 @@ static void search_result(const SyncTime *time, bool synchronised)
         return;
     }
     measure_offset(time);
+    if (synchronised)
+    {
+        anchor_found(time, clock_bound_ns);
+    }
     if (purpose == PURPOSE_CONFIRM)
     {
         confirmed();
@@ -597,7 +742,53 @@ void source_rtc_init(void)
     corrections_seen = 0;
     stopped_released = false;
     set_by_command = false;
+    reads_dated = 0;
     set_activity(SOURCE_RTC_IDLE);
+}
+
+
+void source_rtc_kept(SourceRtcKept *kept)
+{
+    memset(kept, 0, sizeof(*kept));
+    kept->anchor = state.anchor;
+    kept->rate_valid = state.rate_valid;
+    kept->rate_q8 = state.rate_q8;
+    kept->last_write_valid = state.last_write_valid;
+    kept->last_write_aligned = state.last_write_aligned;
+    kept->last_write_utc = state.last_write_utc;
+}
+
+
+void source_rtc_restore(const SourceRtcKept *kept)
+{
+    int64_t limit = (int64_t)SOURCE_RTC_RATE_LIMIT_PPM * (int64_t)SOURCE_RTC_TICKS_PER_US * 256;
+
+    state.anchor = kept->anchor;
+    state.rate_valid = kept->rate_valid && kept->rate_q8 <= limit && kept->rate_q8 >= -limit;
+    state.rate_q8 = state.rate_valid ? kept->rate_q8 : 0;
+    state.last_write_valid = kept->last_write_valid;
+    state.last_write_aligned = kept->last_write_aligned;
+    state.last_write_utc = kept->last_write_utc;
+    state.restored = true;
+}
+
+
+bool source_rtc_reckoning(uint32_t *utc_seconds)
+{
+    return current_label(utc_seconds);
+}
+
+
+bool source_rtc_bound(uint32_t *bound_ns)
+{
+    uint32_t label;
+
+    if (!current_label(&label))
+    {
+        return false;
+    }
+    *bound_ns = bound_at(label);
+    return true;
 }
 
 
@@ -607,6 +798,9 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
     const PpsCaptureSample *capture = &snapshot->capture;
     uint8_t steps = 0;
 
+    int64_t offset_ns;
+    uint32_t bound_ns;
+
     (void)now_ms;
     memset(report, 0, sizeof(*report));
     report->present = rtc->present;
@@ -614,6 +808,11 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
     report->uncertainty_ns = SOURCE_RTC_UNCERTAINTY_NS;
     if (!state.second_valid || !capture->epoch_capture_valid)
     {
+        uint32_t label;
+        if (current_label(&label))
+        {
+            report->uncertainty_ns = bound_at(label);
+        }
         return;
     }
     // Counted on, at its rate, to the latest increment at or before our epoch.
@@ -645,10 +844,20 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
     report->edge_stamp = state.second_stamp;
     report->labelled = true;
     report->utc_seconds = state.second_label;
+    report->uncertainty_ns = bound_at(state.second_label);
+    if (predict(state.second_label, &offset_ns, &bound_ns))
+    {
+        // The UTC second nearest its start, and how far from it.
+        int64_t seconds = floor_div64(offset_ns + NS_PER_SECOND / 2, NS_PER_SECOND);
+
+        report->utc_seconds = state.second_label + (uint32_t)(int32_t)seconds;
+        report->edge_offset_ns = (int32_t)(offset_ns - seconds * NS_PER_SECOND);
+    }
 }
 
 
-void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool synchronised)
+void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool synchronised,
+                      uint32_t bound_ns)
 {
     const Pcf8563Status *rtc = pcf8563_status();
 
@@ -657,6 +866,16 @@ void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool
     epoch_sequence = snapshot->timer.sequence;
     epoch_valid = snapshot->capture.epoch_capture_valid;
     epoch_stamp = snapshot->capture.epoch_capture;
+
+    if (rtc->reads != reads_dated)
+    {
+        reads_dated = rtc->reads;
+        if (time->known)
+        {
+            state.last_read_valid = true;
+            state.last_read_utc = time->utc_seconds;
+        }
+    }
 
     if (state.second_valid &&
         epoch_sequence - state.measured_epoch > SOURCE_RTC_SECOND_MAX_AGE_EPOCHS)
@@ -678,7 +897,7 @@ void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool
     }
     if (search_done)
     {
-        search_result(time, synchronised);
+        search_result(time, synchronised, bound_ns);
     }
 
     // Check soon after the clock is synchronised, or its time corrected.
@@ -700,6 +919,7 @@ void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool
         state.next_check_epoch = epoch_sequence + SOURCE_RTC_CHECK_EPOCHS;
         if (synchronised && pcf8563_write(time->utc_seconds))
         {
+            wrote_plainly(time->utc_seconds);
             state.plain_writes++;
             state.second_valid = false;
             state.baseline_valid = false;
@@ -733,6 +953,10 @@ void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool
         {
             stopped_released = pcf8563_release();
             state.second_valid = false;
+            if (state.anchor.valid)
+            {
+                rtc_changed(); // stopped for who knows how long
+            }
             if (stopped_released && debug_enabled(DEBUG_RTC))
             {
                 printf("RTC: found stopped: released\n");
@@ -823,6 +1047,7 @@ bool source_rtc_set(uint32_t utc_seconds)
     {
         return false;
     }
+    wrote_plainly(utc_seconds);
     state.plain_writes++;
     state.second_valid = false; // found again once it is read back
     state.baseline_valid = false;
@@ -864,6 +1089,34 @@ const char *source_rtc_activity_name(SourceRtcActivity activity)
 }
 
 
+// Its bound now, the drift predicted since its anchor and where that is.
+static void print_bound(void)
+{
+    uint32_t label;
+    int64_t offset_ns;
+    uint32_t bound_ns;
+
+    printf("  Bound: ");
+    if (!current_label(&label))
+    {
+        printf("NO TIME\n");
+        return;
+    }
+    printf("+/-");
+    print_ns(bound_at(label), false);
+    if (!predict(label, &offset_ns, &bound_ns))
+    {
+        printf(", NOT MEASURED\n");
+        return;
+    }
+    printf("; second ");
+    print_ns(offset_ns, true);
+    printf(" from UTC's, from ");
+    utc_print(state.anchor.utc_seconds);
+    printf(state.anchor.aligned ? "\n" : " (PLAIN)\n");
+}
+
+
 void source_rtc_print(bool verbose)
 {
     int32_t next_check = (int32_t)(state.next_check_epoch - epoch_sequence);
@@ -900,8 +1153,15 @@ void source_rtc_print(bool verbose)
     if (state.last_write_valid)
     {
         utc_print(state.last_write_utc);
-        printf(", ");
-        print_us(state.last_write_error_ticks);
+        if (state.last_write_aligned)
+        {
+            printf(", ");
+            print_us(state.last_write_error_ticks);
+        }
+        else
+        {
+            printf(", PLAIN");
+        }
     }
     else
     {
@@ -917,6 +1177,7 @@ void source_rtc_print(bool verbose)
         printf("when synchronised");
     }
     printf("\n");
+    print_bound();
     if (verbose)
     {
         printf("  Start delay correction ");

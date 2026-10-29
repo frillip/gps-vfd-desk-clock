@@ -330,6 +330,45 @@ void esp_report_time_meas(const TimingSnapshot *snapshot, const SyncUpdate *upda
 }
 
 
+void esp_report_time_rtc(SML_TIME_RTC_PAYLOAD *payload)
+{
+    const Pcf8563Status *rtc = pcf8563_status();
+    const SourceRtcState *source = source_rtc_state();
+    uint32_t value;
+
+    memset(payload, 0, sizeof(*payload));
+    payload->rtc_type = SML_RTC_PCF8563;
+    if (rtc->present)
+    {
+        payload->flags |= SML_RTC_PRESENT;
+    }
+    if (source_rtc_reckoning(&value))
+    {
+        payload->flags |= SML_RTC_UTC_VALID;
+        payload->rtc_utc_seconds = value;
+    }
+    if (source->anchor.valid && source->anchor.aligned)
+    {
+        payload->flags |= SML_RTC_SYNCED;
+    }
+    if (source->last_read_valid)
+    {
+        payload->flags |= SML_RTC_LAST_READ_VALID;
+        payload->last_read_utc = source->last_read_utc;
+    }
+    if (source->last_write_valid)
+    {
+        payload->flags |= SML_RTC_LAST_WRITE_VALID;
+        payload->last_write_utc = source->last_write_utc;
+    }
+    if (source_rtc_bound(&value))
+    {
+        payload->flags |= SML_RTC_UNCERTAINTY_VALID;
+        payload->uncertainty_ns = value;
+    }
+}
+
+
 void esp_report_time_gnss(uint32_t now_ms, SML_TIME_GNSS_PAYLOAD *payload)
 {
     const GnssState *gnss = gnss_state();

@@ -119,7 +119,7 @@ The "V2+ PIC" column in the message catalogue and the command table records what
 | | 0x13 | TIME-MEAS | PIC→ESP | 40 | ✓ Sent | Every epoch |
 | | 0x20 | TIME-GNSS | PIC→ESP | 54 | ✓ Sent | Every epoch |
 | | 0x30 | TIME-NTP | ESP→PIC | 42 | ✓ Labels the ESP PPS for the NTP sync source; `CORRECTING` holds the PIC's frequency estimate | Every ESP PPS while NTP time is valid |
-| | 0x40 | TIME-RTC | PIC→ESP | 34 | — Not sent yet: the RTC is a source (in STAT-SOURCES) | Every epoch |
+| | 0x40 | TIME-RTC | PIC→ESP | 34 | ✓ Sent | Every epoch |
 | | 0x50 | TIME-LEAP | ESP→PIC | 16 | ✓ Applied | On change, and periodically |
 | 0x20 TZ | 0x01 | TZ-STATE | ESP→PIC | 124 | ✓ Applied | On change, after a PIC reset, and every ~10 minutes |
 | | 0x10 | _Retired: TZ-FUTURE_ | — | — | — | Never reuse |
@@ -157,7 +157,7 @@ This is the PIC's statement of the UTC second that its latest epoch edge marks, 
 
 `uncertainty_ns` is a ± **bound** on the UTC error of the edge, not a standard deviation. While tracking, it is the selected source's bound plus the magnitude of the measured phase. A source's bound is made conservative from its own figure: 3 × GNSS tAcc + 25ns of capture resolution, or the ESP's NTP bound + 20µs for the jitter of its PPS. In holdover it is the holdover bound, u0 + f·t + ½·D·t², grown from the bound at the last steered epoch (see `sync/sync.h` on the PIC).
 
-Without `UTC_VALID`, the phase and uncertainty are invalid too. In free run with the time of day still known (counted on from an earlier label), `UTC_VALID` is set and `UNCERTAINTY_VALID` is clear, since there is no honest bound to give. The exception is free running on the RTC's time (at start-up, before GNSS or NTP): `source` is `SML_SOURCE_RTC` and the uncertainty is the RTC's bound, ±999ms. `SOURCE_VALID` means a source is selected; the RTC never is.
+Without `UTC_VALID`, the phase and uncertainty are invalid too. In free run with the time of day still known (counted on from an earlier label), `UTC_VALID` is set and `UNCERTAINTY_VALID` is clear, since there is no honest bound to give. The exception is free running on the RTC's time (at start-up, before GNSS or NTP): `source` is `SML_SOURCE_RTC` and the uncertainty is the RTC's bound (as in TIME-RTC) while that is within a second; beyond, `UNCERTAINTY_VALID` is clear. `SOURCE_VALID` means a source is selected; the RTC never is.
 
 TIME-AUTH is sent first in each epoch, a few milliseconds after the edge it labels and long before the next. The ESP pairs it with the most recent PIC edge captured on GPIO27.
 
@@ -313,6 +313,13 @@ _Battery-backed RTC. PIC→ESP, 34 bytes._
 | 30 | uncertainty_ns | u32 | ± bound on the RTC reckoning, ns |
 
 RTC register contents are never sent as timestamps. The PPS fields exist on V3 only; on V2 they are zero, with their presence and validity flags clear.
+
+On the V2+ PIC (PCF8563, no temperature):
+
+- `UTC_VALID`: the RTC's time can be used (VL and STOP clear, a real date). `rtc_utc_seconds` is its time as it counts it: the second it last ticked, counted on from where it was found at its learnt rate, else as last read. It is the RTC's own time, not corrected.
+- `SYNCED`: the RTC's second has been measured against the synchronised clock since it was last written (a check, an aligned write's confirmation, or a search after a plain write). Clear after a plain write until then, and with nothing measured at all.
+- `last_read_utc`: the clock's UTC when the RTC was last read, once the clock had a time. `last_write_utc`: the second the RTC was last set to, aligned or plainly, kept over a reset.
+- `uncertainty_ns`: the bound on the RTC's time as the PIC predicts it from that measurement (the anchor), corrected for its learnt rate: the anchor's bound (the clock's then plus half the search's resolution, or 999 ms for a plain write) plus 10 ppm of the seconds since, or 500 ppm with no rate learnt; 999 ms with nothing measured. Saturated at 0xFFFFFFFE (4.29 s). The predicted offset itself is not sent; `rtc` prints it.
 
 ## TIME-LEAP (0x50)
 
@@ -607,7 +614,7 @@ Each entry is 24 bytes, and entry *k* starts at offset 12 + 24k.
 | 3 | flags | u8 | Bit 0 `PRESENT`, 1 `TIME_VALID`, 2 `EDGE` (seen this epoch), 3 `CAPTURED` (by the capture hardware, so it can steer), 4 `LABELLED`, 5 `PHASE_VALID`, 6 `BOUND_VALID` |
 | 4 | good_run | u16 | Consecutive GOOD epochs, saturating |
 | 6 | usable_run | u16 | Consecutive GOOD or INACCURATE epochs, saturating |
-| 8 | bound_ns | u32 | The ± bound the PIC ranks it by, ns (`BOUND_VALID`). The RTC, which only gives the time of day and is never ranked (rank 0), still shows its bound, ±999ms |
+| 8 | bound_ns | u32 | The ± bound the PIC ranks it by, ns (`BOUND_VALID`). The RTC, which only gives the time of day and is never ranked (rank 0), still shows its bound (as in TIME-RTC) |
 | 12 | uncertainty_ns | u32 | The source's own figure, ns (GNSS tAcc, the ESP's NTP bound); for holdover, the bound when it was last steered (u0) |
 | 16 | phase_ns | i32 | The PIC's epoch minus the source's UTC second, ns (`PHASE_VALID`) |
 | 20 | age_s | u32 | Seconds since its last GOOD epoch; for holdover, since the loop last steered. 0xFFFFFFFF: never |
@@ -752,9 +759,10 @@ Each message has an entry in a table with its class, ID, fixed length (0 for STA
 | `settings/store.c`, `.h`, `drivers/flash.c` | The flash journal the settings and the schedule are kept in, in two pages reserved apart from the application |
 | `sync/sync.c` | `sync_set_leap()` (TIME-LEAP) and `sync_uncertainty()` (the TIME-AUTH bound) |
 | `menu/menu.c`, `.h` | STAT-UI `menu_state`; ESP commands from the menu (`ESP_TZ_REMOTE`, `ESP_SAVE`, `ESP_DEFAULTS`, `ESP_WIFI_FORGET`) and its remote time zone setting from STAT-NET |
+| `sync/source_rtc.c`, `.h` | TIME-RTC's values: the RTC's time, when it was last read and set, its anchor and bound |
 | `console/console.c` | `console_set_sink()`: routes printf into STAT-DEBUG in SML mode |
 
-`esp_link_service()` runs every 10ms. `esp_link_epoch()` runs right after `sync_update()`, before the display is prepared and before the console reports, so TIME-AUTH leaves first. The six per-epoch messages come to 284 bytes a second, a few percent of the link even at 115200 baud. The console report adds roughly 0.6–1KB a second.
+`esp_link_service()` runs every 10ms. `esp_link_epoch()` runs right after `sync_update()`, before the display is prepared and before the console reports, so TIME-AUTH leaves first. The seven per-epoch messages come to 326 bytes a second, a few percent of the link even at 115200 baud. The console report adds roughly 0.6–1KB a second.
 
 ## ESP
 
@@ -790,7 +798,8 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | --- | --- | --- |
 | TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, STAT-UI | PIC | Every epoch, in this order, within a few ms of the edge (SML mode only) |
 | STAT-ENV | PIC | Every epoch numbered a multiple of 5, after STAT-SOURCES |
-| TIME-RTC, STAT-SUPPLY, TIME-VCTCXO | PIC | Once ported: RTC and VCTCXO every epoch, the supply every few seconds |
+| TIME-RTC | PIC | Every epoch, after TIME-GNSS (SML mode only), and before the ACK to a `REQUEST_MESSAGE` for it |
+| STAT-SUPPLY, TIME-VCTCXO | PIC | Once ported (V3): the VCTCXO every epoch, the supply every few seconds |
 | STAT-SETTINGS | PIC | First epoch in SML mode, whenever the revision or the flags change (at most once an epoch, before STAT-SYS), and before the ACK to a `REQUEST_MESSAGE` for it |
 | STAT-DEBUG | PIC | As text is produced |
 | STAT-SOURCES | PIC | On change (at most once an epoch), every 10 seconds, and before the ACK to a `REQUEST_MESSAGE` for it |
@@ -1068,6 +1077,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-29 | Document only, no wire change. The V2+ PIC sends TIME-RTC every epoch after TIME-GNSS, with its fields defined for the PCF8563; the RTC's bound grows from its last measurement against the synchronised clock, kept over a reset, so the TIME-AUTH uncertainty while free running on the RTC and the STAT-SOURCES bound for it are no longer a fixed ±999ms |
 | 2026-10-28 (2.3) | `SML_MENU_*` values for STAT-UI `menu_state`: the V2+ menu's section, item and `EDITING`. The V2+ PIC reports `current_display` `MENU` while the menu is open. No layout change |
 | 2026-10-28 (2.2) | Settings flag bit 7 `DELTA_LOCAL` and STAT-UI flag bit 13 `DELTA_LOCAL`: the delta epoch as a local wall-clock time, counted against local time. No layout change |
 | 2026-10-27 (2.1) | `SML_DISPLAY_UNCERTAINTY` (10), selectable: the time's bound on the tubes. `SML_DISPLAY_SELECTABLE()`. The V2+ PIC now shows every selectable mode (TEMP is not ported), and fills STAT-UI `selected_display`, `FORMAT_12H` and `delta_epoch_utc`. A display mode the PIC cannot show is `ARGUMENT`, no longer `UNSUPPORTED`. No layout change |

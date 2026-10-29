@@ -244,11 +244,16 @@ static void prepare_display(void)
 static void run_epoch(const TimingSnapshot *snapshot)
 {
     SyncUpdate update;
+    uint32_t bound_ns;
 
     update = sync_update(snapshot, epoch_timer_ms());
     sound_epoch();
     esp_link_epoch(snapshot, &update, epoch_timer_ms());
-    source_rtc_epoch(snapshot, &sync_status()->time, sync_is_synchronised());
+    if (!sync_uncertainty(&bound_ns))
+    {
+        bound_ns = SYNC_BOUND_NONE;
+    }
+    source_rtc_epoch(snapshot, &sync_status()->time, sync_is_synchronised(), bound_ns);
     prepare_display();
     menu_epoch();
     sync_tuning_epoch(snapshot, &update);

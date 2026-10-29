@@ -36,7 +36,16 @@
  * This is not calibration_fosc_hz: that is a setting, changed only by
  * command.
  *
- * All three are records in the store (settings/store.h). Writing to flash stops
+ * And the RTC's: where its second was last measured against UTC, its rate
+ * and when it was last set (sync/source_rtc.h), from which its time and
+ * bound are worked out at the next start. Written at the next quiet moment
+ * after the RTC has been written (the stored one would no longer describe
+ * it), else after each new measurement, at most every SETTINGS_RTC_EPOCHS:
+ * the bound at the next start grows from the stored measurement, so its age
+ * when the power goes counts as much as the time off (10 ppm of an hour is
+ * 36 ms, of a day 864 ms). Hourly costs nothing: the flash lasts a century.
+ *
+ * All four are records in the store (settings/store.h). Writing to flash stops
  * the CPU (drivers/flash.h), so settings_service() writes only when told
  * the moment is quiet: once an epoch, late in the second, away from the
  * epoch's work, the GNSS burst and the ESP's per-second traffic, with the
@@ -54,6 +63,7 @@
 #define SETTINGS_RECORD_SETTINGS   1U
 #define SETTINGS_RECORD_TIMEZONE   2U
 #define SETTINGS_RECORD_OSCILLATOR 3U
+#define SETTINGS_RECORD_RTC        4U
 
 // The settings record: version, STAT-SETTINGS as on the wire (its flags
 // zero), the debug mask, reserved.
@@ -78,15 +88,30 @@
 #define SETTINGS_OSCILLATOR_CHANGE_Q16   ((int32_t)2 << 16)    // 2 ticks a second: 50 ppb
 #define SETTINGS_OSCILLATOR_LIMIT_Q16    ((int32_t)4000 << 16) // 100 ppm: anything more is not ours
 
+// The RTC record: version, flags (SETTINGS_RTC_*), the anchor's second,
+// its offset (whole seconds, then ns 0 to 999999999), its bound (ns), the
+// rate (Q8 ticks), the last setting's second.
+#define SETTINGS_RTC_VERSION       1U
+#define SETTINGS_RTC_BYTES         28U
+#define SETTINGS_RTC_ANCHOR        0x0001U
+#define SETTINGS_RTC_ALIGNED       0x0002U
+#define SETTINGS_RTC_RATE          0x0004U
+#define SETTINGS_RTC_WRITE         0x0008U
+#define SETTINGS_RTC_WRITE_ALIGNED 0x0010U
+#define SETTINGS_RTC_EPOCHS        3600UL // hourly, unless the RTC was written
+#define SETTINGS_RTC_RETRY_EPOCHS  60UL   // after a failure
+
 typedef struct
 {
     bool loaded;              // settings came from the store at start-up
     bool load_rejected;       // a settings record was found but not used
     bool timezone_restored;   // a schedule came from the store at start-up
     bool oscillator_restored; // ... and the oscillator's frequency
+    bool rtc_restored;        // ... and the RTC's measurement
     uint32_t saves;           // settings records written
     uint32_t timezone_saves;
     uint32_t oscillator_saves;
+    uint32_t rtc_saves;
     uint32_t save_failures;
 } SettingsStats;
 
@@ -129,8 +154,8 @@ void settings_print_start(bool detail);
 // The running settings, by what each does, and whether they are saved.
 // verbose: the revision too.
 void settings_print(bool verbose);
-// What is stored: the settings, the time zone and the oscillator, and how
-// full the store is. verbose: the store's internals and the flash timings.
+// What is stored: the settings, the time zone, the oscillator and the RTC,
+// and how full the store is. verbose: the store's internals and the flash timings.
 void settings_print_stored(bool verbose);
 // The oscillator: the control loop's measurement, and what is stored for
 // the next start. verbose: the baseline setting, which nothing uses yet.

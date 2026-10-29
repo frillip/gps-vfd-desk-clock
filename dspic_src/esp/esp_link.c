@@ -159,6 +159,7 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
         SML_TIME_CTRL_PAYLOAD ctrl;
         SML_TIME_MEAS_PAYLOAD meas;
         SML_TIME_GNSS_PAYLOAD gnss;
+        SML_TIME_RTC_PAYLOAD rtc;
         SML_STAT_UI_PAYLOAD ui;
         SML_STAT_SOURCES_PAYLOAD sources;
         SML_STAT_SYS_PAYLOAD sys;
@@ -185,6 +186,10 @@ static bool send_message(uint8_t class_id, uint8_t message_id, uint32_t now_ms)
     else if (class_id == SML_CLASS_TIME && message_id == SML_TIME_GNSS)
     {
         esp_report_time_gnss(now_ms, &payload.gnss);
+    }
+    else if (class_id == SML_CLASS_TIME && message_id == SML_TIME_RTC)
+    {
+        esp_report_time_rtc(&payload.rtc);
     }
     else if (class_id == SML_CLASS_STAT && message_id == SML_STAT_UI)
     {
@@ -277,6 +282,7 @@ void esp_link_epoch(const TimingSnapshot *snapshot, const SyncUpdate *update, ui
     (void)send_message(SML_CLASS_TIME, SML_TIME_CTRL, now_ms);
     (void)send_message(SML_CLASS_TIME, SML_TIME_MEAS, now_ms);
     (void)send_message(SML_CLASS_TIME, SML_TIME_GNSS, now_ms);
+    (void)send_message(SML_CLASS_TIME, SML_TIME_RTC, now_ms);
     (void)send_message(SML_CLASS_STAT, SML_STAT_UI, now_ms);
     send_sources_if_due();
     if (last_snapshot.timer.sequence % ESP_LINK_ENV_EPOCHS == 0U)

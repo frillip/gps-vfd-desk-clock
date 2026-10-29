@@ -8,6 +8,7 @@
 #include "../drivers/tubes.h"
 #include "../platform/clock.h"
 #include "../platform/utc.h"
+#include "../sync/source_rtc.h"
 #include "../timing/epoch_control.h"
 #include "../ui/alarm.h"
 #include "../ui/beeps.h"
@@ -47,6 +48,15 @@ static bool have_oscillator;
 static int32_t oscillator_q16;
 static bool oscillator_saved;
 static uint32_t oscillator_saved_epoch;
+
+// The RTC record: what of the RTC source's it holds, and when it was
+// written this run.
+static uint32_t rtc_saved_changes;
+static uint32_t rtc_saved_rtc_changes;
+static bool rtc_saved;
+static uint32_t rtc_saved_epoch;
+static bool rtc_retry;
+static uint32_t rtc_retry_epoch;
 
 void settings_defaults(SML_SETTINGS_BODY *body)
 {
@@ -229,6 +239,97 @@ static void restore_oscillator(void)
 }
 
 
+static void encode_rtc(const SourceRtcKept *kept, uint8_t *record)
+{
+    const SourceRtcAnchor *anchor = &kept->anchor;
+    int64_t seconds = anchor->offset_ns >= 0 ? anchor->offset_ns / 1000000000LL
+                                             : -((-anchor->offset_ns + 999999999LL) / 1000000000LL);
+    uint16_t flags = 0;
+
+    if (anchor->valid)
+    {
+        flags |= SETTINGS_RTC_ANCHOR;
+    }
+    if (anchor->aligned)
+    {
+        flags |= SETTINGS_RTC_ALIGNED;
+    }
+    if (kept->rate_valid)
+    {
+        flags |= SETTINGS_RTC_RATE;
+    }
+    if (kept->last_write_valid)
+    {
+        flags |= SETTINGS_RTC_WRITE;
+    }
+    if (kept->last_write_aligned)
+    {
+        flags |= SETTINGS_RTC_WRITE_ALIGNED;
+    }
+    memset(record, 0, SETTINGS_RTC_BYTES);
+    sml_put_u16(&record[0], SETTINGS_RTC_VERSION);
+    sml_put_u16(&record[2], flags);
+    sml_put_u32(&record[4], anchor->utc_seconds);
+    sml_put_u32(&record[8], (uint32_t)(int32_t)seconds);
+    sml_put_u32(&record[12], (uint32_t)(anchor->offset_ns - seconds * 1000000000LL));
+    sml_put_u32(&record[16], anchor->bound_ns);
+    sml_put_u32(&record[20], (uint32_t)kept->rate_q8);
+    sml_put_u32(&record[24], kept->last_write_utc);
+}
+
+
+static bool read_rtc(SourceRtcKept *kept)
+{
+    uint8_t record[SETTINGS_RTC_BYTES];
+    uint16_t length;
+    uint16_t flags;
+    uint32_t fraction;
+
+    if (!store_read(SETTINGS_RECORD_RTC, record, sizeof(record), &length) ||
+        length != SETTINGS_RTC_BYTES || sml_get_u16(&record[0]) != SETTINGS_RTC_VERSION)
+    {
+        return false;
+    }
+    flags = sml_get_u16(&record[2]);
+    fraction = sml_get_u32(&record[12]);
+    if (fraction >= 1000000000UL)
+    {
+        return false;
+    }
+    memset(kept, 0, sizeof(*kept));
+    kept->anchor.valid = (flags & SETTINGS_RTC_ANCHOR) != 0U;
+    kept->anchor.aligned = (flags & SETTINGS_RTC_ALIGNED) != 0U;
+    kept->anchor.utc_seconds = sml_get_u32(&record[4]);
+    kept->anchor.offset_ns =
+        (int64_t)(int32_t)sml_get_u32(&record[8]) * 1000000000LL + (int64_t)fraction;
+    kept->anchor.bound_ns = sml_get_u32(&record[16]);
+    kept->rate_valid = (flags & SETTINGS_RTC_RATE) != 0U;
+    kept->rate_q8 = (int32_t)sml_get_u32(&record[20]);
+    kept->last_write_valid = (flags & SETTINGS_RTC_WRITE) != 0U;
+    kept->last_write_aligned = (flags & SETTINGS_RTC_WRITE_ALIGNED) != 0U;
+    kept->last_write_utc = sml_get_u32(&record[24]);
+    return true;
+}
+
+
+// The RTC source picks up where it was: its time and bound from the last
+// measurement, at the rate learnt.
+static void restore_rtc(void)
+{
+    SourceRtcKept kept;
+
+    rtc_saved = false;
+    rtc_retry = false;
+    if (read_rtc(&kept))
+    {
+        source_rtc_restore(&kept);
+        stats.rtc_restored = true;
+    }
+    rtc_saved_changes = source_rtc_state()->kept_changes;
+    rtc_saved_rtc_changes = source_rtc_state()->rtc_changes;
+}
+
+
 void settings_init(void)
 {
     memset(&stats, 0, sizeof(stats));
@@ -249,6 +350,7 @@ void settings_init(void)
     debug_set((uint16_t)(running.debug_mask | DEBUG_DEFAULT));
     restore_timezone();
     restore_oscillator();
+    restore_rtc();
 }
 
 
@@ -466,6 +568,54 @@ static void save_oscillator(uint32_t epoch)
 }
 
 
+// The RTC record is out of date: at once if the RTC has been written since
+// (it describes another setting), else at most every SETTINGS_RTC_EPOCHS, so
+// the measurement kept is never much older than the latest.
+static bool rtc_due(uint32_t epoch)
+{
+    const SourceRtcState *rtc = source_rtc_state();
+
+    if (rtc->kept_changes == rtc_saved_changes)
+    {
+        return false;
+    }
+    if (rtc_retry && epoch - rtc_retry_epoch < SETTINGS_RTC_RETRY_EPOCHS)
+    {
+        return false;
+    }
+    return rtc->rtc_changes != rtc_saved_rtc_changes || !rtc_saved ||
+           epoch - rtc_saved_epoch >= SETTINGS_RTC_EPOCHS;
+}
+
+
+static void save_rtc(uint32_t epoch)
+{
+    const SourceRtcState *rtc = source_rtc_state();
+    uint8_t record[SETTINGS_RTC_BYTES];
+    SourceRtcKept kept;
+    uint32_t changes = rtc->kept_changes;
+    uint32_t rtc_changes = rtc->rtc_changes;
+
+    source_rtc_kept(&kept);
+    encode_rtc(&kept, record);
+    if (store_write(SETTINGS_RECORD_RTC, record, sizeof(record)) == STORE_OK)
+    {
+        rtc_saved_changes = changes;
+        rtc_saved_rtc_changes = rtc_changes;
+        rtc_saved = true;
+        rtc_saved_epoch = epoch;
+        rtc_retry = false;
+        stats.rtc_saves++;
+    }
+    else
+    {
+        rtc_retry = true;
+        rtc_retry_epoch = epoch;
+        stats.save_failures++;
+    }
+}
+
+
 void settings_service(uint32_t epoch, bool quiet)
 {
     if (timezone_take_changed())
@@ -485,6 +635,10 @@ void settings_service(uint32_t epoch, bool quiet)
     else if (timezone_pending && epoch - timezone_changed_epoch >= SETTINGS_TIMEZONE_DELAY_EPOCHS)
     {
         save_timezone(epoch);
+    }
+    else if (rtc_due(epoch))
+    {
+        save_rtc(epoch);
     }
     else
     {
@@ -653,10 +807,47 @@ static void print_stored_oscillator(const char *label)
 }
 
 
+static void print_stored_rtc(void)
+{
+    SourceRtcKept kept;
+
+    printf("RTC: ");
+    if (!read_rtc(&kept))
+    {
+        printf("NONE\r\n");
+        return;
+    }
+    if (kept.anchor.valid)
+    {
+        printf("from ");
+        utc_print(kept.anchor.utc_seconds);
+        printf("%s, +/-%lu.%03lu ms", kept.anchor.aligned ? "" : " (PLAIN)",
+               (unsigned long)(kept.anchor.bound_ns / 1000000UL),
+               (unsigned long)(kept.anchor.bound_ns / 1000UL % 1000UL));
+    }
+    else
+    {
+        printf("NOT MEASURED");
+    }
+    if (kept.rate_valid)
+    {
+        int32_t ppm10 = -(kept.rate_q8 / 1024); // as source_rtc_rate_ppm10()
+        int32_t size = ppm10 < 0 ? -ppm10 : ppm10;
+        printf(", rate %c%ld.%ld ppm", ppm10 < 0 ? '-' : '+', (long)(size / 10), (long)(size % 10));
+    }
+    if (kept.last_write_valid)
+    {
+        printf(", set ");
+        utc_print(kept.last_write_utc);
+    }
+    printf("\r\n");
+}
+
+
 void settings_print_stored(bool verbose)
 {
     static const char *const record_names[STORE_TYPES] = {NULL, "settings", "time zone",
-                                                          "oscillator"};
+                                                          "oscillator", "RTC"};
     Values values;
     uint32_t record_revision = 0;
     bool rejected;
@@ -677,6 +868,7 @@ void settings_print_stored(bool verbose)
     }
     print_stored_timezone();
     print_stored_oscillator("Oscillator: ");
+    print_stored_rtc();
     store_print(record_names, verbose);
     if (verbose)
     {
@@ -732,6 +924,10 @@ void settings_print_start(bool detail)
     {
         printf("; oscillator from flash, ");
         print_frequency(oscillator_q16);
+    }
+    if (stats.rtc_restored)
+    {
+        printf("; RTC measurement from flash");
     }
     printf("\r\n");
 }

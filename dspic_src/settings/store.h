@@ -24,9 +24,11 @@
  * the other page is erased and the latest record of each type is written to
  * it, the new one included, and only then its header, with the next
  * generation: until that header is written the old page is still the one
- * in use, whole. A page is erased only when the other fills up, so with the
- * records written a few times a year each page lasts far beyond the flash's
- * 10,000 erase cycles.
+ * in use, whole. A page is erased only when the other fills up. The RTC
+ * record (18 words) is the one written often: hourly for a PCF8563 150 ppm
+ * fast, set again at every check. About 50 fit beside the others, so the
+ * store changes page every two days or so, each page is erased every four,
+ * and the flash's 10,000 erase cycles last some 100 years.
  *
  * Records of a type this firmware does not know are passed over when read,
  * and dropped at the next change of page.
@@ -47,7 +49,7 @@
 #define STORE_HEADER_WORDS     4U
 #define STORE_RECORD_MARK      0xA500U
 #define STORE_RECORD_MAX_BYTES 128U
-#define STORE_TYPES            4U // types 1-3
+#define STORE_TYPES            5U // types 1-4
 
 typedef enum
 {

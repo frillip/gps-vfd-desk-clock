@@ -70,12 +70,13 @@
  *
  * The RTC (source_rtc.c) is a source of the time of day only: on V2 it has
  * no edge the capture can take, so it never steers and is never a
- * candidate (sync_source_steers). It is judged like any other, with a
- * bound of SOURCE_RTC_UNCERTAINTY_NS, and at start-up it is usually the first
+ * candidate (sync_source_steers). It is judged like any other, with its
+ * bound (source_rtc.h), and at start-up it is usually the first
  * source with a time: the time of day is seeded from it (as above), and
  * while still free running, before anything has steered, the epoch is
- * stepped once onto the RTC's second (epoch_control_free_run_step), so
- * the seconds shown change with the RTC's. That happens the first epoch it
+ * stepped once onto the RTC's second (epoch_control_free_run_step), as
+ * corrected for its drift since it was last measured, so the seconds shown
+ * change with UTC's as the RTC predicts them. That happens the first epoch it
  * is GOOD; and so that it does happen first, in free run nothing is taken
  * to steer by while the RTC answers with a time but its second is still
  * being found, for up to SYNC_ALIGN_WAIT_EPOCHS. GNSS or NTP take over
@@ -145,8 +146,9 @@ typedef enum
 #define SYNC_NTP_EDGE_JITTER_NS 20000UL // 20 us
 #endif
 
-// The RTC's limits: its bound (SOURCE_RTC_UNCERTAINTY_NS, source_rtc.h) is
-// only required to be within a second.
+// The RTC's limits: within a second, its bound (source_rtc.h) is the time's
+// while free running on it; beyond, the time it gives has no bound, though
+// it still gives it (seed_time) and places the epoch.
 #define SYNC_RTC_LIMIT_NS 1000000000UL
 // At start-up, free run waits this long at most for a time-of-day source
 // that has a time but not yet its second (the RTC being searched).

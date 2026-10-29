@@ -19,9 +19,25 @@
  * PCF8563s were measured at about 150 ppm fast: 13 s a day.)
  *
  * As a source (source_rtc_report) it reports that second as a watched edge
- * labelled with the RTC's time, never captured, with a bound of
- * SOURCE_RTC_UNCERTAINTY_NS: the time of day at start-up, and the epoch's
- * first placing (sync.h).
+ * labelled with the RTC's time, never captured: the time of day at
+ * start-up, and the epoch's first placing (sync.h).
+ *
+ * Its time against UTC. Each time its second is found while the clock is
+ * synchronised, where it started against our epoch is measured: an
+ * anchor, with a bound of the clock's own plus half the search's
+ * resolution. (An aligned write's confirmation is one; a plain write, by
+ * command or after failed aligned writes, makes one of SOURCE_RTC_
+ * UNCERTAINTY_NS with nothing measured; any write begun voids it until
+ * then.) From the anchor and the rate, its second now is predicted: where
+ * it starts against UTC's, the rate times the seconds since added to the
+ * anchor's, which is reported as the edge's offset (edge_offset_ns), whole
+ * seconds of it moving the label; so at start-up the epoch is placed on
+ * UTC's second as predicted, not on the RTC's. The bound grows from the
+ * anchor's by SOURCE_RTC_ALLOWANCE_PPM of the seconds since with a rate,
+ * SOURCE_RTC_RATE_LIMIT_PPM without. With no anchor it is SOURCE_RTC_
+ * UNCERTAINTY_NS. The anchor, the rate and the last setting are kept over a
+ * reset by the settings (source_rtc_kept, source_rtc_restore): what makes
+ * all this worth having is the time since the clock was last powered.
  *
  * Keeping it set. Once the clock is synchronised, after SOURCE_RTC_SETTLE_
  * EPOCHS, then often enough that at its rate it drifts no further than
@@ -60,12 +76,17 @@
 
 #define SOURCE_RTC_TICKS_PER_US TIMING_TICKS_PER_US
 
-// Its bound as a source: the RTC holds UTC to the second, and how far its
-// second is from UTC's is not known for sure until the time of its last
-// aligned write can be kept over a power cycle. Within SYNC_RTC_LIMIT_NS.
+// Its bound with no anchor (nothing measured against the clock): it holds
+// UTC to the second.
 #ifndef SOURCE_RTC_UNCERTAINTY_NS
 #define SOURCE_RTC_UNCERTAINTY_NS 999000000UL // 999 ms
 #endif
+// Drift beyond the rate learnt, for the bound: its crystal at another
+// temperature while the clock is off (a tuning fork, -0.035 ppm/C^2),
+// ageing, and the PIC's oscillator, which the rate is measured against.
+#define SOURCE_RTC_ALLOWANCE_PPM 10L
+// The largest bound reported: one more is SYNC_BOUND_NONE.
+#define SOURCE_RTC_BOUND_MAX_NS 0xFFFFFFFEUL
 
 // A search places the increment between two reads at most this far apart;
 // wider (the main loop was busy), it waits for the next increment.
@@ -130,6 +151,28 @@ typedef enum
     SOURCE_RTC_CONFIRMING, // ... searching for where its second landed
 } SourceRtcActivity;
 
+// Its second against UTC, measured (or set), from which its time is
+// predicted (see above).
+typedef struct
+{
+    bool valid;
+    bool aligned;         // measured against the synchronised clock; else a plain write
+    uint32_t utc_seconds; // the RTC's label of that second
+    int64_t offset_ns;    // where it started minus UTC's second, + = the RTC late
+    uint32_t bound_ns;    // +/- on offset_ns
+} SourceRtcAnchor;
+
+// What is kept over a reset (settings.c).
+typedef struct
+{
+    SourceRtcAnchor anchor;
+    bool rate_valid;
+    int32_t rate_q8;
+    bool last_write_valid;
+    bool last_write_aligned;
+    uint32_t last_write_utc;
+} SourceRtcKept;
+
 typedef struct
 {
     SourceRtcActivity activity;
@@ -156,13 +199,24 @@ typedef struct
     int32_t offset_ms; // RTC minus our clock, + = RTC ahead (saturated at +/-23 days)
     uint32_t offset_epoch;
 
+    // Its second against UTC.
+    SourceRtcAnchor anchor;
+    uint32_t kept_changes; // anchor, rate or last write: what is kept
+    uint32_t rtc_changes;  // writes of the RTC begun: the anchor no longer holds
+    bool restored;         // what is kept came from the store at start-up
+
+    // When it was last read, by our clock.
+    bool last_read_valid;
+    uint32_t last_read_utc;
+
     // Keeping it set.
     uint32_t next_check_epoch;
     uint8_t attempts;                 // of the aligned write in progress
     int32_t release_correction_ticks; // learnt, added to the start delay
     bool last_write_valid;
-    int32_t last_write_error_ticks; // where the increment landed, minus our epoch
-    uint32_t last_write_utc;        // the second it was aligned to
+    bool last_write_aligned;        // ... else written plainly
+    int32_t last_write_error_ticks; // where the increment landed, minus our epoch (aligned)
+    uint32_t last_write_utc;        // the second it was set to
     uint32_t last_write_epoch;
     bool rate_due; // a search for the rate, SOURCE_RTC_RATE_EPOCHS after a setting
     uint32_t rate_due_epoch;
@@ -183,8 +237,10 @@ void source_rtc_report(const TimingSnapshot *snapshot, uint32_t now_ms, SyncSour
 
 // Once per epoch, after sync_update(): checks and aligned writes. time: our
 // epoch's time, from the synchroniser (its SyncStatus time);
-// synchronised: sync_is_synchronised().
-void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool synchronised);
+// synchronised: sync_is_synchronised(); bound_ns: sync_uncertainty(), or
+// SYNC_BOUND_NONE without one.
+void source_rtc_epoch(const TimingSnapshot *snapshot, const SyncTime *time, bool synchronised,
+                      uint32_t bound_ns);
 
 // Every pass of the main loop, after pcf8563_service(): searches, and the
 // release. Returns at once when there is nothing to do.
@@ -198,6 +254,17 @@ bool source_rtc_set(uint32_t utc_seconds);
 // pcf8563_report_due()) answers a command, so is printed whatever the debug.
 bool source_rtc_take_set(void);
 
+// What is kept over a reset, and putting it back at start-up (after
+// source_rtc_init, before the first epoch).
+void source_rtc_kept(SourceRtcKept *kept);
+void source_rtc_restore(const SourceRtcKept *kept);
+
+// The RTC's time, as it counts it: its latest second (found and counted
+// on), else as last read. False if it has no valid time.
+bool source_rtc_reckoning(uint32_t *utc_seconds);
+// Its bound now (see above). False if it has no valid time.
+bool source_rtc_bound(uint32_t *bound_ns);
+
 const SourceRtcState *source_rtc_state(void);
 // Its rate in tenths of a ppm, + = fast; 0 until one has been learnt.
 int32_t source_rtc_rate_ppm10(void);
@@ -205,7 +272,8 @@ int32_t source_rtc_rate_ppm10(void);
 uint32_t source_rtc_check_interval(void);
 const char *source_rtc_activity_name(SourceRtcActivity activity);
 // The RTC's second and its rate, when the clock last set it and the next
-// check: two lines. verbose: the learnt start delay and the counts.
+// check, its bound and drift: three lines. verbose: the learnt start delay
+// and the counts.
 void source_rtc_print(bool verbose);
 
 #endif // SOURCE_RTC_H

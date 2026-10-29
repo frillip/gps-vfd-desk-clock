@@ -56,7 +56,8 @@ static const SyncSourceDefinition sources[SYNC_SOURCE_COUNT] = {
     {"NTP", source_ntp_report, source_ntp_select, SYNC_NTP_QUALIFY_NS, SYNC_NTP_HOLD_NS, 1U,
      SYNC_NTP_EDGE_JITTER_NS, &ntp_profile, SYNC_HOLDOVER_FREQUENCY_NTP, true},
     // The RTC: the time of day, and its second placed by polling. Never
-    // captured, so never steers; its bound is SOURCE_RTC_UNCERTAINTY_NS.
+    // captured, so never steers; its bound grows from when it was last
+    // measured (source_rtc.h). Beyond SYNC_RTC_LIMIT_NS it is INACCURATE.
     {"RTC", source_rtc_report, NULL, SYNC_RTC_LIMIT_NS, SYNC_RTC_LIMIT_NS, 1U, 0U, NULL, 0U, false},
 };
 
@@ -417,9 +418,10 @@ static void acquire(uint8_t source, SyncReason reason, uint32_t epoch, bool fall
 
 /* At start-up, still free running and with nothing yet to steer by: puts
  * the epoch on the second of a time-of-day source (the RTC) the first
- * epoch it is GOOD, in one interval, so the seconds shown change with its
- * seconds. Once only: from then on the epoch is left to the sources that
- * steer. */
+ * epoch it is GOOD, or INACCURATE (its bound past SYNC_RTC_LIMIT_NS: still
+ * the best placing there is), in one interval, so the seconds shown change
+ * with its seconds. Once only: from then on the epoch is left to the
+ * sources that steer. */
 static void align_to_time_of_day(void)
 {
     uint8_t index;
@@ -432,7 +434,9 @@ static void align_to_time_of_day(void)
     {
         const SyncSourceTracker *tracker = &status.sources[index];
 
-        if (!sources[index].steers && tracker->check == SYNC_CHECK_GOOD && tracker->phase_valid)
+        if (!sources[index].steers &&
+            (tracker->check == SYNC_CHECK_GOOD || tracker->check == SYNC_CHECK_INACCURATE) &&
+            tracker->phase_valid)
         {
             status.aligned = true;
             status.aligned_to = index;
