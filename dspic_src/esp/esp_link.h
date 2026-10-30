@@ -36,8 +36,9 @@
  * STORAGE/VERIFY once stored; BUSY while one is under way), DEFAULTS (the
  * factory settings, running, not saved), SET_RTC, SET_DEBUG (clear << 16 |
  * set, console/debug.h; the resulting mask is printed; setting an undefined
- * bit is NACK ARGUMENT, clearing one is not) and RESET. RESYNC,
- * ENTER_BOOTLOADER and every ESP command code (0x8000 up) are answered
+ * bit is NACK ARGUMENT, clearing one is not), RESYNC (sync_resync: every
+ * source judged again and chosen again) and RESET. ENTER_BOOTLOADER and
+ * every ESP command code (0x8000 up) are answered
  * NACK UNSUPPORTED. Settings are changed only by CMD-SETTINGS (or the
  * menu), through settings/settings.h, and kept over a reset once saved.
  *

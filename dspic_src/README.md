@@ -164,6 +164,8 @@ The GNSS holdover model comes from a night of virtual holdover trials on a V2 bo
 
 The RTC is a source of the time of day only. On V2 it has no pulse the capture can take, so it never steers and is never a candidate, but it is judged like the others, with a bound that grows from when it was last measured against the synchronised clock (±999ms if never; see [I2C and the RTC](#i2c-and-the-rtc)). At start-up it is the first source with a time. Its second is searched for as soon as the chip has been read, and while that search is going on (up to 6 epochs), free run waits rather than take up GNSS or NTP. The time of day is taken from the RTC, and the first epoch it is good the epoch is moved onto its second as corrected for its drift, so the seconds shown change when UTC's do, as the RTC predicts them. GNSS or NTP then take over as usual.
 
+`pic resync` (SML RESYNC) makes the choice again from scratch. At the next epoch every source's record starts afresh, holdover is dropped, and the clock free runs on its learnt frequency, the time of day counted on, until the sources have qualified again (3 epochs). The best by its bound is then taken up as at start-up, with no holdover to beat. If the loop was tracking and the new source's edge is already close, it is slewed onto rather than stepped. So a clock holding over after losing GNSS, with NTP not yet twice as good, moves to NTP at once, and a clock locked on GNSS takes it up again within a few seconds without moving.
+
 Adding a source takes an entry in the source table, an adapter that reports its edge, its UTC label and its uncertainty, and a loop profile.
 
 ## Time of day
@@ -211,7 +213,7 @@ From the ESP, the PIC acts on:
 
 - TZ-STATE;
 - TIME-LEAP;
-- user commands: SHOW (a topic, printed: everything, what is stored, the time zone, the display, the RTC, the oscillator or the GNSS receiver), message requests (STAT-SOURCES for the sources table, among others), SAVE, DEFAULTS, SET_RTC, SET_DEBUG and RESET;
+- user commands: SHOW (a topic, printed: everything, what is stored, the time zone, the display, the RTC, the oscillator or the GNSS receiver), message requests (STAT-SOURCES for the sources table, among others), SAVE, DEFAULTS, SET_RTC, SET_DEBUG, RESYNC and RESET;
 - CMD-SETTINGS, every setting at once: the only way the ESP changes a setting;
 - TIME-NTP, which labels the ESP's PPS for the NTP source;
 - STAT-NET, which it holds for the menu.

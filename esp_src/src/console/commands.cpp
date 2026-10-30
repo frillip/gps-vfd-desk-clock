@@ -1068,7 +1068,7 @@ static const Entry pic_entries[] = {
     {"save", VALUE_NONE, NULL, 0, 0, "", "Save the PIC's settings", pic_action},
     {"defaults", VALUE_NONE, NULL, 0, 0, "", "The PIC's default settings, not saved", pic_action},
     {"reset", VALUE_NONE, NULL, 0, 0, "", "Reset the PIC", pic_action},
-    {"resync", VALUE_NONE, NULL, 0, 0, "", "Resynchronise (not yet)", pic_action},
+    {"resync", VALUE_NONE, NULL, 0, 0, "", "Judge every source again and choose again", pic_action},
     {"bootloader", VALUE_NONE, NULL, 0, 0, "", "Enter the bootloader (not yet)", pic_action},
 };
 

@@ -70,7 +70,7 @@ The console commands and the PIC link have their own, in `tests/commands`: every
 | GPIO27 | PIC epoch output, input to the ESP |
 | GPIO5 | ESP PPS output, to the PIC |
 | GPIO18 | GNSS PPS, only with the solder jumpers fitted |
-| GPIO23 | Status LED, lit for 100ms on each ESP PPS edge while NTP is synced; two short flashes while the NTP servers disagree |
+| GPIO23 | Status LED, lit for 100ms on each ESP PPS edge while NTP is synced, two short flashes while the NTP servers disagree |
 
 Almost everything runs from `loop()`. The exceptions are the NTP exchanges, which run in a task of their own, and the timing edges, which are handled in interrupts. Blocking work such as an HTTPS request holds up `loop()` but nothing else: the ESP PPS carries on in its interrupt, and the 4KB receive buffer on the PIC link holds several seconds of traffic.
 
@@ -94,26 +94,28 @@ STAT-NET still carries the IPv4 address only; the PIC does not use it (to be bro
 
 ezTime has been replaced by a small NTP client. Each poll sends four requests two seconds apart and keeps the exchange with the shortest round trip, since the fastest exchange has the least queueing and therefore the least asymmetry. The send and receive timestamps are taken immediately around the socket calls in the client task, so loop latency never reaches the measurement.
 
-Up to four servers can be set (`ntp server 1..4 <host>`, `none` to clear 2 to 4); server 1 defaults to `rubidium.darksky.io`, the others to none. Each is a client of its own, polled one at a time, with its own reach (the last eight polls), samples, jitter and root distance: half the round trip and half the server's root delay, its root dispersion, its jitter (the spread of its last eight samples about a straight line), and the drift allowed since its latest sample. Each name is resolved at every poll, and the first address lwIP returns is used (it keeps only the first record of each family), so `pool.ntp.org` set as one server is one server: set `0.pool.ntp.org`, `1.pool.ntp.org` and so on for more. Two servers resolving to the same address are two clients all the same.
+Up to four servers can be set (`ntp server 1..4 <host>`, `none` to clear 2 to 4). Server 1 defaults to `rubidium.darksky.io`, the others to none. Each is a client of its own, polled one at a time, with its own reach (the last eight polls), samples, jitter and root distance: half the round trip and half the server's root delay, its root dispersion, its jitter (the spread of its last eight samples about a straight line), and the drift allowed since its latest sample. Each name is resolved at every poll, and the first address lwIP returns is used (it keeps only the first record of each family), so `pool.ntp.org` set as one server is one server: set `0.pool.ntp.org`, `1.pool.ntp.org` and so on for more. Two servers resolving to the same address are two clients all the same.
 
-The first good sample of all sets the clock. After that, after every poll, the servers are compared as chronyd compares them: each says the clock is off by its offset, give or take its root distance, and the largest set of servers whose intervals overlap are those that agree. A server outside it is a falseticker (`x`), and of those that agree the closest is followed (`*`), the others standing by (`+`); the one followed is kept unless another is twice as close. A server none of whose last three polls was good, or whose latest sample is older than the sync limit below, is unusable (`?`). Only the server followed disciplines the clock, and changing server starts the frequency estimate's window again, as two servers' raw offsets differ by their paths' asymmetry.
+The first good sample of all sets the clock. After that, after every poll, the servers are compared as chronyd compares them: each says the clock is off by its offset, give or take its root distance, and the largest set of servers whose intervals overlap are those that agree. A server outside it is a falseticker (`x`), and of those that agree the closest is followed (`*`), the others standing by (`+`). The one followed is kept unless another is twice as close. A server none of whose last three polls was good, or whose latest sample is older than the sync limit below, is unusable (`?`). Only the server followed disciplines the clock, and changing server starts the frequency estimate's window again, as two servers' raw offsets differ by their paths' asymmetry.
 
 Without a majority (two servers that disagree, or two pairs), the clock keeps to the server it is following, or the first of them, rather than coast on neither: for a clock without GNSS the first server is likely the better bet than the PIC's holdover. The console says so (`NTP: servers DISAGREE, no majority`, and in `ntp` and the status), and the status LED flashes twice each second instead of once. The PIC sees one NTP source either way: this clock.
 
-The servers are polled at startup, then after 64, 128 and 256 seconds while the crystal frequency is being learnt. After that the interval adapts between 128 seconds and `ntp.interval` (default 1024): it doubles after four corrections in a row under 500µs from the server followed, and halves after one over 2ms; every server is polled at that interval. A crystal that is warming up, or sitting next to a radiator, gets polled more often; a settled one leaves the servers in peace. Failed polls are retried after 60 seconds, doubling up to the interval.
+The servers are polled at startup, then after 64, 128 and 256 seconds while the crystal frequency is being learnt. After that the interval adapts between 128 seconds and `ntp.interval` (default 512): it doubles after four corrections in a row under 500µs from the server followed, and halves after one over 2ms. Every server is polled at that interval. A crystal that is warming up, or sitting next to a radiator, gets polled more often; a settled one leaves the servers in peace. Failed polls are retried after 60 seconds, doubling up to the interval.
+
+512 seconds as the longest keeps the frequency estimate honest. Its window of eight samples then spans about an hour, long enough to measure the crystal to a fraction of a ppm through a few milliseconds of jitter, and short enough to follow it as the room warms and cools. The traffic is nothing much: each poll is four 48-byte requests, so four servers at 512 seconds come to one request every 32 seconds on average.
 
 `ntp` shows the servers as `chronyc sources` does, and `ntp tracking` the server followed and the clock as `chronyc tracking`:
 
 ```
   # Server                   St   Poll Reach LastRx     Offset        +/-  Address
-* 1 rubidium.darksky.io       1  1024s   377     5m  +112.0 us   5.204 ms  2001:db8::123
-+ 2 0.pool.ntp.org            2  1024s   377     4m  -1.204 ms   9.877 ms  192.0.2.10
-x 3 1.pool.ntp.org            2  1024s   377     4m  +48.03 ms   8.102 ms  198.51.100.7
+* 1 rubidium.darksky.io       1   512s   377     5m  +112.0 us   5.204 ms  2001:db8::123
++ 2 0.pool.ntp.org            2   512s   377     4m  -1.204 ms   9.877 ms  192.0.2.10
+x 3 1.pool.ntp.org            2   512s   377     4m  +48.03 ms   8.102 ms  198.51.100.7
 ```
 
 Offset is each server's latest sample against the clock as it then was, and +/- its root distance now. `ntp -v` adds each server's round trip, jitter and counters, and the clock's frequency and slew.
 
-`ntp.interval` is the longest interval rather than a fixed one. A clock that saved the old 1800-second default keeps it as its ceiling; `ntp interval 1024` and `save` bring it in line.
+`ntp.interval` is the longest interval rather than a fixed one. A clock that saved an older default (1800 or 1024 seconds) keeps it as its ceiling. `ntp interval 512` and `save` bring it in line.
 
 The servers' hostnames are resolved in `loop()`, not in the NTP task. In arduino-esp32 3.3.x, `Network.hostByName()` clears lwIP's DNS cache without taking the TCPIP core lock, which cancels any lookup in progress elsewhere and trips an lwIP assertion. With the PIC already running, the timezone lookup at startup overlapped the NTP lookup, and the ESP restarted every few seconds until power cycled. Keeping every DNS lookup in `loop()` means none is ever in progress when the cache is cleared. Any future network code should follow the same rule.
 
@@ -220,6 +222,6 @@ The status shows the ESP's uptime and why it last started. A restart through the
 
 # Settings
 
-Settings are stored in NVS in the same layout as the V2 firmware, so existing preferences carry over. NTP servers 2 to 4 are kept under a key of their own, so the layout stays as it was; without that key they are none. Each field is checked on load. An invalid field reverts to its default and the rest are kept, rather than one bad value resetting everything. Changes made from the console take effect immediately and persist after `save` (or `esp save`). `defaults` (or `esp defaults`) puts the defaults in force without saving them.
+Settings are stored in NVS in the same layout as the V2 firmware, so existing preferences carry over. NTP servers 2 to 4 are kept under a key of their own, so the layout stays as it was. Without that key they are none. Each field is checked on load. An invalid field reverts to its default and the rest are kept, rather than one bad value resetting everything. Changes made from the console take effect immediately and persist after `save` (or `esp save`). `defaults` (or `esp defaults`) puts the defaults in force without saving them.
 
 The full command list is in the repository [README](../README.md#console-commands), and `help` prints it on the console, `help <command>` the settings and actions of one. The table of commands is in [src/console/commands.cpp](src/console/commands.cpp): each command lists its settings and actions with the kind of value each takes, and the parsing, the showing of a setting given no value, the error messages and the help all come from that table. `wifi` never prints the saved WiFi passphrase.

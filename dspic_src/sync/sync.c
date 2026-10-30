@@ -63,6 +63,9 @@ static const SyncSourceDefinition sources[SYNC_SOURCE_COUNT] = {
 
 static SyncStatus status;
 
+// A resync asked for, applied at the next epoch (sync_resync).
+static bool resync_pending;
+
 // A time set by hand, applied at the next epoch (sync_set_time).
 static struct
 {
@@ -399,8 +402,8 @@ static void acquire(uint8_t source, SyncReason reason, uint32_t epoch, bool fall
     const SyncSourceTracker *tracker = &status.sources[source];
     bool slew = false;
 
-    if ((status.state == SYNC_LOCKED || status.state == SYNC_HOLDOVER) && tracker->phase_valid &&
-        epoch_control_state()->state == EPOCH_STATE_TRACK)
+    if ((status.state == SYNC_LOCKED || status.state == SYNC_HOLDOVER || status.resync_slew) &&
+        tracker->phase_valid && epoch_control_state()->state == EPOCH_STATE_TRACK)
     {
         int32_t limit = definition->profile->gate_ticks / 2;
         slew = tracker->phase_ticks <= limit && tracker->phase_ticks >= -limit;
@@ -413,6 +416,7 @@ static void acquire(uint8_t source, SyncReason reason, uint32_t epoch, bool fall
     enter(SYNC_ACQUIRE, source, reason, epoch);
     status.fallback = fallback;
     status.steered = true;
+    status.resync_slew = false;
 }
 
 
@@ -712,6 +716,7 @@ void sync_init(void)
 
     memset(&status, 0, sizeof(status));
     manual_time.pending = false;
+    resync_pending = false;
     status.state = SYNC_FREE_RUN;
     status.source = SYNC_SOURCE_NONE;
     status.second = SYNC_SOURCE_NONE;
@@ -763,6 +768,29 @@ static void apply_manual_time(uint32_t epoch)
 }
 
 
+/* RESYNC: before the sources are judged, so that this epoch is the first
+ * of each one's fresh record. The time of day is kept and counted on; the
+ * loop keeps its frequency, as in any free run. */
+static void apply_resync(uint32_t epoch)
+{
+    uint8_t index;
+
+    if (!resync_pending)
+    {
+        return;
+    }
+    resync_pending = false;
+    status.resync_slew = status.state == SYNC_LOCKED || status.state == SYNC_HOLDOVER;
+    for (index = 0; index < SYNC_SOURCE_COUNT; index++)
+    {
+        sync_source_reset(&status.sources[index]);
+    }
+    status.holdover.ready = false;
+    status.holdover.bound_ns = SYNC_BOUND_NONE;
+    enter(SYNC_FREE_RUN, SYNC_SOURCE_NONE, SYNC_REASON_RESYNC, epoch);
+}
+
+
 SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
 {
     SyncUpdate update;
@@ -770,6 +798,7 @@ SyncUpdate sync_update(const TimingSnapshot *snapshot, uint32_t now_ms)
     bool was_locked = status.state == SYNC_LOCKED || status.state == SYNC_HOLDOVER;
     int32_t offset_ticks = 0;
 
+    apply_resync(snapshot->timer.sequence);
     judge_sources(snapshot, now_ms);
     apply_manual_time(snapshot->timer.sequence);
     // A fallback that has met its accuracy limit is a source like any other.
@@ -826,6 +855,12 @@ bool sync_set_time(uint32_t utc_seconds, uint32_t epoch_sequence, uint16_t slot_
     manual_time.epoch = epoch_sequence;
     manual_time.slot_ms = slot_ms;
     return true;
+}
+
+
+void sync_resync(void)
+{
+    resync_pending = true;
 }
 
 
@@ -925,6 +960,7 @@ const char *sync_reason_name(uint8_t reason)
         case SYNC_REASON_ALTERNATIVE: return "alternative";
         case SYNC_REASON_BETTER_SOURCE: return "better source";
         case SYNC_REASON_EXPIRED: return "holdover expired";
+        case SYNC_REASON_RESYNC: return "resync";
         default: return "?";
     }
 }

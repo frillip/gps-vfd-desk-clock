@@ -136,11 +136,11 @@ static const char *sync_name(uint8_t state)
 
 static const char *cause_name(uint8_t cause)
 {
-    static const char *const names[] = {"none",        "qualified",     "tracking",
-                                        "phase lost",  "source lost",   "source back",
-                                        "alternative", "better source", "expired"};
+    static const char *const names[] = {
+        "none",        "qualified",   "tracking",      "phase lost", "source lost",
+        "source back", "alternative", "better source", "expired",    "resync"};
 
-    return cause < 9 ? names[cause] : "?";
+    return cause < sizeof(names) / sizeof(names[0]) ? names[cause] : "?";
 }
 
 static const char *control_name(uint8_t state)

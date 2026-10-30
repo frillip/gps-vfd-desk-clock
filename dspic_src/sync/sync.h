@@ -229,7 +229,8 @@ typedef enum
     SYNC_REASON_SOURCE_BACK,   // ... and is good again
     SYNC_REASON_ALTERNATIVE,   // another source took over a failed one
     SYNC_REASON_BETTER_SOURCE, // a better source took over
-    SYNC_REASON_EXPIRED        // holdover ran out
+    SYNC_REASON_EXPIRED,       // holdover ran out
+    SYNC_REASON_RESYNC         // asked for (sync_resync): every source judged again
 } SyncReason;
 
 typedef struct
@@ -287,6 +288,9 @@ typedef struct
     bool aligned;          // the epoch was stepped onto a time-of-day source
     uint8_t aligned_to;    // ... which one
     int32_t aligned_ticks; // ... by how much (the step requested)
+
+    // A resync from tracking: the next source taken up may be slewed onto.
+    bool resync_slew;
 } SyncStatus;
 
 typedef struct
@@ -320,6 +324,18 @@ void sync_set_leap(const UtcLeap *leap);
  * to; any source that steers takes over as usual.
  */
 bool sync_set_time(uint32_t utc_seconds, uint32_t epoch_sequence, uint16_t slot_ms);
+
+/*
+ * Every source judged again, and the choice made again (SML RESYNC). At the
+ * next epoch: each source's record (its runs, its label continuity) starts
+ * afresh, holdover is dropped, and the clock free runs, counting the time
+ * of day on at the frequency learnt, until a source qualifies again
+ * (SYNC_QUALIFY_EPOCHS). The best is then taken up as at start-up, by its
+ * bound alone, without holdover to beat. If the loop was tracking and the
+ * new source's edge is within half its profile's gate, it is slewed onto
+ * without a step.
+ */
+void sync_resync(void);
 
 // A +/- bound on the UTC error of our epoch, in ns: the selected source's
 // bound and the measured phase, or the holdover bound. False when there is

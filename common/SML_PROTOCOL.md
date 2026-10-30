@@ -6,7 +6,7 @@ SML is the link between the dsPIC33EP256GP504 timekeeper (the **PIC**) and the E
 
 The PIC keeps UTC and disciplines the clock's epoch. The ESP supplies what the PIC cannot get on its own: network time, timezone schedules, leap-second data and user commands. In return the ESP receives the PIC's state for display, logging and statistics, and tells the PIC about its network and services.
 
-This document describes protocol version 2.3 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 3) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
+This document describes protocol version 2.4 (`SML_PROTOCOL_MAJOR` 2, `SML_PROTOCOL_MINOR` 4) with settings schema 1 (`SML_SETTINGS_SCHEMA`). The definitions live in [sml_proto.h](sml_proto.h), and the reference codec in [sml.c](sml.c) and [sml.h](sml.h), all in `common/` and shared by both firmwares. TIME-AUTH is stable. Every other payload remains provisional until both ends implement it.
 
 # Physical link
 
@@ -667,7 +667,7 @@ Commands run by the PIC:
 | 0x0011 | `DEFAULTS` | — | ✓ Applies the factory settings, and the debug mask none, to the running settings, then ACK. Nothing is stored until `SAVE` |
 | 0x0020 | `SET_RTC` | UTC seconds | ✓ Writes the PCF8563 to the nearest second (2000 onwards; else NACK ARGUMENT), ACK once started; NACK STATE with no RTC, BUSY while the RTC source is searching or setting it. The RTC is printed once read back and its second found again. The clock's own time is not changed, but while it is synchronised its next check (every 6 hours) sets the RTC back to the clock's time |
 | 0x0021 | `SET_DEBUG` | clear << 16 \| set, `SML_DEBUG_*` bits | ✓ See below. Setting a bit outside `SML_DEBUG_ALL` is NACK `ARGUMENT`; clearing any is fine (0xFFFF clears all) |
-| 0x0030 | `RESYNC` | — | NACK UNSUPPORTED (planned) |
+| 0x0030 | `RESYNC` | — | ✓ (2.4) Every source judged again and the choice made again, at the next epoch: each source's record starts afresh, holdover is dropped, and the clock free runs on its learnt frequency, counting the time of day on, until a source qualifies again (3 epochs). The best by bound is then taken up as at start-up, slewed onto if the loop was tracking and its edge is close, else stepped. TIME-PIC `last_sync_cause` RESYNC. ACK at once |
 | 0x0031 | `RESET` | — | ✓ ACK, flush, then software reset |
 | 0x0032 | `ENTER_BOOTLOADER` | — | Reserved for the bootloader. NACK UNSUPPORTED |
 
@@ -869,6 +869,7 @@ A TIME-MEAS record plus the TIME-CTRL fields worth keeping comes to about 60 byt
 | 6 | ALTERNATIVE | Another source took over a failed one |
 | 7 | BETTER_SOURCE | A better-ranked source took over |
 | 8 | EXPIRED | Holdover limit reached |
+| 9 | RESYNC | RESYNC: every source judged again (2.4) |
 
 ## Controller state
 
@@ -1063,8 +1064,6 @@ B5 73 20 01 00 7C 00 01 03 08 6A CE 65 F5 72 66
 
 # Open points
 
-`RESYNC` still needs defining. It could restart the control loop, re-qualify sources, or both, and is best settled alongside the NTP source.
-
 NTP is a sync source on the PIC, with its loop profile, jitter allowance and holdover model set from bench data. STAT-SOURCES, `SET_DEBUG` and TIME-PIC `second_source` are implemented at both ends. While TIME-NTP has `CORRECTING` set, the PIC holds its frequency estimate (the servo integral) and works the phase off with its proportional term alone; routine gentle corrections are simply followed.
 
 The bootloader class (0xF0) is reserved but not defined, and will be specified separately after the V2+ work.
@@ -1081,6 +1080,7 @@ The timezone architecture document should follow the model described under [TZ-S
 
 | Date | Change |
 | --- | --- |
+| 2026-10-30 (2.4) | `RESYNC` defined and implemented on the V2+ PIC: every source judged again and chosen again, holdover dropped. `SML_CAUSE_RESYNC` (9). No layout change |
 | 2026-10-29 | Document only, no wire change. The V2+ PIC sends TIME-RTC every epoch after TIME-GNSS, with its fields defined for the PCF8563; the RTC's bound grows from its last measurement against the synchronised clock, kept over a reset, so the TIME-AUTH uncertainty while free running on the RTC and the STAT-SOURCES bound for it are no longer a fixed ±999ms |
 | 2026-10-28 (2.3) | `SML_MENU_*` values for STAT-UI `menu_state`: the V2+ menu's section, item and `EDITING`. The V2+ PIC reports `current_display` `MENU` while the menu is open. No layout change |
 | 2026-10-28 (2.2) | Settings flag bit 7 `DELTA_LOCAL` and STAT-UI flag bit 13 `DELTA_LOCAL`: the delta epoch as a local wall-clock time, counted against local time. No layout change |

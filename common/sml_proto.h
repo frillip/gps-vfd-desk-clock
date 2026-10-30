@@ -64,7 +64,7 @@
 #define SML_TZ_TRANSITION_MAX 8U
 #define SML_SETTINGS_SCHEMA   1U
 #define SML_PROTOCOL_MAJOR    2U
-#define SML_PROTOCOL_MINOR    3U
+#define SML_PROTOCOL_MINOR    4U
 
 #define SML_CLASS_TIME 0x10U
 #define SML_CLASS_TZ   0x20U
@@ -152,6 +152,7 @@
 #define SML_CAUSE_ALTERNATIVE   6U // another source took over a failed one
 #define SML_CAUSE_BETTER_SOURCE 7U // a better-ranked source took over
 #define SML_CAUSE_EXPIRED       8U // holdover limit reached
+#define SML_CAUSE_RESYNC        9U // RESYNC: every source judged again (2.4)
 // TIME-CTRL / TIME-VCTCXO controller_state: the epoch control loop.
 #define SML_CONTROL_INIT    0U
 #define SML_CONTROL_ACQUIRE 1U // waiting for reference periods before the step

@@ -13,6 +13,7 @@
 #include "../settings/settings.h"
 #include "../sync/source_ntp.h"
 #include "../sync/source_rtc.h"
+#include "../sync/sync.h"
 #include "../ui/timezone.h"
 #include "esp_report.h"
 
@@ -395,8 +396,9 @@ static uint8_t run_command(const SML_CMD_USER_PAYLOAD *command, uint32_t now_ms,
             return SML_ERROR_NONE;
         case SML_USER_SET_RTC: return set_rtc(argument);
         case SML_USER_SET_DEBUG: return change_debug(argument);
+        case SML_USER_RESYNC: sync_resync(); return SML_ERROR_NONE;
         case SML_USER_RESET: *reset = true; return SML_ERROR_NONE;
-        default: return SML_ERROR_UNSUPPORTED; // RESYNC, ENTER_BOOTLOADER: not yet
+        default: return SML_ERROR_UNSUPPORTED; // ENTER_BOOTLOADER: not yet
     }
 }
 

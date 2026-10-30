@@ -48,10 +48,10 @@ uint8_t esp_report_sync(SyncState state, uint32_t epochs)
 
 uint8_t esp_report_cause(uint8_t reason)
 {
-    static const uint8_t codes[] = {SML_CAUSE_QUALIFIED,     SML_CAUSE_TRACKING,
-                                    SML_CAUSE_PHASE_LOST,    SML_CAUSE_SOURCE_LOST,
-                                    SML_CAUSE_SOURCE_BACK,   SML_CAUSE_ALTERNATIVE,
-                                    SML_CAUSE_BETTER_SOURCE, SML_CAUSE_EXPIRED};
+    static const uint8_t codes[] = {
+        SML_CAUSE_QUALIFIED,     SML_CAUSE_TRACKING,    SML_CAUSE_PHASE_LOST,
+        SML_CAUSE_SOURCE_LOST,   SML_CAUSE_SOURCE_BACK, SML_CAUSE_ALTERNATIVE,
+        SML_CAUSE_BETTER_SOURCE, SML_CAUSE_EXPIRED,     SML_CAUSE_RESYNC};
     return reason < sizeof(codes) ? codes[reason] : SML_CAUSE_NONE;
 }
 
