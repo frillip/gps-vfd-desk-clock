@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #define PIC_VERSION_MAJOR 0
-#define PIC_VERSION_MINOR 1
+#define PIC_VERSION_MINOR 3
 #define PIC_VERSION_PATCH 0
 
 #define PIC_VERSION_NUMBER                                                  \
