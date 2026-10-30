@@ -142,7 +142,7 @@ The [ESP updater](esp_src/src/net/updater.cpp) can pull firmware over WiFi using
 
 `update check` checks what is available without installing anything. `update install` installs an applicable update but leaves the ESP running until `esp reset` completes the change. `update install force` bypasses the normal version comparison, permits downgrades and requests an immediate reboot after installation. Useful when testing, though somewhat more committed than merely checking.
 
-Automatic updates are disabled by default. When enabled, the ESP checks once a day at the start of a chosen local hour, defaulting to 04:00, and installs and reboots if an update is available. An ESP that starts within that hour skips that day's check, in case it has just installed the update. `update auto 4` turns it on for that hour, save changes with `save`.
+Automatic updates are enabled by default. The ESP checks once a day at the start of a chosen local hour, defaulting to 04:00, and installs and reboots if an update is available. An ESP that starts within that hour skips that day's check, in case it has just installed the update. `update auto 4` turns it on for that hour, save changes with `save`. They can be disabled with `update auto off`.
 
 This updater only replaces the ESP firmware. A PIC bootloader and firmware update path are still on the pending features list.
 
