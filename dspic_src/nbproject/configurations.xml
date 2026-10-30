@@ -44,6 +44,7 @@
         <itemPath>platform/time_ms.h</itemPath>
         <itemPath>platform/utc.h</itemPath>
         <itemPath>../common/enums.h</itemPath>
+        <itemPath>platform/version.h</itemPath>
       </logicalFolder>
       <logicalFolder name="settings" displayName="settings" projectFiles="true">
         <itemPath>settings/settings.h</itemPath>
