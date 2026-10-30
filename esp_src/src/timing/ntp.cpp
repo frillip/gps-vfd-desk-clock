@@ -3,6 +3,7 @@
 #include <Network.h>
 #include <esp_timer.h>
 #include <math.h>
+#include <strings.h>
 #include <sys/time.h>
 
 #include "../console/console.h"
@@ -285,6 +286,23 @@ static void start_pps(void)
 }
 
 
+// The server as named, and the address it was polled at unless that is
+// its name: "pool.example (192.0.2.10)", "192.0.2.10".
+#define SERVER_TEXT (USER_PREFS_STORED_STRING_SIZE + 52)
+static const char *server_text(const NtpServer *server, char *text)
+{
+    if (server->address[0] == '\0' || strcasecmp(server->address, server->host) == 0)
+    {
+        snprintf(text, SERVER_TEXT, "%s", server->host);
+    }
+    else
+    {
+        snprintf(text, SERVER_TEXT, "%s (%s)", server->host, server->address);
+    }
+    return text;
+}
+
+
 static const char *poll_failure(const NtpPollResult *poll)
 {
     if (poll->dns_failed)
@@ -423,10 +441,11 @@ static void apply(int index)
     if (action == ESP_CLOCK_STEPPED)
     {
         char step[TIME_NS_TEXT];
+        char name[SERVER_TEXT];
 
         time_format_ns(step, status->last_error_us * 1000, true);
-        console_printf("NTP: clock set from %s (%s), step %s (%u steps)\n", server->host,
-                       server->address, step, (unsigned)status->steps);
+        console_printf("NTP: clock set from %s, step %s (%u steps)\n", server_text(server, name),
+                       step, (unsigned)status->steps);
         start_pps();
     }
     else if (action == ESP_CLOCK_SLEWED_FAST)
@@ -490,8 +509,9 @@ static void select_server(int fresh)
     ntp.peer = ntp.selection.selected;
     if (ntp.peer >= 0 && ntp.peer != previous)
     {
-        console_printf("NTP: following %s (%s)\n", ntp.servers[ntp.peer].host,
-                       ntp.servers[ntp.peer].address);
+        char name[SERVER_TEXT];
+
+        console_printf("NTP: following %s\n", server_text(&ntp.servers[ntp.peer], name));
     }
     else if (ntp.peer < 0 && previous >= 0)
     {
@@ -862,9 +882,9 @@ static void print_brief(Stream *output)
     output->printf("Server:   ");
     if (ntp.peer >= 0)
     {
-        const NtpServer *server = &ntp.servers[ntp.peer];
+        char name[SERVER_TEXT];
 
-        output->printf("%s (%s), stratum %u, updated ", server->host, server->address,
+        output->printf("%s, stratum %u, updated ", server_text(&ntp.servers[ntp.peer], name),
                        status->last.stratum);
         time_print_duration(output, update_age_s());
         output->printf(" ago");
@@ -984,9 +1004,9 @@ void ntp_print_tracking(Stream *output)
     output->printf("Server:    ");
     if (ntp.peer >= 0)
     {
-        const NtpServer *server = &ntp.servers[ntp.peer];
+        char name[SERVER_TEXT];
 
-        output->printf("%d %s (%s), stratum %u", ntp.peer + 1, server->host, server->address,
+        output->printf("%d %s, stratum %u", ntp.peer + 1, server_text(&ntp.servers[ntp.peer], name),
                        status->last.stratum);
     }
     else
