@@ -7,11 +7,14 @@
 
 #define NAMESPACE "CLOCK_PREFS"
 #define KEY       "PREF_STRUCT"
+#define NTP_KEY   "NTP_SERVERS"
 
 UserPrefs user_prefs;
+UserPrefsNtp user_prefs_ntp;
 
 static Preferences store;
 static UserPrefs saved; // as last loaded or saved, to tell what is unsaved
+static UserPrefsNtp saved_ntp;
 
 void user_prefs_set_string(char *field, const char *value)
 {
@@ -23,6 +26,12 @@ void user_prefs_set_string(char *field, const char *value)
 static bool string_ok(const char *field)
 {
     return memchr(field, '\0', USER_PREFS_STORED_STRING_SIZE) != NULL;
+}
+
+
+char *user_prefs_ntp_server(int index)
+{
+    return index == 0 ? user_prefs.fields.ntp.server : user_prefs_ntp.server[index - 1];
 }
 
 
@@ -46,6 +55,8 @@ void user_prefs_reset(void)
     user_prefs_set_string(p->fields.updater.server, UPDATER_SERVER_DEFAULT);
     user_prefs_set_string(p->fields.updater.path, UPDATER_PATH_DEFAULT);
     user_prefs_set_string(p->fields.updater.config, UPDATER_CONFIG_DEFAULT);
+    memset(&user_prefs_ntp, 0, sizeof(user_prefs_ntp));
+    user_prefs_ntp.header = USER_PREFS_HEADER_VALUE;
 }
 
 
@@ -88,6 +99,12 @@ static unsigned repair(Stream *output)
            user_prefs_set_string(p->fields.updater.config, UPDATER_CONFIG_DEFAULT));
     REPAIR(p->fields.updater.flags.auto_time <= UPDATER_AUTO_HOUR_MAX, "updater.auto_time",
            p->fields.updater.flags.auto_time = UPDATER_AUTO_HOUR_DEFAULT);
+    for (int index = 1; index < NTP_SERVERS; index++)
+    {
+        char *server = user_prefs_ntp_server(index);
+
+        REPAIR(string_ok(server), "ntp.server", user_prefs_set_string(server, ""));
+    }
 #undef REPAIR
 
     // The pre-v1 tzinfo endpoint no longer exists.
@@ -105,13 +122,26 @@ void user_prefs_init(Stream *output)
 {
     size_t stored;
 
+    size_t stored_ntp;
+
     store.begin(NAMESPACE, true);
     stored = store.getBytesLength(KEY);
     if (stored == sizeof(user_prefs.raw))
     {
         store.getBytes(KEY, user_prefs.raw, sizeof(user_prefs.raw));
     }
+    stored_ntp = store.getBytesLength(NTP_KEY);
+    if (stored_ntp == sizeof(user_prefs_ntp))
+    {
+        store.getBytes(NTP_KEY, &user_prefs_ntp, sizeof(user_prefs_ntp));
+    }
     store.end();
+    // Saved by firmware with one NTP server: none more.
+    if (stored_ntp != sizeof(user_prefs_ntp) || user_prefs_ntp.header != USER_PREFS_HEADER_VALUE)
+    {
+        memset(&user_prefs_ntp, 0, sizeof(user_prefs_ntp));
+        user_prefs_ntp.header = USER_PREFS_HEADER_VALUE;
+    }
 
     if (stored != sizeof(user_prefs.raw) || user_prefs.fields.header != USER_PREFS_HEADER_VALUE)
     {
@@ -125,12 +155,14 @@ void user_prefs_init(Stream *output)
         user_prefs_save();
     }
     saved = user_prefs;
+    saved_ntp = user_prefs_ntp;
 }
 
 
 bool user_prefs_unsaved(void)
 {
-    return memcmp(saved.raw, user_prefs.raw, sizeof(saved.raw)) != 0;
+    return memcmp(saved.raw, user_prefs.raw, sizeof(saved.raw)) != 0 ||
+           memcmp(&saved_ntp, &user_prefs_ntp, sizeof(saved_ntp)) != 0;
 }
 
 
@@ -138,8 +170,10 @@ void user_prefs_save(void)
 {
     store.begin(NAMESPACE, false);
     store.putBytes(KEY, user_prefs.raw, sizeof(user_prefs.raw));
+    store.putBytes(NTP_KEY, &user_prefs_ntp, sizeof(user_prefs_ntp));
     store.end();
     saved = user_prefs;
+    saved_ntp = user_prefs_ntp;
 }
 
 
@@ -148,8 +182,15 @@ void user_prefs_print(Stream *output)
     const UserPrefs *p = &user_prefs;
 
     output->printf("Settings: %s\n", user_prefs_unsaved() ? "NOT SAVED" : "saved");
-    output->printf("  NTP: %s, interval %lu s\n", p->fields.ntp.server,
-                   (unsigned long)p->fields.ntp.interval);
+    output->printf("  NTP: 1: %s", p->fields.ntp.server);
+    for (int index = 1; index < NTP_SERVERS; index++)
+    {
+        if (user_prefs_ntp_server(index)[0] != '\0')
+        {
+            output->printf(", %d: %s", index + 1, user_prefs_ntp_server(index));
+        }
+    }
+    output->printf("; interval %lu s\n", (unsigned long)p->fields.ntp.interval);
     output->printf("  TZ lookups: %s, https://%s%s, every ",
                    p->fields.rtzinfo.flags.enabled ? "ON" : "OFF", p->fields.rtzinfo.server,
                    p->fields.rtzinfo.path);

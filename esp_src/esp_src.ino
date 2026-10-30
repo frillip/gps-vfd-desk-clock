@@ -33,10 +33,14 @@
 #include "src/version.h"
 
 #define LED_PULSE_MS 100U
+// While the NTP servers disagree, each pulse is two short flashes.
+#define LED_FLASH_MS 40U
+#define LED_GAP_MS   80U
 #define MINUTE_MS    60000U
 
 static ConsoleLine serial_line;
 static uint32_t led_on_ms;
+static bool led_double;
 static uint32_t last_minute_ms;
 
 void setup()
@@ -58,7 +62,8 @@ void setup()
 }
 
 
-// Each ESP PPS edge: TIME-NTP to the PIC, and the status LED while synced.
+// Each ESP PPS edge: TIME-NTP to the PIC, and the status LED while synced:
+// one flash, or two while the NTP servers disagree.
 static void service_ntp_report(void)
 {
     SML_TIME_NTP_PAYLOAD report;
@@ -72,6 +77,7 @@ static void service_ntp_report(void)
     {
         digitalWrite(BOARD_STATUS_LED_PIN, HIGH);
         led_on_ms = millis();
+        led_double = ntp_servers_disagree();
     }
 }
 
@@ -97,10 +103,26 @@ void loop()
     }
     telnet_service();
 
-    if (led_on_ms != 0 && millis() - led_on_ms >= LED_PULSE_MS)
+    if (led_on_ms != 0)
     {
-        digitalWrite(BOARD_STATUS_LED_PIN, LOW);
-        led_on_ms = 0;
+        uint32_t lit_ms = millis() - led_on_ms;
+
+        if (!led_double && lit_ms >= LED_PULSE_MS)
+        {
+            digitalWrite(BOARD_STATUS_LED_PIN, LOW);
+            led_on_ms = 0;
+        }
+        else if (led_double)
+        {
+            bool on = lit_ms < LED_FLASH_MS || (lit_ms >= LED_FLASH_MS + LED_GAP_MS &&
+                                                lit_ms < 2 * LED_FLASH_MS + LED_GAP_MS);
+
+            digitalWrite(BOARD_STATUS_LED_PIN, on ? HIGH : LOW);
+            if (lit_ms >= 2 * LED_FLASH_MS + LED_GAP_MS)
+            {
+                led_on_ms = 0;
+            }
+        }
     }
     if (network_up && millis() - last_minute_ms >= MINUTE_MS)
     {

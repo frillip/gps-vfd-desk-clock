@@ -98,6 +98,14 @@ bool esp_clock_correcting(int64_t local_us);
 // uses it to run on while the loop is busy).
 int32_t esp_clock_period_adjust_q16(void);
 
+// The drift allowed for since the latest sample, ppm: 50 until the
+// frequency is known, 5 after one estimate, 2 after more.
+int64_t esp_clock_drift_ppm(void);
+// Samples from now on come from another server: the frequency is kept, but
+// the window starts again, as raw offsets from two servers differ by their
+// paths' asymmetry and would read as a frequency error.
+void esp_clock_new_reference(void);
+
 const EspClockStatus *esp_clock_status(void);
 
 #endif // ESP_CLOCK_H

@@ -1074,22 +1074,86 @@ static const Entry pic_entries[] = {
 
 // ---- NTP, Wi-Fi, Telnet, updates ---------------------------------------------------
 
+// The clock and every server, as chronyc sources; everything with -v.
 static void bare_ntp(Stream *output, bool verbose)
 {
-    ntp_print(output, verbose);
+    if (verbose)
+    {
+        ntp_print(output, true);
+        return;
+    }
+    ntp_print(output, false);
+    ntp_print_sources(output, false);
 }
 
+static void print_ntp_server(Stream *output, int index)
+{
+    const char *host = user_prefs_ntp_server(index);
+
+    output->printf("ntp server %d: %s\n", index + 1, host[0] != '\0' ? host : "NONE");
+}
+
+// ntp server <n> [<host>|none]: server n (1 to 4) shown or set; with no n,
+// all four. Server 1 cannot be none. A new server is polled at once.
 static void ntp_server(Stream *output, const Entry *entry, const Value *value)
 {
+    char text[USER_PREFS_MAX_STRING_SIZE + 8];
+    char *host;
+    char *end;
+    long number;
+    int index;
+
     (void)entry;
     if (!value->given)
     {
-        output->printf("ntp server: %s\n", user_prefs.fields.ntp.server);
+        for (index = 0; index < NTP_SERVERS; index++)
+        {
+            print_ntp_server(output, index);
+        }
         return;
     }
-    user_prefs_set_string(user_prefs.fields.ntp.server, value->text);
-    output->printf("ntp server: %s, polling\n", user_prefs.fields.ntp.server);
-    ntp_resync();
+    snprintf(text, sizeof(text), "%s", value->text);
+    number = strtol(text, &end, 10);
+    if (end == text || (*end != '\0' && *end != ' ') || number < 1 || number > NTP_SERVERS)
+    {
+        output->printf("ntp server: which one, 1..%d, then the host\n", NTP_SERVERS);
+        return;
+    }
+    index = (int)number - 1;
+    host = end;
+    while (*host == ' ')
+    {
+        host++;
+    }
+    if (*host == '\0')
+    {
+        print_ntp_server(output, index);
+        return;
+    }
+    if (strchr(host, ' ') != NULL || strlen(host) > USER_PREFS_MAX_STRING_SIZE)
+    {
+        output->printf("ntp server: bad host '%s'\n", host);
+        return;
+    }
+    if (strcasecmp(host, "none") == 0)
+    {
+        if (index == 0)
+        {
+            output->printf("ntp server: server 1 is needed\n");
+            return;
+        }
+        host[0] = '\0';
+    }
+    user_prefs_set_string(user_prefs_ntp_server(index), host);
+    output->printf("ntp server %d: %s%s\n", index + 1, host[0] != '\0' ? host : "NONE",
+                   host[0] != '\0' ? ", polling" : "");
+}
+
+static void ntp_tracking(Stream *output, const Entry *entry, const Value *value)
+{
+    (void)entry;
+    (void)value;
+    ntp_print_tracking(output);
 }
 
 static void ntp_interval(Stream *output, const Entry *entry, const Value *value)
@@ -1111,7 +1175,9 @@ static void ntp_sync(Stream *output, const Entry *entry, const Value *value)
 }
 
 static const Entry ntp_entries[] = {
-    {"server", VALUE_TEXT, NULL, 0, 0, "<host>", "NTP server, then poll it", ntp_server},
+    {"server", VALUE_WORDS, NULL, 0, 0, "1..4 <host>|none",
+     "NTP server 1 to 4 (2 to 4 optional), then poll it", ntp_server},
+    {"tracking", VALUE_NONE, NULL, 0, 0, "", "The server followed and the clock", ntp_tracking},
     {"interval", VALUE_DURATION, NULL, NTP_INTERVAL_MIN, NTP_INTERVAL_MAX, "<time>",
      "Longest poll interval (s, or 17m, 1h)", ntp_interval},
     {"sync", VALUE_NONE, NULL, 0, 0, "", "Poll now", ntp_sync},
@@ -1377,7 +1443,7 @@ static const Noun nouns[] = {
     {"debug", "The PIC's debug output", bare_debug, ENTRIES(debug_entries)},
     {"pic", "The PIC: everything it reports", bare_pic, ENTRIES(pic_entries)},
 
-    {"ntp", "The ESP's NTP clock and server", bare_ntp, ENTRIES(ntp_entries)},
+    {"ntp", "The ESP's NTP clock and servers", bare_ntp, ENTRIES(ntp_entries)},
     {"wifi", "Wi-Fi (never the passphrase)", bare_wifi, ENTRIES(wifi_entries)},
     {"telnet", "The telnet console", bare_telnet, ENTRIES(telnet_entries)},
     {"update", "ESP firmware updates", bare_update, ENTRIES(update_entries)},

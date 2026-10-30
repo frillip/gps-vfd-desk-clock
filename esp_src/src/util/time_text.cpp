@@ -58,6 +58,31 @@ void time_print_duration(Stream *output, uint32_t seconds)
 }
 
 
+void time_format_age(char *text, uint32_t seconds)
+{
+    if (seconds == UINT32_MAX)
+    {
+        snprintf(text, TIME_AGE_TEXT, "never");
+    }
+    else if (seconds < 600U)
+    {
+        snprintf(text, TIME_AGE_TEXT, "%lus", (unsigned long)seconds);
+    }
+    else if (seconds < 36000UL)
+    {
+        snprintf(text, TIME_AGE_TEXT, "%lum", (unsigned long)(seconds / 60U));
+    }
+    else if (seconds < 864000UL)
+    {
+        snprintf(text, TIME_AGE_TEXT, "%luh", (unsigned long)(seconds / 3600U));
+    }
+    else
+    {
+        snprintf(text, TIME_AGE_TEXT, "%lud", (unsigned long)(seconds / 86400UL));
+    }
+}
+
+
 void time_format_ns(char *text, int64_t ns, bool plus)
 {
     static const char *const units[] = {"ns", "us", "ms", "s"};

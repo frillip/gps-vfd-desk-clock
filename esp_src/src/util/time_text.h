@@ -18,6 +18,9 @@ void time_print_local(Stream *output, uint32_t utc_seconds, int32_t offset_s);
 void time_print_offset(Stream *output, int32_t offset_s);
 // 3d 04:05:06
 void time_print_duration(Stream *output, uint32_t seconds);
+// An age as chronyc prints one: 12s, 5m, 3h, 2d; "never" for UINT32_MAX.
+#define TIME_AGE_TEXT 12
+void time_format_age(char *text, uint32_t seconds);
 // A time interval to four significant figures, in the largest unit that
 // leaves a whole part: 89 ns, 56.70 us, 5.185 ms, 11.43 ms, 1.250 s (whole
 // seconds past 999 s). plus: a + for positive values. time_format_ns

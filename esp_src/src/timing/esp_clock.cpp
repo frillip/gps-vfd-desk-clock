@@ -281,11 +281,26 @@ EspClockAction esp_clock_update(const EspClockSample *sample, int64_t now_us,
 }
 
 
+int64_t esp_clock_drift_ppm(void)
+{
+    const EspClockStatus *status = &clock_state.status;
+
+    return status->frequency_samples >= 2 ? 2 : status->frequency_samples == 1 ? 5 : 50;
+}
+
+
+void esp_clock_new_reference(void)
+{
+    clock_state.window_count = 0;
+    clock_state.window_next = 0;
+}
+
+
 uint32_t esp_clock_uncertainty_ns(int64_t local_us)
 {
     const EspClockStatus *status = &clock_state.status;
     int64_t age = local_us - status->last_update_local_us;
-    int64_t ppm = status->frequency_samples >= 2 ? 2 : status->frequency_samples == 1 ? 5 : 50;
+    int64_t ppm = esp_clock_drift_ppm();
     int64_t ns;
 
     if (!status->valid)

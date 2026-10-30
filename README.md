@@ -28,7 +28,7 @@ A dsPIC33EP256GP504 runs the show with 4x input capture modules, 3x output compa
 
 ## ESP32
 
-An ESP32 connects to the internet to obtain time from an NTP server. It is connected to the PIC via UART for data transfer, and also has access to the PPS signals from both the PIC OC module and GNSS module (if populated). It is also connected to the I2C bus (though I2C is not enabled in software), the GNSS UART via unpopulated solder jumpers, and some other IO. There is also a PPS signal from the ESP module to the PIC for sub-second accuracy. The ESP keeps its own NTP-disciplined clock and reports a bound on it, typically around ±10ms over Wi-Fi (it covers the whole round trip). A programming and communication interface is provided on UART0 by a CP2102N USB to UART bridge.
+An ESP32 connects to the internet to obtain time from up to four NTP servers. It is connected to the PIC via UART for data transfer, and also has access to the PPS signals from both the PIC OC module and GNSS module (if populated). It is also connected to the I2C bus (though I2C is not enabled in software), the GNSS UART via unpopulated solder jumpers, and some other IO. There is also a PPS signal from the ESP module to the PIC for sub-second accuracy. The ESP keeps its own NTP-disciplined clock and reports a bound on it, typically around ±10ms over Wi-Fi (it covers the whole round trip). A programming and communication interface is provided on UART0 by a CP2102N USB to UART bridge.
 
 ## GNSS
 
@@ -60,7 +60,7 @@ There is a single push button and a toggle switch. The toggle switch is used to 
 - The time, only while the clock has no source but the RTC (an offline clock has to be told once)
 - Reset WiFi settings, clock settings, or everything
 
-A value is only changed when a long press confirms it, holding the button longer steps through values instead. If left to time out, the setting is left as it was. Changed settings are saved when the menu closes. Everything in the menu can also be set from the console. The details are in the [dsPIC README](dspic_src/README.md#menu).
+A value is only changed when a long press confirms it; holding the button longer steps through values instead. If left to time out, the setting is left as it was. Changed settings are saved when the menu closes. Everything in the menu can also be set from the console. The details are in the [dsPIC README](dspic_src/README.md#menu).
 
 ## Buzzer
 
@@ -72,7 +72,7 @@ Power is provided through either the USB-C port connected to the ESP or the USB-
 
 # How?
 
-The firmware for both chips is in this repository: [dspic_src](dspic_src) for the PIC and [esp_src](esp_src) for the ESP. They talk over a serial protocol of their own, SML, described in [common/SML_PROTOCOL.md](common/SML_PROTOCOL.md). The PIC keeps the time and runs the display, the ESP fetches things from the network and makes suggestions. The [dsPIC README](dspic_src/README.md) and [ESP README](esp_src/README.md) describe each in detail, what follows is the outline.
+The firmware for both chips is in this repository: [dspic_src](dspic_src) for the PIC and [esp_src](esp_src) for the ESP. They talk over a serial protocol of their own, SML, described in [common/SML_PROTOCOL.md](common/SML_PROTOCOL.md). The PIC keeps the time and runs the display; the ESP fetches things from the network and makes suggestions. The [dsPIC README](dspic_src/README.md) and [ESP README](esp_src/README.md) describe each in detail; what follows is the outline.
 
 ## One master epoch
 
@@ -101,9 +101,9 @@ The same GM document also describes the one-shot OC interrupt hazard in issue 24
 
 ## Persuading the oscillator gently
 
-The PIC disciplines the epoch with a PI servo on top of a Kalman estimate of the oscillator's frequency, all in fixed point. The aim is to follow the oscillator's drift without treating every noisy measurement as a reason to move the clock. GNSS gets a tight profile that also learns the oscillator's frequency, NTP a gentle one that averages out the jitter on the ESP's PPS.
+The PIC disciplines the epoch with a PI servo on top of a Kalman estimate of the oscillator's frequency, all in fixed point. The aim is to follow the oscillator's drift without treating every noisy measurement as a reason to move the clock. GNSS gets a tight profile that also learns the oscillator's frequency; NTP a gentle one that averages out the jitter on the ESP's PPS.
 
-Acquisition, tracking and holdover are handled explicitly. Getting the clock aligned at startup, maintaining that alignment, and carrying on when the reference disappears need different behaviour. Holdover still depends on the local oscillator, no amount of software will turn it into a Rubidium standard. The learnt frequency is kept in flash, so a clock that starts without a reference keeps time at it rather than at nominal.
+Acquisition, tracking and holdover are handled explicitly. Getting the clock aligned at startup, maintaining that alignment, and carrying on when the reference disappears need different behaviour. Holdover still depends on the local oscillator; no amount of software will turn it into a Rubidium standard. The learnt frequency is kept in flash, so a clock that starts without a reference keeps time at it rather than at nominal.
 
 On a V2 board against the NEO-M9N, the PIC measures its epoch at 0 or +1 tick (25ns) from the GNSS PPS in 90–98% of seconds, and the receiver's own timing of the epoch edge has a standard deviation of 12–15ns.
 
@@ -142,7 +142,7 @@ The [ESP updater](esp_src/src/net/updater.cpp) can pull firmware over WiFi using
 
 `update check` checks what is available without installing anything. `update install` installs an applicable update but leaves the ESP running until `esp reset` completes the change. `update install force` bypasses the normal version comparison, permits downgrades and requests an immediate reboot after installation. Useful when testing, though somewhat more committed than merely checking.
 
-Automatic updates are disabled by default. When enabled, the ESP checks once a day at the start of a chosen local hour, defaulting to 04:00, and installs and reboots if an update is available. An ESP that starts within that hour skips that day's check, in case it has just installed the update. `update auto 4` turns it on for that hour, save changes with `save`.
+Automatic updates are disabled by default. When enabled, the ESP checks once a day at the start of a chosen local hour, defaulting to 04:00, and installs and reboots if an update is available. An ESP that starts within that hour skips that day's check, in case it has just installed the update. `update auto 4` turns it on for that hour; save changes with `save`.
 
 This updater only replaces the ESP firmware. A PIC bootloader and firmware update path are still on the pending features list.
 
@@ -179,7 +179,7 @@ Every command follows the same pattern:
 
 | Form | Does |
 | --- | --- |
-| `<command>` | Show it, `-v` at the end of any command that shows something shows everything, counters and internals included |
+| `<command>` | Show it; `-v` at the end of any command that shows something shows everything, counters and internals included |
 | `<command> <setting>` | Show that setting |
 | `<command> <setting> <value>` | Change it |
 | `<command> <action> [option]` | Do something |
@@ -193,7 +193,7 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 | Command | Description |
 | --- | --- |
 | Enter on an empty line | A brief status: time, sources, NTP, time zone and links (everything with `verbose on`) |
-| `status [-v]` | The same, `-v` prints everything |
+| `status [-v]` | The same; `-v` prints everything |
 | `help [command]` | The commands, or what one takes |
 | `save` | Save the settings of both chips |
 | `defaults` | The default settings on both chips, in force but not saved |
@@ -209,18 +209,18 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 | `tz offset auto\|±hh:mm` | Base offset from the time zone, or a manual one |
 | `tz dst auto\|on\|off` | DST from the time zone, or manually on or off |
 | `tz dst-offset ±hh:mm` | The manual DST amount |
-| `tz lookup [check]` | Look the time zone up now and use it, `check` only prints the answer |
+| `tz lookup [check]` | Look the time zone up now and use it; `check` only prints the answer |
 | `tz remote on\|off` | Periodic lookups from the tzinfo service |
 | `tz server <host>`, `tz path <path>` | The tzinfo service |
 | `tz interval <time>` | Time between lookups, 15m–7d, default 1d |
 | `tz precision none\|0..6` | Decimal places of position sent, see [Location privacy](#location-privacy) |
 | `display [-v]` | The display mode, 12/24 hours, brightness, light sensor, button and switch |
-| `display hhmm\|mmss\|ssmm\|yyyy\|mmdd\|delta\|uncertainty` | The display mode, the button steps through them for 20 seconds. `uncertainty` shows the time's ± bound (` 89n`, ` 1.5u`, `12.6m`) |
+| `display hhmm\|mmss\|ssmm\|yyyy\|mmdd\|delta\|uncertainty` | The display mode; the button steps through them for 20 seconds. `uncertainty` shows the time's ± bound (` 89n`, ` 1.5u`, `12.6m`) |
 | `display hours 12\|24` | 12- or 24-hour clock |
-| `display epoch <moment>` | The reference for the delta mode: a date and time without a zone is local time (`2027-01-01 00:00`), with `Z`, an offset or as Unix seconds, an exact instant |
+| `display epoch <moment>` | The reference for the delta mode: a date and time without a zone is local time (`2027-01-01 00:00`); with `Z`, an offset or as Unix seconds, an exact instant |
 | `brightness auto\|0..4000` | Brightness from the light sensor, or a manual level: below 200 the tubes are off, above 3800 fully on |
 | `beeps on\|off` | Quarter-hour chimes and button clicks |
-| `alarm off\|on\|hh:mm[:ss]\|<seconds>` | The alarm, in local time, a time, or seconds past midnight, sets it and turns it on. The switch arms it, and `alarm` shows whether it is ARMED, DISARMED or SOUNDING |
+| `alarm off\|on\|hh:mm[:ss]\|<seconds>` | The alarm, in local time; a time, or seconds past midnight, sets it and turns it on. The switch arms it, and `alarm` shows whether it is ARMED, DISARMED or SOUNDING |
 | `rtc` | The RTC: its time, its second and rate, its last setting and next check, and its bound and predicted offset from UTC |
 | `rtc set now\|<Unix seconds>` | Set the RTC: the ESP's NTP time, or Unix seconds (from 2000). Not a date, deliberately: a wrong time takes a conversion first |
 | `osc` | The oscillator: the baseline setting, the loop's measured frequency, and what is stored |
@@ -237,24 +237,25 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 
 | Command | Description |
 | --- | --- |
-| `ntp [-v]` | NTP status, server and last update, `-v` adds the interval, frequency, slew and counters |
-| `ntp server <host>` | Select an NTP server, a name or an IPv4 or IPv6 address, and poll it |
+| `ntp [-v]` | NTP status and the servers, as `chronyc sources`: which is followed (`*`), which agree (`+`), which are outvoted (`x`) or unusable (`?`), with stratum, poll interval, reach, offset and root distance; `-v` adds round trips, jitter, counters, frequency and slew |
+| `ntp tracking` | The server followed and the clock, as `chronyc tracking` |
+| `ntp server 1..4 <host>\|none` | Up to four NTP servers, names or IPv4 or IPv6 addresses; a new one is polled at once. 2 to 4 are optional; `ntp server` lists them |
 | `ntp interval <time>` | The longest poll interval, 128s–1d, default 1024s |
 | `ntp sync` | Poll now |
-| `wifi [-v]` | Connection status, SSID, IPv4 and IPv6 addresses and signal, `-v` adds every IPv6 address, gateway, DNS servers, which address family is preferred, channel and MAC |
+| `wifi [-v]` | Connection status, SSID, IPv4 and IPv6 addresses and signal; `-v` adds every IPv6 address, gateway, DNS servers, which address family is preferred, channel and MAC |
 | `wifi scan` | Scan nearby networks |
 | `wifi connect`, `wifi disconnect` | Reconnect, or disconnect (the reconnect task may reconnect later) |
 | `wifi setup` | Open the WiFiManager setup access point |
 | `wifi forget` | Forget the network and restart |
 | `telnet` | Telnet status |
-| `telnet on\|off` | Start Telnet at start-up (on also starts it now, off leaves a running listener alone) |
+| `telnet on\|off` | Start Telnet at start-up (on also starts it now; off leaves a running listener alone) |
 | `telnet start`, `telnet stop` | Start or stop the listener now, without changing the start-up setting |
 | `telnet port <n>` | The port, 1–65535 |
 | `update` | The running version, the update server and the automatic update setting |
 | `update check` | Is there an update? |
-| `update install [force]` | Install an update, finished by `esp reset`, `force` installs whatever is offered, any version, and restarts |
+| `update install [force]` | Install an update, finished by `esp reset`; `force` installs whatever is offered, any version, and restarts |
 | `update server <host>`, `update path <path>` | The update manifest |
-| `update config <name>` | An update profile such as `development`, `default` clears it |
+| `update config <name>` | An update profile such as `development`; `default` clears it |
 | `update auto off\|<hour>` | Daily automatic updates in that local hour, 0–23 |
 | `esp` | Version, uptime, reset cause and settings |
 | `esp save`, `esp defaults`, `esp reset` | Save, defaults or restart for the ESP alone |

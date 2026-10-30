@@ -2,7 +2,8 @@
  * The ESP's own settings, kept in NVS as one blob (CLOCK_PREFS/PREF_STRUCT).
  *
  * The layout is unchanged from V2, so settings saved by older firmware load
- * as they are. On load, each field is checked on its own: a field out of
+ * as they are. NTP servers 2 to 4 are kept apart, under a key of their own
+ * (NTP_SERVERS), so that it stays so; without it they are empty. On load, each field is checked on its own: a field out of
  * range is put back to its default and reported, and the rest are kept. A
  * blob of the wrong size or with the wrong header resets everything.
  *
@@ -24,7 +25,9 @@
 #define TELNET_PORT_DEFAULT    23
 
 // NTP: interval is the longest poll interval; the ESP polls more often
-// while its corrections are large (ntp.h).
+// while its corrections are large (ntp.h). Server 1 is always set; 2 to 4
+// are optional (empty).
+#define NTP_SERVERS          4
 #define NTP_SERVER_DEFAULT   "rubidium.darksky.io"
 #define NTP_INTERVAL_DEFAULT 1024
 #define NTP_INTERVAL_MIN     128
@@ -102,7 +105,15 @@ typedef union
 
 static_assert(sizeof(UserPrefs) == 652, "the stored layout must not change");
 
+// NTP servers 2 to 4.
+typedef struct __attribute__((packed))
+{
+    uint32_t header;
+    char server[NTP_SERVERS - 1][USER_PREFS_STORED_STRING_SIZE];
+} UserPrefsNtp;
+
 extern UserPrefs user_prefs;
+extern UserPrefsNtp user_prefs_ntp;
 
 // Loads, checks and repairs; saves if anything was repaired.
 void user_prefs_init(Stream *output);
@@ -115,5 +126,8 @@ void user_prefs_print(Stream *output);
 
 // Copies a string setting, NUL-terminated and truncated to fit.
 void user_prefs_set_string(char *field, const char *value);
+// NTP server index (0 to NTP_SERVERS - 1): server 1 is user_prefs' own.
+// Empty if not set.
+char *user_prefs_ntp_server(int index);
 
 #endif // USER_PREFS_H

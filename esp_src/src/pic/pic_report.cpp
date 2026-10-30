@@ -431,31 +431,11 @@ static void print_phase(Stream *output, bool valid, int32_t ns)
     output->printf(" %11s", text);
 }
 
-// An age as chronyc prints one: 12s, 5m, 3h, 2d; "never" for UINT32_MAX.
 static void print_age(Stream *output, uint32_t seconds)
 {
-    char text[12];
+    char text[TIME_AGE_TEXT];
 
-    if (seconds == UINT32_MAX)
-    {
-        snprintf(text, sizeof(text), "never");
-    }
-    else if (seconds < 600U)
-    {
-        snprintf(text, sizeof(text), "%lus", (unsigned long)seconds);
-    }
-    else if (seconds < 36000UL)
-    {
-        snprintf(text, sizeof(text), "%lum", (unsigned long)(seconds / 60U));
-    }
-    else if (seconds < 864000UL)
-    {
-        snprintf(text, sizeof(text), "%luh", (unsigned long)(seconds / 3600U));
-    }
-    else
-    {
-        snprintf(text, sizeof(text), "%lud", (unsigned long)(seconds / 86400UL));
-    }
+    time_format_age(text, seconds);
     output->printf("%9s", text);
 }
 
