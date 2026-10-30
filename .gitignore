@@ -12,3 +12,5 @@
 /tzinfo_service/*.mmdb
 /tzinfo_service/*.log
 /tzinfo_service/*.tar.gz
+/tzinfo_service/.venv/
+__pycache__/

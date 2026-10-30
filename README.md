@@ -124,7 +124,7 @@ Fixed offsets and a simple automatic-DST setting are manageable until the clock 
 The split is that the ESP handles timezone lookup and fetching the rules, while the dsPIC applies the supplied offsets and transitions against its UTC master epoch, each at its UTC second. Local display time is derived from UTC, changing the timezone should not move the underlying clock. This also avoids teaching the dsPIC the entire world's timezone legislation, which seems an unreasonable thing to ask of a desk clock.
 
 # ESP32 network features
-The ESP does more than fetch the time. It also provides a network console, pulls its own firmware updates, and can ask a remote timezone service (also in the repository) for the current timezone offset and upcoming DST changes.
+The ESP does more than fetch the time. It also provides a network console, pulls its own firmware updates, and can ask a remote timezone service ([tzinfo_service](tzinfo_service), also in the repository) for the current timezone offset and upcoming DST changes.
 
 The ESP is dual stack: IPv4 by DHCP, IPv6 by SLAAC. NTP, timezone lookups and update checks try the preferred address family first and fall back to the other, so a network where one of them does not route still works. The details are in the [ESP README](esp_src/README.md#network).
 
@@ -148,9 +148,9 @@ This updater only replaces the ESP firmware. A PIC bootloader and firmware updat
 
 ## Remote timezone information
 
-The [tzinfo client](esp_src/src/tz/tzinfo.cpp) asks a separate Python service for the timezone, base UTC offset, DST state and offset, and up to eight upcoming transitions as UTC epochs. The ESP passes this schedule to the dsPIC over UART, which keeps it in flash and changes the local time at each transition by itself, whether or not the ESP is still around. NTP still supplies UTC time, whilst tzinfo supplies the rules for displaying local time. The clock's automatic timezone and DST settings decide whether the schedule's offsets are used, or the manual ones.
+The [tzinfo client](esp_src/src/tz/tzinfo.cpp) asks a separate Python service, the [tzinfo service](tzinfo_service) behind `rubidium.darksky.io`, for the timezone, base UTC offset, DST state and offset, and up to eight upcoming transitions as UTC epochs. The ESP passes this schedule to the dsPIC over UART, which keeps it in flash and changes the local time at each transition by itself, whether or not the ESP is still around. NTP still supplies UTC time, whilst tzinfo supplies the rules for displaying local time. The clock's automatic timezone and DST settings decide whether the schedule's offsets are used, or the manual ones.
 
-The client is enabled by default, with a daily refresh interval. The hostname, path and interval are configurable, so the service can also be self-hosted. `tz lookup check` fetches and prints the response without using it. `tz lookup` fetches it and, with lookups on, sends the schedule to the PIC.
+The client is enabled by default, with a daily refresh interval. The hostname, path and interval are configurable, so the service can also be self-hosted: [tzinfo_service/INSTALL.md](tzinfo_service/INSTALL.md) says how, and [API.md](tzinfo_service/API.md) describes the protocol. `tz lookup check` fetches and prints the response without using it. `tz lookup` fetches it and, with lookups on, sends the schedule to the PIC.
 
 ## Location privacy
 

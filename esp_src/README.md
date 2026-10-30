@@ -147,7 +147,7 @@ The PIC's epoch output on GPIO27 is timestamped in an interrupt and paired with 
 
 ## tzinfo lookups
 
-With tzinfo enabled, the ESP asks the timezone service (protocol v1) where it is and how local time works there:
+With tzinfo enabled, the ESP asks the timezone service ([protocol v1](../tzinfo_service/API.md), served by [tzinfo_service](../tzinfo_service)) where it is and how local time works there:
 
 ```
 GET https://<tzinfo.server><tzinfo.path>[?lat=...&lon=...]
