@@ -7,7 +7,6 @@
 /dspic_bootloader/Makefile
 /dspic_bootloader/mcc-manifest*
 /dspic_bootloader/defmplabxtrace*
-/esp_src/build/
 /tzinfo_service/GeoLite2*
 /tzinfo_service/*.mmdb
 /tzinfo_service/*.log
