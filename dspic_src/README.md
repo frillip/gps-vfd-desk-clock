@@ -42,7 +42,10 @@ Most of the firmware has host tests, built with gcc against stand-ins for the ha
 - the UART drivers, the UBX parser and the GNSS service against a simulated receiver;
 - the tube wire format, bit for bit against the V2 encoder;
 - the SML codec, including golden frames and a 20000-frame fuzz test;
-- the ESP link and payloads, the time zone schedule, the calendar (every day from 1970 to 2106) and the report formatter.
+- the ESP link and payloads, the time zone schedule, the calendar (every day from 1970 to 2106) and the report formatter;
+- the I2C master, the PCF8563 driver and the RTC source: its second searched for, its rate, the anchor and bound, and setting it;
+- the settings and the flash journal, through simulated power cuts;
+- the light sensor and brightness, the button and switch, the menu (and setting the time from it), the alarm, beeps and buzzer.
 
 ```
 cd tests/host && make
@@ -200,7 +203,7 @@ Without a schedule, both fall back to the manual values. Past the end of a sched
 
 # ESP link
 
-The PIC starts in text mode, sending its console output raw, which is what the V2 ESP firmware expects. On the first valid SML frame from the ESP it switches to SML mode for good. From then on the console text travels in STAT-DEBUG frames, and each epoch the PIC sends TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, TIME-RTC and STAT-UI, about 330 bytes a second.
+The PIC starts in text mode, sending its console output raw, which is what the V2 ESP firmware expects. On the first valid SML frame from the ESP it switches to SML mode for good. From then on the console text travels in STAT-DEBUG frames, and each epoch the PIC sends TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, TIME-RTC, STAT-UI and STAT-SYS, about 350 bytes a second.
 
 STAT-SETTINGS, the settings with their revision and whether they are saved, goes in the first epoch in SML mode and whenever either changes. STAT-SOURCES, the synchroniser's candidates ranked, follows whenever the choice or a verdict changes, every 10 seconds, and on request; the ESP shows it with `sources`. STAT-SYS carries the firmware version (`platform/version.h`), the uptime, why the PIC last reset (RCON, captured and cleared first thing in `system_init()`) and the longest main-loop pass. It goes every epoch, last, so the uptime the ESP shows keeps up and it hears about a restart at once. The same version and reset cause are printed at start-up and by `pic`. TIME-AUTH goes first, within a few milliseconds of the edge it labels. TIME-MEAS carries the raw measurements of each epoch, which the ESP needs for statistics and Allan deviation.
 

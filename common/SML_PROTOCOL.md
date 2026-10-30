@@ -585,6 +585,8 @@ STAT-NET carries the network and service status for the PIC's menu and status di
 | 12 | `UPDATE_IN_PROGRESS` | The PIC can show it, and expect the ESP to restart |
 | 13 | `SD_PRESENT` | V3 |
 
+The ESP's IPv6 addresses are not carried: `ipv4` and `IP_VALID` are the IPv4 address only, which is all the PIC uses so far.
+
 STAT-NET is sent on change and every 10 seconds. The PIC treats the network state as unknown after 30 seconds without one (`ESP_LINK_NET_TIMEOUT_MS`).
 
 ## STAT-SOURCES (0x50)
@@ -762,7 +764,7 @@ Each message has an entry in a table with its class, ID, fixed length (0 for STA
 | `sync/source_rtc.c`, `.h` | TIME-RTC's values: the RTC's time, when it was last read and set, its anchor and bound |
 | `console/console.c` | `console_set_sink()`: routes printf into STAT-DEBUG in SML mode |
 
-`esp_link_service()` runs every 10ms. `esp_link_epoch()` runs right after `sync_update()`, before the display is prepared and before the console reports, so TIME-AUTH leaves first. The seven per-epoch messages come to 326 bytes a second, a few percent of the link even at 115200 baud. The console report adds roughly 0.6–1KB a second.
+`esp_link_service()` runs every 10ms. `esp_link_epoch()` runs right after `sync_update()`, before the display is prepared and before the console reports, so TIME-AUTH leaves first. The eight per-epoch messages (TIME-AUTH, TIME-PIC, TIME-CTRL, TIME-MEAS, TIME-GNSS, TIME-RTC, STAT-UI and STAT-SYS) come to 350 bytes a second, a few percent of the link even at 115200 baud. The console report adds roughly 0.6–1KB a second.
 
 ## ESP
 
@@ -1068,6 +1070,8 @@ NTP is a sync source on the PIC, with its loop profile, jitter allowance and hol
 The bootloader class (0xF0) is reserved but not defined, and will be specified separately after the V2+ work.
 
 The sub-second timezone offset is rounded to the second. Applying it as a display phase shift, by delaying the latch for that zone, is possible but not planned. Mecca time enthusiasts will have to make do with the nearest second.
+
+STAT-NET has no field for the ESP's IPv6 address. One is to be added when the PIC has a use for it.
 
 The sign of qErr is to be confirmed against captures on hardware before qErr is used in the phase measurement or in the ESP's statistics.
 
