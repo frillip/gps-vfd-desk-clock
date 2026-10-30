@@ -25,11 +25,15 @@
 #define TELNET_PORT_DEFAULT    23
 
 // NTP: interval is the longest poll interval; the ESP polls more often
-// while its corrections are large (ntp.h). Server 1 is always set; 2 to 4
+// while its corrections are large (ntp.h). 512 s: the frequency window's
+// eight samples then span about an hour, long enough to measure the
+// crystal to a fraction of a ppm through a few ms of jitter, short enough
+// to follow its wander with temperature. Four servers at 512 s are a
+// 48-byte request every 32 s on average. Server 1 is always set; 2 to 4
 // are optional (empty).
 #define NTP_SERVERS          4
 #define NTP_SERVER_DEFAULT   "rubidium.darksky.io"
-#define NTP_INTERVAL_DEFAULT 1024
+#define NTP_INTERVAL_DEFAULT 512
 #define NTP_INTERVAL_MIN     128
 #define NTP_INTERVAL_MAX     86400
 
