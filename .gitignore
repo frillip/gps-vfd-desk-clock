@@ -1,12 +1,3 @@
-/dspic_src/nbproject/
-/dspic_src/dist/
-/dspic_src/build/
-/dspic_src/debug/
-/dspic_src/mcc_generated_files/docs/
-/dspic_src/.generated_files/
-/dspic_src/Makefile
-/dspic_src/mcc-manifest*
-/dspic_src/defmplabxtrace*
 /dspic_bootloader/nbproject/
 /dspic_bootloader/dist/
 /dspic_bootloader/build/
@@ -16,8 +7,9 @@
 /dspic_bootloader/Makefile
 /dspic_bootloader/mcc-manifest*
 /dspic_bootloader/defmplabxtrace*
-/esp_src/build/
 /tzinfo_service/GeoLite2*
 /tzinfo_service/*.mmdb
 /tzinfo_service/*.log
 /tzinfo_service/*.tar.gz
+/tzinfo_service/.venv/
+__pycache__/

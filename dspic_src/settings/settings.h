@@ -1,0 +1,164 @@
+/*
+ * The PIC's settings, and keeping them over a reset.
+ *
+ * The values are SML's settings body (SML_SETTINGS_BODY, see STAT-SETTINGS
+ * in common/SML_PROTOCOL.md), plus the debug mask: the manual time zone,
+ * TZ and DST auto, the brightness, the display, the stored oscillator
+ * frequency, and the alarm, delta and format settings the V2+ UI does not
+ * use yet. This module holds them and applies each to the module it belongs
+ * to (ui/timezone.h, ui/brightness.h, ui/display.h, ui/debug.h); the ESP's
+ * commands change them here (esp/esp_link.c), never in those modules.
+ *
+ *   revision  counts changes to the body (not to the debug mask), kept with
+ *             it, so the ESP can tell whether its copy is current
+ *             (CMD-SETTINGS expected_revision).
+ *   dirty     the running values differ from those stored (from the
+ *             factory defaults, while nothing is stored).
+ *   defaults  the body is the factory defaults.
+ *
+ * Saving is asked for (settings_save: SAVE, CMD-SETTINGS with PERSIST),
+ * never automatic: as V2, a change runs at once and is kept only once
+ * saved. DEFAULTS is a change like any other. The time zone schedule from the ESP is not a
+ * setting: it is stored by itself, SETTINGS_TIMEZONE_DELAY_EPOCHS after its
+ * contents last changed (so the CACHE, then GEOIP or GNSS schedules an ESP
+ * sends as it starts make one write, not three), and is back in force at
+ * start-up before the ESP has said anything.
+ *
+ * The oscillator's frequency, as the control loop learnt it from GNSS
+ * (the Kalman estimate), is kept too, so the next start runs at it from
+ * the first second rather than at nominal: free running before any source
+ * is found, and an NTP-only start steps with it. It is written once the
+ * loop has tracked a reference that teaches it for
+ * SETTINGS_OSCILLATOR_TRACK_EPOCHS, and again when it has moved by
+ * SETTINGS_OSCILLATOR_CHANGE_Q16, at most every SETTINGS_OSCILLATOR_EPOCHS;
+ * and by a save (settings_save), if it differs at all, once the loop has
+ * tracked that long.
+ * This is not calibration_fosc_hz: that is a setting, changed only by
+ * command.
+ *
+ * And the RTC's: where its second was last measured against UTC, its rate
+ * and when it was last set (sync/source_rtc.h), from which its time and
+ * bound are worked out at the next start. Written at the next quiet moment
+ * after the RTC has been written (the stored one would no longer describe
+ * it), else after each new measurement, at most every SETTINGS_RTC_EPOCHS:
+ * the bound at the next start grows from the stored measurement, so its age
+ * when the power goes counts as much as the time off (10 ppm of an hour is
+ * 36 ms, of a day 864 ms). Hourly costs nothing: the flash lasts a century.
+ *
+ * All four are records in the store (settings/store.h). Writing to flash stops
+ * the CPU (drivers/flash.h), so settings_service() writes only when told
+ * the moment is quiet: once an epoch, late in the second, away from the
+ * epoch's work, the GNSS burst and the ESP's per-second traffic, with the
+ * I2C bus idle and the RTC source between searches (main.c).
+ */
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "../../common/sml_proto.h"
+
+// The store's record types.
+#define SETTINGS_RECORD_SETTINGS   1U
+#define SETTINGS_RECORD_TIMEZONE   2U
+#define SETTINGS_RECORD_OSCILLATOR 3U
+#define SETTINGS_RECORD_RTC        4U
+
+// The settings record: version, STAT-SETTINGS as on the wire (its flags
+// zero), the debug mask, reserved.
+#define SETTINGS_RECORD_VERSION 1U
+#define SETTINGS_RECORD_BYTES   (2U + SML_STAT_SETTINGS_BYTES + 4U)
+
+// When flash may be written: the slot it is tried at, and the latest slot
+// it may still start in, leaving an erase (~25 ms) well clear of the epoch.
+#define SETTINGS_STORE_SLOT            700U
+#define SETTINGS_STORE_LAST_SLOT       900U
+#define SETTINGS_TIMEZONE_DELAY_EPOCHS 60U
+
+// The stored oscillator frequency may differ from FCY by this much.
+#define SETTINGS_FOSC_LIMIT_PPM 1000UL
+
+// The oscillator record: version, flags (0), the Kalman estimate (period -
+// nominal, Q16 ticks), epochs tracked.
+#define SETTINGS_OSCILLATOR_VERSION      1U
+#define SETTINGS_OSCILLATOR_BYTES        12U
+#define SETTINGS_OSCILLATOR_TRACK_EPOCHS 600UL                 // 10 min: the filter has settled
+#define SETTINGS_OSCILLATOR_EPOCHS       3600UL                // at most hourly
+#define SETTINGS_OSCILLATOR_CHANGE_Q16   ((int32_t)2 << 16)    // 2 ticks a second: 50 ppb
+#define SETTINGS_OSCILLATOR_LIMIT_Q16    ((int32_t)4000 << 16) // 100 ppm: anything more is not ours
+
+// The RTC record: version, flags (SETTINGS_RTC_*), the anchor's second,
+// its offset (whole seconds, then ns 0 to 999999999), its bound (ns), the
+// rate (Q8 ticks), the last setting's second.
+#define SETTINGS_RTC_VERSION       1U
+#define SETTINGS_RTC_BYTES         28U
+#define SETTINGS_RTC_ANCHOR        0x0001U
+#define SETTINGS_RTC_ALIGNED       0x0002U
+#define SETTINGS_RTC_RATE          0x0004U
+#define SETTINGS_RTC_WRITE         0x0008U
+#define SETTINGS_RTC_WRITE_ALIGNED 0x0010U
+#define SETTINGS_RTC_EPOCHS        3600UL // hourly, unless the RTC was written
+#define SETTINGS_RTC_RETRY_EPOCHS  60UL   // after a failure
+
+typedef struct
+{
+    bool loaded;              // settings came from the store at start-up
+    bool load_rejected;       // a settings record was found but not used
+    bool timezone_restored;   // a schedule came from the store at start-up
+    bool oscillator_restored; // ... and the oscillator's frequency
+    bool rtc_restored;        // ... and the RTC's measurement
+    uint32_t saves;           // settings records written
+    uint32_t timezone_saves;
+    uint32_t oscillator_saves;
+    uint32_t rtc_saves;
+    uint32_t save_failures;
+} SettingsStats;
+
+// Reads the store and applies what it holds, or the defaults. Call after
+// the modules it applies to are initialised.
+void settings_init(void);
+
+// The running values.
+void settings_body(SML_SETTINGS_BODY *body);
+uint16_t settings_debug_mask(void);
+uint32_t settings_revision(void);
+// SML_SETTINGS_VALID, DIRTY and DEFAULTS.
+uint16_t settings_flags(void);
+void settings_stat(SML_STAT_SETTINGS_PAYLOAD *payload);
+void settings_defaults(SML_SETTINGS_BODY *body);
+
+// SML_ERROR_NONE if every field is acceptable, else the error for the first
+// that is not (ARGUMENT or SCHEMA).
+uint8_t settings_check(const SML_SETTINGS_BODY *body);
+// Checks, then applies every field together; the revision goes up if
+// anything changed. Nothing changes on an error.
+uint8_t settings_write(const SML_SETTINGS_BODY *body);
+void settings_set_debug(uint16_t mask);
+// The factory defaults, applied (the debug mask too); not saved.
+void settings_restore_defaults(void);
+
+// Asks for the settings to be stored at the next quiet moment.
+void settings_save(void);
+bool settings_save_pending(void);
+// The outcome of the latest save: SML_ERROR_NONE, STORAGE or VERIFY.
+uint8_t settings_save_error(void);
+
+// Once an epoch. quiet: flash may be written now (see above).
+void settings_service(uint32_t epoch, bool quiet);
+
+const SettingsStats *settings_stats(void);
+// At start-up: where the settings and the schedule came from. One line,
+// with detail or when the stored record was unusable.
+void settings_print_start(bool detail);
+// The running settings, by what each does, and whether they are saved.
+// verbose: the revision too.
+void settings_print(bool verbose);
+// What is stored: the settings, the time zone, the oscillator and the RTC,
+// and how full the store is. verbose: the store's internals and the flash timings.
+void settings_print_stored(bool verbose);
+// The oscillator: the control loop's measurement, and what is stored for
+// the next start. verbose: the baseline setting, which nothing uses yet.
+void settings_print_oscillator(bool verbose);
+
+#endif // SETTINGS_H

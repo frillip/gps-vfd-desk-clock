@@ -1,0 +1,25 @@
+[Unit]
+Description=Update MaxMind GeoLite2 City database for Smol Clock tzinfo
+Documentation=https://dev.maxmind.com/geoip/updating-databases/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+StateDirectory=smol-clock-tzinfo
+StateDirectoryMode=0750
+ExecStart=/usr/bin/geoipupdate -f /etc/smol-clock-tzinfo/GeoIP.conf -d /var/lib/smol-clock-tzinfo
+
+# The updater requires network access and write access only to its managed state.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true

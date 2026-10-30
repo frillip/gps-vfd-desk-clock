@@ -1,282 +1,135 @@
-#include <ezTime.h>
-#include <WiFi.h>
-#include <WiFiManager.h>
-#include <esp_task_wdt.h>
-#define TWDT_TIMEOUT_MS 15000
+/*
+ * Smol Clock V2 ESP32: network co-processor for the dsPIC timekeeper.
+ *
+ *   src/pic/       SML link to the PIC (pic_link), its state (pic_report);
+ *                  sml/ links to the shared SML codec in common/
+ *   src/timing/    NTP client and clock model, ESP PPS out, edge captures
+ *   src/tz/        tzinfo v1 -> SML-TZ-STATE, TIME-LEAP
+ *   src/net/       Wi-Fi, telnet, OTA updates, STAT-NET
+ *   src/console/   console lines and commands (serial and telnet)
+ *   src/settings/  NVS settings
+ *   src/common/    links to the repository's common/
+ *
+ * Everything runs from loop(), except the NTP exchanges (their own task)
+ * and the edges (interrupts). Blocking work (HTTP, OTA) holds up loop()
+ * only: the ESP PPS runs on in its interrupt, and the PIC link's 4 KB
+ * receive buffer holds several seconds of PIC traffic.
+ */
+#include <Arduino.h>
 
-#include "enums.h"
-#include "serial_proto.h"
-#include "esp_pps.h"
-#include "serial_console.h"
-#include "user_uart.h"
-#include "telnet.h"
-extern ESPTelnetStream telnet;
-#include "pic.h"
-#include "pic_bootloader.h"
-extern time_t pic;
-#include "gnss_pps_esp.h"
+#include "src/board.h"
+#include "src/console/commands.h"
+#include "src/console/console.h"
+#include "src/net/net_status.h"
+#include "src/net/telnet.h"
+#include "src/net/updater.h"
+#include "src/net/wifi_link.h"
+#include "src/pic/pic_link.h"
+#include "src/settings/user_prefs.h"
+#include "src/timing/ntp.h"
+#include "src/timing/pps.h"
+#include "src/tz/leap.h"
+#include "src/tz/tzinfo.h"
+#include "src/version.h"
 
-#include "scheduler.h"
-extern int16_t t1ms0;
-extern int16_t t10ms0;
-extern int16_t t100ms0;
-extern int16_t t100ms1;
-extern int16_t t100ms2;
-extern int16_t t100ms3;
-extern int16_t t1s0;
-extern int16_t t1s1;
+#define LED_PULSE_MS 100U
+// While the NTP servers disagree, each pulse is two short flashes.
+#define LED_FLASH_MS 40U
+#define LED_GAP_MS   80U
+#define MINUTE_MS    60000U
 
-#include "updater.h"
-extern uint16_t updater_auto_check_interval;
-
-#include "user_prefs.h"
-extern USER_PREFS_DATA_STRUCT user_prefs;
-
-WiFiManager wm;
-
-#include "ntp_settings.h"
-//String ntp_server = CLOCK_NTP_SERVER_DEFAULT;
-//uint32_t ntp_interval = CLOCK_NTP_INTERVAL_DEFAULT;
-uint16_t ntp_interval_count = 0;
-uint32_t ntp_resync_count = 0;
-time_t esp = 0;
-
-int32_t tz_offset = 0;
-bool dst_active = 0;
-int32_t dst_offset = 0;
-
-uint32_t esp_micros = 0;
-#define STATUS_LED_PIN 23
-
-String wifi_hostname;
-String wifi_id;
-
-void startNTPqueries(void)
-{
-  updateNTP();
-  ntp_resync_count++;
-  ntp_interval_count = 0;
-}
-
-uint32_t wifi_disconnect_millis = 0;
-uint32_t wifi_disconnect_last_millis = 0;
-uint32_t wifi_disconnect_count = 0;
-#define WIFI_RECONNECT_INTERVAL_MILLIS 30000
-#define WIFI_RECONNECT_INTERVAL_WARN   120
-
-void reconnect_wifi(void)
-{
-  if(wm.getWiFiIsSaved() && !wm.getConfigPortalActive())
-  {
-    if(wifi_disconnect_count == 0)
-    {
-      Serial.println("Reconnecting to WiFi...");
-    }
-    WiFi.disconnect();
-    WiFi.reconnect();
-  }
-}
+static ConsoleLine serial_line;
+static uint32_t led_on_ms;
+static bool led_double;
+static uint32_t last_minute_ms;
 
 void setup()
 {
-  user_uart_init();
+    Serial.begin(BOARD_CONSOLE_BAUD);
+    Serial.printf("\nSmol Clock ESP %s (reset: %s)\n", ESP_VERSION, commands_reset_reason());
+    pinMode(BOARD_STATUS_LED_PIN, OUTPUT);
+    digitalWrite(BOARD_STATUS_LED_PIN, LOW);
 
-  /*
-  // TO DO:
-  // Fix TWDT in esp32 v3.0.x
-  //
-  ESP_ERROR_CHECK(esp_task_wdt_deinit());
-  esp_task_wdt_config_t twdt_config = {
-        .timeout_ms = TWDT_TIMEOUT_MS,
-        .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
-        .trigger_panic = true,
-    };
-  ESP_ERROR_CHECK(esp_task_wdt_init(&twdt_config));
-  printf("TWDT initialized\n");
-  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
-  */
-  
-  uint32_t id = 0;
-  for(int i=0; i<17; i=i+8) {
-    id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
-  }
-  id &= 0xFFFFFF;
-  char id_buf[7] = {0};
-  sprintf(id_buf,"%06X", id);
-  wifi_id = id_buf;
-  wifi_hostname  = String("SMOL_CLOCK_" + wifi_id);
-  WiFi.setHostname(wifi_hostname.c_str());
-  Serial.println(wifi_hostname);
-
-  pic_uart_init();
-  gnss_uart_init();
-
-  user_prefs_init();
-
-  setServer(String(user_prefs.fields.ntp.server));
-  setInterval(user_prefs.fields.ntp.interval);
-
-  WiFi.mode(WIFI_STA);
-  wm.setConfigPortalBlocking(false);
-  wm.setConfigPortalTimeout(900);
-  wm.setConnectTimeout(5);
-  if(wm.autoConnect(wifi_hostname.c_str()))
-  {
-    Serial.println(WiFi.localIP());
-    startNTPqueries();
-  }
-  else
-  {
-    Serial.println("Configportal running");
-    Serial.println(WiFi.localIP());
-    wm.setSaveConfigCallback(startNTPqueries);
-    esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
-  }
-
-  telnet_init();
-
-  pinMode(STATUS_LED_PIN, OUTPUT);
-  digitalWrite(STATUS_LED_PIN, 0);
-
-  pic_pps_init();
-  gnss_pps_init();
-  esp_pps_init();
-  scheduler_init();
+    user_prefs_init(&Serial);
+    pps_init();
+    pic_link_init();
+    pic_link_set_command_handler(commands_from_pic);
+    wifi_link_init(&Serial);
+    telnet_init(&Serial);
+    ntp_init();
+    tzinfo_init(&Serial);
+    Serial.print("> ");
 }
+
+
+// Each ESP PPS edge: TIME-NTP to the PIC, and the status LED while synced:
+// one flash, or two while the NTP servers disagree.
+static void service_ntp_report(void)
+{
+    SML_TIME_NTP_PAYLOAD report;
+
+    if (!ntp_take_report(&report))
+    {
+        return;
+    }
+    pic_link_send(SML_CLASS_TIME, SML_TIME_NTP, &report);
+    if (ntp_is_synced() && wifi_link_is_up())
+    {
+        digitalWrite(BOARD_STATUS_LED_PIN, HIGH);
+        led_on_ms = millis();
+        led_double = ntp_servers_disagree();
+    }
+}
+
 
 void loop()
 {
-  if(secondChanged())
-  {
-    //esp_task_wdt_reset();
-    esp_micros = micros();
-    esp = UTC.now();
-    if(timeStatus() != timeNotSet)
-    {
-      if(!esp_pps_check_sync())
-      {
-        esp_pps_reset_sync();
-      }
-      if(!scheduler_is_sync())
-      {
-        scheduler_reset_sync();
-      }
-    }
-    if(timeStatus() == timeSync && WiFi.status() == WL_CONNECTED)
-    {
-      digitalWrite(STATUS_LED_PIN, 1);
-    }
-    pic_uart_tx_timedata();
+    bool network_up;
 
-    //serial_console_second_changed(millis());
-  }
+    pic_link_service();
+    wifi_link_service();
+    network_up = wifi_link_is_up();
+    ntp_service(network_up);
+    service_ntp_report();
+    tzinfo_service(network_up);
+    leap_service();
+    net_status_service();
 
-  if(user_uart_char_available()) user_uart_task();
-  if(pic_uart_char_available()) pic_uart_rx();
+    if (console_read_line(&serial_line, &Serial, true))
+    {
+        commands_execute(&Serial, serial_line.text);
+        console_line_clear(&serial_line);
+        Serial.print("> ");
+    }
+    telnet_service();
 
-  //if(updater_push_running()) ArduinoOTA.handle();
-  wm.process();
-  events();
-  telnet.loop();
-  if(telnet_char_available()) telnet_console_task();
+    if (led_on_ms != 0)
+    {
+        uint32_t lit_ms = millis() - led_on_ms;
 
-  if(WiFi.status() != WL_CONNECTED)
-  {
-    wifi_disconnect_millis = millis();
-    if(wifi_disconnect_millis - wifi_disconnect_last_millis > WIFI_RECONNECT_INTERVAL_MILLIS)
-    {
-      wifi_disconnect_last_millis = wifi_disconnect_millis;
-      reconnect_wifi();
-    }
-  }
+        if (!led_double && lit_ms >= LED_PULSE_MS)
+        {
+            digitalWrite(BOARD_STATUS_LED_PIN, LOW);
+            led_on_ms = 0;
+        }
+        else if (led_double)
+        {
+            bool on = lit_ms < LED_FLASH_MS || (lit_ms >= LED_FLASH_MS + LED_GAP_MS &&
+                                                lit_ms < 2 * LED_FLASH_MS + LED_GAP_MS);
 
-  if(t1ms0)
-  {
-    t1ms0=0;
-    if(esp_pps_out_state())
-    {
-      if(micros() - esp_micros > 1000) 
-      {
-        esp_pps_out_clear();
-      }
+            digitalWrite(BOARD_STATUS_LED_PIN, on ? HIGH : LOW);
+            if (lit_ms >= 2 * LED_FLASH_MS + LED_GAP_MS)
+            {
+                led_on_ms = 0;
+            }
+        }
     }
-    if(digitalRead(STATUS_LED_PIN))
+    if (network_up && millis() - last_minute_ms >= MINUTE_MS)
     {
-      if(micros() - esp_micros > 100000)
-      {
-        digitalWrite(STATUS_LED_PIN, 0);
-      }
-    }
-    //if(serial_console_print_local_available())
-    //{
-    //  serial_console_print_local();
-    //}
-  }
-  if(t10ms0)
-  {
-    t10ms0=0;
-    if(gnss_is_detected())
-    {
-      gnss_timeout_incr();
-    }
-    if(pic_is_detected())
-    {
-      pic_timeout_incr();
-      pic_data_task();
-    }
-  }
-  if(t100ms0>=2)
-  {
-    t100ms0=0;
-    if(!pic_output_buffer_empty() && pic_uart_output_finished())
-    {
-      pic_flush_output_buffer();
-    }
-  }
-  if(t100ms1>=1)
-  {
-    t100ms1=-9;
-    //pic_uart_tx_displaydata();
-  }
-  if(t100ms2>=1)
-  {
-    t100ms2=-9;
-    pic_uart_tx_netdata();
-  }
-  if(t100ms3>=87)
-  {
-    t100ms3=-13;
-    pic_uart_tx_tzinfodata();
-  }
-  if(t1s0)
-  {
-    t1s0=0;
+        uint32_t local;
+        bool have_local = tzinfo_local_now(&local);
 
-    if(user_prefs.fields.rtzinfo.flags.enabled)
-    {
-      extern uint32_t remote_tzinfo_interval_count;
-      remote_tzinfo_interval_count++;
-      if(remote_tzinfo_interval_count > user_prefs.fields.rtzinfo.interval)
-      {
-        remote_tzinfo_check(&Serial);
-        remote_tzinfo_interval_count = 0;
-      }
+        last_minute_ms = millis();
+        updater_service(have_local, local);
     }
-
-    ntp_interval_count++;
-    if(ntp_interval_count > user_prefs.fields.ntp.interval)
-    {
-      updateNTP();
-      Serial.printf("NTP RESYNC\n");
-      ntp_resync_count++;
-      ntp_interval_count = 0;
-      scheduler_unsync();
-      esp_pps_unsync();
-    }
-  }
-  if(t1s1 >= updater_auto_check_interval)
-  {
-    t1s1 = 0;
-    updater_auto_check();
-  }
 }

@@ -1,0 +1,36 @@
+[Unit]
+Description=Smol Clock timezone information service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/smol-clock-tzinfo
+Environment=TZINFO_GEOIP_DB=/var/lib/smol-clock-tzinfo/GeoLite2-City.mmdb
+Environment=TZINFO_TRANSITION_YEARS=5
+Environment=TZINFO_MAX_TRANSITIONS=8
+Environment=TZINFO_MMDB_CHECK_INTERVAL=60
+Environment=TZINFO_TRUST_PROXY=1
+Environment=TZINFO_LEAP_SECONDS=/usr/share/zoneinfo/leap-seconds.list
+RuntimeDirectory=smol-clock-tzinfo
+RuntimeDirectoryMode=0750
+UMask=0007
+ExecStart=/opt/smol-clock-tzinfo/.venv/bin/gunicorn --workers 2 --bind unix:/run/smol-clock-tzinfo/gunicorn.sock --umask 0007 --access-logfile - --error-logfile - wsgi:app
+Restart=on-failure
+RestartSec=2
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/var/lib/smol-clock-tzinfo
+
+[Install]
+WantedBy=multi-user.target

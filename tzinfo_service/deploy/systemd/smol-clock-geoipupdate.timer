@@ -1,0 +1,13 @@
+[Unit]
+Description=Scheduled MaxMind GeoLite2 City database update for Smol Clock tzinfo
+
+[Timer]
+# GeoLite databases are currently published on Tuesdays and Fridays. Run after
+# the release window rather than polling continuously.
+OnCalendar=Tue,Fri *-*-* 04:15:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=smol-clock-geoipupdate.service
+
+[Install]
+WantedBy=timers.target

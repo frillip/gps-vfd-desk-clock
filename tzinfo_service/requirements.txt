@@ -1,0 +1,4 @@
+Flask>=3.0,<4
+maxminddb>=2.5,<3
+timezonefinder>=6.5,<9
+gunicorn>=22,<24

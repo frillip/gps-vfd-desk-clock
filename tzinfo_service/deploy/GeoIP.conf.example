@@ -1,0 +1,11 @@
+# MaxMind credentials for geoipupdate.
+# Install as /etc/smol-clock-tzinfo/GeoIP.conf with mode 0600, owned by www-data.
+# Do not store the real credentials in the application directory or repository.
+
+AccountID YOUR_ACCOUNT_ID_HERE
+LicenseKey YOUR_LICENSE_KEY_HERE
+EditionIDs GeoLite2-City
+
+# DatabaseDirectory is supplied by the systemd update service with -d.
+# RetryFor bounds transient HTTP retry time for the oneshot job.
+RetryFor 2m
