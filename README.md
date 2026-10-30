@@ -1,4 +1,4 @@
-# VFD GPS Desk Clock
+# Smol Clock
 
 _A small desk clock with an unreasonable interest in what time it is._
 
