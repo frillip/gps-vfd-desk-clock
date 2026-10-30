@@ -15,6 +15,7 @@ UserPrefsNtp user_prefs_ntp;
 static Preferences store;
 static UserPrefs saved; // as last loaded or saved, to tell what is unsaved
 static UserPrefsNtp saved_ntp;
+static const char *const ntp_defaults[NTP_SERVERS] = NTP_SERVER_DEFAULTS;
 
 void user_prefs_set_string(char *field, const char *value)
 {
@@ -43,7 +44,6 @@ void user_prefs_reset(void)
     p->fields.header = USER_PREFS_HEADER_VALUE;
     p->fields.telnet.flags.enabled = TELNET_ENABLED_DEFAULT;
     p->fields.telnet.port = TELNET_PORT_DEFAULT;
-    user_prefs_set_string(p->fields.ntp.server, NTP_SERVER_DEFAULT);
     p->fields.ntp.interval = NTP_INTERVAL_DEFAULT;
     p->fields.rtzinfo.flags.enabled = TZINFO_ENABLED_DEFAULT;
     user_prefs_set_string(p->fields.rtzinfo.server, TZINFO_SERVER_DEFAULT);
@@ -57,6 +57,10 @@ void user_prefs_reset(void)
     user_prefs_set_string(p->fields.updater.config, UPDATER_CONFIG_DEFAULT);
     memset(&user_prefs_ntp, 0, sizeof(user_prefs_ntp));
     user_prefs_ntp.header = USER_PREFS_HEADER_VALUE;
+    for (int index = 0; index < NTP_SERVERS; index++)
+    {
+        user_prefs_set_string(user_prefs_ntp_server(index), ntp_defaults[index]);
+    }
 }
 
 
@@ -76,7 +80,7 @@ static unsigned repair(Stream *output)
 
     REPAIR(p->fields.telnet.port != 0, "telnet.port", p->fields.telnet.port = TELNET_PORT_DEFAULT);
     REPAIR(string_ok(p->fields.ntp.server) && p->fields.ntp.server[0] != '\0', "ntp.server",
-           user_prefs_set_string(p->fields.ntp.server, NTP_SERVER_DEFAULT));
+           user_prefs_set_string(p->fields.ntp.server, ntp_defaults[0]));
     REPAIR(p->fields.ntp.interval >= NTP_INTERVAL_MIN && p->fields.ntp.interval <= NTP_INTERVAL_MAX,
            "ntp.interval", p->fields.ntp.interval = NTP_INTERVAL_DEFAULT);
     REPAIR(string_ok(p->fields.rtzinfo.server) && p->fields.rtzinfo.server[0] != '\0',
@@ -106,14 +110,6 @@ static unsigned repair(Stream *output)
         REPAIR(string_ok(server), "ntp.server", user_prefs_set_string(server, ""));
     }
 #undef REPAIR
-
-    // The pre-v1 tzinfo endpoint no longer exists.
-    if (strcmp(p->fields.rtzinfo.path, TZINFO_PATH_OLD) == 0)
-    {
-        output->printf("Settings: tzinfo path moved to %s\n", TZINFO_PATH_DEFAULT);
-        user_prefs_set_string(p->fields.rtzinfo.path, TZINFO_PATH_DEFAULT);
-        repaired++;
-    }
     return repaired;
 }
 
@@ -121,8 +117,8 @@ static unsigned repair(Stream *output)
 void user_prefs_init(Stream *output)
 {
     size_t stored;
-
     size_t stored_ntp;
+    unsigned repaired = 0;
 
     store.begin(NAMESPACE, true);
     stored = store.getBytesLength(KEY);
@@ -136,21 +132,33 @@ void user_prefs_init(Stream *output)
         store.getBytes(NTP_KEY, &user_prefs_ntp, sizeof(user_prefs_ntp));
     }
     store.end();
-    // Saved by firmware with one NTP server: none more.
+    // Servers 2 to 4 not saved: from the defaults.
     if (stored_ntp != sizeof(user_prefs_ntp) || user_prefs_ntp.header != USER_PREFS_HEADER_VALUE)
     {
         memset(&user_prefs_ntp, 0, sizeof(user_prefs_ntp));
         user_prefs_ntp.header = USER_PREFS_HEADER_VALUE;
+        for (int index = 1; index < NTP_SERVERS; index++)
+        {
+            user_prefs_set_string(user_prefs_ntp_server(index), ntp_defaults[index]);
+        }
+        repaired++;
     }
 
     if (stored != sizeof(user_prefs.raw) || user_prefs.fields.header != USER_PREFS_HEADER_VALUE)
     {
-        output->printf("Settings: none stored (%u bytes), defaults saved\n", (unsigned)stored);
+        if (stored == sizeof(user_prefs.raw))
+        {
+            output->printf("Settings: from other firmware, defaults saved\n");
+        }
+        else
+        {
+            output->printf("Settings: none stored (%u bytes), defaults saved\n", (unsigned)stored);
+        }
         user_prefs_reset();
         user_prefs_save();
         return;
     }
-    if (repair(output) != 0)
+    if (repair(output) + repaired != 0)
     {
         user_prefs_save();
     }

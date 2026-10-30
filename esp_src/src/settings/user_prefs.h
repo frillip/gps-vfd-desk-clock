@@ -1,11 +1,11 @@
 /*
  * The ESP's own settings, kept in NVS as one blob (CLOCK_PREFS/PREF_STRUCT).
  *
- * The layout is unchanged from V2, so settings saved by older firmware load
- * as they are. NTP servers 2 to 4 are kept apart, under a key of their own
- * (NTP_SERVERS), so that it stays so; without it they are empty. On load, each field is checked on its own: a field out of
- * range is put back to its default and reported, and the rest are kept. A
- * blob of the wrong size or with the wrong header resets everything.
+ * NTP servers 2 to 4 are kept apart, under a key of their own (NTP_SERVERS),
+ * taking their defaults without it. On load, each field is checked on its
+ * own: a field out of range is put back to its default and reported, and
+ * the rest are kept. A blob of the wrong size or with the wrong header
+ * (anything saved by V2, or by V2+ before 0.3.1) resets everything.
  *
  * Changes made from the console apply at once; "save" (or "esp save") writes
  * them.
@@ -16,7 +16,9 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-#define USER_PREFS_HEADER_VALUE       0xC0FFEEEEUL
+// "SMOL". Settings saved under any other header, including V2's and up to
+// 0.3.0's (0xC0FFEEEE), are not taken: the clock starts from its defaults.
+#define USER_PREFS_HEADER_VALUE       0x534D4F4CUL
 #define USER_PREFS_MAX_STRING_SIZE    100
 #define USER_PREFS_STORED_STRING_SIZE (USER_PREFS_MAX_STRING_SIZE + 4)
 
@@ -30,9 +32,13 @@
 // crystal to a fraction of a ppm through a few ms of jitter, short enough
 // to follow its wander with temperature. Four servers at 512 s are a
 // 48-byte request every 32 s on average. Server 1 is always set; 2 to 4
-// are optional (empty).
-#define NTP_SERVERS          4
-#define NTP_SERVER_DEFAULT   "rubidium.darksky.io"
+// are optional (empty). The defaults, one per server, "" for none: three
+// independent sources, so that one going wrong is outvoted.
+#define NTP_SERVERS 4
+#define NTP_SERVER_DEFAULTS                                                \
+    {                                                                      \
+        "rubidium.darksky.io", "time.cloudflare.com", "ntp1.npl.co.uk", "" \
+    }
 #define NTP_INTERVAL_DEFAULT 512
 #define NTP_INTERVAL_MIN     128
 #define NTP_INTERVAL_MAX     86400
@@ -43,7 +49,6 @@
 #define TZINFO_ENABLED_DEFAULT       1
 #define TZINFO_SERVER_DEFAULT        "rubidium.darksky.io"
 #define TZINFO_PATH_DEFAULT          "/smol_clock/api/v1/tzinfo"
-#define TZINFO_PATH_OLD              "/smol_clock/v2/tzinfo" // pre-v1 default, migrated
 #define TZINFO_INTERVAL_DEFAULT      86400
 #define TZINFO_INTERVAL_MIN          900
 #define TZINFO_INTERVAL_MAX          604800
@@ -53,9 +58,9 @@
 
 // OTA updates
 #define UPDATER_SERVER_DEFAULT       "rubidium.darksky.io"
-#define UPDATER_PATH_DEFAULT         "/smol_clock/v2/update.json"
+#define UPDATER_PATH_DEFAULT         "/smol_clock/v2plus/update.json"
 #define UPDATER_CONFIG_DEFAULT       ""
-#define UPDATER_AUTO_ENABLED_DEFAULT 0
+#define UPDATER_AUTO_ENABLED_DEFAULT 1
 #define UPDATER_AUTO_HOUR_DEFAULT    4
 #define UPDATER_AUTO_HOUR_MAX        23
 
