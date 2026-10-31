@@ -25,6 +25,31 @@ static uint32_t reconnects;
 static bool shown_up;
 static IPAddress shown_ipv4;
 static IPAddress shown_ipv6(IPv6);
+static bool was_up;
+
+/*
+ * No Wi-Fi power save, for timing. With modem sleep (arduino-esp32's
+ * default) the radio sleeps between the access point's beacons, and a
+ * frame for the clock waits at the access point for the next one it wakes
+ * for: tens to hundreds of milliseconds, on the way in only. That delay
+ * lands in the round trip and the asymmetry of every NTP exchange, and
+ * would land in the receive time of any request the clock answered. The
+ * cost is the radio's receive current all the time, some tens of mA, from
+ * a clock on mains power.
+ */
+static void power_save_off(void)
+{
+    wifi_ps_type_t mode;
+
+    // Before the station starts, this is kept and applied when it does (each
+    // start, the setup access point's included); after, applied at once.
+    WiFi.setSleep(WIFI_PS_NONE);
+    if (esp_wifi_get_ps(&mode) == ESP_OK && mode != WIFI_PS_NONE)
+    {
+        esp_wifi_set_ps(WIFI_PS_NONE);
+    }
+}
+
 
 void wifi_link_init(Stream *output)
 {
@@ -41,6 +66,7 @@ void wifi_link_init(Stream *output)
     WiFi.setHostname(hostname);
     output->printf("%s\n", hostname);
 
+    power_save_off();
     WiFi.mode(WIFI_STA);
     WiFi.enableIPv6(); // SLAAC once connected
     manager.setConfigPortalBlocking(false);
@@ -93,10 +119,19 @@ static void follow_addresses(void)
 
 void wifi_link_service(void)
 {
+    bool up;
+
     manager.process();
     follow_addresses();
-    if (WiFi.status() == WL_CONNECTED || !manager.getWiFiIsSaved() ||
-        manager.getConfigPortalActive())
+    up = WiFi.status() == WL_CONNECTED;
+    // Each new connection: still no power save, whatever restarted the
+    // station in between (WiFiManager's setup access point, say).
+    if (up && !was_up)
+    {
+        power_save_off();
+    }
+    was_up = up;
+    if (up || !manager.getWiFiIsSaved() || manager.getConfigPortalActive())
     {
         return;
     }
@@ -280,6 +315,24 @@ void wifi_link_disconnect(void)
 }
 
 
+static const char *power_save_name(void)
+{
+    wifi_ps_type_t mode;
+
+    if (esp_wifi_get_ps(&mode) != ESP_OK)
+    {
+        return "?";
+    }
+    switch (mode)
+    {
+        case WIFI_PS_NONE: return "OFF (no power save, for timing)";
+        case WIFI_PS_MIN_MODEM: return "MIN_MODEM";
+        case WIFI_PS_MAX_MODEM: return "MAX_MODEM";
+        default: return "?";
+    }
+}
+
+
 void wifi_link_print(Stream *output, bool verbose)
 {
     bool up = wifi_link_is_up();
@@ -312,6 +365,7 @@ void wifi_link_print(Stream *output, bool verbose)
         net_connect_print(output);
         output->printf("Signal: %d dBm, channel %d\n", (int)WiFi.RSSI(), (int)WiFi.channel());
     }
+    output->printf("Sleep:  %s\n", power_save_name());
     if (manager.getConfigPortalActive())
     {
         output->printf("Setup access point %s active\n", hostname);

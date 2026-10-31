@@ -243,7 +243,7 @@ Values are written as people write them: on/off (or 1/0, yes/no), offsets as `+5
 | `ntp server 1..4 <host>\|none` | Up to four NTP servers, names or IPv4 or IPv6 addresses, a new one polled at once. 2 to 4 are optional, and `ntp server` lists them. By default `rubidium.darksky.io`, `time.cloudflare.com` and `ntp1.npl.co.uk` |
 | `ntp interval <time>` | The longest poll interval, 128s–1d, default 512s |
 | `ntp sync` | Poll now |
-| `wifi [-v]` | Connection status, SSID, IPv4 and IPv6 addresses and signal, `-v` adds every IPv6 address, gateway, DNS servers, which address family is preferred, channel and MAC |
+| `wifi [-v]` | Connection status, SSID, IPv4 and IPv6 addresses and signal, `-v` adds every IPv6 address, gateway, DNS servers, which address family is preferred, channel, power save (always off, for timing) and MAC |
 | `wifi scan` | Scan nearby networks |
 | `wifi connect`, `wifi disconnect` | Reconnect, or disconnect (the reconnect task may reconnect later) |
 | `wifi setup` | Open the WiFiManager setup access point |

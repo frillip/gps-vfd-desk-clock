@@ -82,6 +82,8 @@ The ESP is dual stack: IPv4 by DHCP, IPv6 by SLAAC. IPv6 is turned on before Wi-
 - The Telnet server listens on `::`, which takes IPv4 clients too (as IPv4-mapped addresses, shown as plain IPv4).
 - Pings are answered on both.
 
+Wi-Fi power save is off. With it on (arduino-esp32's default, modem sleep), the radio sleeps between the access point's beacons, and a frame for the clock waits at the access point until the radio next wakes: tens to hundreds of milliseconds, on the way in only. That lands in the round trip and the asymmetry of every NTP exchange. The cost is the radio's receive current all the time, some tens of milliamps, from a clock on mains power. It is set before Wi-Fi starts and checked on every new connection, and `wifi -v` shows it (`Sleep:  OFF`).
+
 `wifi -v` shows which family is preferred and any recent failures: `Prefer: IPv4 first; IPv6 failed 00:12:05 ago`.
 
 Where the clock can be reached is printed with both addresses: `Wi-Fi: 192.168.1.20, 2001:db8:1::20` whenever they change (the IPv6 one usually a few seconds after connecting), in the status line, and Telnet's `192.168.1.20:23, [2001:db8:1::20]:23`. `wifi -v` lists every IPv6 address with its kind (GLOBAL, UNIQUE_LOCAL, LINK_LOCAL) and the DNS servers. What is connected or resolved is printed as used: the NTP server's address (`pool.example (2001:db8::123)`), the tzinfo server's (`tz -v`), the update server's (after `Update server: …`), a Telnet client's.
